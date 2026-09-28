@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: montara
+      POSTGRES_PASSWORD: montara
+      POSTGRES_DB: montara_pass
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U montara -d montara_pass"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    build: ./apps/server
+    entrypoint: ["/usr/local/bin/migrate", "up"]
+    environment:
+      DATABASE_URL: postgres://montara:montara@postgres:5432/montara_pass?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  server:
+    build: ./apps/server
+    environment:
+      PORT: "8080"
+      DATABASE_URL: postgres://montara:montara@postgres:5432/montara_pass?sslmode=disable
+    ports:
+      - "8080:8080"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  app:
+    build:
+      context: .
+      dockerfile: apps/app/Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - server
+
+volumes:
+  pgdata:

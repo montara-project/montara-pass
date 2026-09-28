@@ -1,0 +1,8 @@
+**/node_modules
+**/dist
+**/.vinext
+**/.wrangler
+**/.env
+**/.env.*
+apps/server/bin
+.git
