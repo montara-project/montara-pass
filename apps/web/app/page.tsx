@@ -1,5 +1,3 @@
-import { SiteFooter } from "./_components/site-footer";
-import { SiteHeader } from "./_components/site-header";
 import { VaultMockup } from "./_components/vault-mockup";
 import {
   ArrowRightIcon,
@@ -574,20 +572,16 @@ function CtaBand() {
 
 export default function Home() {
   return (
-    <>
-      <SiteHeader />
-      <main>
-        <Hero />
-        <SocialProof />
-        <AudienceSplit />
-        <Features />
-        <Security />
-        <Pricing />
-        <Testimonials />
-        <Faq />
-        <CtaBand />
-      </main>
-      <SiteFooter />
-    </>
+    <main>
+      <Hero />
+      <SocialProof />
+      <AudienceSplit />
+      <Features />
+      <Security />
+      <Pricing />
+      <Testimonials />
+      <Faq />
+      <CtaBand />
+    </main>
   );
 }
