@@ -1,3 +1,4 @@
+import { Reveal } from "./_components/reveal";
 import { VaultMockup } from "./_components/vault-mockup";
 import {
   ArrowRightIcon,
@@ -91,9 +92,21 @@ function Hero() {
   );
 }
 
-/* ---------- Social proof strip ---------- */
+/* ---------- Social proof + platforms ---------- */
 
 const brands = ["Northwind", "Atlas Labs", "Bluefin & Co", "Helios", "Cascade", "Driftwood"];
+
+const platforms = [
+  "Chrome",
+  "Safari",
+  "Firefox",
+  "Edge",
+  "iOS",
+  "Android",
+  "macOS",
+  "Windows",
+  "Linux",
+];
 
 function SocialProof() {
   return (
@@ -109,6 +122,19 @@ function SocialProof() {
             </li>
           ))}
         </ul>
+        <div className="mt-8 border-t border-line pt-6">
+          <p className="text-center text-xs font-medium text-mist">Works everywhere you do</p>
+          <ul className="mt-3 flex flex-wrap items-center justify-center gap-2">
+            {platforms.map((platform) => (
+              <li
+                key={platform}
+                className="rounded-full border border-line bg-card/60 px-3.5 py-1.5 text-xs font-medium text-mist transition-colors duration-200 hover:border-mist/30 hover:text-fg"
+              >
+                {platform}
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     </section>
   );
@@ -136,28 +162,42 @@ const audiences = [
 function AudienceSplit() {
   return (
     <section className="mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 sm:py-24 lg:px-8">
-      <div className="grid gap-6 md:grid-cols-2">
-        {audiences.map((a) => (
-          <article
-            key={a.title}
-            className="group flex flex-col rounded-2xl border border-line bg-card p-8 transition-colors duration-200 hover:border-mist/30 hover:bg-card-hover sm:p-10"
-          >
-            <span className="flex size-12 items-center justify-center rounded-xl bg-accent/15 text-accent-bright">
-              <a.icon className="size-6" />
-            </span>
-            <p className="mt-6 text-xs font-semibold uppercase tracking-widest text-accent-bright">{a.kicker}</p>
-            <h2 className="mt-2 font-heading text-2xl font-semibold tracking-tight sm:text-3xl">{a.title}</h2>
-            <p className="mt-3 flex-1 leading-7 text-mist">{a.body}</p>
-            <a
-              href="#pricing"
-              className="mt-6 inline-flex w-fit cursor-pointer items-center gap-1.5 text-sm font-semibold text-accent-soft transition-colors duration-200 hover:text-fg"
-            >
-              {a.cta}
-              <ArrowRightIcon className="size-4 transition-transform duration-200 group-hover:translate-x-1 motion-reduce:transition-none" />
-            </a>
-          </article>
-        ))}
+      <div className="mx-auto max-w-2xl text-center">
+        <p className="text-xs font-semibold uppercase tracking-widest text-accent-bright">
+          Who it&rsquo;s for
+        </p>
+        <h2 className="mt-3 font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
+          One vault at home. One for your whole team.
+        </h2>
+        <p className="mt-4 leading-7 text-mist">
+          The same zero-knowledge architecture — whether you&rsquo;re protecting your family or
+          rolling out across an organization.
+        </p>
       </div>
+      <Reveal className="mt-14">
+        <div className="grid gap-6 md:grid-cols-2">
+          {audiences.map((a) => (
+            <article
+              key={a.title}
+              className="group flex flex-col rounded-2xl border border-line bg-card p-8 transition-colors duration-200 hover:border-mist/30 hover:bg-card-hover sm:p-10"
+            >
+              <span className="flex size-12 items-center justify-center rounded-xl bg-accent/15 text-accent-bright">
+                <a.icon className="size-6" />
+              </span>
+              <p className="mt-6 text-xs font-semibold uppercase tracking-widest text-accent-bright">{a.kicker}</p>
+              <h3 className="mt-2 font-heading text-2xl font-semibold tracking-tight sm:text-3xl">{a.title}</h3>
+              <p className="mt-3 flex-1 leading-7 text-mist">{a.body}</p>
+              <a
+                href="#pricing"
+                className="mt-6 inline-flex w-fit cursor-pointer items-center gap-1.5 text-sm font-semibold text-accent-soft transition-colors duration-200 hover:text-fg"
+              >
+                {a.cta}
+                <ArrowRightIcon className="size-4 transition-transform duration-200 group-hover:translate-x-1 motion-reduce:transition-none" />
+              </a>
+            </article>
+          ))}
+        </div>
+      </Reveal>
     </section>
   );
 }
@@ -211,20 +251,22 @@ function Features() {
           </p>
         </div>
 
-        <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((f) => (
-            <article
-              key={f.title}
-              className="rounded-2xl border border-line bg-card p-7 transition-colors duration-200 hover:border-mist/30 hover:bg-card-hover"
-            >
-              <span className="flex size-11 items-center justify-center rounded-xl bg-accent/15 text-accent-bright">
-                <f.icon className="size-5.5" />
-              </span>
-              <h3 className="mt-5 font-heading text-lg font-semibold">{f.title}</h3>
-              <p className="mt-2 text-sm leading-6 text-mist">{f.body}</p>
-            </article>
-          ))}
-        </div>
+        <Reveal className="mt-14">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {features.map((f) => (
+              <article
+                key={f.title}
+                className="rounded-2xl border border-line bg-card p-7 transition-colors duration-200 hover:border-mist/30 hover:bg-card-hover"
+              >
+                <span className="flex size-11 items-center justify-center rounded-xl bg-accent/15 text-accent-bright">
+                  <f.icon className="size-5.5" />
+                </span>
+                <h3 className="mt-5 font-heading text-lg font-semibold">{f.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-mist">{f.body}</p>
+              </article>
+            ))}
+          </div>
+        </Reveal>
       </div>
     </section>
   );
@@ -262,43 +304,45 @@ function Security() {
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_60%_at_50%_40%,rgba(30,58,95,0.4),transparent)]"
       />
       <div className="relative mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 sm:py-24 lg:px-8">
-        <div className="grid items-center gap-14 lg:grid-cols-2">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-accent-bright">Security</p>
-            <h2 className="mt-3 font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
-              Built so that not even we can read your data
-            </h2>
-            <p className="mt-4 max-w-lg leading-7 text-mist">
-              Most services protect your data from other people. Montara Pass is architected so
-              your data is protected from everyone — including Montara.
-            </p>
-            <ul className="mt-8 flex flex-col gap-6">
-              {securityPoints.map((p) => (
-                <li key={p.title} className="flex gap-4">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent-bright">
-                    <ShieldCheckIcon className="size-5" />
-                  </span>
-                  <div>
-                    <h3 className="font-heading font-semibold">{p.title}</h3>
-                    <p className="mt-1 text-sm leading-6 text-mist">{p.body}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
+        <Reveal>
+          <div className="grid items-center gap-14 lg:grid-cols-2">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-accent-bright">Security</p>
+              <h2 className="mt-3 font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
+                Built so that not even we can read your data
+              </h2>
+              <p className="mt-4 max-w-lg leading-7 text-mist">
+                Most services protect your data from other people. Montara Pass is architected so
+                your data is protected from everyone — including Montara.
+              </p>
+              <ul className="mt-8 flex flex-col gap-6">
+                {securityPoints.map((p) => (
+                  <li key={p.title} className="flex gap-4">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent-bright">
+                      <ShieldCheckIcon className="size-5" />
+                    </span>
+                    <div>
+                      <h3 className="font-heading font-semibold">{p.title}</h3>
+                      <p className="mt-1 text-sm leading-6 text-mist">{p.body}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-          <div className="grid grid-cols-2 gap-5">
-            {stats.map((s) => (
-              <div
-                key={s.label}
-                className="rounded-2xl border border-line bg-card p-7 text-center transition-colors duration-200 hover:border-mist/30"
-              >
-                <p className="font-heading text-4xl font-semibold text-accent-soft">{s.value}</p>
-                <p className="mt-2 text-sm leading-5 text-mist">{s.label}</p>
-              </div>
-            ))}
+            <div className="grid grid-cols-2 gap-5">
+              {stats.map((s) => (
+                <div
+                  key={s.label}
+                  className="rounded-2xl border border-line bg-card p-7 text-center transition-colors duration-200 hover:border-mist/30"
+                >
+                  <p className="font-heading text-4xl font-semibold text-accent-soft">{s.value}</p>
+                  <p className="mt-2 text-sm leading-5 text-mist">{s.label}</p>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        </Reveal>
       </div>
     </section>
   );
@@ -367,45 +411,47 @@ function Pricing() {
           </p>
         </div>
 
-        <div className="mt-14 grid gap-6 lg:grid-cols-3">
-          {plans.map((plan) => (
-            <article
-              key={plan.name}
-              className={`relative flex flex-col rounded-2xl border p-8 ${
-                plan.featured
-                  ? "border-accent/50 bg-card shadow-2xl shadow-accent/10 lg:-my-3 lg:py-11"
-                  : "border-line bg-card"
-              }`}
-            >
-              {plan.featured ? (
-                <p className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-accent px-3.5 py-1 text-xs font-semibold text-[#04150e]">
-                  Most popular
-                </p>
-              ) : null}
-              <h3 className="font-heading text-lg font-semibold">{plan.name}</h3>
-              <p className="mt-4">
-                <span className="font-heading text-4xl font-semibold tracking-tight">{plan.price}</span>
-                <span className="ml-2 text-sm text-mist">{plan.period}</span>
-              </p>
-              <p className="mt-3 text-sm leading-6 text-mist">{plan.blurb}</p>
-              <ul className="mt-6 flex flex-1 flex-col gap-3">
-                {plan.features.map((f) => (
-                  <Check key={f}>{f}</Check>
-                ))}
-              </ul>
-              <a
-                href="#top"
-                className={`mt-8 flex cursor-pointer items-center justify-center rounded-xl px-6 py-3 text-sm font-semibold transition-colors duration-200 ${
+        <Reveal className="mt-14">
+          <div className="grid gap-6 lg:grid-cols-3">
+            {plans.map((plan) => (
+              <article
+                key={plan.name}
+                className={`relative flex flex-col rounded-2xl border p-8 ${
                   plan.featured
-                    ? "bg-accent text-[#04150e] hover:bg-accent-bright"
-                    : "border border-line bg-transparent text-fg hover:border-mist/40 hover:bg-card-hover"
+                    ? "border-accent/50 bg-card shadow-2xl shadow-accent/10 lg:-my-3 lg:py-11"
+                    : "border-line bg-card"
                 }`}
               >
-                {plan.cta}
-              </a>
-            </article>
-          ))}
-        </div>
+                {plan.featured ? (
+                  <p className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-accent px-3.5 py-1 text-xs font-semibold text-[#04150e]">
+                    Most popular
+                  </p>
+                ) : null}
+                <h3 className="font-heading text-lg font-semibold">{plan.name}</h3>
+                <p className="mt-4">
+                  <span className="font-heading text-4xl font-semibold tracking-tight">{plan.price}</span>
+                  <span className="ml-2 text-sm text-mist">{plan.period}</span>
+                </p>
+                <p className="mt-3 text-sm leading-6 text-mist">{plan.blurb}</p>
+                <ul className="mt-6 flex flex-1 flex-col gap-3">
+                  {plan.features.map((f) => (
+                    <Check key={f}>{f}</Check>
+                  ))}
+                </ul>
+                <a
+                  href="#top"
+                  className={`mt-8 flex cursor-pointer items-center justify-center rounded-xl px-6 py-3 text-sm font-semibold transition-colors duration-200 ${
+                    plan.featured
+                      ? "bg-accent text-[#04150e] hover:bg-accent-bright"
+                      : "border border-line bg-transparent text-fg hover:border-mist/40 hover:bg-card-hover"
+                  }`}
+                >
+                  {plan.cta}
+                </a>
+              </article>
+            ))}
+          </div>
+        </Reveal>
 
         <p className="mt-10 text-center text-sm text-mist">
           Running a team?{" "}
@@ -456,22 +502,24 @@ function Testimonials() {
           </h2>
         </div>
 
-        <div className="mt-14 grid gap-6 md:grid-cols-3">
-          {testimonials.map((t) => (
-            <figure key={t.name} className="flex flex-col rounded-2xl border border-line bg-card p-7">
-              <blockquote className="flex-1 leading-7 text-fg/90">&ldquo;{t.quote}&rdquo;</blockquote>
-              <figcaption className="mt-6 flex items-center gap-3">
-                <span className="flex size-10 items-center justify-center rounded-full bg-brand font-heading text-sm font-semibold text-accent-soft">
-                  {t.name.split(" ").map((n) => n[0]).join("")}
-                </span>
-                <span>
-                  <span className="block text-sm font-semibold">{t.name}</span>
-                  <span className="block text-xs text-mist">{t.role}</span>
-                </span>
-              </figcaption>
-            </figure>
-          ))}
-        </div>
+        <Reveal className="mt-14">
+          <div className="grid gap-6 md:grid-cols-3">
+            {testimonials.map((t) => (
+              <figure key={t.name} className="flex flex-col rounded-2xl border border-line bg-card p-7">
+                <blockquote className="flex-1 leading-7 text-fg/90">&ldquo;{t.quote}&rdquo;</blockquote>
+                <figcaption className="mt-6 flex items-center gap-3">
+                  <span className="flex size-10 items-center justify-center rounded-full bg-brand font-heading text-sm font-semibold text-accent-soft">
+                    {t.name.split(" ").map((n) => n[0]).join("")}
+                  </span>
+                  <span>
+                    <span className="block text-sm font-semibold">{t.name}</span>
+                    <span className="block text-xs text-mist">{t.role}</span>
+                  </span>
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        </Reveal>
       </div>
     </section>
   );
@@ -517,20 +565,22 @@ function Faq() {
           </h2>
         </div>
 
-        <div className="mt-12 flex flex-col gap-3">
-          {faqs.map((item) => (
-            <details
-              key={item.q}
-              className="group rounded-xl border border-line bg-card transition-colors duration-200 open:border-mist/30"
-            >
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-6 py-5 font-heading font-semibold">
-                {item.q}
-                <ChevronDownIcon className="size-5 shrink-0 text-mist transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none" />
-              </summary>
-              <p className="px-6 pb-6 text-sm leading-7 text-mist">{item.a}</p>
-            </details>
-          ))}
-        </div>
+        <Reveal className="mt-12">
+          <div className="flex flex-col gap-3">
+            {faqs.map((item) => (
+              <details
+                key={item.q}
+                className="group rounded-xl border border-line bg-card transition-colors duration-200 open:border-mist/30"
+              >
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-6 py-5 font-heading font-semibold">
+                  {item.q}
+                  <ChevronDownIcon className="size-5 shrink-0 text-mist transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none" />
+                </summary>
+                <p className="px-6 pb-6 text-sm leading-7 text-mist">{item.a}</p>
+              </details>
+            ))}
+          </div>
+        </Reveal>
       </div>
     </section>
   );
@@ -542,27 +592,29 @@ function CtaBand() {
   return (
     <section className="border-t border-line">
       <div className="mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 sm:py-24 lg:px-8">
-        <div className="relative overflow-hidden rounded-3xl bg-accent px-6 py-16 text-center sm:px-16">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(255,255,255,0.25),transparent)]"
-          />
-          <div className="relative">
-            <h2 className="mx-auto max-w-2xl font-heading text-3xl font-semibold tracking-tight text-[#04150e] sm:text-4xl">
-              Ready to stop worrying about passwords?
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl text-[#04271c]">
-              Set up your vault in under five minutes. Free forever plan, no credit card required.
-            </p>
-            <a
-              href="#pricing"
-              className="mt-8 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-ink px-7 py-3.5 text-sm font-semibold text-fg transition-colors duration-200 hover:bg-abyss"
-            >
-              Get Montara Pass
-              <ArrowRightIcon className="size-4" />
-            </a>
+        <Reveal>
+          <div className="relative overflow-hidden rounded-3xl bg-accent px-6 py-16 text-center sm:px-16">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(255,255,255,0.25),transparent)]"
+            />
+            <div className="relative">
+              <h2 className="mx-auto max-w-2xl font-heading text-3xl font-semibold tracking-tight text-[#04150e] sm:text-4xl">
+                Ready to stop worrying about passwords?
+              </h2>
+              <p className="mx-auto mt-4 max-w-xl text-[#04271c]">
+                Set up your vault in under five minutes. Free forever plan, no credit card required.
+              </p>
+              <a
+                href="#pricing"
+                className="mt-8 inline-flex cursor-pointer items-center gap-2 rounded-xl bg-ink px-7 py-3.5 text-sm font-semibold text-fg transition-colors duration-200 hover:bg-abyss"
+              >
+                Get Montara Pass
+                <ArrowRightIcon className="size-4" />
+              </a>
+            </div>
           </div>
-        </div>
+        </Reveal>
       </div>
     </section>
   );
