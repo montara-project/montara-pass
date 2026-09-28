@@ -55,7 +55,7 @@ export default function ContactPage() {
       <section className="relative overflow-hidden border-b border-line">
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(55%_70%_at_50%_0%,rgba(30,58,95,0.5),transparent)]"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(55%_70%_at_50%_0%,rgba(30,58,95,0.5),transparent)] light:bg-[radial-gradient(55%_70%_at_50%_0%,rgba(30,58,95,0.08),transparent)]"
         />
         <div className="relative mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
@@ -152,7 +152,7 @@ export default function ContactPage() {
           </div>
 
           <div className="rounded-2xl border border-amber-400/30 bg-amber-400/5 p-8">
-            <span className="flex size-11 items-center justify-center rounded-xl bg-amber-400/15 text-amber-300">
+            <span className="flex size-11 items-center justify-center rounded-xl bg-amber-400/15 text-amber-300 light:text-amber-700">
               <AlertTriangleIcon className="size-5" />
             </span>
             <h2 className="mt-5 font-heading text-lg font-semibold">Found a security issue?</h2>

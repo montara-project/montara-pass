@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant light (&:where(.light, .light *));
+
 @theme {
   --font-heading: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-body: "DM Sans", ui-sans-serif, system-ui, sans-serif;
@@ -73,4 +75,21 @@ summary::-webkit-details-marker {
     opacity: 1;
     transform: none;
   }
+}
+
+/* Light theme — flips the semantic tokens; pairings keep AA contrast. */
+.light {
+  color-scheme: light;
+
+  --color-ink: #f8fafc;
+  --color-abyss: #eef2f7;
+  --color-card: #ffffff;
+  --color-card-hover: #f1f5f9;
+  --color-line: rgb(15 23 42 / 0.1);
+  --color-fg: #0f172a;
+  --color-mist: #475569;
+  --color-brand: #e2e8f0;
+  --color-accent: #059669;
+  --color-accent-bright: #047857;
+  --color-accent-soft: #065f46;
 }

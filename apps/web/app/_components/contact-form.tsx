@@ -133,7 +133,7 @@ export function ContactForm() {
           tabIndex={-1}
           className="rounded-xl border border-rose-400/40 bg-rose-400/10 p-4 focus:outline-none"
         >
-          <p className="flex items-center gap-2 text-sm font-semibold text-rose-200">
+          <p className="flex items-center gap-2 text-sm font-semibold text-rose-200 light:text-rose-800">
             <AlertTriangleIcon className="size-4" />
             There {activeErrors.length === 1 ? "is 1 problem" : `are ${activeErrors.length} problems`} with this form
           </p>
@@ -142,7 +142,7 @@ export function ContactForm() {
               <li key={field} className="list-disc">
                 <a
                   href={`#contact-${field}`}
-                  className="text-sm text-rose-200 underline underline-offset-2 hover:text-rose-100"
+                  className="text-sm text-rose-200 light:text-rose-800 underline underline-offset-2 hover:text-rose-100 light:hover:text-rose-900"
                 >
                   {message}
                 </a>
@@ -171,7 +171,7 @@ export function ContactForm() {
             className={`mt-2 ${inputClass(Boolean(errors.name))}`}
           />
           {errors.name ? (
-            <p id="contact-name-error" role="alert" className="mt-1.5 text-xs text-rose-300">
+            <p id="contact-name-error" role="alert" className="mt-1.5 text-xs text-rose-300 light:text-rose-700">
               {errors.name}
             </p>
           ) : null}
@@ -195,7 +195,7 @@ export function ContactForm() {
             className={`mt-2 ${inputClass(Boolean(errors.email))}`}
           />
           {errors.email ? (
-            <p id="contact-email-error" role="alert" className="mt-1.5 text-xs text-rose-300">
+            <p id="contact-email-error" role="alert" className="mt-1.5 text-xs text-rose-300 light:text-rose-700">
               {errors.email}
             </p>
           ) : null}
@@ -231,7 +231,7 @@ export function ContactForm() {
           <ChevronDownIcon className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-mist" />
         </div>
         {errors.topic ? (
-          <p id="contact-topic-error" role="alert" className="mt-1.5 text-xs text-rose-300">
+          <p id="contact-topic-error" role="alert" className="mt-1.5 text-xs text-rose-300 light:text-rose-700">
             {errors.topic}
           </p>
         ) : null}
@@ -260,7 +260,7 @@ export function ContactForm() {
           }`}
         />
         {errors.message ? (
-          <p id="contact-message-error" role="alert" className="mt-1.5 text-xs text-rose-300">
+          <p id="contact-message-error" role="alert" className="mt-1.5 text-xs text-rose-300 light:text-rose-700">
             {errors.message}
           </p>
         ) : (

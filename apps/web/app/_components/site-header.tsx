@@ -1,7 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowRightIcon, CloseIcon, LogoMark, MenuIcon } from "./icons";
+import { useEffect, useState } from "react";
+import {
+  ArrowRightIcon,
+  CloseIcon,
+  LogoMark,
+  MenuIcon,
+  MoonIcon,
+  SunIcon,
+} from "./icons";
 
 const navLinks = [
   { href: "/#features", label: "Features" },
@@ -9,6 +16,35 @@ const navLinks = [
   { href: "/#pricing", label: "Pricing" },
   { href: "/#faq", label: "FAQ" },
 ];
+
+function ThemeToggle() {
+  const [light, setLight] = useState(false);
+
+  useEffect(() => {
+    setLight(document.documentElement.classList.contains("light"));
+  }, []);
+
+  return (
+    <button
+      type="button"
+      aria-label={light ? "Switch to dark mode" : "Switch to light mode"}
+      aria-pressed={light}
+      onClick={() => {
+        const next = !document.documentElement.classList.contains("light");
+        document.documentElement.classList.toggle("light", next);
+        try {
+          localStorage.setItem("theme", next ? "light" : "dark");
+        } catch {
+          /* storage can throw in private modes */
+        }
+        setLight(next);
+      }}
+      className="flex size-10 cursor-pointer items-center justify-center rounded-lg text-mist transition-colors duration-200 hover:bg-card hover:text-fg"
+    >
+      {light ? <MoonIcon className="size-5" /> : <SunIcon className="size-5" />}
+    </button>
+  );
+}
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
@@ -36,6 +72,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="hidden items-center gap-3 md:flex">
+          <ThemeToggle />
           <a
             href="/#pricing"
             className="cursor-pointer rounded-lg px-4 py-2 text-sm font-medium text-mist transition-colors duration-200 hover:text-fg"

@@ -40,7 +40,7 @@ function Hero() {
     <section id="top" className="relative overflow-hidden">
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-[480px] bg-[radial-gradient(60%_80%_at_50%_0%,rgba(30,58,95,0.55),transparent)]"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[480px] bg-[radial-gradient(60%_80%_at_50%_0%,rgba(30,58,95,0.55),transparent)] light:bg-[radial-gradient(60%_80%_at_50%_0%,rgba(30,58,95,0.08),transparent)]"
       />
       <div className="relative mx-auto w-full max-w-7xl px-4 pb-20 pt-16 sm:px-6 sm:pt-24 lg:px-8">
         <div className="grid items-center gap-14 lg:grid-cols-2">
@@ -301,7 +301,7 @@ function Security() {
     <section id="security" className="relative overflow-hidden border-t border-line">
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_60%_at_50%_40%,rgba(30,58,95,0.4),transparent)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_60%_at_50%_40%,rgba(30,58,95,0.4),transparent)] light:bg-[radial-gradient(50%_60%_at_50%_40%,rgba(30,58,95,0.06),transparent)]"
       />
       <div className="relative mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 sm:py-24 lg:px-8">
         <Reveal>
@@ -494,7 +494,7 @@ function Testimonials() {
         <div className="mx-auto max-w-2xl text-center">
           <div className="flex items-center justify-center gap-1" aria-label="Rated 4.9 out of 5">
             {Array.from({ length: 5 }).map((_, i) => (
-              <StarIcon key={i} className="size-5 text-amber-300" />
+              <StarIcon key={i} className="size-5 text-amber-300 light:text-amber-500" />
             ))}
           </div>
           <h2 className="mt-4 font-heading text-3xl font-semibold tracking-tight sm:text-4xl">

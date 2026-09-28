@@ -4,8 +4,8 @@ type Tone = "emerald" | "amber" | "rose";
 
 const tone: Record<Tone, { bar: string; text: string }> = {
   emerald: { bar: "bg-accent-bright", text: "text-accent-bright" },
-  amber: { bar: "bg-amber-400", text: "text-amber-300" },
-  rose: { bar: "bg-rose-400", text: "text-rose-300" },
+  amber: { bar: "bg-amber-400", text: "text-amber-300 light:text-amber-700" },
+  rose: { bar: "bg-rose-400", text: "text-rose-300 light:text-rose-700" },
 };
 
 const sidebar = [
@@ -101,7 +101,7 @@ export function VaultMockup() {
                     <span className="flex items-center gap-2">
                       <span className="truncate text-xs font-medium text-fg sm:text-sm">{row.name}</span>
                       {row.flag ? (
-                        <span className="hidden items-center gap-1 rounded-full border border-rose-400/30 bg-rose-400/10 px-2 py-0.5 text-[10px] font-medium text-rose-300 sm:inline-flex">
+                        <span className="hidden items-center gap-1 rounded-full border border-rose-400/30 bg-rose-400/10 px-2 py-0.5 text-[10px] font-medium text-rose-300 light:text-rose-700 sm:inline-flex">
                           <AlertTriangleIcon className="size-3" />
                           {row.flag}
                         </span>
