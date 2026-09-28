@@ -1,10 +1,10 @@
 import { LogoMark } from "./icons";
 
-const columns: { title: string; links: string[] }[] = [
-  { title: "Product", links: ["Features", "Security", "Pricing", "Downloads", "Browser extension"] },
-  { title: "Company", links: ["About", "Blog", "Careers", "Press kit"] },
-  { title: "Resources", links: ["Help center", "Security whitepaper", "Guides", "System status"] },
-  { title: "Legal", links: ["Privacy policy", "Terms of service", "Cookie settings"] },
+const columns: { title: string; links: { label: string; href: string }[] }[] = [
+  { title: "Product", links: [{ label: "Features", href: "/#features" }, { label: "Security", href: "/#security" }, { label: "Pricing", href: "/#pricing" }, { label: "Downloads", href: "/" }, { label: "Browser extension", href: "/" }] },
+  { title: "Company", links: [{ label: "About", href: "/" }, { label: "Blog", href: "/" }, { label: "Careers", href: "/" }, { label: "Contact us", href: "/contact" }, { label: "Press kit", href: "/" }] },
+  { title: "Resources", links: [{ label: "Help center", href: "/" }, { label: "Security whitepaper", href: "/#security" }, { label: "Guides", href: "/" }, { label: "System status", href: "/" }] },
+  { title: "Legal", links: [{ label: "Privacy policy", href: "/privacy" }, { label: "Terms of service", href: "/terms" }, { label: "Cookie settings", href: "/" }] },
 ];
 
 export function SiteFooter() {
@@ -13,7 +13,7 @@ export function SiteFooter() {
       <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-6">
           <div className="lg:col-span-2">
-            <a href="#top" className="flex w-fit cursor-pointer items-center gap-2.5" aria-label="Montara Pass — back to top">
+            <a href="/" className="flex w-fit cursor-pointer items-center gap-2.5" aria-label="Montara Pass — back to home">
               <LogoMark className="size-8" />
               <span className="font-heading text-lg font-semibold tracking-tight">
                 Montara<span className="text-accent-bright">Pass</span>
@@ -29,12 +29,12 @@ export function SiteFooter() {
               <h3 className="font-heading text-sm font-semibold text-fg">{col.title}</h3>
               <ul className="mt-4 flex flex-col gap-2.5">
                 {col.links.map((link) => (
-                  <li key={link}>
+                  <li key={link.label}>
                     <a
-                      href="#top"
+                      href={link.href}
                       className="cursor-pointer text-sm text-mist transition-colors duration-200 hover:text-fg"
                     >
-                      {link}
+                      {link.label}
                     </a>
                   </li>
                 ))}

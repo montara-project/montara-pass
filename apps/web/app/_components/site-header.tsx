@@ -4,10 +4,10 @@ import { useState } from "react";
 import { ArrowRightIcon, CloseIcon, LogoMark, MenuIcon } from "./icons";
 
 const navLinks = [
-  { href: "#features", label: "Features" },
-  { href: "#security", label: "Security" },
-  { href: "#pricing", label: "Pricing" },
-  { href: "#faq", label: "FAQ" },
+  { href: "/#features", label: "Features" },
+  { href: "/#security", label: "Security" },
+  { href: "/#pricing", label: "Pricing" },
+  { href: "/#faq", label: "FAQ" },
 ];
 
 export function SiteHeader() {
@@ -16,7 +16,7 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-line bg-ink/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <a href="#top" className="flex cursor-pointer items-center gap-2.5" aria-label="Montara Pass — home">
+        <a href="/" className="flex cursor-pointer items-center gap-2.5" aria-label="Montara Pass — home">
           <LogoMark className="size-8" />
           <span className="font-heading text-lg font-semibold tracking-tight">
             Montara<span className="text-accent-bright">Pass</span>
@@ -37,7 +37,7 @@ export function SiteHeader() {
 
         <div className="hidden items-center gap-3 md:flex">
           <a
-            href="#pricing"
+            href="/#pricing"
             className="cursor-pointer rounded-lg px-4 py-2 text-sm font-medium text-mist transition-colors duration-200 hover:text-fg"
           >
             Log in
