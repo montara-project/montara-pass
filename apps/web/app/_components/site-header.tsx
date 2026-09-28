@@ -6,6 +6,7 @@ import {
   CloseIcon,
   LogoMark,
   MenuIcon,
+  MonitorIcon,
   MoonIcon,
   SunIcon,
 } from "./icons";
@@ -17,31 +18,78 @@ const navLinks = [
   { href: "/#faq", label: "FAQ" },
 ];
 
+type Theme = "light" | "dark" | "system";
+
+function applyTheme(theme: Theme) {
+  const light =
+    theme === "light" ||
+    (theme === "system" &&
+      window.matchMedia("(prefers-color-scheme: light)").matches);
+  document.documentElement.classList.toggle("light", light);
+}
+
 function ThemeToggle() {
-  const [light, setLight] = useState(false);
+  const [theme, setTheme] = useState<Theme>("system");
 
   useEffect(() => {
-    setLight(document.documentElement.classList.contains("light"));
+    let stored: string | null = null;
+    try {
+      stored = localStorage.getItem("theme");
+    } catch {
+      /* storage can throw in private modes */
+    }
+    setTheme(stored === "light" || stored === "dark" ? stored : "system");
+
+    const media = window.matchMedia("(prefers-color-scheme: light)");
+    const onChange = () => {
+      let stored: string | null = null;
+      try {
+        stored = localStorage.getItem("theme");
+      } catch {
+        /* storage can throw in private modes */
+      }
+      if ((stored ?? "system") === "system") {
+        applyTheme("system");
+      }
+    };
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
   }, []);
 
   return (
     <button
       type="button"
-      aria-label={light ? "Switch to dark mode" : "Switch to light mode"}
-      aria-pressed={light}
+      aria-label={
+        theme === "light"
+          ? "Theme: light — switch to dark"
+          : theme === "dark"
+            ? "Theme: dark — follow system"
+            : "Theme: system — switch to light"
+      }
       onClick={() => {
-        const next = !document.documentElement.classList.contains("light");
-        document.documentElement.classList.toggle("light", next);
+        const next: Theme =
+          theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
+        setTheme(next);
         try {
-          localStorage.setItem("theme", next ? "light" : "dark");
+          if (next === "system") {
+            localStorage.removeItem("theme");
+          } else {
+            localStorage.setItem("theme", next);
+          }
         } catch {
           /* storage can throw in private modes */
         }
-        setLight(next);
+        applyTheme(next);
       }}
       className="flex size-10 cursor-pointer items-center justify-center rounded-lg text-mist transition-colors duration-200 hover:bg-card hover:text-fg"
     >
-      {light ? <MoonIcon className="size-5" /> : <SunIcon className="size-5" />}
+      {theme === "light" ? (
+        <SunIcon className="size-5" />
+      ) : theme === "dark" ? (
+        <MoonIcon className="size-5" />
+      ) : (
+        <MonitorIcon className="size-5" />
+      )}
     </button>
   );
 }
@@ -74,13 +122,13 @@ export function SiteHeader() {
         <div className="hidden items-center gap-3 md:flex">
           <ThemeToggle />
           <a
-            href="/#pricing"
+            href="/login"
             className="cursor-pointer rounded-lg px-4 py-2 text-sm font-medium text-mist transition-colors duration-200 hover:text-fg"
           >
             Log in
           </a>
           <a
-            href="#pricing"
+            href="/#pricing"
             className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-[#04150e] transition-colors duration-200 hover:bg-accent-bright"
           >
             Get Montara Pass
@@ -116,7 +164,7 @@ export function SiteHeader() {
               </a>
             ))}
             <a
-              href="#pricing"
+              href="/#pricing"
               onClick={() => setOpen(false)}
               className="mt-3 flex cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-[#04150e]"
             >
