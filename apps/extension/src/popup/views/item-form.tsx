@@ -1,4 +1,10 @@
-import { useId, useState, type FormEvent, type ReactNode } from 'react'
+import {
+  useId,
+  useState,
+  type FormEvent,
+  type ReactNode,
+  type SelectHTMLAttributes,
+} from 'react'
 
 import type { VaultItem } from '@/types/vault'
 
@@ -13,7 +19,7 @@ import {
 
 import { ApiError, createItem, setItemPlacement, SignedOutError, updateItem } from '../../lib/api'
 import { generatePassword } from '../../lib/generate'
-import { EyeIcon, EyeOffIcon } from '../icons'
+import { ChevronDownIcon, EyeIcon, EyeOffIcon } from '../icons'
 
 /** Select value standing for "no folder". */
 const NO_FOLDER = ''
@@ -89,6 +95,19 @@ function Field({ label, required, error, children }: FieldProps) {
           {error}
         </p>
       )}
+    </div>
+  )
+}
+
+/**
+ * A native select drawn like the other fields: the browser's own arrow and
+ * inner padding are dropped, and the chevron is ours.
+ */
+function Select({ children, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <div className="select-box">
+      <select {...props}>{children}</select>
+      <ChevronDownIcon width={16} height={16} />
     </div>
   )
 }
@@ -199,7 +218,7 @@ export default function ItemForm({
       <div className="form-grid">
         <Field label="Type" required error={errors.type}>
           {(props) => (
-            <select
+            <Select
               {...props}
               value={value.type}
               onChange={(e) => set('type', e.target.value)}
@@ -211,13 +230,13 @@ export default function ItemForm({
                   {option.label}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
         </Field>
 
         <Field label="Folder" error={errors.folder_id}>
           {(props) => (
-            <select
+            <Select
               {...props}
               value={value.folder_id}
               onChange={(e) => set('folder_id', e.target.value)}
@@ -228,7 +247,7 @@ export default function ItemForm({
                   {folder.name}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
         </Field>
       </div>

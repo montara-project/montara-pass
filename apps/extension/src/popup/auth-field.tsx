@@ -1,14 +1,11 @@
 import { useId, useState, type InputHTMLAttributes } from 'react'
 
-import { EyeIcon, EyeOffIcon, KeyholeIcon } from './icons'
+import { EyeIcon, EyeOffIcon } from './icons'
 
-/** The mark above the title of the sign-in and unlock screens. */
+/** The logo above the title of the sign-in and unlock screens. */
 export function BrandMark() {
-  return (
-    <span className="auth-mark" aria-hidden="true">
-      <KeyholeIcon width={36} height={36} />
-    </span>
-  )
+  // Decorative: the title under it names the product.
+  return <img className="auth-mark" src="/icons/256.png" alt="" width={72} height={72} />
 }
 
 interface AuthFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'onChange'> {

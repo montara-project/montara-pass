@@ -183,9 +183,7 @@ export default function FullVault({
     <div className={paneOpen ? 'full pane-open' : 'full'}>
       <nav className="side" aria-label="Vault">
         <div className="brand">
-          <span className="tile">
-            <KeyholeIcon />
-          </span>
+          <img src="/icons/128.png" alt="" width={36} height={36} />
           <strong>Montara Pass</strong>
         </div>
 

@@ -96,6 +96,8 @@ export const SortIcon = icon(
   </>
 )
 
+export const ChevronDownIcon = icon(<path d="m6 9 6 6 6-6" />)
+
 export const LogOutIcon = icon(
   <>
     <path d="M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3" />
