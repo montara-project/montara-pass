@@ -26,17 +26,58 @@ API.
 | a file that exists, such as `/assets/…` | the static bundle |
 | anything else without a file extension | `index.html`, so client routes survive a reload |
 
+The image is `alpine` with the two binaries in `/app`, runs as a non-root
+user, and listens on `PORT` (8080). Settings are environment variables; see
+[Configuration](/docs/getting-started/configuration).
+
+| Build argument | Default | Purpose |
+| --- | --- | --- |
+| `APP_VERSION` | `dev` | Baked into the binary and reported by `GET /api/health` |
+| `VITE_API_URL` | empty | The API origin for the web app; empty means its own origin |
+| `VITE_APP_NAME` | `Montara Pass` | Name shown in the UI |
+
 Run a migration with the same image:
 
 ```sh
 docker run --rm --env-file apps/server/.env \
-  --entrypoint /usr/local/bin/migrate montara-pass-server up
+  --entrypoint /app/migrate montara-pass-server up
 ```
 
 <Callout title="Hosting the web app elsewhere" type="info">
   Pass `--build-arg VITE_API_URL=https://api.example.com` to point the bundle
   at another origin, and list the app's origin in `CORS_ALLOWED_ORIGINS`.
 </Callout>
+
+## Dokploy
+
+`deploy/docker-compose.yml` is a ready-made stack for
+[Dokploy](https://dokploy.com): PostgreSQL 18 with a named volume, and the
+server image built from the repository.
+
+1. Create a **Compose** service from the repository and set the compose path
+   to `./deploy/docker-compose.yml`.
+2. Paste `deploy/.env.example` into the **Environment** tab and fill in
+   `POSTGRES_PASSWORD`, `APP_SECRET`, `AUTH_BASE_URL`, `FROM_ADDRESS` and
+   `RESEND_API_KEY`. The stack refuses to start while one of them is empty.
+3. Add a **domain** for the `server` service on port `8080`. Dokploy connects
+   the service to its Traefik network; the compose file publishes no ports.
+4. Deploy. The server waits for PostgreSQL to be healthy, applies its
+   migrations on boot, and is itself checked on `/api/health`.
+
+`AUTH_BASE_URL` must be the public `https://` URL of that domain: sign-in
+emails and the Google callback are built from it.
+
+<Callout title="Database password" type="warn">
+  The password is placed inside a connection URL, so keep it to letters,
+  digits, `-` and `_`.
+</Callout>
+
+Requests reach the server through Dokploy's Traefik, so the stack sets
+`TRUSTED_PROXIES` to the private Docker ranges. Without it every visitor would
+share the proxy's address, and with it one rate limit.
+
+To run this documentation site in the same stack, add `COMPOSE_PROFILES=docs`
+to the environment and give the `docs` service a domain on port `3000`.
 
 ## Docs
 

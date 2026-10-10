@@ -7,8 +7,9 @@ description: What every route of the API has in common.
 
 Every endpoint starts with `/api`, which keeps the API apart from the web
 app's pages and static files on the same origin. Application routes are
-versioned under `/api/v1`; `GET /api/health` pings the database and answers
-`503` when it cannot be reached. An unknown path under `/api` answers a JSON
+versioned under `/api/v1`; `GET /api/health` pings the database, reports
+the release the binary was built from, and answers `503` when the database
+cannot be reached. An unknown path under `/api` answers a JSON
 `404`. Everything outside `/api` belongs to the web app when the server ships
 with it.
 

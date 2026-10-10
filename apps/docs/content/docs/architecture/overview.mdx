@@ -6,10 +6,17 @@ description: The parts of Montara Pass and how they talk to each other.
 ## Components
 
 ```
- web app (apps/app) ─────┐
-                         ├── HTTPS, JSON, bearer token ──► API (apps/server) ──► PostgreSQL 18
- extension (apps/extension) ┘
+ browser ── /            ──►┐
+            /vault, …       │  static files of the web app (apps/app)
+                            ├─ server (apps/server) ──► PostgreSQL 18
+ browser ── /api/v1/…   ──►│  the API
+ extension ─ /api/v1/…  ──►┘
 ```
+
+One process answers on one origin. Every endpoint starts with `/api`; any
+other path is a file of the web app, or `index.html` for a route that exists
+only in the browser. In development the Vite dev server plays the first role
+and proxies `/api` to the Go server.
 
 - The **API** authenticates users and stores what clients send. It validates
   sizes and shapes, enforces who may touch which item, and never decrypts. In
@@ -40,7 +47,7 @@ into something readable.
 
 | Path | Role |
 | --- | --- |
-| `cmd/api` | The HTTP server: flags, database, Authula, routes |
+| `cmd/api` | The HTTP server: flags, database, Authula, the routes under `/api` and the static web app |
 | `cmd/migrate` | The migration CLI |
 | `internal/handlers` | One handler per resource; reads the request, calls a repository |
 | `internal/repositories` | SQL, one repository per table group |
@@ -48,6 +55,9 @@ into something readable.
 | `internal/middlewares` | Authorization, CORS, rate limit, error rendering |
 | `internal/models` | Row types |
 | `migrations` | SQL files, embedded in the binary |
+
+The web app is served from `./public`, relative to the working directory. When
+that folder is missing, as under `go run`, the server serves the API only.
 
 ## Web app layout
 
@@ -60,3 +70,7 @@ Everything lives under `apps/app/src`.
 | `lib/crypto` | Key derivation, AES-GCM, RSA-OAEP and the vault operations built on them |
 | `lib/stores/vault.ts` | The unlocked keys, in memory only |
 | `components/{ui,block,layout}` | Primitives, feature blocks and page chrome |
+| `config/env.ts` | The `VITE_*` variables, validated once |
+
+The extension imports `lib/crypto`, the API models and the item schema from
+here through its `@/` alias, which points at `apps/app/src`.

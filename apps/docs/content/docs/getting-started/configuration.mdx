@@ -24,7 +24,7 @@ flag of the same name in kebab-case (`go run ./cmd/api -h`).
 | `SUPER_USER` | none | `email:password` of the super user to seed. |
 | `CORS_ALLOWED_ORIGINS` | none | Comma-separated browser origins. Empty means same-origin only, which is enough when the API serves the web app. |
 | `RATE_LIMIT_EXEMPT_IPS` | none | Comma-separated client IPs the rate limiter skips. |
-| `TRUSTED_PROXIES` | none | IPs or CIDRs trusted to supply `X-Forwarded-For`. |
+| `TRUSTED_PROXIES` | none | IPs or CIDRs trusted to supply `X-Forwarded-For`. Set it behind a reverse proxy, or the rate limit counts the proxy instead of the visitor. |
 | `AUTH_BASE_URL` | `http://localhost:$PORT` | Public URL of the API, used in email links and the Google callback. |
 | `FROM_ADDRESS` | none | Sender of auth emails. Must be a domain verified in Resend. |
 | `RESEND_API_KEY` | none | Resend API key. |
