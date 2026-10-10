@@ -86,6 +86,8 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
 
   return (
     <SidebarProvider
+      // Starts collapsed to its icon rail on every load.
+      defaultOpen={false}
       style={
         {
           '--sidebar-width': '19rem',
