@@ -1,4 +1,8 @@
-import type { ItemCreateRequest, ItemUpdateRequest } from '@/lib/api/dtos/vault/schema'
+import type {
+  ItemCreateRequest,
+  ItemPlacementRequest,
+  ItemUpdateRequest,
+} from '@/lib/api/dtos/vault/schema'
 import type { Models } from '@/lib/api/models'
 
 import { clearTokens, getSettings, getTokens, saveTokens } from './storage'
@@ -144,20 +148,30 @@ export async function getUserKeys(): Promise<Models.UserKeys | null> {
   }
 }
 
-/** Every live item of the vault. The API pages at 100, so this walks the pages. */
-export async function listItems(): Promise<Models.Item[]> {
-  const items: Models.Item[] = []
+/** Every row of a list route. The API pages at 100, so this walks the pages. */
+async function listAll<T>(path: string): Promise<T[]> {
+  const rows: T[] = []
 
   for (;;) {
-    const page = await request<ListEnvelope<Models.Item>>(
-      `/v1/items?limit=${PAGE_SIZE}&offset=${items.length}`
+    const page = await request<ListEnvelope<T>>(
+      `${path}?limit=${PAGE_SIZE}&offset=${rows.length}`
     )
-    items.push(...page.data)
+    rows.push(...page.data)
 
-    if (page.data.length < PAGE_SIZE || items.length >= (page.metadata.total ?? 0)) {
-      return items
+    if (page.data.length < PAGE_SIZE || rows.length >= (page.metadata.total ?? 0)) {
+      return rows
     }
   }
+}
+
+/** Every live item of the vault. */
+export function listItems(): Promise<Models.Item[]> {
+  return listAll('/v1/items')
+}
+
+/** The user's folders; their names are still encrypted. */
+export function listFolders(): Promise<Models.Folder[]> {
+  return listAll('/v1/folders')
 }
 
 export async function createItem(body: ItemCreateRequest): Promise<Models.Item> {
@@ -175,4 +189,9 @@ export async function updateItem(id: string, body: ItemUpdateRequest): Promise<M
     body: JSON.stringify(body),
   })
   return res.data
+}
+
+/** Sets the caller's own folder and favorite flag for an item. */
+export async function setItemPlacement(id: string, body: ItemPlacementRequest): Promise<void> {
+  await request(`/v1/items/${id}/placement`, { method: 'PUT', body: JSON.stringify(body) })
 }

@@ -1,42 +1,45 @@
-/* Semantic tokens; components below never use a raw color. */
+/* Semantic tokens; components below never use a raw color. They are built
+   from the brand palette: Midnight Navy #101D3A, Electric Blue #145CFF and
+   Arctic Cyan #42C8FF. */
 :root {
   color-scheme: light dark;
-  --bg: #f2f2f4;
+  --bg: #eef2fb;
   --panel: #ffffff;
-  --card: #f4f4f5;
-  --border: #dcdce1;
-  --fg: #111113;
-  --muted: #5c5c66;
+  --card: #f1f5fd;
+  --border: #d3dcef;
+  --fg: #101d3a;
+  --muted: #51607f;
   --field: #ffffff;
-  --primary: #18181b;
-  --primary-fg: #fafafa;
-  --hover: #ececef;
+  --primary: #145cff;
+  --primary-fg: #ffffff;
+  --hover: #e4ebfa;
   --danger: #b42318;
-  --focus: #2563eb;
-  --tile-from: #8ee6e6;
-  --tile-to: #55c3d8;
-  --tile-fg: #17434f;
-  --accent: #d6ee5c;
-  --accent-fg: #1c1c1e;
-  --avatar: #6f7d2c;
+  --focus: #145cff;
+  --tile-from: #145cff;
+  --tile-to: #42c8ff;
+  --tile-fg: #101d3a;
+  --accent: #42c8ff;
+  --accent-fg: #101d3a;
+  --avatar: #101d3a;
   --avatar-fg: #ffffff;
-  --shadow: 0 8px 24px rgb(0 0 0 / 0.16);
+  --shadow: 0 8px 24px rgb(16 29 58 / 0.16);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #000000;
-    --panel: #1c1c1e;
-    --card: #2c2c2e;
-    --border: #3a3a3d;
+    --bg: #070d1c;
+    --panel: #101d3a;
+    --card: #1a2b52;
+    --border: #2b3d68;
     --fg: #ffffff;
-    --muted: #a8a8b0;
-    --field: #1c1c1e;
-    --primary: #f4f4f5;
-    --primary-fg: #18181b;
-    --hover: #2a2a2d;
-    --danger: #ff8a80;
-    --focus: #8ab4ff;
+    --muted: #a9b6d3;
+    --field: #0b152c;
+    --primary: #145cff;
+    --primary-fg: #ffffff;
+    --hover: #1e3160;
+    --danger: #ff9a91;
+    --focus: #42c8ff;
+    --avatar: #145cff;
     --shadow: 0 8px 24px rgb(0 0 0 / 0.6);
   }
 }
@@ -475,6 +478,131 @@ button.link:hover {
   height: 100vh;
 }
 
+/* ---------- sign-in and unlock ---------- */
+
+.auth {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 100%;
+  padding: 36px 28px 24px;
+}
+
+.auth-mark {
+  display: inline-flex;
+  align-self: center;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: linear-gradient(160deg, var(--tile-from), var(--tile-to));
+  color: var(--tile-fg);
+}
+
+.auth-title {
+  margin: 8px 0 6px;
+  font-size: 26px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.auth-note {
+  font-size: 13px;
+  text-align: center;
+}
+
+.auth-field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 58px;
+  padding: 0 8px 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.auth-field:focus-within {
+  border-color: var(--fg);
+  box-shadow: 0 0 0 1px var(--fg);
+}
+
+.auth-field-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.auth-field label {
+  gap: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.auth-field input {
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font-size: 15px;
+}
+
+/* The box around it shows the focus. */
+.auth-field input:focus-visible {
+  outline: none;
+}
+
+.auth-field .icon-button {
+  flex-shrink: 0;
+  color: var(--fg);
+}
+
+.auth-submit {
+  height: 48px;
+  margin-top: 6px;
+  border-radius: 12px;
+  font-size: 15px;
+}
+
+.auth-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 24px;
+}
+
+.auth-foot .avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin: 0 0 2px;
+}
+
+.auth-email {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+button.auth-link {
+  height: auto;
+  padding: 4px 6px;
+  background: none;
+  color: var(--fg);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 /* Sign-in, unlock and settings, which are popup-sized forms, in a tab. */
 .full-center {
   display: flex;
@@ -552,13 +680,31 @@ button.link:hover {
   font-variant-numeric: tabular-nums;
 }
 
-.side-user {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.side-account {
   margin-top: 8px;
-  padding: 12px 8px 0;
+  padding-top: 8px;
   border-top: 1px solid var(--border);
+}
+
+.side-user {
+  width: 100%;
+  height: auto;
+  padding: 8px;
+  justify-content: flex-start;
+  gap: 10px;
+  background: none;
+  color: var(--muted);
+  font-weight: 400;
+  text-align: left;
+}
+
+.side-user:hover,
+.side-user[aria-expanded='true'] {
+  background: var(--hover);
+}
+
+.side-user .menu-name {
+  color: var(--fg);
 }
 
 .side-user .avatar {
@@ -567,6 +713,13 @@ button.link:hover {
   align-items: center;
   justify-content: center;
   margin-left: 0;
+}
+
+/* The account sits at the foot of the sidebar, so its menu opens upwards. */
+.menu-up {
+  top: auto;
+  bottom: calc(100% + 8px);
+  left: 0;
 }
 
 .list-col {
@@ -763,55 +916,76 @@ textarea {
   resize: vertical;
 }
 
-.segmented {
+select {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--field);
+  color: var(--fg);
+  font: inherit;
+}
+
+select:disabled {
+  opacity: 0.6;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.form-label {
   display: flex;
   gap: 4px;
-  margin: 0;
-  padding: 4px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  width: fit-content;
 }
 
-.segmented legend {
-  padding: 0 6px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 500;
+.asterisk {
+  color: var(--danger);
 }
 
-.segment {
+.form-field [aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.field-error {
+  font-size: 13px;
+}
+
+/* The show/hide button sits inside the password field. */
+.password-box {
   position: relative;
-  flex-direction: row;
-  cursor: pointer;
+  flex: 1;
+  min-width: 0;
 }
 
-/* The radio stays in the accessibility tree and takes focus; the label next
-   to it is what is drawn. */
-.segment input {
+.password-box input {
+  padding-right: 44px;
+}
+
+.password-box .icon-button {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  opacity: 0;
-  cursor: pointer;
+  top: 2px;
+  right: 2px;
 }
 
-.segment span {
-  padding: 6px 14px;
-  border-radius: 8px;
-  color: var(--muted);
+.form-actions {
+  justify-content: flex-end;
 }
 
-.segment input:checked + span {
-  background: var(--primary);
-  color: var(--primary-fg);
-}
-
-.segment input:focus-visible + span {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
+@media (max-width: 520px) {
+  .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .toast {
@@ -843,9 +1017,36 @@ textarea {
   }
 
   .side .brand,
-  .side .side-user,
-  .side .count {
+  .side .count,
+  .side-user .item-text,
+  .side-user svg {
     display: none;
+  }
+
+  /* Stays in reach at the end of the strip while the filters scroll under it. */
+  .side-account {
+    position: sticky;
+    right: -12px;
+    flex-shrink: 0;
+    margin: 0 -12px 0 auto;
+    padding: 0 12px 0 8px;
+    border: 0;
+    background: var(--bg);
+  }
+
+  .side-user {
+    padding: 4px;
+  }
+
+  /* The strip scrolls sideways and would clip the menu, so pin it to the
+     window instead. */
+  .menu-up {
+    position: fixed;
+    top: 56px;
+    right: 12px;
+    bottom: auto;
+    left: auto;
+    width: 220px;
   }
 
   .side-list {

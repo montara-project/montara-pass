@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 
 import { signIn } from '../../lib/api'
+import { AuthField, BrandMark } from '../auth-field'
 
 interface SignInProps {
   onSignedIn: () => void
@@ -29,39 +30,44 @@ export default function SignIn({ onSignedIn, onSettings }: SignInProps) {
   }
 
   return (
-    <form className="stack pad" onSubmit={(e) => void handleSubmit(e)}>
-      <h1>Montara Pass</h1>
-      <p className="muted">Sign in with your account password.</p>
+    <form className="auth" onSubmit={(e) => void handleSubmit(e)}>
+      <BrandMark />
+      <h1 className="auth-title">Sign in</h1>
+      <p className="muted auth-note">Sign in with your account password.</p>
 
-      <label>
-        Email
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          autoFocus
-          required
-        />
-      </label>
+      <AuthField
+        label="Email"
+        type="email"
+        value={email}
+        onChange={setEmail}
+        autoComplete="username"
+        autoFocus
+        required
+      />
+      <AuthField
+        label="Password"
+        type="password"
+        value={password}
+        onChange={setPassword}
+        autoComplete="current-password"
+        required
+      />
 
-      <label>
-        Password
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-      </label>
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
 
-      {error && <p className="error">{error}</p>}
-
-      <button type="submit" disabled={busy}>
+      <button type="submit" className="auth-submit" disabled={busy}>
         {busy ? 'Signing in…' : 'Sign in'}
       </button>
-      <button type="button" className="link" onClick={onSettings}>
-        Server settings
-      </button>
+
+      <div className="auth-foot">
+        <button type="button" className="auth-link" onClick={onSettings}>
+          Server settings
+        </button>
+      </div>
     </form>
   )
 }

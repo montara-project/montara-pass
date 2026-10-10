@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
-import type { VaultKeys } from '@/lib/crypto/vault'
+import { decryptFolderName, type VaultKeys } from '@/lib/crypto/vault'
 import type { VaultItem } from '@/types/vault'
 
+import { listFolders } from '../../lib/api'
 import { hostOf } from '../../lib/site'
 import { getSettings } from '../../lib/storage'
 import {
@@ -27,7 +28,7 @@ import {
 } from '../icons'
 import { initials } from '../layout'
 import { useVaultItems } from '../use-vault-items'
-import ItemForm from './item-form'
+import ItemForm, { type FolderOption } from './item-form'
 
 interface FullVaultProps {
   keys: VaultKeys
@@ -78,10 +79,47 @@ export default function FullVault({
   const [notice, setNotice] = useState('')
   const [refreshing, setRefreshing] = useState(false)
   const [appUrl, setAppUrl] = useState('')
+  const [folders, setFolders] = useState<FolderOption[]>([])
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     void getSettings().then((settings) => setAppUrl(settings.appUrl))
   }, [])
+
+  // Folders are made in the web app; here they are only offered in the item form.
+  useEffect(() => {
+    void listFolders()
+      .then((rows) =>
+        Promise.all(
+          rows.map(async (folder) => ({
+            id: folder.id,
+            name: await decryptFolderName(keys, folder.encrypted_name).catch(
+              () => '(unreadable)'
+            ),
+          }))
+        )
+      )
+      .then((rows) => setFolders(rows.sort((a, b) => a.name.localeCompare(b.name))))
+      // The form still works without them: it just offers "No folder".
+      .catch(() => undefined)
+  }, [keys])
+
+  // The account menu closes on Escape and on a click anywhere else.
+  useEffect(() => {
+    if (!menuOpen) return
+
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false)
+    const onClick = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('mousedown', onClick)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('mousedown', onClick)
+    }
+  }, [menuOpen])
 
   // A notice says what just happened, then gets out of the way.
   useEffect(() => {
@@ -179,37 +217,43 @@ export default function FullVault({
               </a>
             </li>
           )}
-          <li>
-            <button className="side-item" onClick={onSettings}>
-              <SettingsIcon />
-              <span>Settings</span>
-            </button>
-          </li>
-          <li>
-            <button className="side-item" onClick={onLock}>
-              <LockIcon />
-              <span>Lock vault</span>
-            </button>
-          </li>
-          <li>
-            <button className="side-item" onClick={onSignOut}>
-              <LogOutIcon />
-              <span>Sign out</span>
-            </button>
-          </li>
         </ul>
 
-        {user && (
-          <div className="side-user">
+        <div className="menu-anchor side-account" ref={menuRef}>
+          <button
+            className="side-user"
+            aria-label="Account"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((open) => !open)}
+          >
             <span className="avatar" aria-hidden="true">
-              {initials(user.name || user.email)}
+              {user ? initials(user.name || user.email) : ''}
             </span>
-            <div className="item-text">
-              <span className="menu-name">{user.name}</span>
-              <span className="muted">{user.email}</span>
+            <span className="item-text">
+              <span className="menu-name">{user?.name || 'Account'}</span>
+              {user && <span className="muted">{user.email}</span>}
+            </span>
+            <SortIcon width={16} height={16} />
+          </button>
+
+          {menuOpen && (
+            <div className="menu menu-up" role="menu" onClick={() => setMenuOpen(false)}>
+              <button role="menuitem" className="menu-item" onClick={onSettings}>
+                <SettingsIcon />
+                Settings
+              </button>
+              <button role="menuitem" className="menu-item" onClick={onLock}>
+                <LockIcon />
+                Lock vault
+              </button>
+              <button role="menuitem" className="menu-item" onClick={onSignOut}>
+                <LogOutIcon />
+                Sign out
+              </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </nav>
 
       <section className="list-col" aria-label="Items">
@@ -300,6 +344,7 @@ export default function FullVault({
             key={pane.mode === 'edit' ? pane.id : 'new'}
             keys={keys}
             item={pane.mode === 'edit' ? (selected ?? undefined) : undefined}
+            folders={folders}
             onCancel={() => setPane({ mode: 'view', id: selectedId })}
             onSignedOut={onSignedOut}
             onSaved={(id) => {
