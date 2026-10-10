@@ -17,6 +17,7 @@ Node >= 22, pnpm 11, Go 1.27, Docker.
 ```sh
 pnpm install
 cp apps/server/.env.example apps/server/.env   # fill in APP_SECRET, RESEND_API_KEY, SUPER_USER
+cp apps/app/.env.example apps/app/.env         # NEXT_PUBLIC_API_URL, default http://localhost:8080
 pnpm db:up          # postgres on localhost:5432 (override: POSTGRES_PORT=55432)
 pnpm migrate:up
 ```
@@ -82,6 +83,27 @@ the server. An item update names the `revision` it read; a stale one answers 409
 
 - `apps/server/cmd/api` has an integration test, skipped unless `TEST_DB_DSN`
   points at a PostgreSQL 18 database it may wipe.
+
+## App
+
+`apps/app` is the vault UI, structured after the web UI of
+[kodingup-assessment](https://github.com/masb0ymas/kodingup-assessment):
+`components/{ui,block,layout}`, `config`, `data`, `hooks`, `lib` and `types`.
+It talks to the Go API with a bearer token, so its origin
+(`http://localhost:5173` in development) must be in the API's
+`CORS_ALLOWED_ORIGINS`.
+
+- `lib/api`: one axios client (`client-fetch.ts`, refreshes the access token
+  on a 401), then `services` (HTTP), `queries` (TanStack Query options),
+  `models` and `dtos` (zod).
+- `lib/crypto`: the end-to-end encryption. Argon2id turns the master password
+  into the master key; that unwraps the vault key (folder names, private key);
+  the RSA-OAEP private key unwraps one AES-256-GCM key per item. Sharing wraps
+  the item key with the recipient's public key.
+- The unlocked keys live in memory only (`lib/stores/vault.ts`): a reload
+  locks the vault and asks for the master password again.
+- Routes: `/sign-in`, `/sign-up`, `/vault`, `/folders`, `/trash`,
+  `/categories`, `/profile`.
 
 ## Docker
 
