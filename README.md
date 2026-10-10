@@ -7,7 +7,7 @@ pnpm monorepo.
 | `apps/app`    | vinext (Next.js API on Vite), Node     | Docker (`apps/app/Dockerfile`) |
 | `apps/server` | Go, Fiber v3, PostgreSQL, golang-migrate | Docker (`apps/server/Dockerfile`) |
 | `apps/extension` | Browser extension (Manifest V3), Vite + React | Load `dist/chrome` or `dist/firefox` |
-| `apps/web`    | vinext on Cloudflare Workers           | `wrangler` / `vinext-cloudflare deploy` |
+| `apps/web`    | vinext on Cloudflare Workers           | `cf` / `vinext-cloudflare deploy` |
 
 ## Requirements
 
@@ -145,8 +145,32 @@ docker compose up -d --build   # postgres -> migrate -> server:8080, app:3000
 
 ## Deploy web (Cloudflare Workers)
 
+The Worker is described in `apps/web/cloudflare.config.ts` (name, entrypoint,
+compatibility date, the `ASSETS` binding) and deployed with Cloudflare's `cf`
+CLI; there is no `wrangler.jsonc`. `cf` and `@cloudflare/vite-plugin` 2 are
+still beta releases.
+
 ```sh
-pnpm --filter @montara-pass/web exec wrangler login
-pnpm --filter @montara-pass/web run build
-pnpm deploy:web
+pnpm --filter @montara-pass/web exec cf auth login
+pnpm deploy:web                                      # builds, then deploys
+pnpm --filter @montara-pass/web run start            # serve the build locally
 ```
+
+## Releases
+
+Versions follow conventional commits and are cut from `main` by three
+workflows in `.github/workflows`:
+
+1. **Release Prepare** (run manually on `main`) bumps the version in every
+   `package.json`, writes `CHANGELOG.md` and opens a `chore: release vX.Y.Z` PR.
+2. **Release Publish** runs when that PR merges: it tags the commit, creates
+   the GitHub release and starts the Release workflow.
+3. **Release** pushes `ghcr.io/montara-project/montara-pass/app` and
+   `.../server`, and deploys `apps/web` to Cloudflare Workers.
+
+It needs the repository secrets `CLOUDFLARE_API_TOKEN` and
+`CLOUDFLARE_ACCOUNT_ID`, and the repository variable `NEXT_PUBLIC_API_URL`
+(the public origin of the API, baked into the app image at build time).
+
+**React Doctor** comments on pull requests and scans `main`; it is advisory
+and never fails a check.

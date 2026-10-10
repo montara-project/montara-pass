@@ -1,5 +1,6 @@
 {
   "name": "montara-pass",
+  "version": "0.0.0",
   "private": true,
   "packageManager": "pnpm@11.10.0",
   "engines": {
@@ -15,6 +16,13 @@
     "deploy:web": "pnpm --filter @montara-pass/web run deploy",
     "db:up": "docker compose up -d postgres",
     "migrate:up": "pnpm --filter @montara-pass/server run migrate:up",
-    "migrate:down": "pnpm --filter @montara-pass/server run migrate:down"
+    "migrate:down": "pnpm --filter @montara-pass/server run migrate:down",
+    "release": "release-it",
+    "release:prepare": "release-it --ci --no-git.tag --no-git.push --no-github.release",
+    "release:publish": "release-it --ci --no-increment --no-git.commit --no-git.push --github.release"
+  },
+  "devDependencies": {
+    "@release-it/conventional-changelog": "12.0.2",
+    "release-it": "21.1.1"
   }
 }
