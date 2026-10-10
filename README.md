@@ -87,8 +87,7 @@ the server. An item update names the `revision` it read; a stale one answers 409
 
 ## App
 
-`apps/app` is the vault UI, structured after the web UI of
-[kodingup-assessment](https://github.com/masb0ymas/kodingup-assessment):
+`apps/app` is the vault UI, structured after the web UI
 `components/{ui,block,layout}`, `config`, `data`, `hooks`, `lib` and `types`.
 It talks to the Go API with a bearer token, so its origin
 (`http://localhost:5173` in development) must be in the API's
