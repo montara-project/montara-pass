@@ -61,7 +61,7 @@ function Hero() {
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <a
                 href="#pricing"
-                className="flex cursor-pointer items-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-sm font-semibold text-[#04150e] transition-colors duration-200 hover:bg-accent-bright"
+                className="flex cursor-pointer items-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-sm font-semibold text-on-accent transition-colors duration-200 hover:bg-accent-hover"
               >
                 Get Montara Pass — it&rsquo;s free
                 <ArrowRightIcon className="size-4" />
@@ -423,7 +423,7 @@ function Pricing() {
                 }`}
               >
                 {plan.featured ? (
-                  <p className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-accent px-3.5 py-1 text-xs font-semibold text-[#04150e]">
+                  <p className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-accent px-3.5 py-1 text-xs font-semibold text-on-accent">
                     Most popular
                   </p>
                 ) : null}
@@ -442,7 +442,7 @@ function Pricing() {
                   href="#top"
                   className={`mt-8 flex cursor-pointer items-center justify-center rounded-xl px-6 py-3 text-sm font-semibold transition-colors duration-200 ${
                     plan.featured
-                      ? "bg-accent text-[#04150e] hover:bg-accent-bright"
+                      ? "bg-accent text-on-accent hover:bg-accent-hover"
                       : "border border-line bg-transparent text-fg hover:border-mist/40 hover:bg-card-hover"
                   }`}
                 >
@@ -599,10 +599,10 @@ function CtaBand() {
               className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_100%_at_50%_0%,rgba(255,255,255,0.25),transparent)]"
             />
             <div className="relative">
-              <h2 className="mx-auto max-w-2xl font-heading text-3xl font-semibold tracking-tight text-[#04150e] sm:text-4xl">
+              <h2 className="mx-auto max-w-2xl font-heading text-3xl font-semibold tracking-tight text-on-accent sm:text-4xl">
                 Ready to stop worrying about passwords?
               </h2>
-              <p className="mx-auto mt-4 max-w-xl text-[#04271c]">
+              <p className="mx-auto mt-4 max-w-xl text-on-accent/90">
                 Set up your vault in under five minutes. Free forever plan, no credit card required.
               </p>
               <a

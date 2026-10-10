@@ -97,7 +97,7 @@ export function ContactForm() {
         className="rounded-2xl border border-accent/40 bg-accent/10 p-8 text-center sm:p-10"
       >
         <span className="mx-auto flex size-12 items-center justify-center rounded-full bg-accent">
-          <CheckIcon className="size-6 text-[#04150e]" strokeWidth={2.5} />
+          <CheckIcon className="size-6 text-on-accent" strokeWidth={2.5} />
         </span>
         <h3 className="mt-5 font-heading text-xl font-semibold">Message sent</h3>
         <p className="mt-2 text-sm leading-6 text-mist">
@@ -274,7 +274,7 @@ export function ContactForm() {
       <button
         type="submit"
         disabled={sending}
-        className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-xl bg-accent px-6 text-sm font-semibold text-[#04150e] transition-colors duration-200 hover:bg-accent-bright disabled:cursor-not-allowed disabled:opacity-70"
+        className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-xl bg-accent px-6 text-sm font-semibold text-on-accent transition-colors duration-200 hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70"
       >
         {sending ? (
           <>

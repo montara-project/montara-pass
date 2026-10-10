@@ -6,17 +6,22 @@
   --font-heading: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-body: "DM Sans", ui-sans-serif, system-ui, sans-serif;
 
-  --color-ink: #0f172a;
-  --color-abyss: #0a1020;
-  --color-card: #182134;
-  --color-card-hover: #1e2a41;
-  --color-line: rgb(148 163 184 / 0.14);
-  --color-fg: #f1f5f9;
-  --color-mist: #94a3b8;
-  --color-brand: #1e3a5f;
-  --color-accent: #059669;
-  --color-accent-bright: #34d399;
-  --color-accent-soft: #a7f3d0;
+  /* Built from the brand palette: Midnight Navy #101D3A, Electric Blue
+     #145CFF and Arctic Cyan #42C8FF. */
+  --color-ink: #0b1529;
+  --color-abyss: #070d1c;
+  --color-card: #101d3a;
+  --color-card-hover: #17284e;
+  --color-line: rgb(169 182 211 / 0.14);
+  --color-fg: #f4f7fd;
+  --color-mist: #a3b1cc;
+  --color-brand: #17284e;
+  --color-accent: #145cff;
+  --color-accent-hover: #0f4ad6;
+  --color-accent-bright: #42c8ff;
+  --color-accent-soft: #b9e8ff;
+  /* Text and icons on an accent fill. */
+  --color-on-accent: #ffffff;
 }
 
 :root {
@@ -54,7 +59,7 @@ a {
 
 ::selection {
   background: var(--color-accent);
-  color: #04150e;
+  color: var(--color-on-accent);
 }
 
 summary::-webkit-details-marker {
@@ -81,15 +86,16 @@ summary::-webkit-details-marker {
 .light {
   color-scheme: light;
 
-  --color-ink: #f8fafc;
-  --color-abyss: #eef2f7;
+  --color-ink: #f6f8fd;
+  --color-abyss: #eef2fb;
   --color-card: #ffffff;
-  --color-card-hover: #f1f5f9;
-  --color-line: rgb(15 23 42 / 0.1);
-  --color-fg: #0f172a;
-  --color-mist: #475569;
-  --color-brand: #e2e8f0;
-  --color-accent: #059669;
-  --color-accent-bright: #047857;
-  --color-accent-soft: #065f46;
+  --color-card-hover: #f1f5fd;
+  --color-line: rgb(16 29 58 / 0.1);
+  --color-fg: #101d3a;
+  --color-mist: #51607f;
+  --color-brand: #e4ebfa;
+  --color-accent: #145cff;
+  --color-accent-hover: #0f4ad6;
+  --color-accent-bright: #145cff;
+  --color-accent-soft: #0f3fb5;
 }

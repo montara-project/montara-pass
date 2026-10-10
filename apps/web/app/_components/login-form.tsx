@@ -186,7 +186,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={signing}
-        className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-xl bg-accent px-6 text-sm font-semibold text-[#04150e] transition-colors duration-200 hover:bg-accent-bright disabled:cursor-not-allowed disabled:opacity-70"
+        className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-xl bg-accent px-6 text-sm font-semibold text-on-accent transition-colors duration-200 hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70"
       >
         {signing ? (
           <>

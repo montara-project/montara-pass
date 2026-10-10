@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: "Montara Pass — Zero-knowledge password manager",
   description:
     "Montara Pass stores, generates, and autofills your passwords with end-to-end encryption. One vault, every device, protected by a zero-knowledge architecture.",
+  icons: { icon: "/static/logo-32.png", apple: "/static/logo-128.png" },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

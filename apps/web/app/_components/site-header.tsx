@@ -129,7 +129,7 @@ export function SiteHeader() {
           </a>
           <a
             href="/#pricing"
-            className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-[#04150e] transition-colors duration-200 hover:bg-accent-bright"
+            className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent transition-colors duration-200 hover:bg-accent-hover"
           >
             Get Montara Pass
             <ArrowRightIcon className="size-4" />
@@ -166,7 +166,7 @@ export function SiteHeader() {
             <a
               href="/#pricing"
               onClick={() => setOpen(false)}
-              className="mt-3 flex cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-[#04150e]"
+              className="mt-3 flex cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-on-accent"
             >
               Get Montara Pass
               <ArrowRightIcon className="size-4" />
