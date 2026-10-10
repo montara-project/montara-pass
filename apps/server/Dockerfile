@@ -2,50 +2,94 @@
 
 # Single-image deployment: the web app (apps/app) is compiled with pnpm, then
 # placed next to the Go binary, so one process on port 8080 serves both the
-# API under /v1 and the UI.
+# API under /api and the UI.
 #
 # Build context: repository root
 #   docker build -f apps/server/Dockerfile -t montara-pass-server .
 
-# --- Stage 1: build the web app --------------------------------------------
-FROM node:24-alpine AS web
-ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH
-RUN corepack enable
-WORKDIR /repo
+# ====================================================================================
+# Stage 1: web-ui (Vite build -> static dist)
+# ====================================================================================
+FROM node:24-alpine AS web-ui
 
-# Manifests first, so the install layer is cached independently of the source.
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/app/package.json apps/app/
+ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH
+
+WORKDIR /build
+
+# The workspace manifest and lockfile must be present before install so pnpm
+# resolves the frozen workspace graph.
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY apps/app/package.json apps/app/package.json
+
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm install --frozen-lockfile --filter @montara-pass/app
+    corepack enable && pnpm install --frozen-lockfile --filter @montara-pass/app
 
 COPY apps/app apps/app
 
-# Vite inlines VITE_* into the bundle at build time. An empty VITE_API_URL
-# means "the page's own origin", which is what this image wants: UI and API
-# share one. Pass --build-arg VITE_API_URL=... only for an API elsewhere.
+# Vite inlines VITE_* into the bundle at build time: .env is docker-ignored and
+# runtime env vars can't reach the static dist. An empty VITE_API_URL means the
+# page's own origin (UI and API share one); pass --build-arg VITE_API_URL=...
+# only when the API lives on a different origin.
 ARG VITE_APP_NAME="Montara Pass"
 ARG VITE_API_URL=""
-ENV VITE_APP_NAME=$VITE_APP_NAME VITE_API_URL=$VITE_API_URL
-RUN pnpm --filter @montara-pass/app run build
+ENV VITE_APP_NAME=$VITE_APP_NAME \
+    VITE_API_URL=$VITE_API_URL
 
-# --- Stage 2: build the API -------------------------------------------------
-FROM golang:1.27-alpine AS api
-WORKDIR /src
+# `exec` bypasses the package.json lifecycle: image builds only bundle; lint,
+# format and type checks belong to CI and development.
+RUN pnpm --filter @montara-pass/app exec vite build
+
+# ====================================================================================
+# Stage 2: server (Go build)
+# ====================================================================================
+FROM golang:1.27-alpine AS server
+
+WORKDIR /build
+
 COPY apps/server/go.mod apps/server/go.sum ./
+
 RUN --mount=type=cache,id=go-mod,target=/go/pkg/mod go mod download
+
 COPY apps/server ./
+
+# APP_VERSION is baked into the binary and reported by /api/health; the release
+# workflow passes the git tag (e.g. v1.2.3).
+ARG APP_VERSION=dev
+
+# The migrations are embedded in both binaries, so no SQL files ship separately.
 RUN --mount=type=cache,id=go-mod,target=/go/pkg/mod \
     --mount=type=cache,id=go-build,target=/root/.cache/go-build \
-    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/api ./cmd/api \
- && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/migrate ./cmd/migrate
+    CGO_ENABLED=0 GOOS=linux go build -trimpath \
+    -ldflags="-s -w -X montara-pass/server/internal/app.Version=${APP_VERSION}" \
+    -o /build/out/api ./cmd/api \
+ && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+    -o /build/out/migrate ./cmd/migrate
 
-# --- Stage 3: runtime -------------------------------------------------------
-FROM gcr.io/distroless/static-debian12:nonroot
-COPY --from=api /out/api /out/migrate /usr/local/bin/
-# The API serves the web app from ./public, relative to this directory.
+# ====================================================================================
+# Stage 3: runtime (server + web app static files in ./public)
+# ====================================================================================
+FROM alpine:3.22
+
+# ca-certificates: outbound calls to Resend, Google and Sentry are HTTPS.
+# tzdata: timestamps in logs follow the configured timezone.
+RUN apk add --no-cache ca-certificates tzdata \
+    && addgroup -S montara && adduser -S montara -G montara
+
 WORKDIR /app
-COPY --from=web /repo/apps/app/dist ./public
-ENV PORT=8080
+
+COPY --from=server /build/out/api ./api
+COPY --from=server /build/out/migrate ./migrate
+# The API serves the web app from ./public, relative to this directory.
+COPY --from=web-ui /build/apps/app/dist ./public
+
+# cmd/api reads these as its flag defaults. They are environment variables
+# rather than CMD flags on purpose: a flag would silently beat a runtime
+# `-e PORT=...`. DB_DSN and APP_SECRET must be supplied at runtime.
+ENV ENV=production \
+    PORT=8080
+
+USER montara
+
 EXPOSE 8080
-ENTRYPOINT ["/usr/local/bin/api"]
+
+ENTRYPOINT ["./api"]

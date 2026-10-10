@@ -19,6 +19,11 @@ A release is cut from `main` by three GitHub workflows.
 `feat` is a minor, a `fix` a patch, and a breaking change a major. Choose
 `patch`, `minor` or `major` to decide yourself.
 
+A breaking change is a commit whose type ends in `!` (`feat!: …`) or whose
+body has a `BREAKING CHANGE:` footer. The
+[commit hook](/docs/operations/development#commits) keeps the messages in the
+format this depends on.
+
 ## What is published
 
 | Image | Built from |
@@ -28,6 +33,9 @@ A release is cut from `main` by three GitHub workflows.
 
 A tag `v1.2.3` publishes the tags `v1.2.3`, `v1.2` and `latest`. Every run
 also publishes `sha-<short commit>`. Images are built for `linux/amd64`.
+
+The tag is passed to the server build as `APP_VERSION`, so a released server
+reports its version on `GET /api/health`.
 
 The same workflow deploys `apps/web` to Cloudflare Workers.
 

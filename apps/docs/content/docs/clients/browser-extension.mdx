@@ -26,6 +26,16 @@ pnpm build:extension   # writes apps/extension/dist/chrome and dist/firefox
 The two builds differ only in the manifest: Chrome runs the background script
 as a service worker, Firefox as an event page with an add-on id.
 
+## Pointing it at a server
+
+The extension needs the **origin** of the server, such as
+`https://pass.example.com`; it adds `/api/v1/…` itself. The defaults come from
+`apps/extension/.env` at build time (`VITE_DEFAULT_API_URL` and
+`VITE_DEFAULT_APP_URL`) and both can be changed under **Settings**. In a
+deployment where the server also serves the web app, the two are the same URL.
+
+The API accepts extension origins without a CORS entry.
+
 ## The popup
 
 After signing in and unlocking, the popup shows:

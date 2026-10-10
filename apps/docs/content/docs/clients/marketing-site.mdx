@@ -3,9 +3,25 @@ title: Marketing site
 description: The public website, deployed to Cloudflare Workers.
 ---
 
-`apps/web` is the public site: the home page, pricing, contact and the legal
-pages. It runs on vinext and is deployed as a Cloudflare Worker. It does not
-call the API.
+`apps/web` is the public site. It runs on [vinext](https://vinext.dev), the
+Next.js App Router API on Vite, and is deployed as a Cloudflare Worker. It
+does not call the API.
+
+| Route | Content |
+| --- | --- |
+| `/` | Home: features, security, pricing and FAQ |
+| `/login` | A sign-in form |
+| `/contact` | A contact form |
+| `/privacy`, `/terms` | Legal pages with a table of contents |
+
+<Callout title="The forms are not wired up" type="warn">
+  The sign-in and contact forms validate their fields and then only simulate
+  a submission. Neither sends anything yet; signing in happens in the
+  [web app](/docs/clients/web-app).
+</Callout>
+
+The site follows the system theme and has a light, dark and system switch in
+the header.
 
 ```sh
 pnpm dev:web                                 # http://localhost:5174
@@ -16,8 +32,9 @@ pnpm --filter @montara-pass/web run start    # serve the build locally
 ## Deploy
 
 The Worker is described in `apps/web/cloudflare.config.ts`: its name, its
-entrypoint, the compatibility date, the `ASSETS` binding and its custom domain.
-There is no `wrangler.jsonc`.
+entrypoint, the compatibility date, the `ASSETS` binding and, under `domains`,
+the custom domains it is published to. Those domains must belong to zones on
+the Cloudflare account that deploys. There is no `wrangler.jsonc`.
 
 ```sh
 pnpm --filter @montara-pass/web exec cf auth login

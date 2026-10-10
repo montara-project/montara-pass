@@ -1,0 +1,81 @@
+# Montara Pass on Dokploy: PostgreSQL 18 and the server image, which holds the
+# API (/api) and the web app (everything else) on port 8080.
+#
+# In Dokploy: create a Compose service from this repository, set the compose
+# path to ./deploy/docker-compose.yml, paste deploy/.env.example into the
+# Environment tab and fill it in, then add a domain for the `server` service on
+# port 8080. Dokploy attaches the service to its Traefik network when a domain
+# is added, so no ports are published and no labels are written here.
+#
+# The docs site is opt-in: add COMPOSE_PROFILES=docs to the environment and
+# give the `docs` service a domain on port 3000.
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-montara}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-montara_pass}
+    volumes:
+      # PostgreSQL 18 images keep their data under /var/lib/postgresql/18.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  server:
+    build:
+      context: ..
+      dockerfile: apps/server/Dockerfile
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ENV: production
+      PORT: 8080
+      APP_NAME: ${APP_NAME:-montara-pass}
+      APP_SECRET: ${APP_SECRET:?set APP_SECRET to at least 32 characters}
+      # The password goes into a URL: keep it to letters, digits, - and _.
+      DB_DSN: postgres://${POSTGRES_USER:-montara}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-montara_pass}?sslmode=disable
+      MIGRATE_ON_BOOT: 'true'
+      SEED_ON_BOOT: ${SEED_ON_BOOT:-false}
+      SUPER_USER: ${SUPER_USER:-}
+      # The public https URL of this deployment; auth emails link to it.
+      AUTH_BASE_URL: ${AUTH_BASE_URL:?set AUTH_BASE_URL to the public URL}
+      FROM_ADDRESS: ${FROM_ADDRESS:?set FROM_ADDRESS}
+      RESEND_API_KEY: ${RESEND_API_KEY:?set RESEND_API_KEY}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      # The web app is served from this same origin, so CORS stays off.
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      # Requests arrive through Dokploy's Traefik. Without this every client
+      # shares the proxy's address and therefore one rate limit.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:8080/api/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    expose:
+      - '8080'
+
+  docs:
+    profiles: ['docs']
+    build:
+      context: ..
+      dockerfile: apps/docs/Dockerfile
+    restart: unless-stopped
+    expose:
+      - '3000'
+
+volumes:
+  postgres-data:

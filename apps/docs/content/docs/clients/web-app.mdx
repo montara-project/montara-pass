@@ -22,6 +22,10 @@ pnpm dev:app        # http://localhost:5173, proxies /api to the API
 | `/categories` | The category list; writing needs a super user |
 | `/profile` | Account details and changing the master password |
 
+An address that matches no route shows a "Page not found" screen. The server
+answers every unknown path outside `/api` with the app's `index.html`, so that
+screen, not a server error, is what a mistyped URL leads to.
+
 ## Route guards
 
 Routes are files under `src/routes`. Two groups carry a guard that runs before

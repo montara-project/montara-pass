@@ -172,6 +172,14 @@ docker run --rm -p 8080:8080 --env-file apps/server/.env montara-pass-server
 One image holds the Go API and the built web app; `http://localhost:8080`
 serves both. The build context is the repository root.
 
+### Dokploy
+
+`deploy/docker-compose.yml` runs PostgreSQL 18 and the server image, built
+from this repository. In Dokploy, create a Compose service, set the compose
+path to `./deploy/docker-compose.yml`, paste `deploy/.env.example` into the
+Environment tab and fill it in, then add a domain for the `server` service on
+port 8080. Adding `COMPOSE_PROFILES=docs` also runs the docs site (port 3000).
+
 ## Deploy web (Cloudflare Workers)
 
 The Worker is described in `apps/web/cloudflare.config.ts` (name, entrypoint,

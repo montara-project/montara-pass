@@ -1,4 +1,4 @@
 {
   "title": "Operations",
-  "pages": ["migrations", "releases"]
+  "pages": ["development", "migrations", "releases"]
 }
