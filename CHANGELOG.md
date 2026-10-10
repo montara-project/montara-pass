@@ -3,6 +3,22 @@
 All notable changes to this project are documented in this file. Versions follow the git tags (`v*`); Docker images are published to ghcr.io with the same version.
 
 
+## [1.1.0](https://github.com/montara-project/montara-pass/compare/v1.0.0...v1.1.0) (2026-10-10)
+
+### ⚠ BREAKING CHANGES
+
+* API paths move from /v1 and /health to /api/v1 and
+  /api/health, including the Google OAuth callback. The separate app
+  image is no longer published; the server image contains the web app.
+
+### Features
+
+* serve the web app from the API and move every endpoint under /api ([d5c8022](https://github.com/montara-project/montara-pass/commit/d5c80221d08a4f6272252bb8fcde7f186b7ad75a))
+
+### Bug Fixes
+
+* update domain web ([4f5fbbf](https://github.com/montara-project/montara-pass/commit/4f5fbbf27180238c7d1dedfc30333944469cf2e9))
+
 ## 1.0.0 (2026-10-10)
 
 ### ⚠ BREAKING CHANGES
