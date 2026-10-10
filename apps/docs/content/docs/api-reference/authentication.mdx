@@ -4,7 +4,7 @@ description: Signing up, signing in and keeping a session, served by Authula.
 ---
 
 Sign-in is handled by [Authula](https://github.com/Authula/authula), mounted
-at `/v1/auth`. It offers email and password, magic links and Google. This page
+at `/api/v1/auth`. It offers email and password, magic links and Google. This page
 covers the routes the clients use; the rest follow Authula's own documentation.
 
 These routes are **not** wrapped in the response envelope.
@@ -12,7 +12,7 @@ These routes are **not** wrapped in the response envelope.
 ## Sign up
 
 ```http
-POST /v1/auth/email-password/sign-up
+POST /api/v1/auth/email-password/sign-up
 Content-Type: application/json
 
 { "name": "Ada", "email": "ada@example.com", "password": "at-least-8-characters" }
@@ -24,7 +24,7 @@ the emailed link before the account can sign in.
 ## Sign in
 
 ```http
-POST /v1/auth/email-password/sign-in
+POST /api/v1/auth/email-password/sign-in
 Content-Type: application/json
 
 { "email": "ada@example.com", "password": "…" }
@@ -50,7 +50,7 @@ Content-Type: application/json
 ## Refresh the access token
 
 ```http
-POST /v1/auth/token/refresh
+POST /api/v1/auth/token/refresh
 Content-Type: application/json
 
 { "refresh_token": "…" }
@@ -62,7 +62,7 @@ it once when a request answers `401`, then repeat that request.
 ## Current user
 
 ```http
-GET /v1/auth/me
+GET /api/v1/auth/me
 Authorization: Bearer <access_token>
 ```
 
@@ -71,7 +71,7 @@ Answers `{ "user": …, "session": … }`.
 ## Sign out
 
 ```http
-POST /v1/auth/sign-out
+POST /api/v1/auth/sign-out
 Authorization: Bearer <access_token>
 ```
 

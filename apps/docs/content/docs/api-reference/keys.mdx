@@ -9,7 +9,7 @@ what each field holds.
 ## Get the key set
 
 ```http
-GET /v1/keys
+GET /api/v1/keys
 ```
 
 Answers the caller's key set. `404` means the vault has not been set up yet;
@@ -36,7 +36,7 @@ clients use it to decide between "create your vault" and "unlock".
 ## Create the key set
 
 ```http
-POST /v1/keys
+POST /api/v1/keys
 ```
 
 Sets up the vault, once. A second call answers `409`.
@@ -56,7 +56,7 @@ Answers `201` with the stored key set.
 ## Change the master password
 
 ```http
-PUT /v1/keys
+PUT /api/v1/keys
 ```
 
 Takes the five `kdf_*` and `encrypted_vault_key` fields above. The key pair
@@ -65,7 +65,7 @@ does not change, so everything already shared with the user stays readable.
 ## Look up a public key
 
 ```http
-GET /v1/keys/public?email=ada@example.com
+GET /api/v1/keys/public?email=ada@example.com
 ```
 
 Answers what is needed to share with that user:

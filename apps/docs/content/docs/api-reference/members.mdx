@@ -9,7 +9,7 @@ flow these routes are part of.
 ## List members
 
 ```http
-GET /v1/items/:id/members
+GET /api/v1/items/:id/members
 ```
 
 Any member may look. The owner is in the list.
@@ -26,7 +26,7 @@ Any member may look. The owner is in the list.
 ## Share
 
 ```http
-POST /v1/items/:id/members
+POST /api/v1/items/:id/members
 ```
 
 ```json
@@ -44,7 +44,7 @@ key wrapped with the recipient's public key. Answers `201`.
 ## Change a role
 
 ```http
-PUT /v1/items/:id/members/:userId
+PUT /api/v1/items/:id/members/:userId
 ```
 
 ```json
@@ -56,7 +56,7 @@ Owner only.
 ## Remove a member
 
 ```http
-DELETE /v1/items/:id/members/:userId
+DELETE /api/v1/items/:id/members/:userId
 ```
 
 The owner may remove anyone but themselves. Any other member may remove only

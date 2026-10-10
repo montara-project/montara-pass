@@ -20,7 +20,7 @@
   },
   "overrides": [
     {
-      "files": ["apps/app/components/ui/**"],
+      "files": ["apps/app/src/components/ui/**"],
       "rules": {
         "jsx-a11y/heading-has-content": "off"
       }
@@ -32,6 +32,7 @@
     "node": true
   },
   "ignorePatterns": [
+    "**/routeTree.gen.ts",
     "**/node_modules/",
     "**/dist/",
     "**/.next/",

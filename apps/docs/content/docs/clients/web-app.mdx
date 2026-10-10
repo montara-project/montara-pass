@@ -3,12 +3,12 @@ title: Web app
 description: The vault in the browser, where everything can be managed.
 ---
 
-`apps/app` is the full client. It runs on [vinext](https://vinext.dev), the
-Next.js App Router API on Vite, with React 19, TanStack Query, Form and Table,
-zod and Tailwind 4.
+`apps/app` is the full client: a single-page app built with Vite, with
+TanStack Router, Query, Form and Table, React 19, zod and Tailwind 4. There is
+no Node server in production; the API serves the built files.
 
 ```sh
-pnpm dev:app        # http://localhost:5173
+pnpm dev:app        # http://localhost:5173, proxies /api to the API
 ```
 
 ## Pages
@@ -22,11 +22,17 @@ pnpm dev:app        # http://localhost:5173
 | `/categories` | The category list; writing needs a super user |
 | `/profile` | Account details and changing the master password |
 
+## Route guards
+
+Routes are files under `src/routes`. Two groups carry a guard that runs before
+the route loads: `(app)` sends a visitor without a session to `/sign-in`, and
+`(auth)` sends a signed-in user to `/vault`.
+
 ## The vault gate
 
 Every page under the app shell sits behind a gate with three states:
 
-1. **No key set** (`GET /v1/keys` answers 404): the user chooses a master
+1. **No key set** (`GET /api/v1/keys` answers 404): the user chooses a master
    password of at least 12 characters and the client creates the keys.
 2. **Locked**: the user enters the master password to unlock.
 3. **Unlocked**: the pages render.

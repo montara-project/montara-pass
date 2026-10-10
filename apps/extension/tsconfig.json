@@ -15,7 +15,7 @@
     "noEmit": true,
     "resolveJsonModule": true,
     "paths": {
-      "@/*": ["../app/*"]
+      "@/*": ["../app/src/*"]
     }
   },
   "include": ["src", "vite.config.ts"]

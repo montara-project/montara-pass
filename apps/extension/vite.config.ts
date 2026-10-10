@@ -74,7 +74,7 @@ export default defineConfig(({ mode }) => {
       alias: {
         // The crypto and the API models are the web app's own: the extension
         // must read and write exactly the same ciphertext.
-        '@': path.resolve(import.meta.dirname, '../app'),
+        '@': path.resolve(import.meta.dirname, '../app/src'),
       },
     },
     define: {

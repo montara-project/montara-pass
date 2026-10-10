@@ -23,8 +23,7 @@ A release is cut from `main` by three GitHub workflows.
 
 | Image | Built from |
 | --- | --- |
-| `ghcr.io/montara-project/montara-pass/app` | `apps/app/Dockerfile` |
-| `ghcr.io/montara-project/montara-pass/server` | `apps/server/Dockerfile` |
+| `ghcr.io/montara-project/montara-pass/server` | `apps/server/Dockerfile`: the API with the web app inside |
 | `ghcr.io/montara-project/montara-pass/docs` | `apps/docs/Dockerfile` |
 
 A tag `v1.2.3` publishes the tags `v1.2.3`, `v1.2` and `latest`. Every run
@@ -38,8 +37,8 @@ The same workflow deploys `apps/web` to Cloudflare Workers.
 | --- | --- | --- |
 | Secret | `CLOUDFLARE_API_TOKEN` | Deploying the marketing site |
 | Secret | `CLOUDFLARE_ACCOUNT_ID` | Deploying the marketing site |
-| Variable | `NEXT_PUBLIC_API_URL` | The API origin baked into the app image |
-| Variable | `NEXT_PUBLIC_APP_NAME` | Optional; defaults to `Montara Pass` |
+| Variable | `VITE_API_URL` | Optional; only when the web app is hosted on another origin than the API |
+| Variable | `VITE_APP_NAME` | Optional; defaults to `Montara Pass` |
 
 ## React Doctor
 

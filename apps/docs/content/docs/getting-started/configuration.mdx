@@ -22,7 +22,7 @@ flag of the same name in kebab-case (`go run ./cmd/api -h`).
 | `MIGRATE_ON_BOOT` | `false` | Apply the embedded migrations before serving. |
 | `SEED_ON_BOOT` | `false` | Run the idempotent seeders before serving. Needs `SUPER_USER`. |
 | `SUPER_USER` | none | `email:password` of the super user to seed. |
-| `CORS_ALLOWED_ORIGINS` | none | Comma-separated browser origins. Empty means same-origin only. |
+| `CORS_ALLOWED_ORIGINS` | none | Comma-separated browser origins. Empty means same-origin only, which is enough when the API serves the web app. |
 | `RATE_LIMIT_EXEMPT_IPS` | none | Comma-separated client IPs the rate limiter skips. |
 | `TRUSTED_PROXIES` | none | IPs or CIDRs trusted to supply `X-Forwarded-For`. |
 | `AUTH_BASE_URL` | `http://localhost:$PORT` | Public URL of the API, used in email links and the Google callback. |
@@ -33,7 +33,7 @@ flag of the same name in kebab-case (`go run ./cmd/api -h`).
 | `SENTRY_DSN` | none | Sentry DSN for error reports. |
 
 The Google redirect URI to register is
-`$AUTH_BASE_URL/v1/auth/oauth2/callback/google`.
+`$AUTH_BASE_URL/api/v1/auth/oauth2/callback/google`.
 
 <Callout type="info">
   Browser extensions are a special case of CORS: the API accepts requests
@@ -43,13 +43,14 @@ The Google redirect URI to register is
 
 ## Web app
 
-`apps/app` reads two variables, both **at build time**: they are inlined into
-the client bundle.
+`apps/app` reads its variables **at build time**: Vite inlines them into the
+bundle.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `NEXT_PUBLIC_API_URL` | `http://localhost:8080` | Origin of the API. |
-| `NEXT_PUBLIC_APP_NAME` | `Montara Pass` | Name shown in the UI. |
+| `VITE_API_URL` | the page's own origin | Origin of the API. Leave it empty unless the app is hosted somewhere else than the API. |
+| `VITE_APP_NAME` | `Montara Pass` | Name shown in the UI. |
+| `VITE_API_PROXY_TARGET` | `http://localhost:8080` | Development only: where the Vite dev server proxies `/api`. |
 
 ## Browser extension
 

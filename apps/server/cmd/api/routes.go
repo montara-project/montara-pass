@@ -7,8 +7,13 @@ import (
 	"montara-pass/server/internal/app"
 	"montara-pass/server/internal/config"
 	"montara-pass/server/internal/handlers"
+	"montara-pass/server/internal/lib/apperr"
 	"montara-pass/server/internal/middlewares"
 )
+
+// apiPrefix scopes every endpoint, so the web app can own the rest of the
+// origin: its pages and static assets never collide with a route.
+const apiPrefix = "/api"
 
 // Per-IP request budgets per minute: tight on the auth routes, loose on the
 // rest of the API.
@@ -21,12 +26,9 @@ func routes(r *fiber.App, app *app.Application) {
 	h := handlers.New(app)
 	m := middlewares.New(app)
 
-	r.Get("/", func(c fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"message": "Hello, World!",
-		})
-	})
-	r.Get("/health", h.Health.Check)
+	// Everything outside apiPrefix belongs to the web app (see serveWebApp).
+	api := r.Group(apiPrefix)
+	api.Get("/health", h.Health.Check)
 
 	// Authula: email & password, Google OAuth2 and magic-link sign-in,
 	// plus GET /me and POST /sign-out, all under authBasePath. The limiter
@@ -41,7 +43,7 @@ func routes(r *fiber.App, app *app.Application) {
 
 	// ponytail: the limiters count in memory, so each replica has its own
 	// budget; give them shared storage once there is more than one instance.
-	v1 := r.Group("/v1", middlewares.RateLimit(apiRateLimit, exemptLoopback, exemptIPs))
+	v1 := api.Group("/v1", middlewares.RateLimit(apiRateLimit, exemptLoopback, exemptIPs))
 
 	// Reads are public; writes need a signed-in super user.
 	categories := v1.Group("/categories")
@@ -81,4 +83,10 @@ func routes(r *fiber.App, app *app.Application) {
 	items.Post("/:id/members", h.Item.Share)
 	items.Put("/:id/members/:userId", h.Item.SetMemberRole)
 	items.Delete("/:id/members/:userId", h.Item.RemoveMember)
+
+	// An unknown path under apiPrefix answers JSON. Registered last, and before
+	// the web app's catch-all, which would otherwise answer it with index.html.
+	r.Use(apiPrefix, func(c fiber.Ctx) error {
+		return apperr.ErrNotFound
+	})
 }
