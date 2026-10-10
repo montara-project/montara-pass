@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import type { VaultItem } from '@/types/vault'
-
 import type { VaultKeys } from '@/lib/crypto/vault'
+import type { VaultItem } from '@/types/vault'
 
 import { fillLogin } from '../../lib/autofill'
 import { hostOf, matchesSite } from '../../lib/site'
@@ -317,12 +316,7 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
       </main>
 
       <footer className="bottombar">
-        <button
-          className="icon-button"
-          aria-label="Settings"
-          title="Settings"
-          onClick={onSettings}
-        >
+        <button className="icon-button" aria-label="Settings" title="Settings" onClick={onSettings}>
           <SettingsIcon />
         </button>
         <button

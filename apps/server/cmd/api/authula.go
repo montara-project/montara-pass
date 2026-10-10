@@ -39,7 +39,7 @@ import (
 
 // authBasePath is where the Authula handler is mounted on the Fiber app;
 // every Authula route (and route mapping below) lives under it.
-const authBasePath = "/v1/auth"
+const authBasePath = apiPrefix + "/v1/auth"
 
 var (
 	sessionAuth         = sessionplugin.HookIDSessionAuth.String()

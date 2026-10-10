@@ -7,11 +7,11 @@ Sharing is direct, from one user to another, one item at a time.
 
 ## Sharing an item
 
-1. The owner looks up the recipient with `GET /v1/keys/public?email=`. The
+1. The owner looks up the recipient with `GET /api/v1/keys/public?email=`. The
    recipient must already have created their vault.
 2. The owner's client unwraps the item key with its own private key and wraps
    it again with the recipient's public key.
-3. It sends that wrapped key and a role with `POST /v1/items/:id/members`.
+3. It sends that wrapped key and a role with `POST /api/v1/items/:id/members`.
 
 The item's content is not touched: both members now hold the same item key,
 each wrapped for themselves.
@@ -34,7 +34,7 @@ folders, and nobody else sees that choice.
 
 Removing a member deletes their wrapped key from the server, but they may
 have kept a copy of the item key. So the owner's client follows a removal with
-a **key rotation** (`PUT /v1/items/:id/key`): it encrypts the content under a
+a **key rotation** (`PUT /api/v1/items/:id/key`): it encrypts the content under a
 new item key and sends that key wrapped for every member that is left.
 
 <Callout type="warn">

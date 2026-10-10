@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { decryptFolderName, type VaultKeys } from '@/lib/crypto/vault'
 import type { VaultItem } from '@/types/vault'
+
+import { decryptFolderName, type VaultKeys } from '@/lib/crypto/vault'
 
 import { listFolders } from '../../lib/api'
 import { hostOf } from '../../lib/site'
@@ -94,9 +95,7 @@ export default function FullVault({
         Promise.all(
           rows.map(async (folder) => ({
             id: folder.id,
-            name: await decryptFolderName(keys, folder.encrypted_name).catch(
-              () => '(unreadable)'
-            ),
+            name: await decryptFolderName(keys, folder.encrypted_name).catch(() => '(unreadable)'),
           }))
         )
       )
@@ -236,7 +235,7 @@ export default function FullVault({
           </button>
 
           {menuOpen && (
-            <div className="menu menu-up" role="menu" onClick={() => setMenuOpen(false)}>
+            <div className="menu menu-up" role="menu">
               <button role="menuitem" className="menu-item" onClick={onSettings}>
                 <SettingsIcon />
                 Settings
@@ -317,9 +316,7 @@ export default function FullVault({
                 <span className="item-text">
                   <span className="item-name">{item.secret!.name}</span>
                   <span className="muted">
-                    {item.type === 'login'
-                      ? item.secret!.username || 'No username'
-                      : 'Secure note'}
+                    {item.type === 'login' ? item.secret!.username || 'No username' : 'Secure note'}
                   </span>
                 </span>
               </button>

@@ -1,10 +1,43 @@
 import { LogoMark } from "./icons";
 
 const columns: { title: string; links: { label: string; href: string }[] }[] = [
-  { title: "Product", links: [{ label: "Features", href: "/#features" }, { label: "Security", href: "/#security" }, { label: "Pricing", href: "/#pricing" }, { label: "Downloads", href: "/" }, { label: "Browser extension", href: "/" }] },
-  { title: "Company", links: [{ label: "About", href: "/" }, { label: "Blog", href: "/" }, { label: "Careers", href: "/" }, { label: "Contact us", href: "/contact" }, { label: "Press kit", href: "/" }] },
-  { title: "Resources", links: [{ label: "Help center", href: "/" }, { label: "Security whitepaper", href: "/#security" }, { label: "Guides", href: "/" }, { label: "System status", href: "/" }] },
-  { title: "Legal", links: [{ label: "Privacy policy", href: "/privacy" }, { label: "Terms of service", href: "/terms" }, { label: "Cookie settings", href: "/" }] },
+  {
+    title: "Product",
+    links: [
+      { label: "Features", href: "/#features" },
+      { label: "Security", href: "/#security" },
+      { label: "Pricing", href: "/#pricing" },
+      { label: "Downloads", href: "/" },
+      { label: "Browser extension", href: "/" },
+    ],
+  },
+  {
+    title: "Company",
+    links: [
+      { label: "About", href: "/" },
+      { label: "Blog", href: "/" },
+      { label: "Careers", href: "/" },
+      { label: "Contact us", href: "/contact" },
+      { label: "Press kit", href: "/" },
+    ],
+  },
+  {
+    title: "Resources",
+    links: [
+      { label: "Help center", href: "/" },
+      { label: "Security whitepaper", href: "/#security" },
+      { label: "Guides", href: "/" },
+      { label: "System status", href: "/" },
+    ],
+  },
+  {
+    title: "Legal",
+    links: [
+      { label: "Privacy policy", href: "/privacy" },
+      { label: "Terms of service", href: "/terms" },
+      { label: "Cookie settings", href: "/" },
+    ],
+  },
 ];
 
 export function SiteFooter() {
@@ -13,14 +46,19 @@ export function SiteFooter() {
       <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-6">
           <div className="lg:col-span-2">
-            <a href="/" className="flex w-fit cursor-pointer items-center gap-2.5" aria-label="Montara Pass — back to home">
+            <a
+              href="/"
+              className="flex w-fit cursor-pointer items-center gap-2.5"
+              aria-label="Montara Pass — back to home"
+            >
               <LogoMark className="size-8" />
               <span className="font-heading text-lg font-semibold tracking-tight">
                 Montara<span className="text-accent-bright">Pass</span>
               </span>
             </a>
             <p className="mt-4 max-w-xs text-sm leading-6 text-mist">
-              The zero-knowledge password manager. Your logins, encrypted on your device — never on our servers.
+              The zero-knowledge password manager. Your logins, encrypted on your device — never on
+              our servers.
             </p>
           </div>
 

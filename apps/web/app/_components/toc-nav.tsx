@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+
 import { ChevronDownIcon } from "./icons";
 
 export type TocItem = { id: string; title: string };
@@ -24,8 +25,7 @@ export function TocNav({ items }: { items: TocItem[] }) {
           }
         }
         const atBottom =
-          window.innerHeight + window.scrollY >=
-          document.documentElement.scrollHeight - 4;
+          window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
         if (atBottom && items.length > 0) current = items[items.length - 1].id;
         activeRef.current = current;
         for (const link of document.querySelectorAll<HTMLAnchorElement>("a[data-toc-link]")) {

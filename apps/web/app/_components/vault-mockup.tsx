@@ -1,4 +1,12 @@
-import { AlertTriangleIcon, CheckIcon, CopyIcon, LockIcon, ScanIcon, SparklesIcon, SyncIcon } from "./icons";
+import {
+  AlertTriangleIcon,
+  CheckIcon,
+  CopyIcon,
+  LockIcon,
+  ScanIcon,
+  SparklesIcon,
+  SyncIcon,
+} from "./icons";
 
 type Tone = "emerald" | "amber" | "rose";
 
@@ -25,11 +33,47 @@ const rows: {
   tone: Tone;
   width: string;
 }[] = [
-  { name: "Mail — Montara", user: "m.hartley@montara.dev", strength: "Strong", pass: "••••••••••••", tone: "emerald", width: "w-4/5" },
-  { name: "Fintools Dashboard", user: "mhartley_92", strength: "Good", pass: "••••••••", tone: "amber", width: "w-3/5" },
-  { name: "Legacy Forum", user: "mhartley", strength: "Weak", pass: "••••", tone: "rose", width: "w-1/4", flag: "Reused password" },
-  { name: "Cloud Storage", user: "m.hartley@montara.dev", strength: "Strong", pass: "••••••••••", tone: "emerald", width: "w-3/4" },
-  { name: "Design Suite", user: "hartley.m", strength: "Good", pass: "••••••••", tone: "amber", width: "w-1/2" },
+  {
+    name: "Mail — Montara",
+    user: "m.hartley@montara.dev",
+    strength: "Strong",
+    pass: "••••••••••••",
+    tone: "emerald",
+    width: "w-4/5",
+  },
+  {
+    name: "Fintools Dashboard",
+    user: "mhartley_92",
+    strength: "Good",
+    pass: "••••••••",
+    tone: "amber",
+    width: "w-3/5",
+  },
+  {
+    name: "Legacy Forum",
+    user: "mhartley",
+    strength: "Weak",
+    pass: "••••",
+    tone: "rose",
+    width: "w-1/4",
+    flag: "Reused password",
+  },
+  {
+    name: "Cloud Storage",
+    user: "m.hartley@montara.dev",
+    strength: "Strong",
+    pass: "••••••••••",
+    tone: "emerald",
+    width: "w-3/4",
+  },
+  {
+    name: "Design Suite",
+    user: "hartley.m",
+    strength: "Good",
+    pass: "••••••••",
+    tone: "amber",
+    width: "w-1/2",
+  },
 ];
 
 export function VaultMockup() {
@@ -69,7 +113,9 @@ export function VaultMockup() {
             ))}
             <div className="mt-auto rounded-lg border border-line bg-card/60 p-3">
               <p className="text-[11px] leading-4 text-mist">Vault health</p>
-              <p className="mt-1 font-heading text-lg font-semibold text-accent-soft">92<span className="text-sm text-mist">/100</span></p>
+              <p className="mt-1 font-heading text-lg font-semibold text-accent-soft">
+                92<span className="text-sm text-mist">/100</span>
+              </p>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-line">
                 <div className="h-full w-[92%] rounded-full bg-accent-bright" />
               </div>
@@ -99,7 +145,9 @@ export function VaultMockup() {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
-                      <span className="truncate text-xs font-medium text-fg sm:text-sm">{row.name}</span>
+                      <span className="truncate text-xs font-medium text-fg sm:text-sm">
+                        {row.name}
+                      </span>
                       {row.flag ? (
                         <span className="hidden items-center gap-1 rounded-full border border-rose-400/30 bg-rose-400/10 px-2 py-0.5 text-[10px] font-medium text-rose-300 light:text-rose-700 sm:inline-flex">
                           <AlertTriangleIcon className="size-3" />
@@ -110,9 +158,13 @@ export function VaultMockup() {
                     <span className="block truncate text-[11px] text-mist">{row.user}</span>
                   </span>
                   <span className="hidden w-24 shrink-0 sm:block">
-                    <span className={`text-[10px] font-medium ${tone[row.tone].text}`}>{row.strength}</span>
+                    <span className={`text-[10px] font-medium ${tone[row.tone].text}`}>
+                      {row.strength}
+                    </span>
                     <span className="mt-1 block h-1 overflow-hidden rounded-full bg-line">
-                      <span className={`block h-full rounded-full ${tone[row.tone].bar} ${row.width}`} />
+                      <span
+                        className={`block h-full rounded-full ${tone[row.tone].bar} ${row.width}`}
+                      />
                     </span>
                   </span>
                   <span className="hidden font-mono text-xs text-mist lg:block">{row.pass}</span>

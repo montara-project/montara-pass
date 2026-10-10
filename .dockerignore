@@ -9,3 +9,5 @@
 **/.env.*
 apps/server/bin
 .git
+apps/server/public
+**/*.tsbuildinfo

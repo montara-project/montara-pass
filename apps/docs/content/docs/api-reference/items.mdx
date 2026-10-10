@@ -28,7 +28,7 @@ favorite flag.
 ## List
 
 ```http
-GET /v1/items?folder_id=&type=&trashed=&offset=&limit=
+GET /api/v1/items?folder_id=&type=&trashed=&offset=&limit=
 ```
 
 | Parameter | Meaning |
@@ -43,13 +43,13 @@ There is no search and no sort: the server cannot read what it stores.
 ## Get
 
 ```http
-GET /v1/items/:id
+GET /api/v1/items/:id
 ```
 
 ## Create
 
 ```http
-POST /v1/items
+POST /api/v1/items
 ```
 
 | Field | Rule |
@@ -66,7 +66,7 @@ The caller becomes the owner. Answers `201` with the item.
 ## Update the content
 
 ```http
-PUT /v1/items/:id
+PUT /api/v1/items/:id
 ```
 
 ```json
@@ -81,7 +81,7 @@ sent too and keep their value when left out.
 ## Set folder and favorite
 
 ```http
-PUT /v1/items/:id/placement
+PUT /api/v1/items/:id/placement
 ```
 
 ```json
@@ -95,16 +95,16 @@ missing `folder_id` unfiles the item.
 
 | Method and path | Purpose |
 | --- | --- |
-| `DELETE /v1/items/:id` | Move to the trash, hiding the item from every member |
-| `PUT /v1/items/:id/restore` | Bring it back |
-| `DELETE /v1/items/:id/force` | Delete permanently |
+| `DELETE /api/v1/items/:id` | Move to the trash, hiding the item from every member |
+| `PUT /api/v1/items/:id/restore` | Bring it back |
+| `DELETE /api/v1/items/:id/force` | Delete permanently |
 
 Owner only.
 
 ## Rotate the item key
 
 ```http
-PUT /v1/items/:id/key
+PUT /api/v1/items/:id/key
 ```
 
 ```json

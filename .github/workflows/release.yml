@@ -6,9 +6,8 @@
 #   - a manual run publishes the short commit SHA, plus any tag you pass in
 #
 # Images:
-#   ghcr.io/<owner>/<repo>/app     apps/app    (the vault UI)
-#   ghcr.io/<owner>/<repo>/server  apps/server (the Go API and the migrate binary)
-#   ghcr.io/<owner>/<repo>/docs    apps/docs   (this documentation site)
+#   ghcr.io/<owner>/<repo>/server  the Go API serving the web app (apps/server + apps/app)
+#   ghcr.io/<owner>/<repo>/docs    apps/docs (this documentation site)
 
 name: Release
 
@@ -44,17 +43,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # The app and the docs install from the workspace lockfile, so they
-          # build from the root.
-          - image: app
-            context: .
-            file: apps/app/Dockerfile
-          - image: docs
-            context: .
-            file: apps/docs/Dockerfile
+          # Both install from the workspace lockfile, so they build from the root.
           - image: server
-            context: apps/server
             file: apps/server/Dockerfile
+          - image: docs
+            file: apps/docs/Dockerfile
 
     steps:
       - name: Checkout
@@ -85,17 +78,18 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v7
         with:
-          context: ${{ matrix.context }}
+          context: .
           file: ${{ matrix.file }}
           platforms: ${{ env.PLATFORMS }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # vinext bakes these into the app bundle at build time; the server
-          # and docs images ignore them. Set the repo Variable NEXT_PUBLIC_API_URL to
-          # the public origin of the API, or the app calls http://localhost:8080.
+          # Vite bakes these into the web app inside the server image; the docs
+          # image ignores them. VITE_API_URL stays empty for the usual setup,
+          # where the server serves the app itself: set the repo Variable only
+          # when the API lives on another origin than the UI.
           build-args: |
-            NEXT_PUBLIC_APP_NAME=${{ vars.NEXT_PUBLIC_APP_NAME || 'Montara Pass' }}
-            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL || '' }}
+            VITE_APP_NAME=${{ vars.VITE_APP_NAME || 'Montara Pass' }}
+            VITE_API_URL=${{ vars.VITE_API_URL || '' }}
           push: true
           # One cache scope per image, or the builds evict each other.
           cache-from: type=gha,scope=${{ matrix.image }}

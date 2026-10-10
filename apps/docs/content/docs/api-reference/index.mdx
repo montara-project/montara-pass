@@ -5,9 +5,12 @@ description: What every route of the API has in common.
 
 ## Base URL and versions
 
-All application routes live under `/v1`. Two routes sit outside it: `GET /`
-and `GET /health`, which pings the database and answers `503` when it cannot
-be reached.
+Every endpoint starts with `/api`, which keeps the API apart from the web
+app's pages and static files on the same origin. Application routes are
+versioned under `/api/v1`; `GET /api/health` pings the database and answers
+`503` when it cannot be reached. An unknown path under `/api` answers a JSON
+`404`. Everything outside `/api` belongs to the web app when the server ships
+with it.
 
 ## Authentication
 
@@ -23,7 +26,7 @@ The web app and the extension both use the bearer token. See
 
 ## Response envelope
 
-Every `/v1` route outside `/v1/auth` answers with the same envelope. `metadata`
+Every `/api/v1` route outside `/api/v1/auth` answers with the same envelope. `metadata`
 and `message` are left out when empty.
 
 ```json
@@ -35,7 +38,7 @@ and `message` are left out when empty.
 ```
 
 <Callout type="info">
-  Routes under `/v1/auth` are served by Authula and are **not** enveloped: they
+  Routes under `/api/v1/auth` are served by Authula and are **not** enveloped: they
   answer with their own shapes.
 </Callout>
 
@@ -83,8 +86,8 @@ Limits are per client IP, per minute:
 
 | Routes | Requests per minute |
 | --- | --- |
-| `/v1/auth/*` | 30 |
-| everything else under `/v1` | 120 |
+| `/api/v1/auth/*` | 30 |
+| everything else under `/api/v1` | 120 |
 
 In `development`, loopback is exempt. The counters are kept in memory, so each
 instance of the API has its own budget.

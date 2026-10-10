@@ -8,13 +8,13 @@ writing needs a signed-in user with the `super_user` role.
 
 | Method and path | Access | Purpose |
 | --- | --- | --- |
-| `GET /v1/categories` | public | List, with `offset`, `limit`, `search` and `sorted` |
-| `GET /v1/categories/:id` | public | One category |
-| `POST /v1/categories` | super user | Create |
-| `PUT /v1/categories/:id` | super user | Rename |
-| `DELETE /v1/categories/:id` | super user | Move to the trash |
-| `PUT /v1/categories/:id/restore` | super user | Bring back |
-| `DELETE /v1/categories/:id/force` | super user | Delete permanently |
+| `GET /api/v1/categories` | public | List, with `offset`, `limit`, `search` and `sorted` |
+| `GET /api/v1/categories/:id` | public | One category |
+| `POST /api/v1/categories` | super user | Create |
+| `PUT /api/v1/categories/:id` | super user | Rename |
+| `DELETE /api/v1/categories/:id` | super user | Move to the trash |
+| `PUT /api/v1/categories/:id/restore` | super user | Bring back |
+| `DELETE /api/v1/categories/:id/force` | super user | Delete permanently |
 
 ## Body
 

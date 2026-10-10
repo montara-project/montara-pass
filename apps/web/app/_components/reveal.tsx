@@ -23,7 +23,7 @@ export function Reveal({ children, className }: { children: ReactNode; className
           }
         }
       },
-      { threshold: 0.15 },
+      { threshold: 0.15 }
     );
 
     observer.observe(el);

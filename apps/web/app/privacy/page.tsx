@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+
 import { LegalPage, type LegalSection } from "../_components/legal-page";
 
 export const metadata: Metadata = {

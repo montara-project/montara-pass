@@ -1,20 +1,30 @@
 ---
 title: Docker
-description: Build and run the API, the web app and these docs as containers.
+description: Build and run the API with its web app, and these docs, as containers.
 ---
 
-Each deployable app has its own Dockerfile. Releases publish the same images
+There are two images. Releases publish the same images
 to GitHub Container Registry; see [Releases](/docs/operations/releases).
 
-## API
+## API and web app
 
-The build context is `apps/server`. The image contains two binaries, `api`
-(the entrypoint) and `migrate`.
+One image holds both: the web app is built with Vite and copied next to the Go
+binary, which serves it from `./public`. The build context is the repository
+root. The image also contains the `migrate` binary.
 
 ```sh
-docker build -t montara-pass-server apps/server
+docker build -f apps/server/Dockerfile -t montara-pass-server .
 docker run --rm -p 8080:8080 --env-file apps/server/.env montara-pass-server
 ```
+
+`http://localhost:8080` then serves the UI, and `http://localhost:8080/api/v1` the
+API.
+
+| Path | Answered by |
+| --- | --- |
+| `/api/*` | the API; an unknown path under `/api` answers a JSON `404` |
+| a file that exists, such as `/assets/…` | the static bundle |
+| anything else without a file extension | `index.html`, so client routes survive a reload |
 
 Run a migration with the same image:
 
@@ -23,21 +33,9 @@ docker run --rm --env-file apps/server/.env \
   --entrypoint /usr/local/bin/migrate montara-pass-server up
 ```
 
-## Web app
-
-The build context is the repository root, because the app installs from the
-workspace lockfile. The API origin is baked in at build time.
-
-```sh
-docker build -f apps/app/Dockerfile \
-  --build-arg NEXT_PUBLIC_API_URL=https://api.example.com \
-  -t montara-pass-app .
-docker run --rm -p 3000:3000 montara-pass-app
-```
-
-<Callout title="Rebuild to change the API origin" type="warn">
-  `NEXT_PUBLIC_API_URL` is not read when the container starts. An image built
-  without it calls `http://localhost:8080`.
+<Callout title="Hosting the web app elsewhere" type="info">
+  Pass `--build-arg VITE_API_URL=https://api.example.com` to point the bundle
+  at another origin, and list the app's origin in `CORS_ALLOWED_ORIGINS`.
 </Callout>
 
 ## Docs

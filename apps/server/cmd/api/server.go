@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -19,6 +21,7 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/logger"
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
+	"github.com/gofiber/fiber/v3/middleware/static"
 
 	"montara-pass/server/internal/app"
 	"montara-pass/server/internal/middlewares"
@@ -95,5 +98,39 @@ func newServer(app *app.Application) (*fiber.App, error) {
 
 	routes(server, app)
 
+	serveWebApp(server, app)
+
 	return server, nil
+}
+
+// publicDir holds the built web app (apps/app), relative to the working
+// directory. The Docker image puts it at /app/public.
+const publicDir = "./public"
+
+// serveWebApp serves the single-page web app from publicDir, so one process
+// answers both the API and the UI on one origin. Without the directory, as
+// under `go run` in development, the API serves only itself and the Vite dev
+// server takes the UI.
+func serveWebApp(server *fiber.App, app *app.Application) {
+	index := filepath.Join(publicDir, "index.html")
+	if _, err := os.Stat(index); err != nil {
+		app.Logger.Info("web app not found, serving the API only", "dir", publicDir)
+		return
+	}
+
+	server.Use(static.New(publicDir))
+
+	// The app routes on the client: /vault exists only in the browser, so a
+	// reload asks for a file that is not there. A wildcard registered last
+	// runs only when no real route matched, and routes() ends with a JSON 404
+	// for everything under apiPrefix.
+	fallback := func(c fiber.Ctx) error {
+		// A path with a file extension is a missing asset, not a client route.
+		if strings.Contains(path.Base(c.Path()), ".") {
+			return fiber.ErrNotFound
+		}
+		return c.SendFile(index)
+	}
+	server.Get("/*", fallback)
+	server.Head("/*", fallback)
 }

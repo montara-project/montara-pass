@@ -11,7 +11,7 @@ import { clearTokens, getSettings, getTokens, saveTokens } from './storage'
 // (apps/app/lib/api); the popup is kept dependency-free, but speaks to the
 // same API with the same bearer token and the same refresh-on-401 rule.
 
-const AUTH_PATH = '/v1/auth'
+const AUTH_PATH = '/api/v1/auth'
 const PAGE_SIZE = 100
 
 export class ApiError extends Error {
@@ -140,7 +140,7 @@ export async function getProfile(): Promise<Models.Profile> {
 /** The user's key set, or null when they have not created a vault yet. */
 export async function getUserKeys(): Promise<Models.UserKeys | null> {
   try {
-    const res = await request<Envelope<Models.UserKeys>>('/v1/keys')
+    const res = await request<Envelope<Models.UserKeys>>('/api/v1/keys')
     return res.data
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) return null
@@ -153,9 +153,7 @@ async function listAll<T>(path: string): Promise<T[]> {
   const rows: T[] = []
 
   for (;;) {
-    const page = await request<ListEnvelope<T>>(
-      `${path}?limit=${PAGE_SIZE}&offset=${rows.length}`
-    )
+    const page = await request<ListEnvelope<T>>(`${path}?limit=${PAGE_SIZE}&offset=${rows.length}`)
     rows.push(...page.data)
 
     if (page.data.length < PAGE_SIZE || rows.length >= (page.metadata.total ?? 0)) {
@@ -166,16 +164,16 @@ async function listAll<T>(path: string): Promise<T[]> {
 
 /** Every live item of the vault. */
 export function listItems(): Promise<Models.Item[]> {
-  return listAll('/v1/items')
+  return listAll('/api/v1/items')
 }
 
 /** The user's folders; their names are still encrypted. */
 export function listFolders(): Promise<Models.Folder[]> {
-  return listAll('/v1/folders')
+  return listAll('/api/v1/folders')
 }
 
 export async function createItem(body: ItemCreateRequest): Promise<Models.Item> {
-  const res = await request<Envelope<Models.Item>>('/v1/items', {
+  const res = await request<Envelope<Models.Item>>('/api/v1/items', {
     method: 'POST',
     body: JSON.stringify(body),
   })
@@ -184,7 +182,7 @@ export async function createItem(body: ItemCreateRequest): Promise<Models.Item> 
 
 /** Rewrites an item's content; the API refuses a revision that is no longer current. */
 export async function updateItem(id: string, body: ItemUpdateRequest): Promise<Models.Item> {
-  const res = await request<Envelope<Models.Item>>(`/v1/items/${id}`, {
+  const res = await request<Envelope<Models.Item>>(`/api/v1/items/${id}`, {
     method: 'PUT',
     body: JSON.stringify(body),
   })
@@ -193,5 +191,5 @@ export async function updateItem(id: string, body: ItemUpdateRequest): Promise<M
 
 /** Sets the caller's own folder and favorite flag for an item. */
 export async function setItemPlacement(id: string, body: ItemPlacementRequest): Promise<void> {
-  await request(`/v1/items/${id}/placement`, { method: 'PUT', body: JSON.stringify(body) })
+  await request(`/api/v1/items/${id}/placement`, { method: 'PUT', body: JSON.stringify(body) })
 }

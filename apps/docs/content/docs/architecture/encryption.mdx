@@ -58,7 +58,7 @@ without guessing.
 
 ## Unlocking
 
-1. The client fetches the key set with `GET /v1/keys`.
+1. The client fetches the key set with `GET /api/v1/keys`.
 2. It derives the master key from the master password and the stored salt and
    parameters. This is the slow step, about a second.
 3. The master key opens the vault key; a wrong master password fails here,
@@ -74,7 +74,7 @@ again. The extension keeps them in the browser's in-memory session storage; see
 
 Only the wrapping of the vault key changes. The client derives a new master
 key with a fresh salt, re-wraps the same vault key and sends it with
-`PUT /v1/keys`. No item and no folder is re-encrypted.
+`PUT /api/v1/keys`. No item and no folder is re-encrypted.
 
 <Callout title="There is no recovery" type="error">
   The server never holds anything that can open the vault key. A forgotten
