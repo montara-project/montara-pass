@@ -116,19 +116,52 @@ export async function createUserKeys(
   }
 }
 
+/**
+ * The unlocked keys as bytes, base64-encoded. The web app never holds them in
+ * this form; the browser extension does, because its popup is torn down every
+ * time it closes and the only place it can keep the keys in between is the
+ * browser's in-memory session storage, which stores strings.
+ */
+export interface VaultMaterial {
+  vaultKey: string
+  /** PKCS#8. */
+  privateKey: string
+  /** SPKI. */
+  publicKey: string
+}
+
+/** Open the vault's keys with the master password; throws WrongMasterPasswordError. */
+export async function unlockVaultMaterial(
+  masterPassword: string,
+  keys: Models.UserKeys
+): Promise<VaultMaterial> {
+  const vaultKeyRaw = await unwrapVaultKey(masterPassword, keys)
+  const vaultKey = await importAesKey(vaultKeyRaw)
+  const privateKeyRaw = await open(vaultKey, fromBase64(keys.encrypted_private_key))
+
+  return {
+    vaultKey: toBase64(vaultKeyRaw),
+    privateKey: toBase64(privateKeyRaw),
+    publicKey: keys.public_key,
+  }
+}
+
+/** Import key material as keys that cannot be exported again. */
+export async function importVaultMaterial(material: VaultMaterial): Promise<VaultKeys> {
+  const [vaultKey, privateKey, publicKey] = await Promise.all([
+    importAesKey(fromBase64(material.vaultKey)),
+    importPrivateKey(fromBase64(material.privateKey)),
+    importPublicKey(fromBase64(material.publicKey)),
+  ])
+  return { vaultKey, privateKey, publicKey }
+}
+
 /** Unlock a vault with the master password; throws WrongMasterPasswordError. */
 export async function unlockVault(
   masterPassword: string,
   keys: Models.UserKeys
 ): Promise<VaultKeys> {
-  const vaultKey = await importAesKey(await unwrapVaultKey(masterPassword, keys))
-  const privateKeyRaw = await open(vaultKey, fromBase64(keys.encrypted_private_key))
-
-  const [privateKey, publicKey] = await Promise.all([
-    importPrivateKey(privateKeyRaw),
-    importPublicKey(fromBase64(keys.public_key)),
-  ])
-  return { vaultKey, privateKey, publicKey }
+  return importVaultMaterial(await unlockVaultMaterial(masterPassword, keys))
 }
 
 /**

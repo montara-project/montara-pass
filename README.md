@@ -6,6 +6,7 @@ pnpm monorepo.
 | ------------- | -------------------------------------- | --------------------------- |
 | `apps/app`    | vinext (Next.js API on Vite), Node     | Docker (`apps/app/Dockerfile`) |
 | `apps/server` | Go, Fiber v3, PostgreSQL, golang-migrate | Docker (`apps/server/Dockerfile`) |
+| `apps/extension` | Browser extension (Manifest V3), Vite + React | Load `dist/chrome` or `dist/firefox` |
 | `apps/web`    | vinext on Cloudflare Workers           | `wrangler` / `vinext-cloudflare deploy` |
 
 ## Requirements
@@ -104,6 +105,33 @@ It talks to the Go API with a bearer token, so its origin
   locks the vault and asks for the master password again.
 - Routes: `/sign-in`, `/sign-up`, `/vault`, `/folders`, `/trash`,
   `/categories`, `/profile`.
+
+## Browser extension
+
+`apps/extension` fills and saves logins from the vault in Chrome (and other
+Chromium browsers) and Firefox 128+. It reuses the web app's `lib/crypto`, so
+both read and write the same ciphertext.
+
+```sh
+pnpm build:extension   # writes apps/extension/dist/chrome and dist/firefox
+```
+
+- **Chrome**: `chrome://extensions` → enable Developer mode → Load unpacked →
+  `apps/extension/dist/chrome`.
+- **Firefox**: `about:debugging#/runtime/this-firefox` → Load Temporary
+  Add-on → `apps/extension/dist/firefox/manifest.json`.
+
+Sign in, then unlock with the master password. The vault must already exist:
+create it in the web app first.
+
+- The unlocked keys are kept in the browser's in-memory session storage, so
+  the popup does not ask again each time it opens. They are cleared after 15
+  minutes without use, when the browser closes, and on Lock.
+- **Fill** is offered only for a login whose saved URL belongs to the page in
+  the active tab, and the page is touched only when you click it.
+- The API and web app URLs default to `VITE_DEFAULT_API_URL` and
+  `VITE_DEFAULT_APP_URL` at build time (`apps/extension/.env.example`) and can
+  be changed under Settings in the popup.
 
 ## Docker
 

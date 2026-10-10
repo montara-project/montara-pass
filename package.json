@@ -11,6 +11,7 @@
     "dev:web": "pnpm --filter @montara-pass/web run dev",
     "dev:server": "pnpm --filter @montara-pass/server run dev",
     "build": "pnpm -r run build",
+    "build:extension": "pnpm --filter @montara-pass/extension run build",
     "deploy:web": "pnpm --filter @montara-pass/web run deploy",
     "db:up": "docker compose up -d postgres",
     "migrate:up": "pnpm --filter @montara-pass/server run migrate:up",
