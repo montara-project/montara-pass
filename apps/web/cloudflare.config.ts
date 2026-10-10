@@ -10,6 +10,6 @@ export default defineConfig({
     env: {
       ASSETS: bindings.assets(),
     },
-    domains: ["vault.montara.cc.cd"],
+    domains: ["vault.montara.cc.cd", "montarapass.com"],
   }),
 });
