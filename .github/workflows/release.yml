@@ -83,13 +83,15 @@ jobs:
           platforms: ${{ env.PLATFORMS }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # Vite bakes these into the web app inside the server image; the docs
-          # image ignores them. VITE_API_URL stays empty for the usual setup,
-          # where the server serves the app itself: set the repo Variable only
-          # when the API lives on another origin than the UI.
+          # Vite bakes the VITE_* values into the web app inside the server
+          # image, and APP_VERSION goes into the Go binary; the docs image
+          # ignores them. VITE_API_URL stays empty for the usual setup, where
+          # the server serves the app itself: set the repo Variable only when
+          # the API lives on another origin than the UI.
           build-args: |
             VITE_APP_NAME=${{ vars.VITE_APP_NAME || 'Montara Pass' }}
             VITE_API_URL=${{ vars.VITE_API_URL || '' }}
+            APP_VERSION=${{ github.ref_name }}
           push: true
           # One cache scope per image, or the builds evict each other.
           cache-from: type=gha,scope=${{ matrix.image }}
