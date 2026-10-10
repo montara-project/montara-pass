@@ -8,6 +8,7 @@ pnpm monorepo.
 | `apps/server` | Go, Fiber v3, PostgreSQL, golang-migrate | Docker (`apps/server/Dockerfile`) |
 | `apps/extension` | Browser extension (Manifest V3), Vite + React | Load `dist/chrome` or `dist/firefox` |
 | `apps/web`    | vinext on Cloudflare Workers           | `cf` / `vinext-cloudflare deploy` |
+| `apps/docs`   | Next.js, Fumadocs                      | Docker (`apps/docs/Dockerfile`) |
 
 ## Requirements
 
@@ -135,6 +136,15 @@ create it in the web app first.
   `VITE_DEFAULT_APP_URL` at build time (`apps/extension/.env.example`) and can
   be changed under Settings in the popup.
 
+## Docs
+
+`apps/docs` is the documentation site: Next.js with
+[Fumadocs](https://www.fumadocs.dev), pages as MDX under `content/docs`.
+
+```sh
+pnpm dev:docs       # http://localhost:3001/docs
+```
+
 ## Docker
 
 ```sh
@@ -165,8 +175,8 @@ workflows in `.github/workflows`:
    `package.json`, writes `CHANGELOG.md` and opens a `chore: release vX.Y.Z` PR.
 2. **Release Publish** runs when that PR merges: it tags the commit, creates
    the GitHub release and starts the Release workflow.
-3. **Release** pushes `ghcr.io/montara-project/montara-pass/app` and
-   `.../server`, and deploys `apps/web` to Cloudflare Workers.
+3. **Release** pushes `ghcr.io/montara-project/montara-pass/app`,
+   `.../server` and `.../docs`, and deploys `apps/web` to Cloudflare Workers.
 
 It needs the repository secrets `CLOUDFLARE_API_TOKEN` and
 `CLOUDFLARE_ACCOUNT_ID`, and the repository variable `NEXT_PUBLIC_API_URL`

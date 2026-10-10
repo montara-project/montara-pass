@@ -1,0 +1,77 @@
+---
+title: Data model
+description: The tables behind the vault and the rules the database enforces.
+---
+
+Vault tables are created by migration `000004_create_vault`. Sign-in data
+lives in the separate `authula` schema; `public.users` mirrors
+`authula.users` and adds the application `role`.
+
+## Tables
+
+### `user_keys`
+
+One row per user: the key set.
+
+| Column | Notes |
+| --- | --- |
+| `user_id` | Primary key, references `users` |
+| `kdf` | Always `argon2id` |
+| `kdf_salt` | 16 to 64 bytes |
+| `kdf_memory_kib`, `kdf_iterations`, `kdf_parallelism` | At least 19456, 2 and 1 |
+| `encrypted_vault_key` | Vault key wrapped by the master key, up to 512 bytes |
+| `public_key` | Up to 1024 bytes |
+| `encrypted_private_key` | Wrapped by the vault key, up to 8192 bytes |
+
+### `folders`
+
+Personal and flat: a folder belongs to one user and has no parent.
+
+| Column | Notes |
+| --- | --- |
+| `id` | `uuidv7()` |
+| `user_id` | Owner |
+| `encrypted_name` | Encrypted with the owner's vault key, up to 1024 bytes |
+
+### `items`
+
+The shared part of an item.
+
+| Column | Notes |
+| --- | --- |
+| `id` | `uuidv7()` |
+| `owner_id` | Deleting the owner deletes the item for everyone |
+| `type` | `login`, `secure_note`, `card` or `identity`; the clients create the first two |
+| `cipher_version` | Format of `encrypted_data`, currently `1` |
+| `encrypted_data` | Up to 65536 bytes |
+| `revision` | Incremented on every write |
+| `deleted_at` | Set while the item is in the trash |
+
+### `item_members`
+
+Who can open an item, the owner included, and each member's own view of it.
+
+| Column | Notes |
+| --- | --- |
+| `item_id`, `user_id` | Primary key |
+| `role` | `owner`, `editor` or `viewer` |
+| `encrypted_item_key` | The item key wrapped for this member, up to 1024 bytes |
+| `folder_id` | This member's folder for the item, or null |
+| `favorite` | This member's favorite flag |
+| `shared_by` | Who shared it; null on the owner's row |
+
+## Rules the database enforces
+
+- **One owner per item**: a partial unique index on `item_members (item_id)`
+  where `role = 'owner'`.
+- **No filing in someone else's folder**: `(folder_id, user_id)` is a composite
+  foreign key to `folders (id, user_id)`.
+- **Deleting a folder keeps its items**: that foreign key is
+  `ON DELETE SET NULL (folder_id)`, so the items become unfiled.
+- **Size limits**: every encrypted column has a `CHECK` on its length, matched
+  by the validation in `internal/dtos/vault.go`.
+
+## Trash
+
+Moving an item to the trash sets `deleted_at` and hides it from every member.
+Only the owner can trash, restore or permanently delete an item.

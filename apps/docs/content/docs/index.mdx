@@ -1,0 +1,46 @@
+---
+title: Montara Pass
+description: An end-to-end encrypted password manager you can run yourself.
+---
+
+Montara Pass stores logins and secure notes in a vault that only its owner can
+open. Everything is encrypted in the browser before it leaves the device, so
+the server holds ciphertext and wrapped keys and cannot read, search or sort
+what it stores.
+
+## What is in the repository
+
+| Path | What it is |
+| --- | --- |
+| `apps/server` | The API: Go, Fiber v3, PostgreSQL 18, sign-in by Authula |
+| `apps/app` | The vault web app: vinext (the Next.js API on Vite), React 19 |
+| `apps/extension` | The browser extension for Chrome and Firefox (Manifest V3) |
+| `apps/web` | The marketing site, deployed to Cloudflare Workers |
+| `apps/docs` | This documentation: Next.js and Fumadocs |
+
+## Where to start
+
+<Cards>
+  <Card title="Installation" href="/docs/getting-started/installation">
+    Run the API, the database and the web app on your machine.
+  </Card>
+  <Card title="Encryption" href="/docs/architecture/encryption">
+    The keys, what each one protects and what the server can see.
+  </Card>
+  <Card title="API reference" href="/docs/api-reference">
+    Every route of the API, with its request and response.
+  </Card>
+  <Card title="Browser extension" href="/docs/clients/browser-extension">
+    Build it, load it and fill logins from the vault.
+  </Card>
+</Cards>
+
+## What the server never receives
+
+- The master password, and the master key derived from it.
+- The vault key, the private key and any item key in the clear.
+- Item content: names, usernames, passwords, URLs and notes.
+- Folder names.
+
+The item **type** (`login`, `secure_note`) is the one thing stored in the
+clear, so clients can filter by it.

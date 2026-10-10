@@ -1,0 +1,33 @@
+---
+title: Marketing site
+description: The public website, deployed to Cloudflare Workers.
+---
+
+`apps/web` is the public site: the home page, pricing, contact and the legal
+pages. It runs on vinext and is deployed as a Cloudflare Worker. It does not
+call the API.
+
+```sh
+pnpm dev:web                                 # http://localhost:5174
+pnpm --filter @montara-pass/web run build
+pnpm --filter @montara-pass/web run start    # serve the build locally
+```
+
+## Deploy
+
+The Worker is described in `apps/web/cloudflare.config.ts`: its name, its
+entrypoint, the compatibility date, the `ASSETS` binding and its custom domain.
+There is no `wrangler.jsonc`.
+
+```sh
+pnpm --filter @montara-pass/web exec cf auth login
+pnpm deploy:web
+```
+
+`pnpm deploy:web` builds and then deploys with Cloudflare's `cf` CLI. In CI
+the same command runs with `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`;
+see [Releases](/docs/operations/releases).
+
+<Callout type="warn">
+  `cf` and `@cloudflare/vite-plugin` 2 are beta releases.
+</Callout>

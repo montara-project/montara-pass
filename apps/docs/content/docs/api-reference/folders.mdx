@@ -1,0 +1,35 @@
+---
+title: Folders
+description: The caller's own folders.
+---
+
+All routes are protected and only ever touch the caller's own folders. Names
+are encrypted with the vault key, so the server cannot sort them; clients sort
+after decrypting.
+
+| Method and path | Purpose | Success |
+| --- | --- | --- |
+| `GET /v1/folders` | List every folder | `200`, with `metadata.total` |
+| `POST /v1/folders` | Create a folder | `201` |
+| `PUT /v1/folders/:id` | Rename a folder | `200` |
+| `DELETE /v1/folders/:id` | Delete a folder | `200` |
+
+## Body
+
+```json
+{ "encrypted_name": "base64, up to 1024 bytes" }
+```
+
+## A folder
+
+```json
+{
+  "id": "…",
+  "user_id": "…",
+  "encrypted_name": "base64",
+  "created_at": "…",
+  "updated_at": "…"
+}
+```
+
+Deleting a folder does not delete its items: they stay in the vault, unfiled.

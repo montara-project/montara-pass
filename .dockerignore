@@ -1,6 +1,9 @@
 **/node_modules
 **/dist
 **/.vinext
+**/.next
+**/.source
+**/.cloudflare
 **/.wrangler
 **/.env
 **/.env.*

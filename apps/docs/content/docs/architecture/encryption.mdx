@@ -1,0 +1,82 @@
+---
+title: Encryption
+description: The key hierarchy, the algorithms and what each key protects.
+---
+
+## Key hierarchy
+
+```
+master password
+   │  Argon2id (salt, 64 MiB, 3 passes)
+   ▼
+master key ──unwraps──► vault key ──unwraps──► private key (RSA)
+                           │                        │
+                           │ encrypts               │ unwraps
+                           ▼                        ▼
+                      folder names             item key (one per item)
+                                                    │ encrypts
+                                                    ▼
+                                               item content
+```
+
+| Key | Made from | Protects | Where it is stored |
+| --- | --- | --- | --- |
+| Master key | Argon2id over the master password | the vault key | nowhere; derived on unlock |
+| Vault key | 32 random bytes | folder names, the private key | server, wrapped by the master key |
+| Key pair | RSA-OAEP 3072-bit | item keys | public key in the clear; private key wrapped by the vault key |
+| Item key | 32 random bytes, one per item | that item's content | server, once per member, wrapped by the member's public key |
+
+## Algorithms
+
+- **Key derivation**: Argon2id with a 16-byte random salt, 64 MiB of memory,
+  3 iterations and parallelism 1, producing a 32-byte key. The parameters are
+  stored next to the salt so they can be raised later. The API refuses anything
+  below 19456 KiB and 2 iterations.
+- **Symmetric encryption**: AES-256-GCM. Every sealed value is a random
+  12-byte nonce followed by the ciphertext and its tag.
+- **Asymmetric encryption**: RSA-OAEP, 3072-bit modulus, SHA-256. The public
+  key travels as SPKI, the private key as PKCS#8.
+- **Encoding**: every binary value is base64 in JSON.
+
+## Item content
+
+The plaintext of an item is a small JSON object, sealed with the item key:
+
+```json
+{
+  "name": "GitHub",
+  "username": "octocat",
+  "password": "…",
+  "url": "https://github.com",
+  "notes": "…"
+}
+```
+
+A secure note carries `name` and `notes` only. Every item also has a
+`cipher_version` in the clear (currently `1`), so the format can change later
+without guessing.
+
+## Unlocking
+
+1. The client fetches the key set with `GET /v1/keys`.
+2. It derives the master key from the master password and the stored salt and
+   parameters. This is the slow step, about a second.
+3. The master key opens the vault key; a wrong master password fails here,
+   because AES-GCM rejects the tag.
+4. The vault key opens the private key.
+5. For each item, the private key unwraps the item key, which opens the content.
+
+The web app keeps the unlocked keys in memory, so a reload locks the vault
+again. The extension keeps them in the browser's in-memory session storage; see
+[Browser extension](/docs/clients/browser-extension).
+
+## Changing the master password
+
+Only the wrapping of the vault key changes. The client derives a new master
+key with a fresh salt, re-wraps the same vault key and sends it with
+`PUT /v1/keys`. No item and no folder is re-encrypted.
+
+<Callout title="There is no recovery" type="error">
+  The server never holds anything that can open the vault key. A forgotten
+  master password means the vault cannot be read by anyone.
+</Callout>

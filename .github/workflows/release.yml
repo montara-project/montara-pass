@@ -8,6 +8,7 @@
 # Images:
 #   ghcr.io/<owner>/<repo>/app     apps/app    (the vault UI)
 #   ghcr.io/<owner>/<repo>/server  apps/server (the Go API and the migrate binary)
+#   ghcr.io/<owner>/<repo>/docs    apps/docs   (this documentation site)
 
 name: Release
 
@@ -43,10 +44,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # The app installs from the workspace lockfile, so it builds from the root.
+          # The app and the docs install from the workspace lockfile, so they
+          # build from the root.
           - image: app
             context: .
             file: apps/app/Dockerfile
+          - image: docs
+            context: .
+            file: apps/docs/Dockerfile
           - image: server
             context: apps/server
             file: apps/server/Dockerfile
@@ -86,13 +91,13 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           # vinext bakes these into the app bundle at build time; the server
-          # image ignores them. Set the repo Variable NEXT_PUBLIC_API_URL to
+          # and docs images ignore them. Set the repo Variable NEXT_PUBLIC_API_URL to
           # the public origin of the API, or the app calls http://localhost:8080.
           build-args: |
             NEXT_PUBLIC_APP_NAME=${{ vars.NEXT_PUBLIC_APP_NAME || 'Montara Pass' }}
             NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL || '' }}
           push: true
-          # One cache scope per image, or the two builds evict each other.
+          # One cache scope per image, or the builds evict each other.
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 

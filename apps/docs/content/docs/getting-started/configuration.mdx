@@ -1,0 +1,62 @@
+---
+title: Configuration
+description: Every setting of the API, the web app and the extension.
+---
+
+## API
+
+Each setting of `apps/server` is an environment variable, or the command-line
+flag of the same name in kebab-case (`go run ./cmd/api -h`).
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `ENV` | `production` | `development`, `staging` or `production`. Only `development` relaxes the session cookie and exempts loopback from the rate limit. |
+| `DEBUG` | `false` | Logs every auth query with its values. Refused when `ENV=production`. |
+| `PORT` | `8080` | Port the API listens on. |
+| `APP_NAME` | `montara-pass` | Name used in auth emails. |
+| `APP_SECRET` | none | Required, at least 32 characters. Signs sessions and tokens. |
+| `DB_DSN` | none | Required. PostgreSQL 18 connection string. |
+| `DB_MAX_OPEN_CONNS` | `25` | Connection pool size. |
+| `DB_MAX_IDLE_CONNS` | `25` | Idle connections kept. |
+| `DB_MAX_IDLE_TIME` | `15m` | How long an idle connection is kept. |
+| `MIGRATE_ON_BOOT` | `false` | Apply the embedded migrations before serving. |
+| `SEED_ON_BOOT` | `false` | Run the idempotent seeders before serving. Needs `SUPER_USER`. |
+| `SUPER_USER` | none | `email:password` of the super user to seed. |
+| `CORS_ALLOWED_ORIGINS` | none | Comma-separated browser origins. Empty means same-origin only. |
+| `RATE_LIMIT_EXEMPT_IPS` | none | Comma-separated client IPs the rate limiter skips. |
+| `TRUSTED_PROXIES` | none | IPs or CIDRs trusted to supply `X-Forwarded-For`. |
+| `AUTH_BASE_URL` | `http://localhost:$PORT` | Public URL of the API, used in email links and the Google callback. |
+| `FROM_ADDRESS` | none | Sender of auth emails. Must be a domain verified in Resend. |
+| `RESEND_API_KEY` | none | Resend API key. |
+| `GOOGLE_CLIENT_ID` | none | Google OAuth client. Empty disables Google sign-in. |
+| `GOOGLE_CLIENT_SECRET` | none | Google OAuth secret. |
+| `SENTRY_DSN` | none | Sentry DSN for error reports. |
+
+The Google redirect URI to register is
+`$AUTH_BASE_URL/v1/auth/oauth2/callback/google`.
+
+<Callout type="info">
+  Browser extensions are a special case of CORS: the API accepts requests
+  whose origin starts with `chrome-extension://` or `moz-extension://` without
+  listing them.
+</Callout>
+
+## Web app
+
+`apps/app` reads two variables, both **at build time**: they are inlined into
+the client bundle.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:8080` | Origin of the API. |
+| `NEXT_PUBLIC_APP_NAME` | `Montara Pass` | Name shown in the UI. |
+
+## Browser extension
+
+`apps/extension` reads its defaults at build time from `apps/extension/.env`.
+Both can be changed later under **Settings** in the extension.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `VITE_DEFAULT_API_URL` | `http://localhost:8080` | Origin of the API. It becomes the extension's host permission. |
+| `VITE_DEFAULT_APP_URL` | `http://localhost:5173` | The web app that "Open web app" links to. |

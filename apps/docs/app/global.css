@@ -1,0 +1,31 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+
+/* The brand palette over the neutral theme: Midnight Navy #101D3A, Electric
+   Blue #145CFF and Arctic Cyan #42C8FF. */
+:root {
+  --color-fd-primary: #145cff;
+  --color-fd-primary-foreground: #ffffff;
+  --color-fd-ring: #145cff;
+}
+
+.dark {
+  --color-fd-background: #070d1c;
+  --color-fd-card: #101d3a;
+  --color-fd-popover: #101d3a;
+  --color-fd-secondary: #17284e;
+  --color-fd-muted: #16254a;
+  --color-fd-accent: #1e3160;
+  --color-fd-border: rgb(169 182 211 / 0.16);
+  --color-fd-primary: #42c8ff;
+  --color-fd-primary-foreground: #101d3a;
+  --color-fd-ring: #42c8ff;
+}
+
+/* neutral.css greys the sidebar with a more specific rule. */
+.dark #nd-sidebar {
+  --color-fd-muted: #16254a;
+  --color-fd-secondary: #17284e;
+  --color-fd-muted-foreground: #a9b6d3;
+}
