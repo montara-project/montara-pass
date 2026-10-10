@@ -1,0 +1,1103 @@
+/* Semantic tokens; components below never use a raw color. They are built
+   from the brand palette: Midnight Navy #101D3A, Electric Blue #145CFF and
+   Arctic Cyan #42C8FF. */
+:root {
+  color-scheme: light dark;
+  --bg: #eef2fb;
+  --panel: #ffffff;
+  --card: #f1f5fd;
+  --border: #d3dcef;
+  --fg: #101d3a;
+  --muted: #51607f;
+  --field: #ffffff;
+  --primary: #145cff;
+  --primary-fg: #ffffff;
+  --hover: #e4ebfa;
+  --danger: #b42318;
+  --focus: #145cff;
+  --tile-from: #145cff;
+  --tile-to: #42c8ff;
+  --tile-fg: #101d3a;
+  --accent: #42c8ff;
+  --accent-fg: #101d3a;
+  --avatar: #101d3a;
+  --avatar-fg: #ffffff;
+  --shadow: 0 8px 24px rgb(16 29 58 / 0.16);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #070d1c;
+    --panel: #101d3a;
+    --card: #1a2b52;
+    --border: #2b3d68;
+    --fg: #ffffff;
+    --muted: #a9b6d3;
+    --field: #0b152c;
+    --primary: #145cff;
+    --primary-fg: #ffffff;
+    --hover: #1e3160;
+    --danger: #ff9a91;
+    --focus: #42c8ff;
+    --avatar: #145cff;
+    --shadow: 0 8px 24px rgb(0 0 0 / 0.6);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  /* The popup has a fixed size, so the list scrolls inside it and the bottom
+     bar stays put. 600px is the tallest popup browsers allow. */
+  width: 400px;
+  height: 600px;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--fg);
+  font:
+    14px/1.45 system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+}
+
+#root {
+  height: 100%;
+  overflow-y: auto;
+}
+
+h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+p {
+  margin: 0;
+}
+
+/* ---------- shared pieces ---------- */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pad {
+  padding: 20px;
+}
+
+.center {
+  padding: 48px 24px;
+  text-align: center;
+  align-items: center;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.error {
+  color: var(--danger);
+  white-space: pre-line;
+}
+
+.notice {
+  color: var(--muted);
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 500;
+}
+
+input {
+  width: 100%;
+  min-width: 0;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--field);
+  color: var(--fg);
+  font: inherit;
+  font-weight: 400;
+}
+
+input::placeholder {
+  color: var(--muted);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+button,
+a.button {
+  height: 40px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--primary);
+  color: var(--primary-fg);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out,
+    opacity 120ms ease-out;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+button.link {
+  height: auto;
+  padding: 4px 6px;
+  background: none;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+button.link:hover {
+  color: var(--fg);
+}
+
+.icon-button {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  padding: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--muted);
+}
+
+.icon-button:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--fg);
+}
+
+/* ---------- the vault, after unlocking ---------- */
+
+.vault {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 16px 10px 20px;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  margin-left: 6px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--avatar);
+  color: var(--avatar-fg);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.menu-anchor {
+  position: relative;
+  display: flex;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 10;
+  min-width: 220px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.menu-user {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 10px 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+  min-width: 0;
+}
+
+.menu-user span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-name {
+  font-weight: 600;
+}
+
+.menu-item {
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  justify-content: flex-start;
+  background: none;
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.menu-item:hover {
+  background: var(--hover);
+}
+
+.search {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  margin: 0 12px 12px;
+  padding: 0 12px;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--field);
+  color: var(--muted);
+  cursor: text;
+}
+
+.search:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.search input {
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  outline: none;
+}
+
+/* The raised sheet the list lives on; it is the part that scrolls. */
+.panel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 8px 8px;
+  border-radius: 16px 16px 0 0;
+  background: var(--panel);
+}
+
+.panel > .notice,
+.panel > .error,
+.panel > .empty {
+  padding: 0 12px 12px;
+}
+
+.section-title {
+  margin: 0;
+  padding: 4px 12px 10px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.cards {
+  display: flex;
+  gap: 10px;
+  padding: 0 10px 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.card {
+  flex: 0 0 auto;
+  width: 300px;
+  max-width: 100%;
+  height: auto;
+  padding: 12px;
+  justify-content: flex-start;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+  color: var(--fg);
+  text-align: left;
+  font-weight: 400;
+}
+
+.card:hover {
+  background: var(--hover);
+}
+
+.sort {
+  height: 32px;
+  margin: 0 0 4px 4px;
+  padding: 0 8px;
+  background: none;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  gap: 4px;
+}
+
+.sort:hover {
+  color: var(--fg);
+}
+
+.items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.items li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 6px 8px 12px;
+  border-radius: 12px;
+}
+
+.items li:hover,
+.items li:focus-within {
+  background: var(--hover);
+}
+
+.tile {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-right: 8px;
+  border-radius: 10px;
+  background: linear-gradient(160deg, var(--tile-from), var(--tile-to));
+  color: var(--tile-fg);
+}
+
+.tile-accent {
+  margin-right: 0;
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.item-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.item-text span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-name {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.item-text .muted {
+  font-size: 13px;
+}
+
+.bottombar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.full-screen {
+  height: 36px;
+  padding: 0 14px;
+}
+
+.spin {
+  animation: spin 800ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation: none;
+  }
+
+  button,
+  a.button {
+    transition: none;
+  }
+}
+
+/* ---------- full-screen view (popup.html?view=full in a tab) ---------- */
+
+:root[data-view='full'] body {
+  width: auto;
+  height: 100vh;
+}
+
+/* ---------- sign-in and unlock ---------- */
+
+.auth {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 100%;
+  padding: 36px 28px 24px;
+}
+
+.auth-mark {
+  align-self: center;
+  width: 72px;
+  height: 72px;
+}
+
+.auth-title {
+  margin: 8px 0 6px;
+  font-size: 26px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.auth-note {
+  font-size: 13px;
+  text-align: center;
+}
+
+.auth-field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 58px;
+  padding: 0 8px 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.auth-field:focus-within {
+  border-color: var(--fg);
+  box-shadow: 0 0 0 1px var(--fg);
+}
+
+.auth-field-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.auth-field label {
+  gap: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.auth-field input {
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font-size: 15px;
+}
+
+/* The box around it shows the focus. */
+.auth-field input:focus-visible {
+  outline: none;
+}
+
+.auth-field .icon-button {
+  flex-shrink: 0;
+  color: var(--fg);
+}
+
+.auth-submit {
+  height: 48px;
+  margin-top: 6px;
+  border-radius: 12px;
+  font-size: 15px;
+}
+
+.auth-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 24px;
+}
+
+.auth-foot .avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin: 0 0 2px;
+}
+
+.auth-email {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+button.auth-link {
+  height: auto;
+  padding: 4px 6px;
+  background: none;
+  color: var(--fg);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Sign-in, unlock and settings, which are popup-sized forms, in a tab. */
+.full-center {
+  display: flex;
+  min-height: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.full-card {
+  width: 100%;
+  max-width: 400px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel);
+}
+
+.full {
+  display: grid;
+  grid-template-columns: 248px minmax(300px, 380px) minmax(0, 1fr);
+  height: 100%;
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 12px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px 16px;
+  font-size: 16px;
+}
+
+.side-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.side-item {
+  width: 100%;
+  height: 40px;
+  padding: 0 10px;
+  justify-content: flex-start;
+  gap: 12px;
+  background: none;
+  color: var(--muted);
+  font-weight: 500;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.side-item:hover {
+  background: var(--hover);
+  color: var(--fg);
+}
+
+.side-item[aria-current='true'] {
+  background: var(--card);
+  color: var(--fg);
+}
+
+.side-item .count {
+  margin-left: auto;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.side-account {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.side-user {
+  width: 100%;
+  height: auto;
+  padding: 8px;
+  justify-content: flex-start;
+  gap: 10px;
+  background: none;
+  color: var(--muted);
+  font-weight: 400;
+  text-align: left;
+}
+
+.side-user:hover,
+.side-user[aria-expanded='true'] {
+  background: var(--hover);
+}
+
+.side-user .menu-name {
+  color: var(--fg);
+}
+
+.side-user .avatar {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0;
+}
+
+/* The account sits at the foot of the sidebar, so its menu opens upwards. */
+.menu-up {
+  top: auto;
+  bottom: calc(100% + 8px);
+  left: 0;
+}
+
+.list-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-top: 16px;
+  border-radius: 16px 0 0 0;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+}
+
+.list-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px 8px 8px;
+}
+
+.new-item {
+  height: 36px;
+  padding: 0 12px;
+}
+
+.list-message {
+  padding: 8px 20px;
+}
+
+.list-col .items {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 8px 8px;
+}
+
+/* Here the whole row is the control, so the row itself is not padded. */
+.list-col .items li {
+  padding: 0;
+}
+
+.item-row {
+  width: 100%;
+  height: auto;
+  padding: 8px 12px;
+  justify-content: flex-start;
+  gap: 0;
+  background: none;
+  color: var(--fg);
+  font-weight: 400;
+  text-align: left;
+  border-radius: 12px;
+}
+
+.item-row[aria-current='true'] {
+  background: var(--card);
+}
+
+.detail-col {
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--panel);
+}
+
+.detail-body {
+  max-width: 640px;
+  padding: 32px;
+  gap: 16px;
+}
+
+.detail-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tile-large {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+}
+
+.fields {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: 4px;
+  padding: 12px 12px 12px 16px;
+}
+
+.field + .field {
+  border-top: 1px solid var(--border);
+}
+
+.field dt {
+  grid-column: 1;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.field dd {
+  grid-column: 1;
+  margin: 0;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+/* Buttons sit to the right of the label and value, centered on both rows. */
+.field .icon-button {
+  grid-row: 1 / span 2;
+}
+
+.field .icon-button:nth-of-type(1) {
+  grid-column: 2;
+}
+
+.field .icon-button:nth-of-type(2) {
+  grid-column: 3;
+}
+
+.field-notes dd {
+  white-space: pre-wrap;
+}
+
+.field a {
+  color: var(--focus);
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.meta {
+  font-size: 12px;
+}
+
+.detail-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  height: 100%;
+  padding: 32px;
+  text-align: center;
+}
+
+.detail-empty .tile {
+  margin: 0;
+  opacity: 0.6;
+}
+
+button.secondary {
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--fg);
+}
+
+button.secondary:hover {
+  background: var(--hover);
+}
+
+.back {
+  display: none;
+  margin: 16px 0 0 20px;
+}
+
+textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--field);
+  color: var(--fg);
+  font: inherit;
+  font-weight: 400;
+  resize: vertical;
+}
+
+.select-box {
+  position: relative;
+}
+
+select {
+  width: 100%;
+  height: 40px;
+  /* Same inset as an input; the right side leaves room for the chevron. */
+  padding: 0 36px 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--field);
+  color: var(--fg);
+  font: inherit;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  appearance: none;
+  cursor: pointer;
+}
+
+select:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Drawn over the field, so clicks have to pass through to it. */
+.select-box svg {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.select-box select:disabled + svg {
+  opacity: 0.6;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.form-label {
+  display: flex;
+  gap: 4px;
+}
+
+.asterisk {
+  color: var(--danger);
+}
+
+.form-field [aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.field-error {
+  font-size: 13px;
+}
+
+/* The show/hide button sits inside the password field. */
+.password-box {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.password-box input {
+  padding-right: 44px;
+}
+
+.password-box .icon-button {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+}
+
+.form-actions {
+  justify-content: flex-end;
+}
+
+@media (max-width: 520px) {
+  .form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  font-weight: 500;
+}
+
+/* A narrow window: the sidebar becomes a strip of filters, and the list and
+   the detail pane take turns. */
+@media (max-width: 860px) {
+  .full {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .side {
+    flex-direction: row;
+    align-items: center;
+    overflow-x: auto;
+    padding: 8px 12px;
+  }
+
+  .side .brand,
+  .side .count,
+  .side-user .item-text,
+  .side-user svg {
+    display: none;
+  }
+
+  /* Stays in reach at the end of the strip while the filters scroll under it. */
+  .side-account {
+    position: sticky;
+    right: -12px;
+    flex-shrink: 0;
+    margin: 0 -12px 0 auto;
+    padding: 0 12px 0 8px;
+    border: 0;
+    background: var(--bg);
+  }
+
+  .side-user {
+    padding: 4px;
+  }
+
+  /* The strip scrolls sideways and would clip the menu, so pin it to the
+     window instead. */
+  .menu-up {
+    position: fixed;
+    top: 56px;
+    right: 12px;
+    bottom: auto;
+    left: auto;
+    width: 220px;
+  }
+
+  .side-list {
+    display: flex;
+    gap: 4px;
+  }
+
+  .side-item {
+    width: auto;
+    white-space: nowrap;
+  }
+
+  .list-col {
+    border-right: 0;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .detail-col,
+  .full.pane-open .list-col {
+    display: none;
+  }
+
+  .full.pane-open .detail-col {
+    display: block;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .back {
+    display: inline-flex;
+  }
+
+  .detail-body {
+    padding: 20px;
+  }
+}

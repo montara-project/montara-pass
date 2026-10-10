@@ -1,0 +1,96 @@
+---
+title: Conventions
+description: What every route of the API has in common.
+---
+
+## Base URL and versions
+
+All application routes live under `/v1`. Two routes sit outside it: `GET /`
+and `GET /health`, which pings the database and answers `503` when it cannot
+be reached.
+
+## Authentication
+
+Routes marked as protected need a signed-in user, either by the session cookie
+or by a bearer token:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+The web app and the extension both use the bearer token. See
+[Authentication](/docs/api-reference/authentication).
+
+## Response envelope
+
+Every `/v1` route outside `/v1/auth` answers with the same envelope. `metadata`
+and `message` are left out when empty.
+
+```json
+{
+  "data": {},
+  "metadata": { "total": 42, "offset": 0, "limit": 10 },
+  "message": "data has been retrieved"
+}
+```
+
+<Callout type="info">
+  Routes under `/v1/auth` are served by Authula and are **not** enveloped: they
+  answer with their own shapes.
+</Callout>
+
+## Errors
+
+An error is a status code and a message:
+
+```json
+{ "message": "viewers cannot change the item" }
+```
+
+A request that fails validation answers `422` with the fields at fault:
+
+```json
+{
+  "message": "validation failed",
+  "errors": [{ "field": "encrypted_data", "message": "…" }]
+}
+```
+
+| Status | Meaning |
+| --- | --- |
+| `400` | The request is malformed |
+| `401` | Not signed in, or the token has expired |
+| `403` | Signed in, but not allowed |
+| `404` | Not found. An item you are not a member of answers 404, as if it did not exist |
+| `409` | Conflict: a stale `revision`, or something that already exists |
+| `422` | Validation failed |
+| `429` | Rate limit reached |
+| `500` | Unexpected error. It is logged; the response never carries details |
+
+## Pagination
+
+List routes take `offset` and `limit`. `limit` defaults to 10 and is capped at
+100; the total is in `metadata.total`.
+
+## Binary values
+
+Ciphertext and keys are bytes. They travel as **standard base64 strings** in
+JSON, in both directions.
+
+## Rate limits
+
+Limits are per client IP, per minute:
+
+| Routes | Requests per minute |
+| --- | --- |
+| `/v1/auth/*` | 30 |
+| everything else under `/v1` | 120 |
+
+In `development`, loopback is exempt. The counters are kept in memory, so each
+instance of the API has its own budget.
+
+## CORS
+
+Browsers on another origin may call the API only when their origin is listed
+in `CORS_ALLOWED_ORIGINS`. Extension origins (`chrome-extension://`,
+`moz-extension://`) are accepted without being listed.

@@ -1,0 +1,52 @@
+---
+title: Web app
+description: The vault in the browser, where everything can be managed.
+---
+
+`apps/app` is the full client. It runs on [vinext](https://vinext.dev), the
+Next.js App Router API on Vite, with React 19, TanStack Query, Form and Table,
+zod and Tailwind 4.
+
+```sh
+pnpm dev:app        # http://localhost:5173
+```
+
+## Pages
+
+| Route | What it does |
+| --- | --- |
+| `/sign-up`, `/sign-in` | Account, with the sign-in password |
+| `/vault` | Items: add, edit, favorite, move to a folder, share, trash |
+| `/folders` | Create, rename and delete folders |
+| `/trash` | Restore or permanently delete trashed items |
+| `/categories` | The category list; writing needs a super user |
+| `/profile` | Account details and changing the master password |
+
+## The vault gate
+
+Every page under the app shell sits behind a gate with three states:
+
+1. **No key set** (`GET /v1/keys` answers 404): the user chooses a master
+   password of at least 12 characters and the client creates the keys.
+2. **Locked**: the user enters the master password to unlock.
+3. **Unlocked**: the pages render.
+
+The unlocked keys live in a zustand store that is not persisted. Reloading the
+page, or closing the tab, locks the vault.
+
+## Sessions
+
+The access and refresh tokens are kept in cookies and sent as a bearer header.
+When a request answers `401`, the client refreshes the token once and repeats
+the request; if the refresh fails, it signs the user out.
+
+## Search and sort
+
+The server cannot search encrypted content, so the app decrypts the page it
+received and filters in the browser. Filters the server *can* apply (folder,
+type and trash) are sent as query parameters.
+
+## Theme
+
+The app is dark by default. A light theme is defined, but there is no switch
+for it in the UI yet.

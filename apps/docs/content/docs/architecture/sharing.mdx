@@ -1,0 +1,49 @@
+---
+title: Sharing
+description: How an item is shared with another user without the server seeing it.
+---
+
+Sharing is direct, from one user to another, one item at a time.
+
+## Sharing an item
+
+1. The owner looks up the recipient with `GET /v1/keys/public?email=`. The
+   recipient must already have created their vault.
+2. The owner's client unwraps the item key with its own private key and wraps
+   it again with the recipient's public key.
+3. It sends that wrapped key and a role with `POST /v1/items/:id/members`.
+
+The item's content is not touched: both members now hold the same item key,
+each wrapped for themselves.
+
+## Roles
+
+| Role | Read | Edit content | Share, change roles, trash, delete |
+| --- | --- | --- | --- |
+| `owner` | yes | yes | yes |
+| `editor` | yes | yes | no |
+| `viewer` | yes | no | no |
+
+Every item has exactly one owner. A member who is not the owner can leave an
+item by removing themselves.
+
+Folder and favorite are personal: each member files a shared item in their own
+folders, and nobody else sees that choice.
+
+## Revoking access
+
+Removing a member deletes their wrapped key from the server, but they may
+have kept a copy of the item key. So the owner's client follows a removal with
+a **key rotation** (`PUT /v1/items/:id/key`): it encrypts the content under a
+new item key and sends that key wrapped for every member that is left.
+
+<Callout type="warn">
+  Rotation protects future versions of the item. Anything the removed member
+  already read, they have read; change the password itself if that matters.
+</Callout>
+
+## Concurrent edits
+
+Every item has a `revision` that the server increments on each write. An
+update names the revision it read; if the item changed in between, the server
+answers `409 Conflict` instead of overwriting, and the client reloads.

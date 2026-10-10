@@ -1,0 +1,81 @@
+---
+title: Browser extension
+description: Fill and save logins from the vault in Chrome and Firefox.
+---
+
+`apps/extension` is a Manifest V3 extension for Chrome, other Chromium
+browsers and Firefox 128 or newer. It uses the web app's `lib/crypto` module,
+so it reads and writes the same vault.
+
+<Callout type="info">
+  The vault itself is created in the web app. The extension signs in and
+  unlocks an existing one.
+</Callout>
+
+## Build and load
+
+```sh
+pnpm build:extension   # writes apps/extension/dist/chrome and dist/firefox
+```
+
+- **Chrome**: open `chrome://extensions`, enable Developer mode, choose
+  **Load unpacked** and pick `apps/extension/dist/chrome`.
+- **Firefox**: open `about:debugging#/runtime/this-firefox`, choose
+  **Load Temporary Add-on** and pick `apps/extension/dist/firefox/manifest.json`.
+
+The two builds differ only in the manifest: Chrome runs the background script
+as a service worker, Firefox as an event page with an add-on id.
+
+## The popup
+
+After signing in and unlocking, the popup shows:
+
+- **Logins for the current site**, each with a **Fill** button.
+- The whole vault, with search, a sort toggle and buttons to copy the username
+  or the password.
+- **Add**, to save a login for the current site, with a password generator
+  (20 characters by default).
+- **Full screen**, which opens the vault in a tab.
+
+## Full screen
+
+The tab view has three columns: filters (all items, logins, secure notes,
+favorites), the list, and the selected item. Passwords stay hidden until
+revealed. Items can be created and edited here, including their folder.
+
+Sharing, folders, favorites and the trash are managed in the web app.
+
+## When Fill is offered
+
+A saved login is offered for a page when the page's host equals the saved
+host, or is a subdomain of it. `www.` is ignored on both sides.
+
+| Saved URL | Page | Offered |
+| --- | --- | --- |
+| `example.com` | `login.example.com` | yes |
+| `login.example.com` | `example.com` | no |
+| `example.com` | `example.com.evil.net` | no |
+
+The extension reads no page on its own. It touches the active tab only when
+**Fill** is clicked, and fills only visible username and password fields.
+
+## Where secrets are kept
+
+| What | Where | Cleared |
+| --- | --- | --- |
+| Access and refresh tokens | `chrome.storage.local` | on sign out |
+| Unlocked vault keys | `chrome.storage.session` (in memory) | after 15 minutes without use, when the browser closes, on **Lock** |
+| Master password | nowhere | used once to unlock |
+
+## Permissions
+
+| Permission | Why |
+| --- | --- |
+| `storage` | Tokens, settings and the unlocked keys |
+| `activeTab`, `scripting` | Fill the page the user is looking at, on click |
+| `alarms` | The auto-lock timer |
+| `clipboardWrite` | Copy buttons |
+| Host permission for the API | Call the API it was built for |
+
+Another API origin, set under **Settings**, is requested from the optional
+host permissions at that moment.

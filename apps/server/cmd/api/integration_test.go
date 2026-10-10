@@ -1,0 +1,427 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"encoding/base64"
+	"encoding/json"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"testing"
+	"time"
+
+	authulamodels "github.com/Authula/authula/models"
+	"github.com/gofiber/fiber/v3"
+
+	"montara-pass/server/internal/app"
+	"montara-pass/server/internal/config"
+	"montara-pass/server/internal/lib"
+	"montara-pass/server/internal/lib/constant"
+	"montara-pass/server/internal/repositories"
+	"montara-pass/server/internal/seeders"
+)
+
+// TestIntegration runs the boot sequence and the auth flow against a real
+// PostgreSQL 18. It needs TEST_DB_DSN, pointing at a database it may wipe:
+//
+//	TEST_DB_DSN=postgres://postgres:postgres@localhost:5432/montara_pass_test?sslmode=disable go test ./cmd/api
+func TestIntegration(t *testing.T) {
+	dsn := os.Getenv("TEST_DB_DSN")
+	if dsn == "" {
+		t.Skip("TEST_DB_DSN not set")
+	}
+
+	const (
+		superEmail = "admin@example.com"
+		superPass  = "super-user-password"
+		userEmail  = "user@example.com"
+		userPass   = "plain-user-password"
+	)
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	cfg := config.Config{
+		App: config.ConfigApp{
+			Env:    config.EnvDevelopment,
+			Port:   8080,
+			Name:   "montara-pass-test",
+			Secret: "0123456789abcdef0123456789abcdef",
+		},
+		DB: config.ConfigDB{DSN: dsn, MaxOpenConns: 5, MaxIdleConns: 5},
+		Auth: config.ConfigAuth{
+			BaseURL:      "http://localhost:8080",
+			EmailFrom:    "noreply@example.com",
+			ResendAPIKey: "re_test",
+		},
+	}
+
+	// Start from nothing; this also runs every down migration.
+	migrateDB, err := lib.OpenDB(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := lib.NewMigrator(migrateDB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := m.Version(); err == nil {
+		if err := m.Down(); err != nil {
+			t.Fatalf("down: %v", err)
+		}
+	}
+	m.Close()
+
+	if err := migrateUp(&cfg.DB, logger); err != nil {
+		t.Fatalf("migrate up: %v", err)
+	}
+
+	db, err := connectDB(&cfg.DB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	repos := repositories.New(db)
+	mirror := mirrorUser(&repos.User)
+	auth := newAuth(cfg, mirror, logger)
+	defer auth.CloseSystems()
+	defer auth.ClosePlugins()
+
+	ctx := context.Background()
+	superUser := seeders.SuperUserSeeder{
+		DB:       db,
+		Auth:     auth.CoreServices(),
+		Promote:  promoteSuperUser(&repos.User, mirror),
+		Email:    superEmail,
+		Password: "the-first-password",
+	}
+	// Twice: seeding must be repeatable.
+	for range 2 {
+		if err := seedAll(db, superUser, logger); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+	}
+
+	// A plain user, created the way a verified sign-up ends up.
+	services := auth.CoreServices()
+	user, err := services.UserService.Create(ctx, "Plain User", userEmail, true, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hash, err := services.PasswordService.Hash(userPass)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := services.AccountService.Create(ctx, user.ID, userEmail, authulamodels.AuthProviderEmail.String(), &hash); err != nil {
+		t.Fatal(err)
+	}
+
+	// Authula's tables live in their own schema, and the mirror follows them.
+	var authUsers int
+	if err := db.QueryRow(`SELECT count(*) FROM authula.users`).Scan(&authUsers); err != nil || authUsers != 2 {
+		t.Fatalf("authula.users: count=%d err=%v", authUsers, err)
+	}
+	roles := map[string]string{}
+	rows, err := db.Query(`SELECT email, role FROM public.users`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for rows.Next() {
+		var email, role string
+		if err := rows.Scan(&email, &role); err != nil {
+			t.Fatal(err)
+		}
+		roles[email] = role
+	}
+	rows.Close()
+	if roles[superEmail] != constant.RoleSuperUser || roles[userEmail] != constant.RoleUser || len(roles) != 2 {
+		t.Fatalf("public.users roles = %v", roles)
+	}
+
+	// Reconcile restores a mirror row that went missing and keeps the roles.
+	if _, err := db.Exec(`DELETE FROM public.users WHERE email = $1`, userEmail); err != nil {
+		t.Fatal(err)
+	}
+	if err := repos.User.Reconcile(ctx); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	var role string
+	if err := db.QueryRow(`SELECT role FROM public.users WHERE email = $1`, superEmail).Scan(&role); err != nil || role != constant.RoleSuperUser {
+		t.Fatalf("super user role after reconcile: %q err=%v", role, err)
+	}
+	if err := db.QueryRow(`SELECT role FROM public.users WHERE email = $1`, userEmail).Scan(&role); err != nil || role != constant.RoleUser {
+		t.Fatalf("plain user after reconcile: %q err=%v", role, err)
+	}
+
+	// Changing SUPER_USER's password resets the account on the next seed.
+	superUser.Password = superPass
+	if err := superUser.Seed(); err != nil {
+		t.Fatalf("reseed: %v", err)
+	}
+
+	server, err := newServer(&app.Application{Config: cfg, Logger: logger, DB: db, Repositories: repos, Auth: auth})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// cookies holds the Set-Cookie pairs of the last answer.
+	var cookies string
+
+	// call sends one request and decodes the JSON answer.
+	call := func(method, path, token string, body any, headers ...string) (int, map[string]any) {
+		t.Helper()
+		var payload io.Reader
+		if body != nil {
+			raw, _ := json.Marshal(body)
+			payload = bytes.NewReader(raw)
+		}
+		req := httptest.NewRequest(method, path, payload)
+		req.Header.Set("Content-Type", "application/json")
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
+		for i := 0; i+1 < len(headers); i += 2 {
+			req.Header.Set(headers[i], headers[i+1])
+		}
+		resp, err := server.Test(req, fiber.TestConfig{Timeout: 30 * time.Second})
+		if err != nil {
+			t.Fatalf("%s %s: %v", method, path, err)
+		}
+		defer resp.Body.Close()
+		cookies = ""
+		for _, c := range resp.Cookies() {
+			cookies += c.Name + "=" + c.Value + "; "
+		}
+		var out map[string]any
+		_ = json.NewDecoder(resp.Body).Decode(&out)
+		return resp.StatusCode, out
+	}
+
+	signIn := func(email, password string) map[string]any {
+		t.Helper()
+		status, out := call(http.MethodPost, "/v1/auth/email-password/sign-in", "", map[string]string{"email": email, "password": password})
+		if status != http.StatusOK {
+			t.Fatalf("sign in %s: %d %v", email, status, out)
+		}
+		for _, key := range []string{"user", "session", "access_token", "refresh_token", "expires_at", "expires_in"} {
+			if out[key] == nil {
+				t.Fatalf("sign in %s: no %q in %v", email, key, out)
+			}
+		}
+		return out
+	}
+
+	if status, _ := call(http.MethodPost, "/v1/auth/email-password/sign-in", "", map[string]string{"email": superEmail, "password": "the-first-password"}); status == http.StatusOK {
+		t.Fatal("the replaced super user password still signs in")
+	}
+	super := signIn(superEmail, superPass)
+	superToken := super["access_token"].(string)
+	superCookie := cookies
+	if superCookie == "" {
+		t.Fatal("sign in set no session cookie")
+	}
+
+	// A session without tokens can get a pair: by signing in again, or from
+	// POST /token with the cookie or a bearer token.
+	if status, out := call(http.MethodPost, "/v1/auth/email-password/sign-in", "", map[string]string{"email": superEmail, "password": superPass}, "Cookie", superCookie); status != http.StatusOK || out["access_token"] == nil || out["refresh_token"] == nil {
+		t.Fatalf("repeated sign in: %d %v", status, out)
+	}
+	for _, headers := range [][]string{{"Cookie", superCookie}, {"Authorization", "Bearer " + superToken}} {
+		status, out := call(http.MethodPost, "/v1/auth/token", "", nil, headers...)
+		if status != http.StatusOK || out["access_token"] == nil || out["refresh_token"] == nil || out["expires_in"] == nil {
+			t.Fatalf("token with %s: %d %v", headers[0], status, out)
+		}
+		if status, out := call(http.MethodPost, "/v1/auth/token/refresh", "", map[string]any{"refresh_token": out["refresh_token"]}); status != http.StatusOK {
+			t.Fatalf("refresh of an issued token: %d %v", status, out)
+		}
+	}
+	if status, _ := call(http.MethodPost, "/v1/auth/token", "", nil); status != http.StatusUnauthorized {
+		t.Fatalf("token without a session: %d, want 401", status)
+	}
+	userToken := signIn(userEmail, userPass)["access_token"].(string)
+
+	if status, out := call(http.MethodGet, "/health", "", nil); status != http.StatusOK {
+		t.Fatalf("health: %d %v", status, out)
+	}
+	if status, out := call(http.MethodGet, "/v1/auth/me", superToken, nil); status != http.StatusOK {
+		t.Fatalf("me with bearer: %d %v", status, out)
+	}
+	if status, out := call(http.MethodPost, "/v1/auth/token/refresh", "", map[string]any{"refresh_token": super["refresh_token"]}); status != http.StatusOK || out["access_token"] == nil {
+		t.Fatalf("refresh: %d %v", status, out)
+	}
+
+	// Category writes: super user only.
+	category := map[string]string{"name": "Integration"}
+	if status, _ := call(http.MethodPost, "/v1/categories", "", category); status != http.StatusUnauthorized {
+		t.Fatalf("create without auth: %d, want 401", status)
+	}
+	if status, _ := call(http.MethodPost, "/v1/categories", userToken, category); status != http.StatusForbidden {
+		t.Fatalf("create as plain user: %d, want 403", status)
+	}
+	if status, out := call(http.MethodPost, "/v1/categories", superToken, category); status != http.StatusCreated {
+		t.Fatalf("create as super user: %d %v", status, out)
+	}
+	if status, out := call(http.MethodGet, "/v1/categories?search=Integration", "", nil); status != http.StatusOK || len(out["data"].([]any)) != 1 {
+		t.Fatalf("list: %d %v", status, out)
+	}
+
+	vaultFlow(t, call, superToken, userToken, userEmail, user.ID)
+
+	// A browser request from another site is refused before it is authenticated.
+	if status, _ := call(http.MethodPost, "/v1/categories", superToken, category, "Sec-Fetch-Site", "cross-site", "Origin", "https://evil.example"); status != http.StatusForbidden {
+		t.Fatalf("cross-site create: %d, want 403", status)
+	}
+
+	// Signing out revokes the access token.
+	if status, out := call(http.MethodPost, "/v1/auth/sign-out", superToken, map[string]any{}); status != http.StatusOK {
+		t.Fatalf("sign out: %d %v", status, out)
+	}
+	if status, _ := call(http.MethodPost, "/v1/categories", superToken, category); status != http.StatusUnauthorized {
+		t.Fatalf("create after sign out: %d, want 401", status)
+	}
+}
+
+// vaultFlow exercises the end-to-end encrypted vault as two users: an owner
+// and the user an item is shared with. The server never reads the payloads,
+// so any bytes stand in for ciphertext.
+func vaultFlow(
+	t *testing.T,
+	call func(method, path, token string, body any, headers ...string) (int, map[string]any),
+	ownerToken, otherToken, otherEmail, otherID string,
+) {
+	t.Helper()
+
+	b64 := func(s string) string { return base64.StdEncoding.EncodeToString([]byte(s)) }
+	// want sends a request, checks the status and returns the "data" object.
+	want := func(wantStatus int, method, path, token string, body any) map[string]any {
+		t.Helper()
+		status, out := call(method, path, token, body)
+		if status != wantStatus {
+			t.Fatalf("%s %s: %d, want %d (%v)", method, path, status, wantStatus, out)
+		}
+		data, _ := out["data"].(map[string]any)
+		return data
+	}
+
+	keys := map[string]any{
+		"kdf_salt":              b64("0123456789abcdef"),
+		"kdf_memory_kib":        19456,
+		"kdf_iterations":        2,
+		"kdf_parallelism":       1,
+		"encrypted_vault_key":   b64("vault-key"),
+		"public_key":            b64("public-key"),
+		"encrypted_private_key": b64("private-key"),
+	}
+	want(http.StatusNotFound, http.MethodGet, "/v1/keys", ownerToken, nil)
+	want(http.StatusUnauthorized, http.MethodGet, "/v1/keys", "", nil)
+	want(http.StatusUnprocessableEntity, http.MethodPost, "/v1/keys", ownerToken, map[string]any{"kdf_salt": "***"})
+
+	item := map[string]any{"type": "login", "encrypted_data": b64("secret v1"), "encrypted_item_key": b64("key for owner")}
+	itemID := want(http.StatusCreated, http.MethodPost, "/v1/items", ownerToken, item)["id"].(string)
+	itemPath := "/v1/items/" + itemID
+	memberPath := itemPath + "/members/" + otherID
+	share := map[string]any{"user_id": otherID, "role": "viewer", "encrypted_item_key": b64("key for other")}
+
+	// Sharing needs the recipient's public key, so they must have a vault.
+	want(http.StatusNotFound, http.MethodPost, itemPath+"/members", ownerToken, share)
+	want(http.StatusNotFound, http.MethodGet, "/v1/keys/public?email="+otherEmail, ownerToken, nil)
+	want(http.StatusCreated, http.MethodPost, "/v1/keys", ownerToken, keys)
+	want(http.StatusConflict, http.MethodPost, "/v1/keys", ownerToken, keys)
+	want(http.StatusCreated, http.MethodPost, "/v1/keys", otherToken, keys)
+	if got := want(http.StatusOK, http.MethodGet, "/v1/keys/public?email="+otherEmail, ownerToken, nil); got["user_id"] != otherID || got["public_key"] != b64("public-key") {
+		t.Fatalf("public key lookup: %v", got)
+	}
+	rewrapped := map[string]any{
+		"kdf_salt": b64("fedcba9876543210"), "kdf_memory_kib": 65536, "kdf_iterations": 3, "kdf_parallelism": 4,
+		"encrypted_vault_key": b64("vault-key-2"),
+	}
+	if got := want(http.StatusOK, http.MethodPut, "/v1/keys", ownerToken, rewrapped); got["encrypted_vault_key"] != b64("vault-key-2") || got["public_key"] != b64("public-key") {
+		t.Fatalf("keys after a master password change: %v", got)
+	}
+
+	ownerFolder := want(http.StatusCreated, http.MethodPost, "/v1/folders", ownerToken, map[string]any{"encrypted_name": b64("work")})["id"].(string)
+	otherFolder := want(http.StatusCreated, http.MethodPost, "/v1/folders", otherToken, map[string]any{"encrypted_name": b64("shared")})["id"].(string)
+	want(http.StatusNotFound, http.MethodPut, "/v1/folders/"+ownerFolder, otherToken, map[string]any{"encrypted_name": b64("mine now")})
+
+	// An item cannot be created in, or moved to, someone else's folder.
+	inForeign := map[string]any{"type": "login", "encrypted_data": b64("x"), "encrypted_item_key": b64("k"), "folder_id": ownerFolder}
+	want(http.StatusNotFound, http.MethodPost, "/v1/items", otherToken, inForeign)
+	if got := want(http.StatusOK, http.MethodPut, itemPath+"/placement", ownerToken, map[string]any{"folder_id": ownerFolder, "favorite": true}); got["folder_id"] != ownerFolder || got["favorite"] != true || got["role"] != "owner" {
+		t.Fatalf("owner placement: %v", got)
+	}
+
+	// Not shared yet: the item does not exist for the other user.
+	want(http.StatusNotFound, http.MethodGet, itemPath, otherToken, nil)
+	want(http.StatusCreated, http.MethodPost, itemPath+"/members", ownerToken, share)
+	want(http.StatusConflict, http.MethodPost, itemPath+"/members", ownerToken, share)
+	want(http.StatusForbidden, http.MethodPost, itemPath+"/members", otherToken, share)
+
+	shared := want(http.StatusOK, http.MethodGet, itemPath, otherToken, nil)
+	if shared["role"] != "viewer" || shared["encrypted_item_key"] != b64("key for other") || shared["folder_id"] != nil || shared["favorite"] != false {
+		t.Fatalf("shared item as the recipient sees it: %v", shared)
+	}
+	if status, out := call(http.MethodGet, "/v1/items", otherToken, nil); status != http.StatusOK || len(out["data"].([]any)) != 1 {
+		t.Fatalf("recipient's list: %d %v", status, out)
+	}
+	if status, out := call(http.MethodGet, itemPath+"/members", otherToken, nil); status != http.StatusOK || len(out["data"].([]any)) != 2 {
+		t.Fatalf("members: %d %v", status, out)
+	}
+
+	// Each member files the item in their own folders.
+	want(http.StatusNotFound, http.MethodPut, itemPath+"/placement", otherToken, map[string]any{"folder_id": ownerFolder})
+	want(http.StatusOK, http.MethodPut, itemPath+"/placement", otherToken, map[string]any{"folder_id": otherFolder})
+	if status, out := call(http.MethodGet, "/v1/items?folder_id="+otherFolder, otherToken, nil); status != http.StatusOK || len(out["data"].([]any)) != 1 {
+		t.Fatalf("recipient's folder: %d %v", status, out)
+	}
+	if got := want(http.StatusOK, http.MethodGet, itemPath, ownerToken, nil); got["folder_id"] != ownerFolder {
+		t.Fatalf("owner's filing moved with the recipient's: %v", got)
+	}
+
+	// A viewer reads, an editor writes, and a stale revision is refused.
+	edit := map[string]any{"encrypted_data": b64("secret v2"), "revision": 1}
+	want(http.StatusForbidden, http.MethodPut, itemPath, otherToken, edit)
+	want(http.StatusOK, http.MethodPut, memberPath, ownerToken, map[string]any{"role": "editor"})
+	if got := want(http.StatusOK, http.MethodPut, itemPath, otherToken, edit); got["revision"] != float64(2) || got["encrypted_data"] != b64("secret v2") || got["type"] != "login" {
+		t.Fatalf("edit by an editor: %v", got)
+	}
+	want(http.StatusConflict, http.MethodPut, itemPath, ownerToken, edit)
+	want(http.StatusForbidden, http.MethodDelete, itemPath, otherToken, nil)
+
+	// Deleting a folder unfiles its items.
+	want(http.StatusOK, http.MethodDelete, "/v1/folders/"+ownerFolder, ownerToken, nil)
+	if got := want(http.StatusOK, http.MethodGet, itemPath, ownerToken, nil); got["folder_id"] != nil {
+		t.Fatalf("item still filed in a deleted folder: %v", got)
+	}
+
+	// Revoking, then rotating the key for the members that are left.
+	rotate := func(revision int, members ...string) map[string]any {
+		memberKeys := []map[string]any{}
+		for _, id := range members {
+			memberKeys = append(memberKeys, map[string]any{"user_id": id, "encrypted_item_key": b64("new key")})
+		}
+		return map[string]any{"encrypted_data": b64("secret v3"), "revision": revision, "member_keys": memberKeys}
+	}
+	ownerID := shared["owner_id"].(string)
+	want(http.StatusBadRequest, http.MethodDelete, itemPath+"/members/"+ownerID, ownerToken, nil)
+	want(http.StatusConflict, http.MethodPut, itemPath+"/key", ownerToken, rotate(2, ownerID))
+	want(http.StatusOK, http.MethodDelete, memberPath, ownerToken, nil)
+	want(http.StatusNotFound, http.MethodGet, itemPath, otherToken, nil)
+	want(http.StatusConflict, http.MethodPut, itemPath+"/key", ownerToken, rotate(2, ownerID, otherID))
+	if got := want(http.StatusOK, http.MethodPut, itemPath+"/key", ownerToken, rotate(2, ownerID)); got["revision"] != float64(3) || got["encrypted_item_key"] != b64("new key") {
+		t.Fatalf("rotated item: %v", got)
+	}
+
+	// A member can leave; the trash hides the item from the others.
+	want(http.StatusCreated, http.MethodPost, itemPath+"/members", ownerToken, share)
+	want(http.StatusOK, http.MethodDelete, itemPath, ownerToken, nil)
+	want(http.StatusNotFound, http.MethodGet, itemPath, otherToken, nil)
+	if status, out := call(http.MethodGet, "/v1/items?trashed=true", ownerToken, nil); status != http.StatusOK || len(out["data"].([]any)) != 1 {
+		t.Fatalf("trash: %d %v", status, out)
+	}
+	want(http.StatusOK, http.MethodPut, itemPath+"/restore", ownerToken, nil)
+	want(http.StatusOK, http.MethodDelete, memberPath, otherToken, nil)
+	want(http.StatusOK, http.MethodDelete, itemPath+"/force", ownerToken, nil)
+	want(http.StatusNotFound, http.MethodGet, itemPath, ownerToken, nil)
+}

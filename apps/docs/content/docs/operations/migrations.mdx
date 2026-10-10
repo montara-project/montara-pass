@@ -1,0 +1,49 @@
+---
+title: Migrations
+description: Changing the database schema with the embedded migration CLI.
+---
+
+SQL migrations live in `apps/server/migrations` as numbered `up` and `down`
+files. They are embedded in the binaries, so a deployed image carries its own
+schema.
+
+## Commands
+
+```sh
+pnpm migrate:up                                              # apply what is pending
+pnpm --filter @montara-pass/server run migrate:up:seed       # up, then run the seeders
+pnpm --filter @montara-pass/server run migrate:create add_x  # new up/down pair
+pnpm --filter @montara-pass/server run migrate:version       # current version
+pnpm --filter @montara-pass/server run migrate:force 2       # after a failed migration
+pnpm migrate:down                                            # roll back everything
+pnpm --filter @montara-pass/server run migrate:refresh       # down, then up
+```
+
+The CLI reads `DB_DSN` from the environment or `apps/server/.env`, or takes
+`--db-dsn`.
+
+<Callout title="down and refresh delete all data" type="error">
+  `down` rolls back **every** migration, users included. Both commands refuse
+  a database that is not on localhost unless `--allow-remote` is passed.
+</Callout>
+
+## On boot
+
+With `MIGRATE_ON_BOOT=true` the API applies pending migrations before it
+starts serving. With `SEED_ON_BOOT=true` it also runs the seeders, which are
+idempotent: the categories, and the `SUPER_USER` account.
+
+## Existing migrations
+
+| Version | What it creates |
+| --- | --- |
+| `000001` | `categories` |
+| `000002` | `users`, mirroring `authula.users` |
+| `000003` | the `role` column on `users` |
+| `000004` | the vault: `user_keys`, `folders`, `items`, `item_members` |
+
+## Tests against a real database
+
+`apps/server/cmd/api` has an integration test that drives the API end to end.
+It is skipped unless `TEST_DB_DSN` points at a PostgreSQL 18 database it is
+allowed to wipe.

@@ -1,0 +1,48 @@
+---
+title: Docker
+description: Build and run the API, the web app and these docs as containers.
+---
+
+Each deployable app has its own Dockerfile. Releases publish the same images
+to GitHub Container Registry; see [Releases](/docs/operations/releases).
+
+## API
+
+The build context is `apps/server`. The image contains two binaries, `api`
+(the entrypoint) and `migrate`.
+
+```sh
+docker build -t montara-pass-server apps/server
+docker run --rm -p 8080:8080 --env-file apps/server/.env montara-pass-server
+```
+
+Run a migration with the same image:
+
+```sh
+docker run --rm --env-file apps/server/.env \
+  --entrypoint /usr/local/bin/migrate montara-pass-server up
+```
+
+## Web app
+
+The build context is the repository root, because the app installs from the
+workspace lockfile. The API origin is baked in at build time.
+
+```sh
+docker build -f apps/app/Dockerfile \
+  --build-arg NEXT_PUBLIC_API_URL=https://api.example.com \
+  -t montara-pass-app .
+docker run --rm -p 3000:3000 montara-pass-app
+```
+
+<Callout title="Rebuild to change the API origin" type="warn">
+  `NEXT_PUBLIC_API_URL` is not read when the container starts. An image built
+  without it calls `http://localhost:8080`.
+</Callout>
+
+## Docs
+
+```sh
+docker build -f apps/docs/Dockerfile -t montara-pass-docs .
+docker run --rm -p 3000:3000 montara-pass-docs
+```

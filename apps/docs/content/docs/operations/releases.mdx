@@ -1,0 +1,56 @@
+---
+title: Releases
+description: How a version is cut, tagged, built and deployed.
+---
+
+Versions follow [conventional commits](https://www.conventionalcommits.org).
+A release is cut from `main` by three GitHub workflows.
+
+## The flow
+
+1. **Release Prepare**, run manually on `main`. It bumps the version in every
+   `package.json`, writes `CHANGELOG.md` and opens a pull request titled
+   `chore: release vX.Y.Z`.
+2. **Release Publish**, when that pull request is merged. It tags the merge
+   commit, creates the GitHub release and starts the Release workflow.
+3. **Release**, which publishes the images and deploys the marketing site.
+
+`increment: auto` derives the bump from the commits since the last tag: a
+`feat` is a minor, a `fix` a patch, and a breaking change a major. Choose
+`patch`, `minor` or `major` to decide yourself.
+
+## What is published
+
+| Image | Built from |
+| --- | --- |
+| `ghcr.io/montara-project/montara-pass/app` | `apps/app/Dockerfile` |
+| `ghcr.io/montara-project/montara-pass/server` | `apps/server/Dockerfile` |
+| `ghcr.io/montara-project/montara-pass/docs` | `apps/docs/Dockerfile` |
+
+A tag `v1.2.3` publishes the tags `v1.2.3`, `v1.2` and `latest`. Every run
+also publishes `sha-<short commit>`. Images are built for `linux/amd64`.
+
+The same workflow deploys `apps/web` to Cloudflare Workers.
+
+## Settings the workflows need
+
+| Kind | Name | Used for |
+| --- | --- | --- |
+| Secret | `CLOUDFLARE_API_TOKEN` | Deploying the marketing site |
+| Secret | `CLOUDFLARE_ACCOUNT_ID` | Deploying the marketing site |
+| Variable | `NEXT_PUBLIC_API_URL` | The API origin baked into the app image |
+| Variable | `NEXT_PUBLIC_APP_NAME` | Optional; defaults to `Montara Pass` |
+
+## React Doctor
+
+A fourth workflow, **React Doctor**, comments on pull requests and scans
+`main`. It is advisory and never fails a check.
+
+## Running it by hand
+
+```sh
+pnpm release:prepare --dry-run     # shows the next version and the changelog
+```
+
+The **Release** workflow can also be started manually from the Actions tab. It
+then publishes the short commit SHA, plus any extra tag you type in.

@@ -20,13 +20,8 @@ function Svg({ children, ...props }: IconProps) {
 }
 
 export function LogoMark({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 32 32" aria-hidden="true" className={className}>
-      <rect width="32" height="32" rx="8" fill="#059669" />
-      <circle cx="16" cy="13" r="3.4" fill="#04150e" />
-      <path d="M16 14.5 13.8 22h4.4L16 14.5Z" fill="#04150e" />
-    </svg>
-  );
+  // Decorative: the wordmark next to it names the product.
+  return <img src="/static/logo-128.png" alt="" width={32} height={32} className={className} />;
 }
 
 export function ShieldCheckIcon(props: IconProps) {

@@ -2,57 +2,83 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
-	"os/signal"
-	"syscall"
+	"log/slog"
+	"os"
 	"time"
 
-	"github.com/gofiber/fiber/v3"
-	"github.com/gofiber/fiber/v3/middleware/logger"
-	"github.com/gofiber/fiber/v3/middleware/recover"
-	"github.com/jackc/pgx/v5/pgxpool"
-
-	"github.com/montara-projects/montara-pass/apps/server/internal/config"
-	"github.com/montara-projects/montara-pass/apps/server/internal/database"
+	"montara-pass/server/internal/app"
+	"montara-pass/server/internal/config"
+	"montara-pass/server/internal/repositories"
+	"montara-pass/server/internal/seeders"
 )
 
 func main() {
-	cfg, err := config.Load()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	db, err := database.Connect(ctx, cfg.DatabaseURL)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-
-	app := fiber.New(fiber.Config{AppName: "montara-pass"})
-	app.Use(recover.New())
-	app.Use(logger.New())
-
-	app.Get("/health", healthHandler(db))
-
-	if err := app.Listen(":"+cfg.Port, fiber.ListenConfig{
-		GracefulContext: ctx,
-		ShutdownTimeout: 10 * time.Second,
-	}); err != nil {
+	if err := run(); err != nil {
 		log.Fatal(err)
 	}
 }
 
-// healthHandler reports liveness plus database reachability.
-func healthHandler(db *pgxpool.Pool) fiber.Handler {
-	return func(c fiber.Ctx) error {
-		ctx, cancel := context.WithTimeout(c.Context(), 2*time.Second)
-		defer cancel()
-		if err := db.Ping(ctx); err != nil {
-			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"status": "error", "database": "down"})
-		}
-		return c.JSON(fiber.Map{"status": "ok", "database": "up"})
+func run() error {
+	var cfg config.Config
+	parseFlag(&cfg)
+
+	level := slog.LevelInfo
+	if cfg.App.Debug {
+		level = slog.LevelDebug
 	}
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
+	// The repositories log their queries through the default logger.
+	slog.SetDefault(logger)
+
+	if cfg.App.MigrateOnBoot {
+		if err := migrateUp(&cfg.DB, logger); err != nil {
+			return err
+		}
+	}
+
+	db, err := connectDB(&cfg.DB)
+	if err != nil {
+		return fmt.Errorf("connect database: %w", err)
+	}
+	defer db.Close()
+
+	repos := repositories.New(db)
+	mirror := mirrorUser(&repos.User)
+
+	// Creating the instance runs Authula's own migrations.
+	auth := newAuth(cfg, mirror, logger)
+	defer auth.CloseSystems()
+	defer auth.ClosePlugins()
+
+	// Repairs mirror rows a failed hook left missing or stale.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	err = repos.User.Reconcile(ctx)
+	cancel()
+	if err != nil {
+		return fmt.Errorf("reconcile users mirror: %w", err)
+	}
+
+	// Seeding follows Authula because the super user is created through it.
+	if cfg.App.SeedOnBoot {
+		superUser := seeders.SuperUserSeeder{
+			DB:       db,
+			Auth:     auth.CoreServices(),
+			Promote:  promoteSuperUser(&repos.User, mirror),
+			Email:    cfg.App.SuperUserEmail,
+			Password: cfg.App.SuperUserPassword,
+		}
+		if err := seedAll(db, superUser, logger); err != nil {
+			return err
+		}
+	}
+
+	return serve(&app.Application{
+		Config:       cfg,
+		Logger:       logger,
+		DB:           db,
+		Repositories: repos,
+		Auth:         auth,
+	})
 }

@@ -1,0 +1,66 @@
+---
+title: Installation
+description: Run the API, the database and the web app on your machine.
+---
+
+## Requirements
+
+- Node.js 22 or newer and pnpm 11
+- Go 1.27
+- PostgreSQL 18. The migrations call `uuidv7()`, which older versions do not have.
+- A [Resend](https://resend.com) API key, because sign-up sends a verification email
+
+## Install
+
+```sh
+pnpm install
+cp apps/server/.env.example apps/server/.env
+cp apps/app/.env.example apps/app/.env
+```
+
+Fill in `apps/server/.env` before the first start:
+
+- `APP_SECRET`: at least 32 characters, for example `openssl rand -base64 32`
+- `DB_DSN`: the connection string of your PostgreSQL 18 database
+- `RESEND_API_KEY` and `FROM_ADDRESS`: the sender of the sign-in emails
+
+[Configuration](/docs/getting-started/configuration) lists every setting.
+
+## Create the tables
+
+```sh
+pnpm migrate:up
+```
+
+With `MIGRATE_ON_BOOT=true` the API applies pending migrations when it starts,
+so this step is optional in development. Authula keeps its own tables in the
+`authula` schema and creates them on boot.
+
+## Start
+
+```sh
+pnpm dev:server     # the API on http://localhost:8080
+pnpm dev:app        # the vault web app on http://localhost:5173
+pnpm dev:web        # the marketing site on http://localhost:5174
+pnpm dev            # everything in parallel
+```
+
+`http://localhost:8080/health` answers `{"data":{"status":"ok"}}` when the API
+and its database are up.
+
+<Callout title="The web app's origin must be allowed" type="warn">
+  The web app calls the API from another origin, so its origin has to be in
+  `CORS_ALLOWED_ORIGINS`. The example file allows `http://localhost:5173` and
+  `http://localhost:5174`.
+</Callout>
+
+## First account
+
+Open `http://localhost:5173/sign-up`, create an account and confirm the email.
+The first visit to the vault asks for a **master password** of at least 12
+characters. It is separate from the sign-in password and cannot be recovered:
+nobody, the server included, can reset it.
+
+To get an administrator instead, set `SUPER_USER=email:password` and
+`SEED_ON_BOOT=true`. The API then creates that account with the `super_user`
+role on boot, which is the only role allowed to write categories.

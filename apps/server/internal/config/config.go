@@ -1,35 +1,58 @@
 package config
 
-import (
-	"errors"
-	"os"
+import "time"
 
-	"github.com/joho/godotenv"
+// Accepted App.Env values. Only EnvDevelopment enables development-only
+// behaviour: the loopback rate-limit exemption and session cookies without
+// Secure. The default is EnvProduction, so forgetting ENV fails safe.
+const (
+	EnvDevelopment = "development"
+	EnvStaging     = "staging"
+	EnvProduction  = "production"
 )
 
+// SessionCookieName is the cookie Authula issues on sign-in; the API's
+// authorization middleware reads the same cookie.
+const SessionCookieName = "authula.session_token"
+
 type Config struct {
-	Port        string
-	DatabaseURL string
+	App    ConfigApp
+	DB     ConfigDB
+	Auth   ConfigAuth
+	Sentry ConfigSentry
 }
 
-// Load reads configuration from the environment. A local .env file is
-// loaded if present; real environment variables take precedence.
-func Load() (Config, error) {
-	_ = godotenv.Load()
-
-	cfg := Config{
-		Port:        getenv("PORT", "8080"),
-		DatabaseURL: os.Getenv("DATABASE_URL"),
-	}
-	if cfg.DatabaseURL == "" {
-		return cfg, errors.New("DATABASE_URL is required")
-	}
-	return cfg, nil
+// ConfigAuth configures the embedded Authula server.
+type ConfigAuth struct {
+	BaseURL            string
+	EmailFrom          string
+	ResendAPIKey       string
+	GoogleClientID     string
+	GoogleClientSecret string
 }
 
-func getenv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
+type ConfigApp struct {
+	Env                string
+	Debug              bool
+	Port               int
+	Name               string
+	Secret             string
+	MigrateOnBoot      bool
+	SeedOnBoot         bool
+	SuperUserEmail     string
+	SuperUserPassword  string
+	CORSAllowedOrigins string
+	RateLimitExemptIPs string
+	TrustedProxies     string
+}
+
+type ConfigDB struct {
+	DSN          string
+	MaxOpenConns int
+	MaxIdleConns int
+	MaxIdleTime  time.Duration
+}
+
+type ConfigSentry struct {
+	Dsn string
 }

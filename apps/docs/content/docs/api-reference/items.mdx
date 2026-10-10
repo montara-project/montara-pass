@@ -1,0 +1,120 @@
+---
+title: Items
+description: Vault items, their content, their place in the vault and the trash.
+---
+
+All routes are protected. An item is returned as the caller sees it: the
+shared content, plus the caller's own role, wrapped item key, folder and
+favorite flag.
+
+```json
+{
+  "id": "…",
+  "owner_id": "…",
+  "type": "login",
+  "cipher_version": 1,
+  "encrypted_data": "base64",
+  "revision": 3,
+  "role": "owner",
+  "encrypted_item_key": "base64",
+  "folder_id": null,
+  "favorite": false,
+  "created_at": "…",
+  "updated_at": "…",
+  "deleted_at": null
+}
+```
+
+## List
+
+```http
+GET /v1/items?folder_id=&type=&trashed=&offset=&limit=
+```
+
+| Parameter | Meaning |
+| --- | --- |
+| `folder_id` | Only items the caller filed in this folder |
+| `type` | `login`, `secure_note`, `card` or `identity` |
+| `trashed` | `true` lists the trash instead of the vault |
+| `offset`, `limit` | See [pagination](/docs/api-reference#pagination) |
+
+There is no search and no sort: the server cannot read what it stores.
+
+## Get
+
+```http
+GET /v1/items/:id
+```
+
+## Create
+
+```http
+POST /v1/items
+```
+
+| Field | Rule |
+| --- | --- |
+| `type` | Required |
+| `encrypted_data` | Required, base64, up to 65536 bytes |
+| `encrypted_item_key` | Required, base64, up to 1024 bytes: the item key wrapped for the caller |
+| `folder_id` | Optional, one of the caller's folders |
+| `favorite` | Optional |
+| `cipher_version` | Optional, defaults to `1` |
+
+The caller becomes the owner. Answers `201` with the item.
+
+## Update the content
+
+```http
+PUT /v1/items/:id
+```
+
+```json
+{ "encrypted_data": "base64", "revision": 3 }
+```
+
+Allowed for the owner and editors; a viewer gets `403`. `revision` is the one
+the client read. If the item changed since, the answer is `409` with
+`item has changed, reload it and try again`. `type` and `cipher_version` may be
+sent too and keep their value when left out.
+
+## Set folder and favorite
+
+```http
+PUT /v1/items/:id/placement
+```
+
+```json
+{ "folder_id": "…", "favorite": true }
+```
+
+Any member may call it; it changes only the caller's own view. A null or
+missing `folder_id` unfiles the item.
+
+## Trash
+
+| Method and path | Purpose |
+| --- | --- |
+| `DELETE /v1/items/:id` | Move to the trash, hiding the item from every member |
+| `PUT /v1/items/:id/restore` | Bring it back |
+| `DELETE /v1/items/:id/force` | Delete permanently |
+
+Owner only.
+
+## Rotate the item key
+
+```http
+PUT /v1/items/:id/key
+```
+
+```json
+{
+  "encrypted_data": "base64",
+  "revision": 4,
+  "member_keys": [{ "user_id": "…", "encrypted_item_key": "base64" }]
+}
+```
+
+Owner only. `member_keys` must name every current member of the item and
+nobody else, 1 to 100 entries; otherwise the answer is `409`. See
+[revoking access](/docs/architecture/sharing#revoking-access).

@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS item_members;
+DROP TABLE IF EXISTS items;
+DROP TABLE IF EXISTS folders;
+DROP TABLE IF EXISTS user_keys;

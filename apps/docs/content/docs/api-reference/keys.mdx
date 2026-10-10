@@ -1,0 +1,79 @@
+---
+title: Keys
+description: The key set that makes a signed-in account into a vault.
+---
+
+All routes are protected. See [Encryption](/docs/architecture/encryption) for
+what each field holds.
+
+## Get the key set
+
+```http
+GET /v1/keys
+```
+
+Answers the caller's key set. `404` means the vault has not been set up yet;
+clients use it to decide between "create your vault" and "unlock".
+
+```json
+{
+  "data": {
+    "user_id": "…",
+    "kdf": "argon2id",
+    "kdf_salt": "base64",
+    "kdf_memory_kib": 65536,
+    "kdf_iterations": 3,
+    "kdf_parallelism": 1,
+    "encrypted_vault_key": "base64",
+    "public_key": "base64",
+    "encrypted_private_key": "base64",
+    "created_at": "…",
+    "updated_at": "…"
+  }
+}
+```
+
+## Create the key set
+
+```http
+POST /v1/keys
+```
+
+Sets up the vault, once. A second call answers `409`.
+
+| Field | Rule |
+| --- | --- |
+| `kdf_salt` | base64, up to 64 bytes |
+| `kdf_memory_kib` | 19456 to 4194304 |
+| `kdf_iterations` | 2 to 100 |
+| `kdf_parallelism` | 1 to 64 |
+| `encrypted_vault_key` | base64, up to 512 bytes |
+| `public_key` | base64, up to 1024 bytes |
+| `encrypted_private_key` | base64, up to 8192 bytes |
+
+Answers `201` with the stored key set.
+
+## Change the master password
+
+```http
+PUT /v1/keys
+```
+
+Takes the five `kdf_*` and `encrypted_vault_key` fields above. The key pair
+does not change, so everything already shared with the user stays readable.
+
+## Look up a public key
+
+```http
+GET /v1/keys/public?email=ada@example.com
+```
+
+Answers what is needed to share with that user:
+
+```json
+{
+  "data": { "user_id": "…", "name": "Ada", "email": "ada@example.com", "public_key": "base64" }
+}
+```
+
+`404` when there is no such user, or they have not set up a vault.

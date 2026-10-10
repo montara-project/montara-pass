@@ -82,7 +82,7 @@ export function VaultMockup() {
               <div className="flex-1 rounded-lg border border-line bg-card/60 px-3 py-2 text-xs text-mist">
                 Search 214 items…
               </div>
-              <span className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-[#04150e]">
+              <span className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-on-accent">
                 <SparklesIcon className="size-3.5" />
                 New item
               </span>
@@ -138,7 +138,7 @@ export function VaultMockup() {
         <span className="relative">
           <LockIcon className="size-5 text-accent-bright" />
           <span className="absolute -right-1 -top-1 flex size-3.5 items-center justify-center rounded-full bg-accent">
-            <CheckIcon className="size-2.5 text-[#04150e]" strokeWidth={3} />
+            <CheckIcon className="size-2.5 text-on-accent" strokeWidth={3} />
           </span>
         </span>
         <div className="text-xs">
