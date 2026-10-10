@@ -1,14 +1,6 @@
-// Command migrate applies the embedded SQL migrations using golang-migrate.
-//
-//	go run ./cmd/migrate up          # apply all pending migrations
-//	go run ./cmd/migrate down [N]    # roll back N migrations (default 1)
-//	go run ./cmd/migrate version     # print current version
-//	go run ./cmd/migrate force V     # set version V without running migrations (fix dirty state)
-//	go run ./cmd/migrate create NAME # create a new up/down migration pair in ./migrations
 package main
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -18,110 +10,97 @@ import (
 	"strconv"
 
 	"github.com/golang-migrate/migrate/v4"
-	pgxmigrate "github.com/golang-migrate/migrate/v4/database/pgx/v5"
-	"github.com/golang-migrate/migrate/v4/source/iofs"
-	_ "github.com/jackc/pgx/v5/stdlib"
 
-	"github.com/montara-projects/montara-pass/apps/server/internal/config"
-	"github.com/montara-projects/montara-pass/apps/server/migrations"
+	"github.com/montara-projects/montara-pass/apps/server/internal/lib"
+	"github.com/montara-projects/montara-pass/apps/server/internal/seeders"
 )
 
-const usage = "usage: migrate <up|down [N]|version|force V|create NAME>"
-
 func main() {
-	log.SetFlags(0)
-	if len(os.Args) < 2 {
-		log.Fatal(usage)
-	}
-	cmd, args := os.Args[1], os.Args[2:]
+	var cfg config
+	parseFlag(&cfg)
 
-	// create only touches the filesystem; no database needed.
-	if cmd == "create" {
-		if len(args) != 1 {
-			log.Fatal("usage: migrate create NAME")
-		}
-		if err := create("migrations", args[0]); err != nil {
+	if cfg.mode == modeCreate {
+		if err := create("migrations", cfg.name); err != nil {
 			log.Fatal(err)
 		}
 		return
 	}
 
-	cfg, err := config.Load()
+	// The migrator owns and closes this connection.
+	migrateDB, err := lib.OpenDB(cfg.dbDSN)
 	if err != nil {
 		log.Fatal(err)
-	}
-	m, closeFn, err := newMigrator(cfg.DatabaseURL)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer closeFn()
-
-	switch cmd {
-	case "up":
-		err = m.Up()
-	case "down":
-		n := 1
-		if len(args) > 0 {
-			if n, err = strconv.Atoi(args[0]); err != nil || n < 1 {
-				log.Fatal("down: N must be a positive integer")
-			}
-		}
-		err = m.Steps(-n)
-	case "version":
-		v, dirty, verr := m.Version()
-		if errors.Is(verr, migrate.ErrNilVersion) {
-			fmt.Println("no migrations applied")
-			return
-		}
-		if verr != nil {
-			log.Fatal(verr)
-		}
-		fmt.Printf("version %d (dirty: %t)\n", v, dirty)
-		return
-	case "force":
-		if len(args) != 1 {
-			log.Fatal("usage: migrate force V")
-		}
-		v, perr := strconv.Atoi(args[0])
-		if perr != nil {
-			log.Fatal("force: V must be an integer")
-		}
-		err = m.Force(v)
-	default:
-		log.Fatal(usage)
 	}
 
-	if errors.Is(err, migrate.ErrNoChange) {
-		fmt.Println("no change")
-		return
-	}
+	m, err := lib.NewMigrator(migrateDB)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(cmd, "ok")
+	defer m.Close()
+
+	switch cfg.mode {
+	case modeUp:
+		migrateUp(m)
+	case modeDown:
+		migrateDown(m)
+	case modeRefresh:
+		migrateDown(m)
+		migrateUp(m)
+	case modeForce:
+		forceVersion(m, cfg.version)
+	case modeVersion:
+		printVersion(m)
+		return
+	}
+
+	if cfg.seed {
+		seedDB, err := lib.OpenDB(cfg.dbDSN)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer seedDB.Close()
+
+		// The super user is seeded by the API on boot: it needs Authula.
+		execSeeders(seeders.All(seedDB)...)
+	}
+
+	fmt.Println("Completed")
 }
 
-func newMigrator(databaseURL string) (*migrate.Migrate, func(), error) {
-	db, err := sql.Open("pgx", databaseURL)
-	if err != nil {
-		return nil, nil, err
+func migrateUp(m *migrate.Migrate) {
+	fmt.Println("Running up migrations...")
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		log.Fatalf("failed to run up migrations: %v", err)
 	}
-	driver, err := pgxmigrate.WithInstance(db, &pgxmigrate.Config{})
-	if err != nil {
-		db.Close()
-		return nil, nil, err
+}
+
+func migrateDown(m *migrate.Migrate) {
+	fmt.Println("Running down migrations...")
+	if err := m.Down(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		log.Fatalf("failed to run down migrations: %v", err)
 	}
-	src, err := iofs.New(migrations.FS, ".")
-	if err != nil {
-		db.Close()
-		return nil, nil, err
+}
+
+// forceVersion clears a dirty schema_migrations row. A failed migration leaves
+// the version marked dirty and every later run refuses to start, so the flag
+// has to be reset by hand once the schema is known to be at that version.
+func forceVersion(m *migrate.Migrate, version int) {
+	fmt.Printf("Forcing schema version to %d...\n", version)
+	if err := m.Force(version); err != nil {
+		log.Fatalf("failed to force schema version: %v", err)
 	}
-	m, err := migrate.NewWithInstance("iofs", src, "pgx5", driver)
-	if err != nil {
-		db.Close()
-		return nil, nil, err
+}
+
+func printVersion(m *migrate.Migrate) {
+	version, dirty, err := m.Version()
+	if errors.Is(err, migrate.ErrNilVersion) {
+		fmt.Println("no migrations applied")
+		return
 	}
-	return m, func() { m.Close() }, nil
+	if err != nil {
+		log.Fatalf("failed to read schema version: %v", err)
+	}
+	fmt.Printf("version %d (dirty: %t)\n", version, dirty)
 }
 
 var (
@@ -131,9 +110,6 @@ var (
 
 // create writes the next sequential NNNNNN_name.{up,down}.sql pair.
 func create(dir, name string) error {
-	if !validName.MatchString(name) {
-		return errors.New("create: NAME must match [a-z0-9_]+")
-	}
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return err
@@ -146,8 +122,8 @@ func create(dir, name string) error {
 			}
 		}
 	}
-	for _, dirn := range []string{"up", "down"} {
-		p := filepath.Join(dir, fmt.Sprintf("%06d_%s.%s.sql", next, name, dirn))
+	for _, direction := range []string{"up", "down"} {
+		p := filepath.Join(dir, fmt.Sprintf("%06d_%s.%s.sql", next, name, direction))
 		f, err := os.OpenFile(p, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 		if err != nil {
 			return err
@@ -156,4 +132,13 @@ func create(dir, name string) error {
 		fmt.Println("created", p)
 	}
 	return nil
+}
+
+func execSeeders(seeders ...seeders.Seeder) {
+	for _, seeder := range seeders {
+		fmt.Printf("Running %s seeder...\n", seeder.Name())
+		if err := seeder.Seed(); err != nil {
+			log.Fatalf("%s seeder failed: %v", seeder.Name(), err)
+		}
+	}
 }
