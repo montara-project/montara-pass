@@ -3,7 +3,7 @@ package seeders
 import (
 	"context"
 	"database/sql"
-	"github.com/montara-projects/montara-pass/apps/server/internal/lib"
+	"montara-pass/server/internal/lib"
 	"time"
 )
 

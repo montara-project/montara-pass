@@ -6,7 +6,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 
-	"github.com/montara-projects/montara-pass/apps/server/internal/lib/apperr"
+	"montara-pass/server/internal/lib/apperr"
 )
 
 // crossOrigin reports whether a browser sent a state-changing request from an

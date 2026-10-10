@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/montara-projects/montara-pass/apps/server/internal/lib/apperr"
-	"github.com/montara-projects/montara-pass/apps/server/internal/lib/validator"
+	"montara-pass/server/internal/lib/apperr"
+	"montara-pass/server/internal/lib/validator"
 
 	"github.com/gofiber/fiber/v3"
 )

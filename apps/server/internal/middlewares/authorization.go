@@ -10,10 +10,10 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
-	"github.com/montara-projects/montara-pass/apps/server/internal/config"
-	"github.com/montara-projects/montara-pass/apps/server/internal/lib"
-	"github.com/montara-projects/montara-pass/apps/server/internal/lib/apperr"
-	"github.com/montara-projects/montara-pass/apps/server/internal/lib/constant"
+	"montara-pass/server/internal/config"
+	"montara-pass/server/internal/lib"
+	"montara-pass/server/internal/lib/apperr"
+	"montara-pass/server/internal/lib/constant"
 )
 
 // bearerToken returns the token of an "Authorization: Bearer <token>" header,

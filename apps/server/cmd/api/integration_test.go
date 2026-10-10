@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -15,12 +16,12 @@ import (
 	authulamodels "github.com/Authula/authula/models"
 	"github.com/gofiber/fiber/v3"
 
-	"github.com/montara-projects/montara-pass/apps/server/internal/app"
-	"github.com/montara-projects/montara-pass/apps/server/internal/config"
-	"github.com/montara-projects/montara-pass/apps/server/internal/lib"
-	"github.com/montara-projects/montara-pass/apps/server/internal/lib/constant"
-	"github.com/montara-projects/montara-pass/apps/server/internal/repositories"
-	"github.com/montara-projects/montara-pass/apps/server/internal/seeders"
+	"montara-pass/server/internal/app"
+	"montara-pass/server/internal/config"
+	"montara-pass/server/internal/lib"
+	"montara-pass/server/internal/lib/constant"
+	"montara-pass/server/internal/repositories"
+	"montara-pass/server/internal/seeders"
 )
 
 // TestIntegration runs the boot sequence and the auth flow against a real
@@ -266,6 +267,8 @@ func TestIntegration(t *testing.T) {
 		t.Fatalf("list: %d %v", status, out)
 	}
 
+	vaultFlow(t, call, superToken, userToken, userEmail, user.ID)
+
 	// A browser request from another site is refused before it is authenticated.
 	if status, _ := call(http.MethodPost, "/v1/categories", superToken, category, "Sec-Fetch-Site", "cross-site", "Origin", "https://evil.example"); status != http.StatusForbidden {
 		t.Fatalf("cross-site create: %d, want 403", status)
@@ -278,4 +281,147 @@ func TestIntegration(t *testing.T) {
 	if status, _ := call(http.MethodPost, "/v1/categories", superToken, category); status != http.StatusUnauthorized {
 		t.Fatalf("create after sign out: %d, want 401", status)
 	}
+}
+
+// vaultFlow exercises the end-to-end encrypted vault as two users: an owner
+// and the user an item is shared with. The server never reads the payloads,
+// so any bytes stand in for ciphertext.
+func vaultFlow(
+	t *testing.T,
+	call func(method, path, token string, body any, headers ...string) (int, map[string]any),
+	ownerToken, otherToken, otherEmail, otherID string,
+) {
+	t.Helper()
+
+	b64 := func(s string) string { return base64.StdEncoding.EncodeToString([]byte(s)) }
+	// want sends a request, checks the status and returns the "data" object.
+	want := func(wantStatus int, method, path, token string, body any) map[string]any {
+		t.Helper()
+		status, out := call(method, path, token, body)
+		if status != wantStatus {
+			t.Fatalf("%s %s: %d, want %d (%v)", method, path, status, wantStatus, out)
+		}
+		data, _ := out["data"].(map[string]any)
+		return data
+	}
+
+	keys := map[string]any{
+		"kdf_salt":              b64("0123456789abcdef"),
+		"kdf_memory_kib":        19456,
+		"kdf_iterations":        2,
+		"kdf_parallelism":       1,
+		"encrypted_vault_key":   b64("vault-key"),
+		"public_key":            b64("public-key"),
+		"encrypted_private_key": b64("private-key"),
+	}
+	want(http.StatusNotFound, http.MethodGet, "/v1/keys", ownerToken, nil)
+	want(http.StatusUnauthorized, http.MethodGet, "/v1/keys", "", nil)
+	want(http.StatusUnprocessableEntity, http.MethodPost, "/v1/keys", ownerToken, map[string]any{"kdf_salt": "***"})
+
+	item := map[string]any{"type": "login", "encrypted_data": b64("secret v1"), "encrypted_item_key": b64("key for owner")}
+	itemID := want(http.StatusCreated, http.MethodPost, "/v1/items", ownerToken, item)["id"].(string)
+	itemPath := "/v1/items/" + itemID
+	memberPath := itemPath + "/members/" + otherID
+	share := map[string]any{"user_id": otherID, "role": "viewer", "encrypted_item_key": b64("key for other")}
+
+	// Sharing needs the recipient's public key, so they must have a vault.
+	want(http.StatusNotFound, http.MethodPost, itemPath+"/members", ownerToken, share)
+	want(http.StatusNotFound, http.MethodGet, "/v1/keys/public?email="+otherEmail, ownerToken, nil)
+	want(http.StatusCreated, http.MethodPost, "/v1/keys", ownerToken, keys)
+	want(http.StatusConflict, http.MethodPost, "/v1/keys", ownerToken, keys)
+	want(http.StatusCreated, http.MethodPost, "/v1/keys", otherToken, keys)
+	if got := want(http.StatusOK, http.MethodGet, "/v1/keys/public?email="+otherEmail, ownerToken, nil); got["user_id"] != otherID || got["public_key"] != b64("public-key") {
+		t.Fatalf("public key lookup: %v", got)
+	}
+	rewrapped := map[string]any{
+		"kdf_salt": b64("fedcba9876543210"), "kdf_memory_kib": 65536, "kdf_iterations": 3, "kdf_parallelism": 4,
+		"encrypted_vault_key": b64("vault-key-2"),
+	}
+	if got := want(http.StatusOK, http.MethodPut, "/v1/keys", ownerToken, rewrapped); got["encrypted_vault_key"] != b64("vault-key-2") || got["public_key"] != b64("public-key") {
+		t.Fatalf("keys after a master password change: %v", got)
+	}
+
+	ownerFolder := want(http.StatusCreated, http.MethodPost, "/v1/folders", ownerToken, map[string]any{"encrypted_name": b64("work")})["id"].(string)
+	otherFolder := want(http.StatusCreated, http.MethodPost, "/v1/folders", otherToken, map[string]any{"encrypted_name": b64("shared")})["id"].(string)
+	want(http.StatusNotFound, http.MethodPut, "/v1/folders/"+ownerFolder, otherToken, map[string]any{"encrypted_name": b64("mine now")})
+
+	// An item cannot be created in, or moved to, someone else's folder.
+	inForeign := map[string]any{"type": "login", "encrypted_data": b64("x"), "encrypted_item_key": b64("k"), "folder_id": ownerFolder}
+	want(http.StatusNotFound, http.MethodPost, "/v1/items", otherToken, inForeign)
+	if got := want(http.StatusOK, http.MethodPut, itemPath+"/placement", ownerToken, map[string]any{"folder_id": ownerFolder, "favorite": true}); got["folder_id"] != ownerFolder || got["favorite"] != true || got["role"] != "owner" {
+		t.Fatalf("owner placement: %v", got)
+	}
+
+	// Not shared yet: the item does not exist for the other user.
+	want(http.StatusNotFound, http.MethodGet, itemPath, otherToken, nil)
+	want(http.StatusCreated, http.MethodPost, itemPath+"/members", ownerToken, share)
+	want(http.StatusConflict, http.MethodPost, itemPath+"/members", ownerToken, share)
+	want(http.StatusForbidden, http.MethodPost, itemPath+"/members", otherToken, share)
+
+	shared := want(http.StatusOK, http.MethodGet, itemPath, otherToken, nil)
+	if shared["role"] != "viewer" || shared["encrypted_item_key"] != b64("key for other") || shared["folder_id"] != nil || shared["favorite"] != false {
+		t.Fatalf("shared item as the recipient sees it: %v", shared)
+	}
+	if status, out := call(http.MethodGet, "/v1/items", otherToken, nil); status != http.StatusOK || len(out["data"].([]any)) != 1 {
+		t.Fatalf("recipient's list: %d %v", status, out)
+	}
+	if status, out := call(http.MethodGet, itemPath+"/members", otherToken, nil); status != http.StatusOK || len(out["data"].([]any)) != 2 {
+		t.Fatalf("members: %d %v", status, out)
+	}
+
+	// Each member files the item in their own folders.
+	want(http.StatusNotFound, http.MethodPut, itemPath+"/placement", otherToken, map[string]any{"folder_id": ownerFolder})
+	want(http.StatusOK, http.MethodPut, itemPath+"/placement", otherToken, map[string]any{"folder_id": otherFolder})
+	if status, out := call(http.MethodGet, "/v1/items?folder_id="+otherFolder, otherToken, nil); status != http.StatusOK || len(out["data"].([]any)) != 1 {
+		t.Fatalf("recipient's folder: %d %v", status, out)
+	}
+	if got := want(http.StatusOK, http.MethodGet, itemPath, ownerToken, nil); got["folder_id"] != ownerFolder {
+		t.Fatalf("owner's filing moved with the recipient's: %v", got)
+	}
+
+	// A viewer reads, an editor writes, and a stale revision is refused.
+	edit := map[string]any{"encrypted_data": b64("secret v2"), "revision": 1}
+	want(http.StatusForbidden, http.MethodPut, itemPath, otherToken, edit)
+	want(http.StatusOK, http.MethodPut, memberPath, ownerToken, map[string]any{"role": "editor"})
+	if got := want(http.StatusOK, http.MethodPut, itemPath, otherToken, edit); got["revision"] != float64(2) || got["encrypted_data"] != b64("secret v2") || got["type"] != "login" {
+		t.Fatalf("edit by an editor: %v", got)
+	}
+	want(http.StatusConflict, http.MethodPut, itemPath, ownerToken, edit)
+	want(http.StatusForbidden, http.MethodDelete, itemPath, otherToken, nil)
+
+	// Deleting a folder unfiles its items.
+	want(http.StatusOK, http.MethodDelete, "/v1/folders/"+ownerFolder, ownerToken, nil)
+	if got := want(http.StatusOK, http.MethodGet, itemPath, ownerToken, nil); got["folder_id"] != nil {
+		t.Fatalf("item still filed in a deleted folder: %v", got)
+	}
+
+	// Revoking, then rotating the key for the members that are left.
+	rotate := func(revision int, members ...string) map[string]any {
+		memberKeys := []map[string]any{}
+		for _, id := range members {
+			memberKeys = append(memberKeys, map[string]any{"user_id": id, "encrypted_item_key": b64("new key")})
+		}
+		return map[string]any{"encrypted_data": b64("secret v3"), "revision": revision, "member_keys": memberKeys}
+	}
+	ownerID := shared["owner_id"].(string)
+	want(http.StatusBadRequest, http.MethodDelete, itemPath+"/members/"+ownerID, ownerToken, nil)
+	want(http.StatusConflict, http.MethodPut, itemPath+"/key", ownerToken, rotate(2, ownerID))
+	want(http.StatusOK, http.MethodDelete, memberPath, ownerToken, nil)
+	want(http.StatusNotFound, http.MethodGet, itemPath, otherToken, nil)
+	want(http.StatusConflict, http.MethodPut, itemPath+"/key", ownerToken, rotate(2, ownerID, otherID))
+	if got := want(http.StatusOK, http.MethodPut, itemPath+"/key", ownerToken, rotate(2, ownerID)); got["revision"] != float64(3) || got["encrypted_item_key"] != b64("new key") {
+		t.Fatalf("rotated item: %v", got)
+	}
+
+	// A member can leave; the trash hides the item from the others.
+	want(http.StatusCreated, http.MethodPost, itemPath+"/members", ownerToken, share)
+	want(http.StatusOK, http.MethodDelete, itemPath, ownerToken, nil)
+	want(http.StatusNotFound, http.MethodGet, itemPath, otherToken, nil)
+	if status, out := call(http.MethodGet, "/v1/items?trashed=true", ownerToken, nil); status != http.StatusOK || len(out["data"].([]any)) != 1 {
+		t.Fatalf("trash: %d %v", status, out)
+	}
+	want(http.StatusOK, http.MethodPut, itemPath+"/restore", ownerToken, nil)
+	want(http.StatusOK, http.MethodDelete, memberPath, otherToken, nil)
+	want(http.StatusOK, http.MethodDelete, itemPath+"/force", ownerToken, nil)
+	want(http.StatusNotFound, http.MethodGet, itemPath, ownerToken, nil)
 }

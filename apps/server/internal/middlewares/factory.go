@@ -1,6 +1,6 @@
 package middlewares
 
-import "github.com/montara-projects/montara-pass/apps/server/internal/app"
+import "montara-pass/server/internal/app"
 
 type Middlewares struct {
 	app *app.Application

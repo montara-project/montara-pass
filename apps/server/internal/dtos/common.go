@@ -1,6 +1,6 @@
 package dtos
 
-import "github.com/montara-projects/montara-pass/apps/server/internal/lib/validator"
+import "montara-pass/server/internal/lib/validator"
 
 // ListQuery is the shared pagination binding for list endpoints.
 // Offset starts at 0; limit is clamped to 100. Sorted is a

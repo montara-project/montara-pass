@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/montara-projects/montara-pass/apps/server/internal/lib/apperr"
+	"montara-pass/server/internal/lib/apperr"
 
 	"github.com/jackc/pgx/v5/pgconn"
 )
@@ -21,15 +21,23 @@ func translateNotFound(table string, err error) error {
 	return err
 }
 
-// pgForeignKeyViolation is the Postgres SQLSTATE for a foreign-key violation.
-const pgForeignKeyViolation = "23503"
+// Postgres SQLSTATEs the repositories translate.
+const (
+	pgForeignKeyViolation = "23503"
+	pgUniqueViolation     = "23505"
+)
+
+// hasPgCode reports whether err is a Postgres error with the given SQLSTATE.
+func hasPgCode(err error, code string) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == code
+}
 
 // translateForeignKey maps a foreign-key violation onto a typed 409, so a
 // permanent delete blocked by referencing rows reads as a conflict rather than
 // a server error; any other error passes through unchanged.
 func translateForeignKey(err error, message string) error {
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == pgForeignKeyViolation {
+	if hasPgCode(err, pgForeignKeyViolation) {
 		return apperr.New(apperr.KindConflict, "%s", message)
 	}
 	return err

@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/montara-projects/montara-pass/apps/server/internal/lib/constant"
+	"montara-pass/server/internal/lib/constant"
 )
 
 type CategorySeeder struct {

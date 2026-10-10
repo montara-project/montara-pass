@@ -20,6 +20,19 @@ func TestRules(t *testing.T) {
 		{"maxlen absent passes", func(fv *FieldValidator) { fv.MaxLen(3) }, nil, true},
 		{"regex ok", func(fv *FieldValidator) { fv.Regex(`^\d+$`) }, "42", true},
 		{"regex bad", func(fv *FieldValidator) { fv.Regex(`^\d+$`) }, "x", false},
+		{"int ok", func(fv *FieldValidator) { fv.Int(1, 10) }, float64(3), true},
+		{"int absent passes", func(fv *FieldValidator) { fv.Int(1, 10) }, nil, true},
+		{"int fraction fails", func(fv *FieldValidator) { fv.Int(1, 10) }, 1.5, false},
+		{"int out of range fails", func(fv *FieldValidator) { fv.Int(1, 10) }, float64(11), false},
+		{"int rejects string", func(fv *FieldValidator) { fv.Int(1, 10) }, "3", false},
+		{"bool ok", func(fv *FieldValidator) { fv.Bool() }, true, true},
+		{"bool rejects string", func(fv *FieldValidator) { fv.Bool() }, "true", false},
+		{"uuid ok", func(fv *FieldValidator) { fv.UUID() }, "01a1247c-269d-7096-b1e2-649ed0395555", true},
+		{"uuid bad", func(fv *FieldValidator) { fv.UUID() }, "nope", false},
+		{"base64 ok", func(fv *FieldValidator) { fv.Base64(3) }, "YWJj", true},
+		{"base64 absent passes", func(fv *FieldValidator) { fv.Base64(3) }, nil, true},
+		{"base64 too long fails", func(fv *FieldValidator) { fv.Base64(2) }, "YWJj", false},
+		{"base64 malformed fails", func(fv *FieldValidator) { fv.Base64(3) }, "***", false},
 	}
 
 	for _, tc := range cases {

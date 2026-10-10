@@ -1,4 +1,4 @@
-module github.com/montara-projects/montara-pass/apps/server
+module montara-pass/server
 
 go 1.27.1
 

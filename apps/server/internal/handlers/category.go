@@ -4,11 +4,11 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
-	"github.com/montara-projects/montara-pass/apps/server/internal/app"
-	"github.com/montara-projects/montara-pass/apps/server/internal/dtos"
-	"github.com/montara-projects/montara-pass/apps/server/internal/lib"
-	"github.com/montara-projects/montara-pass/apps/server/internal/models"
-	"github.com/montara-projects/montara-pass/apps/server/internal/repositories"
+	"montara-pass/server/internal/app"
+	"montara-pass/server/internal/dtos"
+	"montara-pass/server/internal/lib"
+	"montara-pass/server/internal/models"
+	"montara-pass/server/internal/repositories"
 )
 
 type categoryHandler struct {

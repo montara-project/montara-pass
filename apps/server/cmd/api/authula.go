@@ -31,10 +31,10 @@ import (
 	oauth2plugintypes "github.com/Authula/authula/plugins/oauth2/types"
 	sessionplugin "github.com/Authula/authula/plugins/session"
 
-	"github.com/montara-projects/montara-pass/apps/server/internal/config"
-	"github.com/montara-projects/montara-pass/apps/server/internal/lib/constant"
-	"github.com/montara-projects/montara-pass/apps/server/internal/models"
-	"github.com/montara-projects/montara-pass/apps/server/internal/repositories"
+	"montara-pass/server/internal/config"
+	"montara-pass/server/internal/lib/constant"
+	"montara-pass/server/internal/models"
+	"montara-pass/server/internal/repositories"
 )
 
 // authBasePath is where the Authula handler is mounted on the Fiber app;

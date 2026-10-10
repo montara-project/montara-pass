@@ -20,8 +20,8 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
 
-	"github.com/montara-projects/montara-pass/apps/server/internal/app"
-	"github.com/montara-projects/montara-pass/apps/server/internal/middlewares"
+	"montara-pass/server/internal/app"
+	"montara-pass/server/internal/middlewares"
 )
 
 // serve runs the HTTP server until SIGINT/SIGTERM, then drains in-flight

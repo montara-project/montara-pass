@@ -61,6 +61,25 @@ Every setting is an environment variable, or the flag of the same name
   `public.users` mirrors `authula.users` and adds the application `role`.
 - `SEED_ON_BOOT=true` creates the `SUPER_USER` account with the `super_user`
   role. Only that role may write `/v1/categories`; everyone can read them.
+### Vault
+
+The password vault is end-to-end encrypted: clients encrypt everything and the
+server stores ciphertext and wrapped keys only (base64 in JSON), so it cannot
+search or sort by content. All routes need a signed-in user.
+
+| Route | Purpose |
+|---|---|
+| `GET/POST/PUT /v1/keys` | The caller's key set; `PUT` re-wraps the vault key after a master password change |
+| `GET /v1/keys/public?email=` | Public key of the user to share with |
+| `/v1/folders` | The caller's own folders (encrypted names) |
+| `/v1/items` | Items; `?folder_id=`, `?type=`, `?trashed=true` |
+| `PUT /v1/items/:id/placement` | The caller's own folder and favorite flag for an item |
+| `/v1/items/:id/members` | Share with a user (`editor` or `viewer`), change a role, revoke or leave |
+| `PUT /v1/items/:id/key` | Re-encrypt under a new item key after revoking a member |
+
+The master password is separate from the sign-in password and never reaches
+the server. An item update names the `revision` it read; a stale one answers 409.
+
 - `apps/server/cmd/api` has an integration test, skipped unless `TEST_DB_DSN`
   points at a PostgreSQL 18 database it may wipe.
 

@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/montara-projects/montara-pass/apps/server/internal/seeders"
+	"montara-pass/server/internal/seeders"
 )
 
 func TestAuthDSN(t *testing.T) {

@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/montara-projects/montara-pass/apps/server/internal/lib/apperr"
+	"montara-pass/server/internal/lib/apperr"
 )
 
 // rowScanner is the scan surface shared by *sql.Row and *sql.Rows, so a single

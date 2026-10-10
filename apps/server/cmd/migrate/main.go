@@ -11,8 +11,8 @@ import (
 
 	"github.com/golang-migrate/migrate/v4"
 
-	"github.com/montara-projects/montara-pass/apps/server/internal/lib"
-	"github.com/montara-projects/montara-pass/apps/server/internal/seeders"
+	"montara-pass/server/internal/lib"
+	"montara-pass/server/internal/seeders"
 )
 
 func main() {

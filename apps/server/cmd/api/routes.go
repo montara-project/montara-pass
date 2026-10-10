@@ -4,10 +4,10 @@ import (
 	fiberadapter "github.com/Authula/authula/adapters/fiber"
 	"github.com/gofiber/fiber/v3"
 
-	"github.com/montara-projects/montara-pass/apps/server/internal/app"
-	"github.com/montara-projects/montara-pass/apps/server/internal/config"
-	"github.com/montara-projects/montara-pass/apps/server/internal/handlers"
-	"github.com/montara-projects/montara-pass/apps/server/internal/middlewares"
+	"montara-pass/server/internal/app"
+	"montara-pass/server/internal/config"
+	"montara-pass/server/internal/handlers"
+	"montara-pass/server/internal/middlewares"
 )
 
 // Per-IP request budgets per minute: tight on the auth routes, loose on the
@@ -52,4 +52,33 @@ func routes(r *fiber.App, app *app.Application) {
 	categories.Delete("/:id", m.Authorization, m.SuperUser, h.Category.Delete)
 	categories.Put("/:id/restore", m.Authorization, m.SuperUser, h.Category.Restore)
 	categories.Delete("/:id/force", m.Authorization, m.SuperUser, h.Category.DeletePermanently)
+
+	// The end-to-end encrypted vault: everything below needs a signed-in
+	// user, and every payload is ciphertext the server cannot read.
+	keys := v1.Group("/keys", m.Authorization)
+	keys.Get("/", h.Key.Get)
+	keys.Post("/", h.Key.Create)
+	keys.Put("/", h.Key.UpdateKDF)
+	keys.Get("/public", h.Key.PublicKey)
+
+	folders := v1.Group("/folders", m.Authorization)
+	folders.Get("/", h.Folder.List)
+	folders.Post("/", h.Folder.Create)
+	folders.Put("/:id", h.Folder.Update)
+	folders.Delete("/:id", h.Folder.Delete)
+
+	items := v1.Group("/items", m.Authorization)
+	items.Get("/", h.Item.List)
+	items.Post("/", h.Item.Create)
+	items.Get("/:id", h.Item.Get)
+	items.Put("/:id", h.Item.Update)
+	items.Delete("/:id", h.Item.Delete)
+	items.Put("/:id/restore", h.Item.Restore)
+	items.Delete("/:id/force", h.Item.DeletePermanently)
+	items.Put("/:id/placement", h.Item.SetPlacement)
+	items.Put("/:id/key", h.Item.RotateKey)
+	items.Get("/:id/members", h.Item.Members)
+	items.Post("/:id/members", h.Item.Share)
+	items.Put("/:id/members/:userId", h.Item.SetMemberRole)
+	items.Delete("/:id/members/:userId", h.Item.RemoveMember)
 }

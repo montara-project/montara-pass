@@ -15,8 +15,8 @@ import (
 	authulaenv "github.com/Authula/authula/env"
 	"github.com/joho/godotenv"
 
-	"github.com/montara-projects/montara-pass/apps/server/internal/config"
-	"github.com/montara-projects/montara-pass/apps/server/internal/seeders"
+	"montara-pass/server/internal/config"
+	"montara-pass/server/internal/seeders"
 )
 
 // Every flag defaults to its environment variable, so `pnpm dev` (which loads

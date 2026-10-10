@@ -6,8 +6,8 @@ import (
 
 	authula "github.com/Authula/authula"
 
-	"github.com/montara-projects/montara-pass/apps/server/internal/config"
-	"github.com/montara-projects/montara-pass/apps/server/internal/repositories"
+	"montara-pass/server/internal/config"
+	"montara-pass/server/internal/repositories"
 )
 
 type Application struct {

@@ -1,6 +1,6 @@
 package dtos
 
-import "github.com/montara-projects/montara-pass/apps/server/internal/lib/validator"
+import "montara-pass/server/internal/lib/validator"
 
 // maxNameLen bounds a category name; the column itself is unbounded.
 const maxNameLen = 100

@@ -4,7 +4,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/montara-projects/montara-pass/apps/server/internal/lib/apperr"
+	"montara-pass/server/internal/lib/apperr"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/limiter"

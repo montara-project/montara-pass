@@ -6,10 +6,10 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
-	"github.com/montara-projects/montara-pass/apps/server/internal/dtos"
-	"github.com/montara-projects/montara-pass/apps/server/internal/lib"
-	"github.com/montara-projects/montara-pass/apps/server/internal/lib/apperr"
-	"github.com/montara-projects/montara-pass/apps/server/internal/repositories"
+	"montara-pass/server/internal/dtos"
+	"montara-pass/server/internal/lib"
+	"montara-pass/server/internal/lib/apperr"
+	"montara-pass/server/internal/repositories"
 )
 
 // pathID parses the :id path parameter, naming the resource in the error so a
@@ -38,4 +38,14 @@ func mutateByID(c fiber.Ctx, resource string, fn func(context.Context, uuid.UUID
 		return err
 	}
 	return dtos.Message(c, fiber.StatusOK, message)
+}
+
+// currentUser returns the signed-in user's id, set by the Authorization
+// middleware.
+func currentUser(c fiber.Ctx) (uuid.UUID, error) {
+	uid, err := lib.ContextGetUID(c)
+	if err != nil {
+		return uuid.Nil, apperr.ErrUnauthorized
+	}
+	return uid, nil
 }

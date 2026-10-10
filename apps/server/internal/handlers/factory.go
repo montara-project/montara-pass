@@ -1,15 +1,21 @@
 package handlers
 
-import "github.com/montara-projects/montara-pass/apps/server/internal/app"
+import "montara-pass/server/internal/app"
 
 type Handlers struct {
 	Health   *healthHandler
 	Category *categoryHandler
+	Folder   *folderHandler
+	Item     *itemHandler
+	Key      *keyHandler
 }
 
 func New(app *app.Application) *Handlers {
 	return &Handlers{
 		Health:   &healthHandler{app: app},
 		Category: &categoryHandler{app: app},
+		Folder:   &folderHandler{app: app},
+		Item:     &itemHandler{app: app},
+		Key:      &keyHandler{app: app},
 	}
 }

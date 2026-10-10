@@ -3,8 +3,8 @@ package handlers
 import (
 	"github.com/gofiber/fiber/v3"
 
-	"github.com/montara-projects/montara-pass/apps/server/internal/app"
-	"github.com/montara-projects/montara-pass/apps/server/internal/dtos"
+	"montara-pass/server/internal/app"
+	"montara-pass/server/internal/dtos"
 )
 
 type healthHandler struct {

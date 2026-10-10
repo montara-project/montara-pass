@@ -3,7 +3,7 @@ package repositories
 import (
 	"context"
 
-	"github.com/montara-projects/montara-pass/apps/server/internal/models"
+	"montara-pass/server/internal/models"
 
 	"github.com/google/uuid"
 )
