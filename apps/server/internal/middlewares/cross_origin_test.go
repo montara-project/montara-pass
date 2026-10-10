@@ -17,6 +17,9 @@ func TestCrossOrigin(t *testing.T) {
 		{"cross site", "DELETE", "cross-site", "https://evil.com", "api.example.com", true},
 		{"old browser, own origin", "POST", "", "https://api.example.com", "api.example.com", false},
 		{"old browser, other origin", "PUT", "", "https://evil.com", "api.example.com", true},
+		{"chrome extension", "POST", "cross-site", "chrome-extension://cknijhcaajhbibdabnlofogibnciiipn", "api.example.com", false},
+		{"firefox extension", "POST", "cross-site", "moz-extension://2c127fa4-62c7-4e1f-a4a1-0f4a1a0f1c2d", "api.example.com", false},
+		{"extension scheme inside a web origin", "POST", "cross-site", "https://chrome-extension.evil.com", "api.example.com", true},
 	}
 	for _, c := range cases {
 		if got := crossOrigin(c.method, c.fetchSite, c.origin, c.host, trusted); got != c.want {

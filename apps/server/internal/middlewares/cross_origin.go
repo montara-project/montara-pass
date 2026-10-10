@@ -3,6 +3,7 @@ package middlewares
 import (
 	"net/url"
 	"slices"
+	"strings"
 
 	"github.com/gofiber/fiber/v3"
 
@@ -18,7 +19,7 @@ func crossOrigin(method, fetchSite, origin, host string, trusted []string) bool 
 	case fiber.MethodGet, fiber.MethodHead, fiber.MethodOptions:
 		return false
 	}
-	if slices.Contains(trusted, origin) {
+	if slices.Contains(trusted, origin) || isExtensionOrigin(origin) {
 		return false
 	}
 
@@ -34,6 +35,15 @@ func crossOrigin(method, fetchSite, origin, host string, trusted []string) bool 
 	}
 	// cross-site, and same-site: a sibling subdomain is not trusted either.
 	return true
+}
+
+// isExtensionOrigin reports whether a request comes from a browser extension's
+// own pages. A website cannot forge the Origin header, so this origin means
+// code the user installed and granted access to this host; it is not the
+// cross-site web page this check exists to stop. The id after the scheme is
+// different for every Firefox installation, so it cannot be listed as trusted.
+func isExtensionOrigin(origin string) bool {
+	return strings.HasPrefix(origin, "chrome-extension://") || strings.HasPrefix(origin, "moz-extension://")
 }
 
 // CrossOrigin refuses state-changing requests that a browser sends from
