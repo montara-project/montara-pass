@@ -3,6 +3,12 @@
 All notable changes to this project are documented in this file. Versions follow the git tags (`v*`); Docker images are published to ghcr.io with the same version.
 
 
+## [1.1.1](https://github.com/montara-project/montara-pass/compare/v1.1.0...v1.1.1) (2026-10-10)
+
+### Features
+
+* **deploy:** add a Docker Compose stack for Dokploy ([dce72b4](https://github.com/montara-project/montara-pass/commit/dce72b47b20c87800140b47615cb2768e2b13c16))
+
 ## [1.1.0](https://github.com/montara-project/montara-pass/compare/v1.0.0...v1.1.0) (2026-10-10)
 
 ### ⚠ BREAKING CHANGES
