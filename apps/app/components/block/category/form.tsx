@@ -9,10 +9,7 @@ import type { BaseAbstractForm } from '@/types/form'
 import SimpleAlertScrollableDialogForm from '@/components/block/common/simple-alert-scrollable-dialog-form'
 import { useAppForm } from '@/hooks/form'
 import { toastAxiosError } from '@/lib/api/axios-error'
-import {
-  CategoryFormSchema,
-  type CategoryFormDto,
-} from '@/lib/api/dtos/category/schema'
+import { CategoryFormSchema, type CategoryFormDto } from '@/lib/api/dtos/category/schema'
 import { parseDto } from '@/lib/api/dtos/parse'
 import { queries } from '@/lib/api/queries'
 

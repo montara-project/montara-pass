@@ -2,6 +2,13 @@
   "name": "@montara-pass/web",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev --port 5174",
+    "build": "vite build",
+    "start": "vite preview",
+    "deploy": "vinext-cloudflare deploy"
+  },
   "dependencies": {
     "@vinext/cloudflare": "1.1.0",
     "react": "19.3.0",
@@ -21,12 +28,5 @@
     "tailwindcss": "4.3.3",
     "typescript": "7.0.2",
     "vite": "8.3.4"
-  },
-  "type": "module",
-  "scripts": {
-    "dev": "vite dev --port 5174",
-    "build": "vite build",
-    "start": "vite preview",
-    "deploy": "vinext-cloudflare deploy"
   }
 }

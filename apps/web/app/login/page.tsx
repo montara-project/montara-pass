@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { LoginForm } from "../_components/login-form";
+
 import { LockIcon, ShieldCheckIcon, WifiOffIcon } from "../_components/icons";
+import { LoginForm } from "../_components/login-form";
 
 export const metadata: Metadata = {
   title: "Log in — Montara Pass",

@@ -1,27 +1,33 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 
-import { HOME_PATH, SIGN_IN_PATH } from '@/lib/constants/auth'
 import { hasStoredSession } from '@/lib/auth/token-storage'
+import { HOME_PATH, SIGN_IN_PATH } from '@/lib/constants/auth'
 
 interface GuardProps {
   children: React.ReactNode
 }
 
+// Cookies emit no change events, so there is nothing to subscribe to: the
+// value is read once at mount.
+function subscribe() {
+  return () => {}
+}
+
 /**
  * Whether a session is stored, or null until the browser has been asked: the
- * tokens live in cookies this app only reads on the client.
+ * tokens live in cookies this app only reads on the client. Rendered as null
+ * on the server and during hydration so the client can't disagree with the
+ * server, then swapped for the real value once mounted.
  */
 function useStoredSession(): boolean | null {
-  const [signedIn, setSignedIn] = useState<boolean | null>(null)
-
-  useEffect(() => {
-    setSignedIn(hasStoredSession())
-  }, [])
-
-  return signedIn
+  return useSyncExternalStore<boolean | null>(
+    subscribe,
+    () => hasStoredSession(),
+    () => null
+  )
 }
 
 /**

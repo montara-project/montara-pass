@@ -1,10 +1,4 @@
-import {
-  useId,
-  useState,
-  type FormEvent,
-  type ReactNode,
-  type SelectHTMLAttributes,
-} from 'react'
+import { useId, useState, type FormEvent, type ReactNode, type SelectHTMLAttributes } from 'react'
 
 import type { VaultItem } from '@/types/vault'
 

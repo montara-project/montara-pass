@@ -1,8 +1,4 @@
-import type {
-  ItemRotateKeyRequest,
-  KDFRequest,
-  UserKeysRequest,
-} from '@/lib/api/dtos/vault/schema'
+import type { ItemRotateKeyRequest, KDFRequest, UserKeysRequest } from '@/lib/api/dtos/vault/schema'
 import type { Models } from '@/lib/api/models'
 
 import {

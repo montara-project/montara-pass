@@ -48,7 +48,13 @@ export default function AppSidebar({ user, userError, onRetryUser, ...props }: A
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href={HOME_PATH}>
-                <img src="/static/logo-128.png" alt="" width={32} height={32} className="size-8 shrink-0" />
+                <img
+                  src="/static/logo-128.png"
+                  alt=""
+                  width={32}
+                  height={32}
+                  className="size-8 shrink-0"
+                />
                 <div className="flex flex-col gap-1 leading-none">
                   <span className="font-medium">{env.NEXT_PUBLIC_APP_NAME}</span>
                   <span className="text-xs">Password Manager</span>

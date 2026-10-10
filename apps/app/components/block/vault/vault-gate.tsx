@@ -172,9 +172,9 @@ function SetupForm() {
         <img src="/static/logo-128.png" alt="" width={48} height={48} className="size-12" />
         <h1 className="text-xl font-bold">Create your vault</h1>
         <FieldDescription>
-          Choose a master password of at least {MIN_MASTER_PASSWORD_LENGTH} characters. It
-          encrypts everything in your vault and is never sent to the server, so nobody can reset
-          it: if you forget it, your vault cannot be recovered.
+          Choose a master password of at least {MIN_MASTER_PASSWORD_LENGTH} characters. It encrypts
+          everything in your vault and is never sent to the server, so nobody can reset it: if you
+          forget it, your vault cannot be recovered.
         </FieldDescription>
       </div>
 

@@ -33,6 +33,20 @@ pnpm dev:server     # http://localhost:8080/health
 pnpm dev            # all three in parallel
 ```
 
+## Lint, format and commits
+
+```sh
+pnpm lint            # oxlint (.oxlintrc.json)
+pnpm lint:fix
+pnpm format          # oxfmt (.oxfmtrc.json; apps/web keeps its own style)
+pnpm format:check
+```
+
+`pnpm install` sets up two git hooks with husky: `pre-commit` runs lint-staged
+(oxlint and oxfmt on the staged files), and `commit-msg` runs commitlint, which
+only accepts [conventional commits](https://www.conventionalcommits.org). The
+release workflow reads those messages to pick the next version.
+
 ## Migrations
 
 SQL files live in `apps/server/migrations` and are embedded in the binary.

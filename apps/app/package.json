@@ -2,6 +2,12 @@
   "name": "@montara-pass/app",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "start": "vinext start"
+  },
   "dependencies": {
     "@t3-oss/env-core": "0.13.11",
     "@tabler/icons-react": "3.49.0",
@@ -37,11 +43,5 @@
     "tailwindcss": "4.3.3",
     "typescript": "7.0.2",
     "vite": "8.3.4"
-  },
-  "type": "module",
-  "scripts": {
-    "dev": "vite dev",
-    "build": "vite build",
-    "start": "vinext start"
   }
 }

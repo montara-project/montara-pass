@@ -37,9 +37,7 @@ export function fillLogin(
   // (password on the next step) gets its first such field filled.
   const isUsernameLike = (el: HTMLInputElement) =>
     ['text', 'email', 'tel'].includes(el.type) || el.autocomplete === 'username'
-  const scope = passwordField?.form
-    ? inputs.filter((el) => el.form === passwordField.form)
-    : inputs
+  const scope = passwordField?.form ? inputs.filter((el) => el.form === passwordField.form) : inputs
   const before = passwordField ? scope.slice(0, scope.indexOf(passwordField)) : scope
   const candidates = before.filter(isUsernameLike)
   const usernameField = passwordField ? candidates[candidates.length - 1] : candidates[0]

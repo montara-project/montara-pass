@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type FormEvent } from "react";
+
 import { AlertTriangleIcon, CheckIcon, ChevronDownIcon, SyncIcon } from "./icons";
 
 type FieldName = "name" | "email" | "topic" | "message";
@@ -101,8 +102,8 @@ export function ContactForm() {
         </span>
         <h3 className="mt-5 font-heading text-xl font-semibold">Message sent</h3>
         <p className="mt-2 text-sm leading-6 text-mist">
-          Reference <span className="font-mono text-accent-soft">{reference}</span>. We reply
-          within one business day — usually much faster.
+          Reference <span className="font-mono text-accent-soft">{reference}</span>. We reply within
+          one business day — usually much faster.
         </p>
         <p className="mx-auto mt-4 max-w-sm text-xs leading-5 text-mist/80">
           We will never ask for your master password, passkeys, or recovery key — and we can never
@@ -135,7 +136,11 @@ export function ContactForm() {
         >
           <p className="flex items-center gap-2 text-sm font-semibold text-rose-200 light:text-rose-800">
             <AlertTriangleIcon className="size-4" />
-            There {activeErrors.length === 1 ? "is 1 problem" : `are ${activeErrors.length} problems`} with this form
+            There{" "}
+            {activeErrors.length === 1
+              ? "is 1 problem"
+              : `are ${activeErrors.length} problems`}{" "}
+            with this form
           </p>
           <ul className="mt-2 flex flex-col gap-1 pl-6">
             {activeErrors.map(([field, message]) => (
@@ -171,7 +176,11 @@ export function ContactForm() {
             className={`mt-2 ${inputClass(Boolean(errors.name))}`}
           />
           {errors.name ? (
-            <p id="contact-name-error" role="alert" className="mt-1.5 text-xs text-rose-300 light:text-rose-700">
+            <p
+              id="contact-name-error"
+              role="alert"
+              className="mt-1.5 text-xs text-rose-300 light:text-rose-700"
+            >
               {errors.name}
             </p>
           ) : null}
@@ -195,7 +204,11 @@ export function ContactForm() {
             className={`mt-2 ${inputClass(Boolean(errors.email))}`}
           />
           {errors.email ? (
-            <p id="contact-email-error" role="alert" className="mt-1.5 text-xs text-rose-300 light:text-rose-700">
+            <p
+              id="contact-email-error"
+              role="alert"
+              className="mt-1.5 text-xs text-rose-300 light:text-rose-700"
+            >
               {errors.email}
             </p>
           ) : null}
@@ -231,7 +244,11 @@ export function ContactForm() {
           <ChevronDownIcon className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-mist" />
         </div>
         {errors.topic ? (
-          <p id="contact-topic-error" role="alert" className="mt-1.5 text-xs text-rose-300 light:text-rose-700">
+          <p
+            id="contact-topic-error"
+            role="alert"
+            className="mt-1.5 text-xs text-rose-300 light:text-rose-700"
+          >
             {errors.topic}
           </p>
         ) : null}
@@ -250,9 +267,7 @@ export function ContactForm() {
           onChange={(e) => setField("message", e.target.value)}
           onBlur={() => blurField("message")}
           aria-invalid={Boolean(errors.message)}
-          aria-describedby={
-            errors.message ? "contact-message-error" : "contact-message-hint"
-          }
+          aria-describedby={errors.message ? "contact-message-error" : "contact-message-hint"}
           className={`mt-2 min-h-32 w-full resize-y rounded-xl border bg-abyss/60 px-4 py-3 text-sm leading-6 text-fg placeholder:text-mist/50 transition-colors duration-200 focus:outline-none focus:ring-2 ${
             errors.message
               ? "border-rose-400/60 focus:border-rose-300 focus:ring-rose-400/30"
@@ -260,7 +275,11 @@ export function ContactForm() {
           }`}
         />
         {errors.message ? (
-          <p id="contact-message-error" role="alert" className="mt-1.5 text-xs text-rose-300 light:text-rose-700">
+          <p
+            id="contact-message-error"
+            role="alert"
+            className="mt-1.5 text-xs text-rose-300 light:text-rose-700"
+          >
             {errors.message}
           </p>
         ) : (

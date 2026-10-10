@@ -72,7 +72,7 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           branch: release/v${{ steps.bump.outputs.version }}
-          title: "chore: release v${{ steps.bump.outputs.version }}"
+          title: 'chore: release v${{ steps.bump.outputs.version }}'
           labels: release
           delete-branch: true
           body: |

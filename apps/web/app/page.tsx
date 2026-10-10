@@ -1,5 +1,3 @@
-import { Reveal } from "./_components/reveal";
-import { VaultMockup } from "./_components/vault-mockup";
 import {
   ArrowRightIcon,
   CheckIcon,
@@ -15,6 +13,8 @@ import {
   UsersIcon,
   WifiOffIcon,
 } from "./_components/icons";
+import { Reveal } from "./_components/reveal";
+import { VaultMockup } from "./_components/vault-mockup";
 
 /* ---------- Shared bits ---------- */
 
@@ -75,7 +75,10 @@ function Hero() {
             </div>
             <ul className="mt-10 flex flex-wrap gap-x-6 gap-y-3">
               {trustChips.map((chip) => (
-                <li key={chip.label} className="flex items-center gap-2 text-xs font-medium text-mist">
+                <li
+                  key={chip.label}
+                  className="flex items-center gap-2 text-xs font-medium text-mist"
+                >
                   <chip.icon className="size-4 text-accent-bright" />
                   {chip.label}
                 </li>
@@ -117,7 +120,10 @@ function SocialProof() {
         </p>
         <ul className="mt-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-4 sm:gap-x-14">
           {brands.map((brand) => (
-            <li key={brand} className="font-heading text-lg font-semibold text-mist/50 transition-colors duration-200 hover:text-mist">
+            <li
+              key={brand}
+              className="font-heading text-lg font-semibold text-mist/50 transition-colors duration-200 hover:text-mist"
+            >
               {brand}
             </li>
           ))}
@@ -184,8 +190,12 @@ function AudienceSplit() {
               <span className="flex size-12 items-center justify-center rounded-xl bg-accent/15 text-accent-bright">
                 <a.icon className="size-6" />
               </span>
-              <p className="mt-6 text-xs font-semibold uppercase tracking-widest text-accent-bright">{a.kicker}</p>
-              <h3 className="mt-2 font-heading text-2xl font-semibold tracking-tight sm:text-3xl">{a.title}</h3>
+              <p className="mt-6 text-xs font-semibold uppercase tracking-widest text-accent-bright">
+                {a.kicker}
+              </p>
+              <h3 className="mt-2 font-heading text-2xl font-semibold tracking-tight sm:text-3xl">
+                {a.title}
+              </h3>
               <p className="mt-3 flex-1 leading-7 text-mist">{a.body}</p>
               <a
                 href="#pricing"
@@ -242,7 +252,9 @@ function Features() {
     <section id="features" className="border-t border-line bg-abyss/40">
       <div className="mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 sm:py-24 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-accent-bright">Features</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-accent-bright">
+            Features
+          </p>
           <h2 className="mt-3 font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
             Everything a password manager should do — and nothing it shouldn&rsquo;t
           </h2>
@@ -307,7 +319,9 @@ function Security() {
         <Reveal>
           <div className="grid items-center gap-14 lg:grid-cols-2">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-accent-bright">Security</p>
+              <p className="text-xs font-semibold uppercase tracking-widest text-accent-bright">
+                Security
+              </p>
               <h2 className="mt-3 font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
                 Built so that not even we can read your data
               </h2>
@@ -401,7 +415,9 @@ function Pricing() {
     <section id="pricing" className="border-t border-line bg-abyss/40">
       <div className="mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 sm:py-24 lg:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-accent-bright">Pricing</p>
+          <p className="text-xs font-semibold uppercase tracking-widest text-accent-bright">
+            Pricing
+          </p>
           <h2 className="mt-3 font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
             Simple pricing. Serious security.
           </h2>
@@ -429,7 +445,9 @@ function Pricing() {
                 ) : null}
                 <h3 className="font-heading text-lg font-semibold">{plan.name}</h3>
                 <p className="mt-4">
-                  <span className="font-heading text-4xl font-semibold tracking-tight">{plan.price}</span>
+                  <span className="font-heading text-4xl font-semibold tracking-tight">
+                    {plan.price}
+                  </span>
                   <span className="ml-2 text-sm text-mist">{plan.period}</span>
                 </p>
                 <p className="mt-3 text-sm leading-6 text-mist">{plan.blurb}</p>
@@ -455,7 +473,10 @@ function Pricing() {
 
         <p className="mt-10 text-center text-sm text-mist">
           Running a team?{" "}
-          <a href="#top" className="cursor-pointer font-semibold text-accent-soft underline-offset-4 hover:underline">
+          <a
+            href="#top"
+            className="cursor-pointer font-semibold text-accent-soft underline-offset-4 hover:underline"
+          >
             Talk to us about Business →
           </a>
         </p>
@@ -505,11 +526,19 @@ function Testimonials() {
         <Reveal className="mt-14">
           <div className="grid gap-6 md:grid-cols-3">
             {testimonials.map((t) => (
-              <figure key={t.name} className="flex flex-col rounded-2xl border border-line bg-card p-7">
-                <blockquote className="flex-1 leading-7 text-fg/90">&ldquo;{t.quote}&rdquo;</blockquote>
+              <figure
+                key={t.name}
+                className="flex flex-col rounded-2xl border border-line bg-card p-7"
+              >
+                <blockquote className="flex-1 leading-7 text-fg/90">
+                  &ldquo;{t.quote}&rdquo;
+                </blockquote>
                 <figcaption className="mt-6 flex items-center gap-3">
                   <span className="flex size-10 items-center justify-center rounded-full bg-brand font-heading text-sm font-semibold text-accent-soft">
-                    {t.name.split(" ").map((n) => n[0]).join("")}
+                    {t.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")}
                   </span>
                   <span>
                     <span className="block text-sm font-semibold">{t.name}</span>

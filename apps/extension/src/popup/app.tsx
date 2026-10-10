@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import type { Models } from '@/lib/api/models'
 import type { VaultKeys } from '@/lib/crypto/vault'
 
-import { getUserKeys, signOut, SignedOutError } from '../lib/api'
+import { getUserKeys, SignedOutError, signOut } from '../lib/api'
 import { loadVault, lockVault } from '../lib/session'
 import { getSettings, getTokens } from '../lib/storage'
 import { isFullScreen } from './layout'
@@ -21,6 +21,25 @@ type Stage =
   | { name: 'locked'; userKeys: Models.UserKeys }
   | { name: 'unlocked'; keys: VaultKeys }
 
+/** Works out where the user left off: signed out, locked, or unlocked. */
+async function resolveStage(): Promise<Stage> {
+  try {
+    if (!(await getTokens())) return { name: 'signed-out' }
+
+    // Still unlocked from a previous opening: no request needed to show the vault.
+    const keys = await loadVault()
+    if (keys) return { name: 'unlocked', keys }
+
+    const userKeys = await getUserKeys()
+    return userKeys
+      ? { name: 'locked', userKeys }
+      : { name: 'no-vault', appUrl: (await getSettings()).appUrl }
+  } catch (error) {
+    if (error instanceof SignedOutError) return { name: 'signed-out' }
+    return { name: 'error', message: error instanceof Error ? error.message : String(error) }
+  }
+}
+
 /**
  * The popup is rebuilt from scratch every time it opens, so it starts by
  * working out where the user left off: signed out, locked, or unlocked.
@@ -29,47 +48,30 @@ export default function App() {
   const [stage, setStage] = useState<Stage>({ name: 'loading' })
   const [showSettings, setShowSettings] = useState(false)
 
-  const boot = useCallback(async () => {
-    setStage({ name: 'loading' })
-
-    try {
-      if (!(await getTokens())) {
-        setStage({ name: 'signed-out' })
-        return
-      }
-
-      // Still unlocked from a previous opening: no request needed to show the vault.
-      const keys = await loadVault()
-      if (keys) {
-        setStage({ name: 'unlocked', keys })
-        return
-      }
-
-      const userKeys = await getUserKeys()
-      if (userKeys) {
-        setStage({ name: 'locked', userKeys })
-      } else {
-        setStage({ name: 'no-vault', appUrl: (await getSettings()).appUrl })
-      }
-    } catch (error) {
-      if (error instanceof SignedOutError) {
-        setStage({ name: 'signed-out' })
-      } else {
-        setStage({ name: 'error', message: error instanceof Error ? error.message : String(error) })
-      }
+  // The initial stage is already 'loading'; state is only set once the async
+  // lookup resolves, and dropped if the popup unmounts first.
+  useEffect(() => {
+    let cancelled = false
+    void resolveStage().then((next) => {
+      if (!cancelled) setStage(next)
+    })
+    return () => {
+      cancelled = true
     }
   }, [])
 
-  useEffect(() => {
-    void boot()
-  }, [boot])
+  // Called from event handlers: show the loading screen, then re-resolve.
+  const boot = () => {
+    setStage({ name: 'loading' })
+    void resolveStage().then(setStage)
+  }
 
   // Stable: the vault views reload whenever this callback changes.
   const handleSignedOut = useCallback(() => setStage({ name: 'signed-out' }), [])
 
   const handleLock = async () => {
     await lockVault()
-    await boot()
+    boot()
   }
 
   const handleSignOut = async () => {
@@ -93,7 +95,7 @@ export default function App() {
       <Settings
         onClose={() => {
           setShowSettings(false)
-          void boot()
+          boot()
         }}
       />
     )
@@ -107,7 +109,7 @@ export default function App() {
       return framed(
         <div className="center stack">
           <p className="error">{stage.message}</p>
-          <button onClick={() => void boot()}>Try again</button>
+          <button onClick={boot}>Try again</button>
           <button className="link" onClick={() => setShowSettings(true)}>
             Settings
           </button>
@@ -115,9 +117,7 @@ export default function App() {
       )
 
     case 'signed-out':
-      return framed(
-        <SignIn onSignedIn={() => void boot()} onSettings={() => setShowSettings(true)} />
-      )
+      return framed(<SignIn onSignedIn={boot} onSettings={() => setShowSettings(true)} />)
 
     case 'no-vault':
       return framed(

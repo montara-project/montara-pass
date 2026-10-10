@@ -2,10 +2,6 @@
   "name": "montara-pass",
   "version": "1.0.0",
   "private": true,
-  "packageManager": "pnpm@11.10.0",
-  "engines": {
-    "node": ">=22"
-  },
   "scripts": {
     "dev": "pnpm -r --parallel run dev",
     "dev:app": "pnpm --filter @montara-pass/app run dev",
@@ -14,16 +10,32 @@
     "dev:docs": "pnpm --filter @montara-pass/docs run dev",
     "build": "pnpm -r run build",
     "build:extension": "pnpm --filter @montara-pass/extension run build",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
     "deploy:web": "pnpm --filter @montara-pass/web run deploy",
     "db:up": "docker compose up -d postgres",
     "migrate:up": "pnpm --filter @montara-pass/server run migrate:up",
     "migrate:down": "pnpm --filter @montara-pass/server run migrate:down",
     "release": "release-it",
     "release:prepare": "release-it --ci --no-git.tag --no-git.push --no-github.release",
-    "release:publish": "release-it --ci --no-increment --no-git.commit --no-git.push --github.release"
+    "release:publish": "release-it --ci --no-increment --no-git.commit --no-git.push --github.release",
+    "prepare": "husky || true"
   },
   "devDependencies": {
+    "@commitlint/cli": "21.2.3",
+    "@commitlint/config-conventional": "21.2.3",
     "@release-it/conventional-changelog": "12.0.2",
+    "eslint-plugin-perfectionist": "^5.12.1",
+    "husky": "9.1.7",
+    "lint-staged": "17.6.0",
+    "oxfmt": "0.72.0",
+    "oxlint": "1.87.0",
     "release-it": "21.1.1"
-  }
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@11.10.0"
 }

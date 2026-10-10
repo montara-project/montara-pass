@@ -57,7 +57,10 @@ export function LegalPage({ eyebrow, title, updated, intro, sections }: LegalPag
               {section.bullets ? (
                 <ul className="mt-4 flex flex-col gap-2.5">
                   {section.bullets.map((bullet) => (
-                    <li key={bullet.slice(0, 32)} className="flex gap-3 text-sm leading-6 text-mist">
+                    <li
+                      key={bullet.slice(0, 32)}
+                      className="flex gap-3 text-sm leading-6 text-mist"
+                    >
                       <span
                         aria-hidden="true"
                         className="mt-2 size-1.5 shrink-0 rounded-full bg-accent-bright"

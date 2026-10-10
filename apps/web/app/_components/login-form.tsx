@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type FormEvent } from "react";
+
 import { AlertTriangleIcon, EyeIcon, EyeOffIcon, SyncIcon } from "./icons";
 
 type FieldName = "email" | "password";
@@ -89,7 +90,11 @@ export function LoginForm() {
         >
           <p className="flex items-center gap-2 text-sm font-semibold text-rose-200 light:text-rose-800">
             <AlertTriangleIcon className="size-4" />
-            There {activeErrors.length === 1 ? "is 1 problem" : `are ${activeErrors.length} problems`} with this form
+            There{" "}
+            {activeErrors.length === 1
+              ? "is 1 problem"
+              : `are ${activeErrors.length} problems`}{" "}
+            with this form
           </p>
           <ul className="mt-2 flex flex-col gap-1 pl-6">
             {activeErrors.map(([field, message]) => (
@@ -124,7 +129,11 @@ export function LoginForm() {
           className={`mt-2 ${inputClass(Boolean(errors.email))}`}
         />
         {errors.email ? (
-          <p id="login-email-error" role="alert" className="mt-1.5 text-xs text-rose-300 light:text-rose-700">
+          <p
+            id="login-email-error"
+            role="alert"
+            className="mt-1.5 text-xs text-rose-300 light:text-rose-700"
+          >
             {errors.email}
           </p>
         ) : null}
@@ -145,9 +154,7 @@ export function LoginForm() {
             onChange={(e) => setField("password", e.target.value)}
             onBlur={() => blurField("password")}
             aria-invalid={Boolean(errors.password)}
-            aria-describedby={
-              errors.password ? "login-password-error" : "login-password-hint"
-            }
+            aria-describedby={errors.password ? "login-password-error" : "login-password-hint"}
             className={`${inputClass(Boolean(errors.password))} pr-11`}
           />
           <button
@@ -162,7 +169,11 @@ export function LoginForm() {
           </button>
         </div>
         {errors.password ? (
-          <p id="login-password-error" role="alert" className="mt-1.5 text-xs text-rose-300 light:text-rose-700">
+          <p
+            id="login-password-error"
+            role="alert"
+            className="mt-1.5 text-xs text-rose-300 light:text-rose-700"
+          >
             {errors.password}
           </p>
         ) : (

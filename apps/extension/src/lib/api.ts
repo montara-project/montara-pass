@@ -153,9 +153,7 @@ async function listAll<T>(path: string): Promise<T[]> {
   const rows: T[] = []
 
   for (;;) {
-    const page = await request<ListEnvelope<T>>(
-      `${path}?limit=${PAGE_SIZE}&offset=${rows.length}`
-    )
+    const page = await request<ListEnvelope<T>>(`${path}?limit=${PAGE_SIZE}&offset=${rows.length}`)
     rows.push(...page.data)
 
     if (page.data.length < PAGE_SIZE || rows.length >= (page.metadata.total ?? 0)) {

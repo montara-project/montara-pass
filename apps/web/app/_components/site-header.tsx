@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+
 import {
   ArrowRightIcon,
   CloseIcon,
@@ -23,8 +24,7 @@ type Theme = "light" | "dark" | "system";
 function applyTheme(theme: Theme) {
   const light =
     theme === "light" ||
-    (theme === "system" &&
-      window.matchMedia("(prefers-color-scheme: light)").matches);
+    (theme === "system" && window.matchMedia("(prefers-color-scheme: light)").matches);
   document.documentElement.classList.toggle("light", light);
 }
 
@@ -67,8 +67,7 @@ function ThemeToggle() {
             : "Theme: system — switch to light"
       }
       onClick={() => {
-        const next: Theme =
-          theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
+        const next: Theme = theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
         setTheme(next);
         try {
           if (next === "system") {
@@ -100,7 +99,11 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-line bg-ink/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <a href="/" className="flex cursor-pointer items-center gap-2.5" aria-label="Montara Pass — home">
+        <a
+          href="/"
+          className="flex cursor-pointer items-center gap-2.5"
+          aria-label="Montara Pass — home"
+        >
           <LogoMark className="size-8" />
           <span className="font-heading text-lg font-semibold tracking-tight">
             Montara<span className="text-accent-bright">Pass</span>
@@ -148,10 +151,7 @@ export function SiteHeader() {
       </div>
 
       {open ? (
-        <nav
-          aria-label="Mobile"
-          className="border-t border-line bg-ink px-4 pb-6 pt-3 md:hidden"
-        >
+        <nav aria-label="Mobile" className="border-t border-line bg-ink px-4 pb-6 pt-3 md:hidden">
           <div className="flex flex-col gap-1">
             {navLinks.map((link) => (
               <a

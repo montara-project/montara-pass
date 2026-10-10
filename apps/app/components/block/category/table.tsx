@@ -34,9 +34,7 @@ export default function CategoryTable() {
     [offset, limit, debouncedSearch]
   )
 
-  const { data, isFetching, isLoading, isError, error } = useQuery(
-    queries.categories.list(params)
-  )
+  const { data, isFetching, isLoading, isError, error } = useQuery(queries.categories.list(params))
   const loading = isLoading || isFetching
   const total = data?.metadata?.total ?? 0
   const categories = data?.data ?? []
