@@ -1,6 +1,6 @@
 'use client'
 
-import { IconLock, IconShieldLock } from '@tabler/icons-react'
+import { IconLock } from '@tabler/icons-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
@@ -169,7 +169,7 @@ function SetupForm() {
   return (
     <FieldGroup>
       <div className="flex flex-col items-center gap-2 text-center">
-        <IconShieldLock className="size-6" />
+        <img src="/static/logo-128.png" alt="" width={48} height={48} className="size-12" />
         <h1 className="text-xl font-bold">Create your vault</h1>
         <FieldDescription>
           Choose a master password of at least {MIN_MASTER_PASSWORD_LENGTH} characters. It

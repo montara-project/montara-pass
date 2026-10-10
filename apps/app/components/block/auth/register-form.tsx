@@ -1,6 +1,5 @@
 'use client'
 
-import { IconShieldLock } from '@tabler/icons-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -52,9 +51,7 @@ export default function RegisterForm({ className, ...props }: React.ComponentPro
     <div className={cn('flex flex-col gap-6', className)} {...props}>
       <FieldGroup>
         <div className="flex flex-col items-center gap-2 text-center">
-          <div className="flex size-8 items-center justify-center rounded-md">
-            <IconShieldLock className="size-6" />
-          </div>
+          <img src="/static/logo-128.png" alt="" width={48} height={48} className="size-12" />
           <h1 className="text-xl font-bold">Create your account</h1>
           <FieldDescription>
             This password signs you in. You choose a separate master password for the vault next.

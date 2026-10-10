@@ -7,6 +7,7 @@ import DecorationProvider from '@/lib/providers/decoration'
 export const metadata: Metadata = {
   title: 'Montara Pass',
   description: 'End-to-end encrypted password manager',
+  icons: { icon: '/static/logo-32.png', apple: '/static/logo-128.png' },
 }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
