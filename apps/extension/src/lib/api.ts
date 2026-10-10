@@ -1,4 +1,4 @@
-import type { ItemCreateRequest } from '@/lib/api/dtos/vault/schema'
+import type { ItemCreateRequest, ItemUpdateRequest } from '@/lib/api/dtos/vault/schema'
 import type { Models } from '@/lib/api/models'
 
 import { clearTokens, getSettings, getTokens, saveTokens } from './storage'
@@ -163,6 +163,15 @@ export async function listItems(): Promise<Models.Item[]> {
 export async function createItem(body: ItemCreateRequest): Promise<Models.Item> {
   const res = await request<Envelope<Models.Item>>('/v1/items', {
     method: 'POST',
+    body: JSON.stringify(body),
+  })
+  return res.data
+}
+
+/** Rewrites an item's content; the API refuses a revision that is no longer current. */
+export async function updateItem(id: string, body: ItemUpdateRequest): Promise<Models.Item> {
+  const res = await request<Envelope<Models.Item>>(`/v1/items/${id}`, {
+    method: 'PUT',
     body: JSON.stringify(body),
   })
   return res.data

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 
 import type { Models } from '@/lib/api/models'
 import type { VaultKeys } from '@/lib/crypto/vault'
@@ -6,6 +6,8 @@ import type { VaultKeys } from '@/lib/crypto/vault'
 import { getUserKeys, signOut, SignedOutError } from '../lib/api'
 import { loadVault, lockVault } from '../lib/session'
 import { getSettings, getTokens } from '../lib/storage'
+import { isFullScreen } from './layout'
+import FullVault from './views/full-vault'
 import Items from './views/items'
 import Settings from './views/settings'
 import SignIn from './views/sign-in'
@@ -62,6 +64,9 @@ export default function App() {
     void boot()
   }, [boot])
 
+  // Stable: the vault views reload whenever this callback changes.
+  const handleSignedOut = useCallback(() => setStage({ name: 'signed-out' }), [])
+
   const handleLock = async () => {
     await lockVault()
     await boot()
@@ -73,8 +78,18 @@ export default function App() {
     setStage({ name: 'signed-out' })
   }
 
+  // In a tab, everything that is not the vault itself sits in a centered card.
+  const framed = (node: ReactNode) =>
+    isFullScreen ? (
+      <div className="full-center">
+        <div className="full-card">{node}</div>
+      </div>
+    ) : (
+      node
+    )
+
   if (showSettings) {
-    return (
+    return framed(
       <Settings
         onClose={() => {
           setShowSettings(false)
@@ -86,10 +101,10 @@ export default function App() {
 
   switch (stage.name) {
     case 'loading':
-      return <p className="center muted">Loading…</p>
+      return framed(<p className="center muted">Loading…</p>)
 
     case 'error':
-      return (
+      return framed(
         <div className="center stack">
           <p className="error">{stage.message}</p>
           <button onClick={() => void boot()}>Try again</button>
@@ -100,10 +115,12 @@ export default function App() {
       )
 
     case 'signed-out':
-      return <SignIn onSignedIn={() => void boot()} onSettings={() => setShowSettings(true)} />
+      return framed(
+        <SignIn onSignedIn={() => void boot()} onSettings={() => setShowSettings(true)} />
+      )
 
     case 'no-vault':
-      return (
+      return framed(
         <div className="center stack">
           <h1>No vault yet</h1>
           <p className="muted">
@@ -119,7 +136,7 @@ export default function App() {
       )
 
     case 'locked':
-      return (
+      return framed(
         <Unlock
           userKeys={stage.userKeys}
           onUnlocked={(keys) => setStage({ name: 'unlocked', keys })}
@@ -127,15 +144,17 @@ export default function App() {
         />
       )
 
-    case 'unlocked':
+    case 'unlocked': {
+      const Vault = isFullScreen ? FullVault : Items
       return (
-        <Items
+        <Vault
           keys={stage.keys}
           onLock={() => void handleLock()}
           onSignOut={() => void handleSignOut()}
-          onSignedOut={() => setStage({ name: 'signed-out' })}
+          onSignedOut={handleSignedOut}
           onSettings={() => setShowSettings(true)}
         />
       )
+    }
   }
 }

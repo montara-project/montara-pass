@@ -128,6 +128,9 @@ create it in the web app first.
   minutes without use, when the browser closes, and on Lock.
 - **Fill** is offered only for a login whose saved URL belongs to the page in
   the active tab, and the page is touched only when you click it.
+- **Full screen** in the popup opens the vault in a tab: filters, the list and
+  the selected item side by side, with reveal, copy, add and edit. Sharing and
+  folders stay in the web app.
 - The API and web app URLs default to `VITE_DEFAULT_API_URL` and
   `VITE_DEFAULT_APP_URL` at build time (`apps/extension/.env.example`) and can
   be changed under Settings in the popup.
