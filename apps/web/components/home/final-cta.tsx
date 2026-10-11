@@ -1,6 +1,5 @@
 import { ArrowRightIcon } from "@/components/icons";
-
-import { Dim } from "./shared";
+import { Dim } from "@/components/shared";
 
 export function FinalCta() {
   return (

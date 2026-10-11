@@ -11,15 +11,17 @@ export function Dim({ children }: { children: React.ReactNode }) {
 export function Statement({
   title,
   children,
+  as: Heading = "h2",
 }: {
   title: React.ReactNode;
   children?: React.ReactNode;
+  as?: "h1" | "h2";
 }) {
   return (
     <div className="mx-auto max-w-3xl px-6 py-20 text-center sm:py-28">
-      <h2 className="text-balance font-heading text-4xl font-medium leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.5rem]">
+      <Heading className="text-balance font-heading text-4xl font-medium leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.5rem]">
         {title}
-      </h2>
+      </Heading>
       {children ? (
         <p className="mx-auto mt-6 max-w-xl text-pretty leading-7 text-mist">{children}</p>
       ) : null}

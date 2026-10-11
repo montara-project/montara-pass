@@ -1,6 +1,5 @@
 import { ArrowRightIcon } from "@/components/icons";
-
-import { Dim, Statement, Check, chip, card } from "./shared";
+import { Dim, Statement, Check, chip, card } from "@/components/shared";
 
 export function Pricing() {
   return (

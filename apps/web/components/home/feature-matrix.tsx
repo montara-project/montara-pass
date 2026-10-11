@@ -1,6 +1,5 @@
+import { chip } from "@/components/shared";
 import pkg from "@/package.json";
-
-import { chip } from "./shared";
 
 const surfaces = [
   { id: "all", label: "all" },

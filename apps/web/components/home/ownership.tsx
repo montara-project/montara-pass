@@ -7,8 +7,7 @@ import {
   UsersIcon,
 } from "@/components/icons";
 import { docsUrl } from "@/components/links";
-
-import { Dim, Statement, IconTile, card } from "./shared";
+import { Dim, Statement, IconTile, card } from "@/components/shared";
 
 const parts = [
   { icon: ServerIcon, name: "One Docker image", role: "api and web app" },

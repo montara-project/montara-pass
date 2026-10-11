@@ -1,8 +1,7 @@
 import { ArrowRightIcon, LogoMark } from "@/components/icons";
 import { docsUrl, REPO_URL } from "@/components/links";
+import { Dim } from "@/components/shared";
 import pkg from "@/package.json";
-
-import { Dim } from "./shared";
 
 export function Hero() {
   return (

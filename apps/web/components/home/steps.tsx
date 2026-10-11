@@ -1,6 +1,5 @@
 import { KeyRoundIcon, ServerIcon, SparklesIcon } from "@/components/icons";
-
-import { Dim, Statement, IconTile } from "./shared";
+import { Dim, Statement, IconTile } from "@/components/shared";
 
 const steps = [
   {

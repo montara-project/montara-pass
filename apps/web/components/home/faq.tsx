@@ -1,6 +1,5 @@
 import { PlusIcon } from "@/components/icons";
-
-import { Dim, Statement } from "./shared";
+import { Dim, Statement } from "@/components/shared";
 
 const faqs = [
   {

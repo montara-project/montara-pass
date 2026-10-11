@@ -1,6 +1,5 @@
 import { KeyRoundIcon, LockIcon, ShareIcon } from "@/components/icons";
-
-import { Dim, Statement, IconTile } from "./shared";
+import { Dim, Statement, IconTile } from "@/components/shared";
 
 const art = "mt-6 rounded-[10px] border border-line bg-abyss p-4 font-mono text-xs leading-5";
 
