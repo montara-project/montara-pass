@@ -161,7 +161,19 @@ func TestIntegration(t *testing.T) {
 		t.Fatalf("reseed: %v", err)
 	}
 
-	server, err := newServer(&app.Application{Config: cfg, Logger: logger, DB: db, Repositories: repos, Auth: auth})
+	application := &app.Application{Config: cfg, Logger: logger, DB: db, Repositories: repos, Auth: auth}
+	// With TEST_REDIS_URL the rate limiter and the idempotency keys go
+	// through Redis, as they do with REDIS_URL; without it, through memory.
+	if url := os.Getenv("TEST_REDIS_URL"); url != "" {
+		client, err := connectRedis(url)
+		if err != nil {
+			t.Fatalf("connect redis: %v", err)
+		}
+		defer client.Close()
+		application.Redis = client
+	}
+
+	server, err := newServer(application)
 	if err != nil {
 		t.Fatal(err)
 	}

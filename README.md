@@ -98,7 +98,8 @@ The master password is separate from the sign-in password and never reaches
 the server. An item update names the `revision` it read; a stale one answers 409.
 
 - `apps/server/cmd/api` has an integration test, skipped unless `TEST_DB_DSN`
-  points at a PostgreSQL 18 database it may wipe.
+  points at a PostgreSQL 18 database it may wipe. `TEST_REDIS_URL` adds the
+  tests of the rate limiter and idempotency keys shared through Redis.
 
 ## App
 

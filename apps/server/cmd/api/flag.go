@@ -107,6 +107,9 @@ func parseFlag(cfg *config.Config) {
 	flag.StringVar(&cfg.Auth.GoogleClientID, "google-client-id", envString("GOOGLE_CLIENT_ID", ""), "Google OAuth client ID (empty disables Google sign-in)")
 	flag.StringVar(&cfg.Auth.GoogleClientSecret, "google-client-secret", envString("GOOGLE_CLIENT_SECRET", ""), "Google OAuth client secret")
 
+	// Redis
+	flag.StringVar(&cfg.Redis.URL, "redis-url", envString("REDIS_URL", ""), "Redis URL shared by the rate limiter and idempotency keys, e.g. redis://localhost:6379/0 (empty keeps them in memory)")
+
 	// Sentry
 	flag.StringVar(&cfg.Sentry.Dsn, "sentry-dsn", envString("SENTRY_DSN", ""), "Sentry DSN")
 

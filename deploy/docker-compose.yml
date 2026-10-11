@@ -1,4 +1,4 @@
-# Montara Pass on Dokploy: PostgreSQL 18 and the server image, which holds the
+# Montara Pass on Dokploy: PostgreSQL 18, Redis and the server image, which holds the
 # API (/api) and the web app (everything else) on port 8080.
 #
 # In Dokploy: create a Compose service from this repository, set the compose
@@ -27,6 +27,19 @@ services:
       timeout: 5s
       retries: 10
 
+  # What the API must remember between requests and share between replicas:
+  # rate limit counts and idempotent answers. All of it expires within the
+  # hour, so nothing is written to disk.
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--save', '', '--appendonly', 'no']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   server:
     build:
       context: ..
@@ -37,6 +50,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       ENV: production
       PORT: 8080
@@ -44,6 +59,7 @@ services:
       APP_SECRET: ${APP_SECRET:?set APP_SECRET to at least 32 characters}
       # The password goes into a URL: keep it to letters, digits, - and _.
       DB_DSN: postgres://${POSTGRES_USER:-montara}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-montara_pass}?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
       MIGRATE_ON_BOOT: 'true'
       SEED_ON_BOOT: ${SEED_ON_BOOT:-false}
       SUPER_USER: ${SUPER_USER:-}

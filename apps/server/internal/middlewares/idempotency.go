@@ -42,11 +42,13 @@ var idempotencyKey = regexp.MustCompile(`^[A-Za-z0-9_-]{16,128}$`)
 // client's key and the body, so a key only ever repeats the request it was
 // first sent with.
 //
-// ponytail: answers are kept in this process's memory, like the rate
-// limiter's counts. With more than one replica a retry may reach another one
-// and run again; give Storage and Lock a shared backend then.
-func Idempotency() fiber.Handler {
+// The answers and the locks are kept in store: in Redis, shared by every
+// replica, or in this process's memory without it. In memory a retry that
+// reaches another replica is run again.
+func Idempotency(store Store) fiber.Handler {
 	replay := idempotency.New(idempotency.Config{
+		Storage:   store.storage,
+		Lock:      store.lock,
 		KeyHeader: IdempotencyKeyHeader,
 		// The client's key is checked below; what arrives here is the digest.
 		KeyHeaderValidate: func(string) error { return nil },
@@ -76,7 +78,7 @@ func Idempotency() fiber.Handler {
 			// Kept apart, so two parts cannot be read as one.
 			digest.Write([]byte{0})
 		}
-		c.Request().Header.Set(IdempotencyKeyHeader, hex.EncodeToString(digest.Sum(nil)))
+		c.Request().Header.Set(IdempotencyKeyHeader, "idempotency:"+hex.EncodeToString(digest.Sum(nil)))
 
 		if err := replay(c); err != nil {
 			return err

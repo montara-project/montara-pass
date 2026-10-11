@@ -20,6 +20,7 @@ type Config struct {
 	DB     ConfigDB
 	Auth   ConfigAuth
 	Sentry ConfigSentry
+	Redis  ConfigRedis
 }
 
 // ConfigAuth configures the embedded Authula server.
@@ -51,6 +52,13 @@ type ConfigDB struct {
 	MaxOpenConns int
 	MaxIdleConns int
 	MaxIdleTime  time.Duration
+}
+
+// ConfigRedis points at the Redis the rate limiter and the idempotency
+// middleware share between replicas. Without a URL they keep their state in
+// this process's memory.
+type ConfigRedis struct {
+	URL string
 }
 
 type ConfigSentry struct {

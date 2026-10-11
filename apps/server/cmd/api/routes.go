@@ -33,21 +33,23 @@ func routes(r *fiber.App, app *app.Application) {
 	// Authula: email & password, Google OAuth2 and magic-link sign-in,
 	// plus GET /me and POST /sign-out, all under authBasePath. The limiter
 	// guards password guessing and sign-in/reset email flooding.
+	// Counts, idempotent answers and their locks: in Redis when there is one,
+	// so replicas share them, and in memory otherwise.
+	store := middlewares.NewStore(app.Redis)
+
 	r.Use(authBasePath,
-		middlewares.RateLimit(authRateLimit, app.Config.App.Env == config.EnvDevelopment, splitCSV(app.Config.App.RateLimitExemptIPs)),
+		middlewares.RateLimit("auth", authRateLimit, app.Config.App.Env == config.EnvDevelopment, splitCSV(app.Config.App.RateLimitExemptIPs), store),
 		fiberadapter.New(fiberadapter.Config{Handler: app.Auth.Handler()}),
 	)
 
 	exemptLoopback := app.Config.App.Env == config.EnvDevelopment
 	exemptIPs := splitCSV(app.Config.App.RateLimitExemptIPs)
 
-	// ponytail: the limiters count in memory, so each replica has its own
-	// budget; give them shared storage once there is more than one instance.
-	v1 := api.Group("/v1", middlewares.RateLimit(apiRateLimit, exemptLoopback, exemptIPs))
+	v1 := api.Group("/v1", middlewares.RateLimit("api", apiRateLimit, exemptLoopback, exemptIPs, store))
 
 	// A write that carries an Idempotency-Key is run once, however often it
 	// is sent. It needs the user, so it goes after Authorization.
-	once := middlewares.Idempotency()
+	once := middlewares.Idempotency(store)
 
 	// Reads are public; writes need a signed-in super user.
 	categories := v1.Group("/categories")

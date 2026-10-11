@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -12,15 +13,89 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 
 	"montara-pass/server/internal/lib"
 	"montara-pass/server/internal/lib/apperr"
 )
 
 func TestIdempotency(t *testing.T) {
-	alice, bob := uuid.NewString(), uuid.NewString()
-	var runs atomic.Int64
+	testIdempotency(t, NewStore(nil))
+}
 
+// redisReplicas gives each of n replicas its own connection to the Redis in
+// TEST_REDIS_URL, or skips the test without one:
+//
+//	TEST_REDIS_URL=redis://localhost:6379/15 go test ./internal/middlewares
+func redisReplicas(t *testing.T, n int) []Store {
+	t.Helper()
+	url := os.Getenv("TEST_REDIS_URL")
+	if url == "" {
+		t.Skip("TEST_REDIS_URL not set")
+	}
+	options, err := redis.ParseURL(url)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var stores []Store
+	for range n {
+		client := redis.NewClient(options)
+		t.Cleanup(func() { _ = client.Close() })
+		if err := client.Ping(t.Context()).Err(); err != nil {
+			t.Fatalf("redis: %v", err)
+		}
+		stores = append(stores, NewStore(client))
+	}
+	return stores
+}
+
+// TestIdempotencyRedis runs the same checks against two replicas that share a
+// Redis: what one has answered, the other repeats.
+func TestIdempotencyRedis(t *testing.T) {
+	testIdempotency(t, redisReplicas(t, 2)...)
+}
+
+// TestRateLimitRedis checks that two replicas count against one budget, and
+// that two limiters do not count against each other's.
+func TestRateLimitRedis(t *testing.T) {
+	name := "test-" + uuid.NewString()
+	ok := func(c fiber.Ctx) error { return c.SendString("ok") }
+
+	var replicas []*fiber.App
+	for _, store := range redisReplicas(t, 2) {
+		replica := fiber.New(fiber.Config{ErrorHandler: func(c fiber.Ctx, err error) error {
+			return c.SendStatus(http.StatusTooManyRequests)
+		}})
+		replica.Get("/a", RateLimit(name+"-a", 3, false, nil, store), ok)
+		replica.Get("/b", RateLimit(name+"-b", 3, false, nil, store), ok)
+		replicas = append(replicas, replica)
+	}
+
+	get := func(i int, path string) int {
+		t.Helper()
+		res, err := replicas[i%2].Test(httptest.NewRequest(http.MethodGet, path, nil))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res.StatusCode
+	}
+	for i := range 3 {
+		if status := get(i, "/a"); status != http.StatusOK {
+			t.Fatalf("request %d: %d, want 200", i+1, status)
+		}
+	}
+	if status := get(3, "/a"); status != http.StatusTooManyRequests {
+		t.Fatalf("fourth request, on the other replica: %d, want 429", status)
+	}
+	if status := get(0, "/b"); status != http.StatusOK {
+		t.Fatalf("another limiter shares the budget: %d, want 200", status)
+	}
+}
+
+// newIdempotencyApp is one replica: a stand-in for Authorization, the
+// middleware, and handlers that count how often they run.
+func newIdempotencyApp(store Store, runs *atomic.Int64) *fiber.App {
 	app := fiber.New(fiber.Config{
 		ErrorHandler: func(c fiber.Ctx, err error) error {
 			status := http.StatusInternalServerError
@@ -37,7 +112,7 @@ func TestIdempotency(t *testing.T) {
 		}
 		return c.Next()
 	})
-	app.Use(Idempotency())
+	app.Use(Idempotency(store))
 
 	// Answers with how many times it has run, so a repeat can be told apart.
 	count := func(c fiber.Ctx) error {
@@ -52,6 +127,20 @@ func TestIdempotency(t *testing.T) {
 		return apperr.New(apperr.KindConflict, "no")
 	})
 
+	return app
+}
+
+// testIdempotency sends its requests to one replica per store in turn, so with
+// more than one store a repeat reaches another replica than the first.
+func testIdempotency(t *testing.T, stores ...Store) {
+	alice, bob := uuid.NewString(), uuid.NewString()
+	var runs, sent atomic.Int64
+
+	var replicas []*fiber.App
+	for _, store := range stores {
+		replicas = append(replicas, newIdempotencyApp(store, &runs))
+	}
+
 	send := func(method, path, user, key, body string) (int, string, http.Header) {
 		t.Helper()
 		req := httptest.NewRequest(method, path, strings.NewReader(body))
@@ -59,7 +148,7 @@ func TestIdempotency(t *testing.T) {
 		if key != "" {
 			req.Header.Set(IdempotencyKeyHeader, key)
 		}
-		res, err := app.Test(req)
+		res, err := replicas[int(sent.Add(1))%len(replicas)].Test(req)
 		if err != nil {
 			t.Fatalf("%s %s: %v", method, path, err)
 		}
