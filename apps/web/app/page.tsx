@@ -91,7 +91,7 @@ function Hero() {
           Self-host
           <ArrowRightIcon className="size-4" />
         </a>
-        <a href={docsUrl("index")} className="btn btn-secondary">
+        <a href={docsUrl()} className="btn btn-secondary">
           Read the docs
         </a>
       </div>
@@ -112,11 +112,12 @@ function Hero() {
 /* ---------- Trust strip ---------- */
 
 const stack = [
-  { mark: "Go", name: "Go · Fiber v3" },
-  { mark: "Pg", name: "PostgreSQL 18" },
-  { mark: "Re", name: "React 19" },
-  { mark: "Au", name: "Authula" },
-  { mark: "Dk", name: "Docker" },
+  // The Fiber mark is plain black, so it is inverted on the dark theme.
+  { src: "fiber.svg", name: "Go · Fiber v3", mono: true },
+  { src: "postgresql.svg", name: "PostgreSQL 18" },
+  { src: "react.svg", name: "React 19" },
+  { src: "authula.png", name: "Authula" },
+  { src: "docker.svg", name: "Docker" },
 ];
 
 function TrustStrip() {
@@ -128,8 +129,14 @@ function TrustStrip() {
       <ul className="flex flex-wrap items-center gap-x-10 gap-y-4 px-6 py-5 sm:px-10 md:justify-between md:py-7">
         {stack.map((item) => (
           <li key={item.name} className="flex items-center gap-2.5 text-sm text-mist">
-            <span className="flex size-8 items-center justify-center rounded-lg border border-line bg-card font-mono text-[11px] text-fg">
-              {item.mark}
+            <span className="flex size-8 items-center justify-center rounded-lg border border-line bg-card">
+              <img
+                src={`/static/stack/${item.src}`}
+                alt=""
+                width={20}
+                height={20}
+                className={`size-5 object-contain ${item.mono ? "invert light:invert-0" : ""}`}
+              />
             </span>
             {item.name}
           </li>

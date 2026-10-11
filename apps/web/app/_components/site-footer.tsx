@@ -19,7 +19,7 @@ const columns: { title: string; links: { label: string; href: string }[] }[] = [
       { label: "Docker and Dokploy", href: docsUrl("getting-started/docker") },
       { label: "Encryption", href: docsUrl("architecture/encryption") },
       { label: "Browser extension", href: docsUrl("clients/browser-extension") },
-      { label: "API reference", href: docsUrl("api-reference/index") },
+      { label: "API reference", href: docsUrl("api-reference") },
     ],
   },
   {

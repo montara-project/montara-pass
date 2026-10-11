@@ -11,7 +11,7 @@ const navLinks = [
   { href: "/#self-host", label: "Self-host" },
   { href: "/#pricing", label: "Pricing" },
   { href: "/#faq", label: "FAQ" },
-  { href: docsUrl("index"), label: "Docs" },
+  { href: docsUrl(), label: "Docs" },
 ];
 
 type Theme = "light" | "dark" | "system";
