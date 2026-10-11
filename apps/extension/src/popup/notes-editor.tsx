@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react'
+
 import {
   MarkdownEditorContent,
   MarkdownEditorProvider,
@@ -119,6 +121,53 @@ function Editor({ value, onChange, placeholder, labelledBy }: NotesEditorProps) 
         <MarkdownEditorContent />
       </div>
     </div>
+  )
+}
+
+function View({ value }: { value: string }) {
+  const body = useRef<HTMLDivElement>(null)
+
+  useMarkdownEditor({
+    value,
+    onChange: () => undefined,
+    readOnly: true,
+    contentClass: 'notes-content notes-view',
+    imageClass: 'muted',
+  })
+
+  // A link would otherwise replace the vault in this tab.
+  useEffect(() => {
+    const el = body.current
+    if (!el) return
+
+    const open = (e: MouseEvent) => {
+      const link = (e.target as Element).closest('a')
+      if (!link) return
+
+      e.preventDefault()
+      if (/^https?:/.test(link.href)) window.open(link.href, '_blank', 'noopener,noreferrer')
+    }
+    el.addEventListener('click', open)
+    return () => el.removeEventListener('click', open)
+  }, [])
+
+  return (
+    <div ref={body}>
+      <MarkdownEditorContent />
+    </div>
+  )
+}
+
+/**
+ * A note's Markdown, rendered. It is the editor without a toolbar and never
+ * editable, so a note looks here as it does while it is written. Give it a
+ * new `key` to show other text.
+ */
+export function NotesView({ value }: { value: string }) {
+  return (
+    <MarkdownEditorProvider>
+      <View value={value} />
+    </MarkdownEditorProvider>
   )
 }
 

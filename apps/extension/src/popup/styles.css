@@ -1361,6 +1361,35 @@ button.notes-tool[aria-pressed='true'] {
   scrollbar-color: var(--border) transparent;
 }
 
+/* A note being read, not written: it takes the room its text needs. */
+.notes-content.notes-view {
+  min-height: 0;
+  max-height: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+.notes-content a {
+  color: var(--focus);
+}
+
+.notes-content hr {
+  margin: 12px 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+.notes-content table {
+  border-collapse: collapse;
+}
+
+.notes-content th,
+.notes-content td {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+
 .notes-content > * {
   margin: 0 0 8px;
 }

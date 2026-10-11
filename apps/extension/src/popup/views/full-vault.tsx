@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { VaultItem } from '@/types/vault'
 
@@ -67,6 +67,11 @@ const SORT_LABEL: Record<Sort, string> = {
   name: 'Sort by name',
   updated: 'Sort by last updated',
 }
+
+// Fetched when a secure note is opened, so it stays out of the first load.
+const NotesView = lazy(() =>
+  import('../notes-editor').then((module) => ({ default: module.NotesView }))
+)
 
 const MASK = '••••••••••••'
 
@@ -566,7 +571,19 @@ function ItemDetail({ item, onCopy, onEdit, onShare }: ItemDetailProps) {
         {(secret.notes || !isLogin) && (
           <div className="field field-notes">
             <dt>Notes</dt>
-            <dd>{secret.notes || <span className="muted">None</span>}</dd>
+            <dd>
+              {!secret.notes ? (
+                <span className="muted">None</span>
+              ) : isLogin ? (
+                secret.notes
+              ) : (
+                // A secure note is written as Markdown; until the renderer
+                // has loaded, its text shows as it is.
+                <Suspense fallback={secret.notes}>
+                  <NotesView key={secret.notes} value={secret.notes} />
+                </Suspense>
+              )}
+            </dd>
             <button
               className="icon-button"
               aria-label="Copy notes"
