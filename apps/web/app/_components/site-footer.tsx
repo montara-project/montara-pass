@@ -1,90 +1,85 @@
-import { LogoMark } from "./icons";
+import { GithubIcon, LogoMark } from "./icons";
+import { docsUrl, REPO_URL } from "./links";
 
 const columns: { title: string; links: { label: string; href: string }[] }[] = [
   {
     title: "Product",
     links: [
-      { label: "Features", href: "/#features" },
       { label: "Security", href: "/#security" },
+      { label: "Features", href: "/#features" },
+      { label: "Self-host", href: "/#self-host" },
       { label: "Pricing", href: "/#pricing" },
-      { label: "Downloads", href: "/" },
-      { label: "Browser extension", href: "/" },
+      { label: "FAQ", href: "/#faq" },
+    ],
+  },
+  {
+    title: "Docs",
+    links: [
+      { label: "Installation", href: docsUrl("getting-started/installation") },
+      { label: "Docker and Dokploy", href: docsUrl("getting-started/docker") },
+      { label: "Encryption", href: docsUrl("architecture/encryption") },
+      { label: "Browser extension", href: docsUrl("clients/browser-extension") },
+      { label: "API reference", href: docsUrl("api-reference/index") },
     ],
   },
   {
     title: "Company",
     links: [
-      { label: "About", href: "/" },
-      { label: "Blog", href: "/" },
-      { label: "Careers", href: "/" },
-      { label: "Contact us", href: "/contact" },
-      { label: "Press kit", href: "/" },
-    ],
-  },
-  {
-    title: "Resources",
-    links: [
-      { label: "Help center", href: "/" },
-      { label: "Security whitepaper", href: "/#security" },
-      { label: "Guides", href: "/" },
-      { label: "System status", href: "/" },
-    ],
-  },
-  {
-    title: "Legal",
-    links: [
-      { label: "Privacy policy", href: "/privacy" },
-      { label: "Terms of service", href: "/terms" },
-      { label: "Cookie settings", href: "/" },
+      { label: "Contact", href: "/contact" },
+      { label: "Privacy", href: "/privacy" },
+      { label: "Terms", href: "/terms" },
     ],
   },
 ];
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-line bg-abyss">
-      <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-6">
-          <div className="lg:col-span-2">
-            <a
-              href="/"
-              className="flex w-fit cursor-pointer items-center gap-2.5"
-              aria-label="Montara Pass — back to home"
-            >
-              <LogoMark className="size-8" />
-              <span className="font-heading text-lg font-semibold tracking-tight">
-                Montara<span className="text-accent-bright">Pass</span>
-              </span>
-            </a>
-            <p className="mt-4 max-w-xs text-sm leading-6 text-mist">
-              The zero-knowledge password manager. Your logins, encrypted on your device — never on
-              our servers.
-            </p>
-          </div>
-
-          {columns.map((col) => (
-            <nav key={col.title} aria-label={col.title}>
-              <h3 className="font-heading text-sm font-semibold text-fg">{col.title}</h3>
-              <ul className="mt-4 flex flex-col gap-2.5">
-                {col.links.map((link) => (
-                  <li key={link.label}>
-                    <a
-                      href={link.href}
-                      className="cursor-pointer text-sm text-mist transition-colors duration-200 hover:text-fg"
-                    >
-                      {link.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          ))}
+    <footer className="border-t border-line">
+      <div className="grid gap-10 px-6 py-14 sm:px-10 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+        <div>
+          <a
+            href="/"
+            className="flex w-fit cursor-pointer items-center gap-2.5"
+            aria-label="Montara Pass — back to home"
+          >
+            <LogoMark className="size-7" />
+            <span className="font-heading text-base font-semibold tracking-tight">
+              Montara<span className="text-accent-bright">Pass</span>
+            </span>
+          </a>
+          <p className="mt-3 max-w-xs text-sm leading-6 text-mist">
+            The password manager your server can&rsquo;t read.
+          </p>
         </div>
 
-        <div className="mt-12 flex flex-col items-start justify-between gap-4 border-t border-line pt-6 sm:flex-row sm:items-center">
-          <p className="text-xs text-mist">© 2026 Montara Labs, Inc. All rights reserved.</p>
-          <p className="text-xs text-mist">Independently audited · SOC 2 Type II · GDPR-ready</p>
-        </div>
+        {columns.map((col) => (
+          <nav key={col.title} aria-label={col.title}>
+            <h3 className="text-sm font-medium text-fg">{col.title}</h3>
+            <ul className="mt-4 flex flex-col gap-3">
+              {col.links.map((link) => (
+                <li key={link.label}>
+                  <a
+                    href={link.href}
+                    className="cursor-pointer text-sm text-mist transition-colors duration-200 hover:text-fg"
+                  >
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        ))}
+      </div>
+
+      <div className="flex items-center justify-between gap-4 border-t border-line px-6 py-5 sm:px-10">
+        <p className="font-mono text-xs text-mist">© 2026 Montara Labs, Inc.</p>
+        <a
+          href={REPO_URL}
+          aria-label="Montara Pass on GitHub"
+          className="cursor-pointer text-mist transition-colors duration-200 hover:text-fg"
+        >
+          <GithubIcon className="size-4.5" />
+        </a>
       </div>
     </footer>
   );
