@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { ContactForm } from "../_components/contact-form";
+import { ContactForm } from "@/components/contact-form";
 import {
   AlertTriangleIcon,
   ClockIcon,
@@ -10,7 +10,7 @@ import {
   MessageSquareIcon,
   ScanIcon,
   ShieldCheckIcon,
-} from "../_components/icons";
+} from "@/components/icons";
 
 export const metadata: Metadata = {
   title: "Contact — Montara Pass",

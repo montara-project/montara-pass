@@ -10,14 +10,13 @@ does not call the API.
 | Route | Content |
 | --- | --- |
 | `/` | Home: security, features, self-hosting, pricing and FAQ |
-| `/login` | A sign-in form |
 | `/contact` | A contact form |
 | `/privacy`, `/terms` | Legal pages with a table of contents |
 
-<Callout title="The forms are not wired up" type="warn">
-  The sign-in and contact forms validate their fields and then only simulate
-  a submission. Neither sends anything yet; signing in happens in the
-  [web app](/docs/clients/web-app).
+<Callout title="The contact form is not wired up" type="warn">
+  The contact form validates its fields and then only simulates a submission;
+  it sends nothing yet. The header's **Log in** button links to the
+  [web app](/docs/clients/web-app) at `https://app.montarapass.com`.
 </Callout>
 
 The site follows the system theme and has a light, dark and system switch in

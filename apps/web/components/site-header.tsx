@@ -119,7 +119,10 @@ export function SiteHeader() {
 
         <div className="hidden items-center gap-2 md:flex">
           <ThemeToggle />
-          <a href="/login" className="btn btn-primary rounded-full px-4 py-1.5">
+          <a
+            href="https://app.montarapass.com"
+            className="btn btn-primary rounded-full px-4 py-1.5"
+          >
             Log in
           </a>
         </div>
@@ -150,7 +153,7 @@ export function SiteHeader() {
             ))}
             <div className="mt-3 flex items-center gap-2">
               <a
-                href="/login"
+                href="https://app.montarapass.com"
                 onClick={() => setOpen(false)}
                 className="btn btn-primary flex-1 rounded-full"
               >

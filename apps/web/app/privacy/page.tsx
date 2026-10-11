@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { LegalPage, type LegalSection } from "../_components/legal-page";
+import { LegalPage, type LegalSection } from "@/components/legal-page";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — Montara Pass",
