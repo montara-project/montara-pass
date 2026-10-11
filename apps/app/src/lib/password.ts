@@ -67,7 +67,8 @@ export type PasswordStrength = 'weak' | 'fair' | 'strong'
 /**
  * A rough strength from length and variety: the bits a guesser would need if
  * the characters were random, not counting repeats and runs like "aaa" or
- * "1234". Rounded to a whole number.
+ * "1234", nor a block said over again like "Pa55!Pa55!Pa55!". Rounded to a
+ * whole number.
  */
 // ponytail: no dictionary, so "Summer2024!" passes as fair. zxcvbn would
 // catch words, names and dates, at the cost of a few hundred kB in both apps.
@@ -78,13 +79,30 @@ export function passwordBits(password: string): number {
     (/\d/.test(password) ? 10 : 0) +
     (/[^a-zA-Z\d]/.test(password) ? 33 : 0)
 
-  let counted = 0
-  for (let i = 0; i < password.length; i++) {
-    const step = i > 0 ? password.charCodeAt(i) - password.charCodeAt(i - 1) : NaN
-    if (step !== 0 && step !== 1 && step !== -1) counted++
+  // The characters that add something, when a character that only repeats
+  // the one `period` places before it does not. Period 0 is no repeat at all.
+  const counted = (period: number) => {
+    let count = 0
+    for (let i = 0; i < password.length; i++) {
+      const step = i > 0 ? password.charCodeAt(i) - password.charCodeAt(i - 1) : NaN
+      const repeats = period > 0 && i >= period && password[i] === password[i - period]
+      if (!repeats && step !== 0 && step !== 1 && step !== -1) count++
+    }
+    return count
   }
 
-  return Math.round(counted * Math.log2(pool || 1))
+  // A period counts only when at least half of what follows the first block
+  // repeats it: a random password has stray matches at some distance too.
+  let fewest = counted(0)
+  for (let period = 2; period <= password.length / 2; period++) {
+    let matches = 0
+    for (let i = period; i < password.length; i++) {
+      if (password[i] === password[i - period]) matches++
+    }
+    if (matches * 2 >= password.length - period) fewest = Math.min(fewest, counted(period))
+  }
+
+  return Math.round(fewest * Math.log2(pool || 1))
 }
 
 /** The bits at which a password stops being weak, and at which it is strong. */

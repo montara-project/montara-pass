@@ -266,7 +266,10 @@ export function useMarkdownEditor({
             return {
               update: (updated, previous) => {
                 if (!updated.state.doc.eq(previous.doc)) {
-                  latest.current.onChange(ctx.get(serializerCtx)(updated.state.doc).trimEnd())
+                  const markdown = ctx.get(serializerCtx)(updated.state.doc).trimEnd()
+                  // Should the editor be built again, it starts from here.
+                  initial.current = markdown
+                  latest.current.onChange(markdown)
                 }
                 refresh(updated.state)
               },
