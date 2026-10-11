@@ -1,6 +1,7 @@
 import '@milkdown/kit/prose/view/style/prosemirror.css'
 
 import type { EditorState } from '@milkdown/kit/prose/state'
+import type { EditorView } from '@milkdown/kit/prose/view'
 
 import {
   defaultValueCtx,
@@ -28,6 +29,7 @@ import {
 import { gfm, toggleStrikethroughCommand } from '@milkdown/kit/preset/gfm'
 import { lift } from '@milkdown/kit/prose/commands'
 import { redoDepth, undoDepth } from '@milkdown/kit/prose/history'
+import { Fragment, Slice } from '@milkdown/kit/prose/model'
 import { Plugin, PluginKey } from '@milkdown/kit/prose/state'
 import { $prose, $remark, callCommand } from '@milkdown/kit/utils'
 import { Milkdown, MilkdownProvider, useEditor, useInstance } from '@milkdown/react'
@@ -65,6 +67,61 @@ const imageTitle = $remark('imageTitle', () => () => (tree: MarkdownNode) => {
   }
   visit(tree)
 })
+
+/**
+ * GitHub and Gist lay a file out as a table, one row per line, and that is
+ * what a copy from them puts on the clipboard. Pasted as it is, a script
+ * would become a table of one column. Here such a table becomes the code
+ * block it stands for.
+ */
+// ponytail: only GitHub's own markup (td.blob-code) is recognised; another
+// site that draws code as a table still pastes as a table.
+function codeTablesToBlocks(html: string): string {
+  if (!html.includes('blob-code')) return html
+
+  const page = new DOMParser().parseFromString(html, 'text/html')
+  for (const table of page.querySelectorAll('table')) {
+    const lines = table.querySelectorAll('td.blob-code')
+    if (lines.length === 0) continue
+
+    const code = page.createElement('code')
+    code.textContent = Array.from(lines, (line) => line.textContent ?? '').join('\n')
+    const block = page.createElement('pre')
+    block.append(code)
+    table.replaceWith(block)
+  }
+  return page.body.innerHTML
+}
+
+/**
+ * Whether pasted plain text is code rather than prose: more than one line,
+ * and either a script's first line, indentation, or lines ending the way
+ * statements do.
+ */
+// ponytail: a guess from the shape of the text. Prose with an indented line
+// is taken for code; flat code without semicolons or braces is not.
+function looksLikeCode(text: string): boolean {
+  const lines = text.split('\n').filter((line) => line.trim() !== '')
+  if (lines.length < 2) return false
+  if (text.startsWith('#!')) return true
+  if (lines.some((line) => /^(\t| {2,})\S/.test(line))) return true
+
+  const statements = lines.filter((line) => /[{};]\s*$/.test(line)).length
+  return statements / lines.length >= 0.3
+}
+
+/**
+ * Pasted code becomes a code block. As paragraphs it would lose its blank
+ * lines and indentation, and be saved with Markdown's escapes in it: `\#`
+ * for a comment, `\*` for a glob.
+ */
+function codeToBlock(text: string, view: EditorView): Slice | undefined {
+  const { code_block: codeBlock } = view.state.schema.nodes
+  const code = text.replace(/\r\n?/g, '\n').replace(/\n+$/, '')
+  if (!codeBlock || !looksLikeCode(code)) return undefined
+
+  return new Slice(Fragment.from(codeBlock.create(null, view.state.schema.text(code))), 0, 0)
+}
 
 /** What the toolbar shows for the current selection. */
 export interface MarkdownEditorActive {
@@ -140,6 +197,8 @@ export interface MarkdownEditorOptions {
   onChange: (markdown: string) => void
   onBlur?: () => void
   disabled?: boolean
+  /** Only shows the content: it is never editable and is not a text field. */
+  readOnly?: boolean
   /** Labels the editing area for assistive technology. */
   labelledBy?: string
   /** Class of the editable area; headings, lists and the rest are styled from it. */
@@ -157,6 +216,7 @@ export function useMarkdownEditor({
   onChange,
   onBlur,
   disabled = false,
+  readOnly = false,
   labelledBy,
   contentClass,
   imageClass = '',
@@ -220,11 +280,13 @@ export function useMarkdownEditor({
           ctx.update(remarkStringifyOptionsCtx, (options) => ({ ...options, bullet: '-' as const }))
           ctx.update(editorViewOptionsCtx, (options) => ({
             ...options,
-            editable: () => !latest.current.disabled,
+            editable: () => !readOnly && !latest.current.disabled,
+            transformPastedHTML: codeTablesToBlocks,
+            // No slice means the text is pasted the usual way, as paragraphs.
+            clipboardTextParser: (text, _context, _plain, view) => codeToBlock(text, view) as Slice,
             attributes: {
               class: contentClass,
-              role: 'textbox',
-              'aria-multiline': 'true',
+              ...(readOnly ? {} : { 'aria-multiline': 'true' }),
               ...(labelledBy ? { 'aria-labelledby': labelledBy } : {}),
             },
             nodeViews: {
@@ -246,7 +308,7 @@ export function useMarkdownEditor({
         .use(history)
         .use(sync)
     },
-    [labelledBy, contentClass, imageClass]
+    [labelledBy, contentClass, imageClass, readOnly]
   )
 
   const [loading, getEditor] = useInstance()
@@ -254,8 +316,14 @@ export function useMarkdownEditor({
   useEffect(() => {
     if (loading) return
     // ProseMirror asks `editable` again when its props are set.
-    getEditor()?.action((ctx) => ctx.get(editorViewCtx).setProps({ editable: () => !disabled }))
-  }, [loading, getEditor, disabled])
+    getEditor()?.action((ctx) => {
+      const view = ctx.get(editorViewCtx)
+      view.setProps({ editable: () => !readOnly && !disabled })
+      // Milkdown calls the element a text box; one that only shows its
+      // content is not, and its headings and lists speak for it.
+      if (readOnly) view.dom.removeAttribute('role')
+    })
+  }, [loading, getEditor, disabled, readOnly])
 
   const run = <T>(command: { key: unknown }, payload?: T) => {
     getEditor()?.action(callCommand(command.key as never, payload as never))
