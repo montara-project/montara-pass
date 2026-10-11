@@ -6,10 +6,13 @@ import { createRoot } from 'react-dom/client'
 import type { VaultKeys } from '@/lib/crypto/vault'
 import type { VaultItem } from '@/types/vault'
 
+import { markItemUsed } from '../lib/api'
 import { fillLogin } from '../lib/autofill'
 import { loadVault } from '../lib/session'
 import { hostOf, matchesSite } from '../lib/site'
-import { ExpandIcon, KeyholeIcon } from '../popup/icons'
+import { lastUsedLabel } from '../lib/usage'
+import { ExpandIcon } from '../popup/icons'
+import { ItemTile } from '../popup/item-tile'
 import { openFullScreen } from '../popup/layout'
 import { useVaultItems } from '../popup/use-vault-items'
 
@@ -41,9 +44,10 @@ function Logins({ page, keys, onLocked }: { page: Page; keys: VaultKeys; onLocke
 
   const matches = useMemo(
     () =>
-      (items ?? []).filter(
-        (item) => item.type === 'login' && matchesSite(item.secret?.url, page.url)
-      ),
+      (items ?? [])
+        .filter((item) => item.type === 'login' && matchesSite(item.secret?.url, page.url))
+        // The account signed in with last comes first.
+        .sort((a, b) => (b.last_used_at ?? '').localeCompare(a.last_used_at ?? '')),
     [items, page.url]
   )
 
@@ -70,6 +74,8 @@ function Logins({ page, keys, onLocked }: { page: Page; keys: VaultKeys; onLocke
       func: fillLogin,
       args: [item.secret.username ?? '', item.secret.password ?? ''],
     })
+    // The login is filled either way; an older server has no such route.
+    await markItemUsed(item.id).catch(() => undefined)
     void toPage(page, { type: 'inline:close' })
   }
 
@@ -89,12 +95,12 @@ function Logins({ page, keys, onLocked }: { page: Page; keys: VaultKeys; onLocke
           aria-label={`Fill ${item.secret!.name}`}
           onClick={(e) => void fill(item, e.nativeEvent)}
         >
-          <span className="tile">
-            <KeyholeIcon />
-          </span>
+          <ItemTile item={item} />
           <span className="item-text">
             <span className="item-name">{item.secret!.username || item.secret!.name}</span>
-            <span className="muted">{hostOf(item.secret!.url)}</span>
+            <span className="muted">
+              {lastUsedLabel(item.last_used_at) ?? hostOf(item.secret!.url)}
+            </span>
           </span>
         </button>
       ))}

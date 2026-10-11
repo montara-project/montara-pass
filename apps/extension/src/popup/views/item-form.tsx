@@ -7,12 +7,14 @@ import { ItemTypeOptions, type ItemType } from '@/lib/constants/vault'
 import {
   encryptItemUpdate,
   encryptNewItem,
+  keepIcon,
   type ItemSecret,
   type VaultKeys,
 } from '@/lib/crypto/vault'
 
 import { ApiError, createItem, setItemPlacement, SignedOutError, updateItem } from '../../lib/api'
 import { generatePassword } from '../../lib/generate'
+import { fetchIcon } from '../../lib/icon'
 import { ChevronDownIcon, EyeIcon, EyeOffIcon } from '../icons'
 
 /** Select value standing for "no folder". */
@@ -167,9 +169,13 @@ export default function ItemForm({
     setBusy(true)
 
     try {
+      const secret = keepIcon(toSecret(parsed), item?.secret)
+      // A new login, a new site, or a site that had no icon last time.
+      if (parsed.type === 'login' && !secret.icon) secret.icon = await fetchIcon(secret.url)
+
       if (item) {
         await updateItem(item.id, {
-          encrypted_data: await encryptItemUpdate(keys, item, toSecret(parsed)),
+          encrypted_data: await encryptItemUpdate(keys, item, secret),
           // The API refuses the write if someone else changed the item since.
           revision: item.revision,
         })
@@ -181,7 +187,7 @@ export default function ItemForm({
         const created = await createItem({
           type: parsed.type,
           folder_id: folderId,
-          ...(await encryptNewItem(keys, toSecret(parsed))),
+          ...(await encryptNewItem(keys, secret)),
         })
         onSaved(created.id)
       }

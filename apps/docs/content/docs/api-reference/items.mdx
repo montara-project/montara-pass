@@ -19,6 +19,7 @@ favorite flag.
   "encrypted_item_key": "base64",
   "folder_id": null,
   "favorite": false,
+  "last_used_at": null,
   "created_at": "…",
   "updated_at": "…",
   "deleted_at": null
@@ -90,6 +91,17 @@ PUT /api/v1/items/:id/placement
 
 Any member may call it; it changes only the caller's own view. A null or
 missing `folder_id` unfiles the item.
+
+## Mark as used
+
+```http
+PUT /api/v1/items/:id/used
+```
+
+Sets the caller's `last_used_at` to now and answers with the item. Any member
+may call it; like folder and favorite it is the caller's own, so it does not
+change `revision`, `updated_at` or what other members see. The extension
+calls it after filling a login into a page.
 
 ## Trash
 

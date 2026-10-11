@@ -11,6 +11,7 @@ import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { toastAxiosError } from '@/lib/api/axios-error'
 import { queries } from '@/lib/api/queries'
 import { ITEM_ROLE_OWNER } from '@/lib/constants/vault'
+import { itemIcon } from '@/lib/crypto/vault'
 import { formatDateTime } from '@/lib/date'
 import { capitalizeFirstLetter } from '@/lib/string'
 
@@ -141,6 +142,9 @@ function NameCell({ record }: CellProps) {
       >
         <Star className={record.favorite ? 'size-4 text-yellow-500' : 'size-4'} />
       </button>
+      {itemIcon(record.secret) && (
+        <img src={itemIcon(record.secret)!} alt="" className="size-5 rounded" />
+      )}
       {record.secret ? (
         <span className="font-medium">{record.secret.name}</span>
       ) : (

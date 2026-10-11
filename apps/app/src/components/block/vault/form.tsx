@@ -13,7 +13,7 @@ import { parseDto } from '@/lib/api/dtos/parse'
 import { ItemFormSchema, type ItemFormDto } from '@/lib/api/dtos/vault/schema'
 import { queries } from '@/lib/api/queries'
 import { ItemTypeOptions, type ItemType } from '@/lib/constants/vault'
-import { encryptItemUpdate, encryptNewItem } from '@/lib/crypto/vault'
+import { encryptItemUpdate, encryptNewItem, keepIcon } from '@/lib/crypto/vault'
 
 /** Select value standing for "no folder": a select item cannot be empty. */
 const NO_FOLDER = 'none'
@@ -255,7 +255,11 @@ export function EditItemForm({ open, onOpenChange, record }: EditItemFormProps) 
       onSave={async (value) => {
         if (!readOnly) {
           await updateMutation.mutateAsync({
-            encrypted_data: await encryptItemUpdate(keys, record, toSecret(value)),
+            encrypted_data: await encryptItemUpdate(
+              keys,
+              record,
+              keepIcon(toSecret(value), secret)
+            ),
             // The API refuses the write if someone else changed the item since.
             revision: record.revision,
           })

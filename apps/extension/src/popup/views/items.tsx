@@ -3,16 +3,16 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { VaultKeys } from '@/lib/crypto/vault'
 import type { VaultItem } from '@/types/vault'
 
+import { markItemUsed } from '../../lib/api'
 import { fillLogin } from '../../lib/autofill'
 import { hostOf, matchesSite } from '../../lib/site'
+import { lastUsedLabel } from '../../lib/usage'
 import {
   CopyIcon,
   ExpandIcon,
-  KeyholeIcon,
   KeyIcon,
   LockIcon,
   LogOutIcon,
-  NoteIcon,
   PlusIcon,
   RefreshIcon,
   SearchIcon,
@@ -20,6 +20,7 @@ import {
   SortIcon,
   UserIcon,
 } from '../icons'
+import { ItemTile } from '../item-tile'
 import { initials, openFullScreen } from '../layout'
 import { useVaultItems } from '../use-vault-items'
 import AddItem from './add-item'
@@ -135,6 +136,8 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
 
       const filled = injection?.result
       if (filled?.username || filled?.password) {
+        // The login is filled either way; an older server has no such route.
+        await markItemUsed(item.id).catch(() => undefined)
         window.close()
       } else {
         setNotice('No login form found on this page')
@@ -240,7 +243,11 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
                   </span>
                   <span className="item-text">
                     <span className="item-name">Fill {item.secret!.name}</span>
-                    <span className="muted">{item.secret!.username || 'No username'}</span>
+                    <span className="muted">
+                      {[item.secret!.username || 'No username', lastUsedLabel(item.last_used_at)]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
                   </span>
                 </button>
               ))}
@@ -271,7 +278,7 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
 
             return (
               <li key={item.id}>
-                <span className="tile">{isLogin ? <KeyholeIcon /> : <NoteIcon />}</span>
+                <ItemTile item={item} />
 
                 <div className="item-text">
                   <span className="item-name">{name}</span>

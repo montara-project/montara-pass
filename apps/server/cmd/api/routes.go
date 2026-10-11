@@ -78,6 +78,7 @@ func routes(r *fiber.App, app *app.Application) {
 	items.Put("/:id/restore", h.Item.Restore)
 	items.Delete("/:id/force", h.Item.DeletePermanently)
 	items.Put("/:id/placement", h.Item.SetPlacement)
+	items.Put("/:id/used", h.Item.MarkUsed)
 	items.Put("/:id/key", h.Item.RotateKey)
 	items.Get("/:id/members", h.Item.Members)
 	items.Post("/:id/members", h.Item.Share)

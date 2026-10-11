@@ -38,6 +38,27 @@ export interface ItemSecret {
   password?: string
   url?: string
   notes?: string
+  /**
+   * The site's icon as a PNG data URL, put there by the extension when the
+   * login is saved. '' means the site was asked and has none.
+   */
+  icon?: string
+}
+
+/**
+ * The icon to show for an item, or null. Only a PNG data URL is accepted: a
+ * shared item comes from someone else, and an address there would make this
+ * client call it.
+ */
+export function itemIcon(secret: ItemSecret | null | undefined): string | null {
+  return secret?.icon?.startsWith('data:image/png;base64,') ? secret.icon : null
+}
+
+/** An edited secret keeps the icon saved for its site, unless the site changed. */
+export function keepIcon(next: ItemSecret, previous: ItemSecret | null | undefined): ItemSecret {
+  return previous?.icon !== undefined && next.url === previous.url
+    ? { ...next, icon: previous.icon }
+    : next
 }
 
 export class WrongMasterPasswordError extends Error {

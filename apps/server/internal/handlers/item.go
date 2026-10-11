@@ -222,6 +222,25 @@ func (h *itemHandler) SetPlacement(c fiber.Ctx) error {
 	return dtos.OK(c, item)
 }
 
+// MarkUsed records that the caller filled the item into a page just now;
+// other members' views are not affected.
+func (h *itemHandler) MarkUsed(c fiber.Ctx) error {
+	item, uid, err := h.member(c)
+	if err != nil {
+		return err
+	}
+
+	if err := h.repo().MarkUsed(c.Context(), item.ID, uid); err != nil {
+		return err
+	}
+
+	item, err = h.repo().Get(c.Context(), item.ID, uid)
+	if err != nil {
+		return err
+	}
+	return dtos.OK(c, item)
+}
+
 // Delete moves the item to the owner's trash, hiding it from every member.
 func (h *itemHandler) Delete(c fiber.Ctx) error {
 	return h.ownerWrite(c, h.repo().Trash, "item moved to trash")

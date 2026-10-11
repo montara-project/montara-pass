@@ -70,10 +70,12 @@ const sections: LegalSection[] = [
     id: "browser-extension",
     title: "The browser extension",
     paragraphs: [
-      "The extension talks only to the Montara Pass server you point it at. It sends your sign-in email and password to sign you in, and reads and writes your vault as ciphertext. It sends no telemetry and no browsing history, and nothing goes to us unless that server is ours.",
+      "The extension talks to the Montara Pass server you point it at. It sends your sign-in email and password to sign you in, and reads and writes your vault as ciphertext. It sends no telemetry and no browsing history, and nothing goes to us unless that server is ours.",
     ],
     bullets: [
       "Kept in the browser's local storage: the server address and your session tokens.",
+      'When you fill a login into a page, the extension tells the server, which stores the time next to that item. It is how "last used" shows on your other devices; the server still cannot read the item.',
+      "To show a site's icon next to a login, the extension asks that site for its icon once, when the login is saved, and keeps it inside the encrypted item. The request goes to the site itself, never to us or to an icon service, and carries no cookies and no referrer.",
       "Kept in memory only: your unlocked keys, cleared after 15 minutes without use, when the browser closes, or when you lock the vault.",
       "The extension runs on every site you open, to find login fields and offer your saved logins inside them. That happens in your browser; nothing about the pages you visit is sent anywhere.",
       "It changes a page only when you pick a login or click Fill, and then only to fill the login form.",

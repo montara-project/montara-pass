@@ -463,6 +463,17 @@ button.link:hover {
   color: var(--tile-fg);
 }
 
+.tile-favicon {
+  padding: 6px;
+  background: #fff;
+}
+
+.tile img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 .tile-accent {
   margin-right: 0;
   background: var(--accent);
