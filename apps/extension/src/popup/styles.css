@@ -381,6 +381,17 @@ button.link:hover {
   padding: 0 12px 12px;
 }
 
+.share-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px;
+  gap: 16px;
+}
+
+.role {
+  text-transform: capitalize;
+  padding-right: 8px;
+}
+
 .section-title {
   margin: 0;
   padding: 4px 12px 10px;
@@ -734,7 +745,8 @@ button.auth-link {
 
 .full {
   display: grid;
-  grid-template-columns: 248px minmax(300px, 380px) minmax(0, 1fr);
+  /* The list takes what is left; the item beside it keeps a reading width. */
+  grid-template-columns: 248px minmax(300px, 1fr) minmax(360px, 640px);
   height: 100%;
 }
 
@@ -886,6 +898,53 @@ button.auth-link {
   border-radius: 12px;
 }
 
+/* The list as a table: name, folder, last used. The two extra columns go
+   when the list is too narrow to hold them. */
+.list-col {
+  container-type: inline-size;
+}
+
+.list-head,
+.item-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px 120px;
+  align-items: center;
+}
+
+/* A row starts with its tile, which the heading has no column for. */
+.item-row {
+  grid-template-columns: auto minmax(0, 1fr) 140px 120px;
+}
+
+.list-head {
+  padding: 4px 20px 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.col {
+  padding-left: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+@container (max-width: 520px) {
+  .list-head {
+    display: none;
+  }
+
+  .item-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .col {
+    display: none;
+  }
+}
+
 .item-row[aria-current='true'] {
   background: var(--card);
 }
@@ -894,6 +953,101 @@ button.auth-link {
   min-height: 0;
   overflow-y: auto;
   background: var(--panel);
+}
+
+/* A tool (the generator, the health check) in place of the list and the
+   item beside it. */
+.tool-col {
+  grid-column: 2 / span 2;
+  border-radius: 16px 0 0 0;
+}
+
+.generated {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.generated output {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 18px;
+  line-height: 1.5;
+  word-break: break-all;
+  user-select: all;
+}
+
+.strength {
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.strength-weak {
+  background: var(--danger);
+}
+
+.strength-fair {
+  background: #b45309;
+}
+
+.strength-strong {
+  background: #15803d;
+}
+
+input.range {
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.toggle.option {
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.stats > div {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.stats dt {
+  font-size: 12px;
+}
+
+.stats dd {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.section-title {
+  margin: 8px 0 0;
+  font-size: 15px;
+}
+
+.health-list {
+  margin-top: 6px;
 }
 
 .detail-body {
@@ -1204,6 +1358,12 @@ select:disabled {
   .detail-col,
   .full.pane-open .list-col {
     display: none;
+  }
+
+  .detail-col.tool-col {
+    display: block;
+    grid-column: auto;
+    border-radius: 16px 16px 0 0;
   }
 
   .full.pane-open .detail-col {

@@ -11,9 +11,9 @@ import {
   type ItemSecret,
   type VaultKeys,
 } from '@/lib/crypto/vault'
+import { generatePassword } from '@/lib/password'
 
 import { ApiError, createItem, setItemPlacement, SignedOutError, updateItem } from '../../lib/api'
-import { generatePassword } from '../../lib/generate'
 import { fetchIcon } from '../../lib/icon'
 import { ChevronDownIcon, EyeIcon, EyeOffIcon } from '../icons'
 

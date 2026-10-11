@@ -1,6 +1,7 @@
 import type {
   ItemCreateRequest,
   ItemPlacementRequest,
+  ItemShareRequest,
   ItemUpdateRequest,
 } from '@/lib/api/dtos/vault/schema'
 import type { Models } from '@/lib/api/models'
@@ -192,6 +193,29 @@ export async function updateItem(id: string, body: ItemUpdateRequest): Promise<M
 /** Records that the caller filled the item into a page just now. */
 export async function markItemUsed(id: string): Promise<void> {
   await request(`/api/v1/items/${id}/used`, { method: 'PUT' })
+}
+
+/** The public key of the user with that email, or null when they have no vault. */
+export async function getPublicKey(email: string): Promise<Models.PublicKey | null> {
+  try {
+    const query = new URLSearchParams({ email })
+    const res = await request<Envelope<Models.PublicKey>>(`/api/v1/keys/public?${query}`)
+    return res.data
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null
+    throw error
+  }
+}
+
+/** Everyone an item is shared with, the owner included. */
+export async function listItemMembers(id: string): Promise<Models.ItemMember[]> {
+  const res = await request<Envelope<Models.ItemMember[]>>(`/api/v1/items/${id}/members`)
+  return res.data
+}
+
+/** Gives another user the item, with its key wrapped for them. */
+export async function shareItem(id: string, body: ItemShareRequest): Promise<void> {
+  await request(`/api/v1/items/${id}/members`, { method: 'POST', body: JSON.stringify(body) })
 }
 
 /** Sets the caller's own folder and favorite flag for an item. */
