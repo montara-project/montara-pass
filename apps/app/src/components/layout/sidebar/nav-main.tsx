@@ -17,9 +17,10 @@ import { type NavMainItem } from '@/types/menu'
 type NavMainProps = {
   title: string
   items: NavMainItem[]
+  className?: string
 }
 
-export default function NavMain({ title, items }: NavMainProps) {
+export default function NavMain({ title, items, className }: NavMainProps) {
   const pathname = useLocation().pathname
 
   const renderSidebarMenu = (item: NavMainItem) => {
@@ -78,7 +79,7 @@ export default function NavMain({ title, items }: NavMainProps) {
   }
 
   return (
-    <SidebarGroup>
+    <SidebarGroup className={className}>
       <SidebarGroupLabel className="text-muted-foreground text-xs">{title}</SidebarGroupLabel>
       <SidebarMenu>{items.map((item) => renderSidebarMenu(item))}</SidebarMenu>
     </SidebarGroup>

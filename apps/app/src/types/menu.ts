@@ -17,6 +17,7 @@ export type NavMainItem = {
 export type SidebarMenuData = {
   navMenu: {
     overview: NavMainItem[]
+    tools: NavMainItem[]
   }
 }
 

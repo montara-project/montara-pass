@@ -64,6 +64,7 @@ export default function AppSidebar({ user, userError, onRetryUser, ...props }: A
       </SidebarHeader>
       <SidebarContent>
         <NavMain title="Menu" items={SIDEBAR_MENU.navMenu.overview} />
+        <NavMain title="Tools" items={SIDEBAR_MENU.navMenu.tools} className="mt-auto" />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={userInfo} userError={userError} onRetryUser={onRetryUser} />

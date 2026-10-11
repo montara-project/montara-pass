@@ -5,7 +5,7 @@ import type { ApiListResponse } from '@/types/api'
 import type { VaultFolder, VaultItem } from '@/types/vault'
 
 import { FOLDER_QUERY_KEY } from '@/lib/api/queries/folder'
-import { LIST_ITEM_QUERY_KEY } from '@/lib/api/queries/item'
+import { ITEM_QUERY_KEY, LIST_ITEM_QUERY_KEY } from '@/lib/api/queries/item'
 import { services } from '@/lib/api/services'
 import { decryptFolderName, decryptItem, type VaultKeys } from '@/lib/crypto/vault'
 import { useVaultStore } from '@/lib/stores/vault'
@@ -64,6 +64,36 @@ export function useItems(params: ItemListParams) {
         }))
       )
       return { ...res.data, data }
+    },
+  })
+}
+
+/** The API's largest page. */
+const PAGE_SIZE = 100
+
+/**
+ * Every live item of the vault, decrypted, for a check that has to see them
+ * all at once. Items that cannot be decrypted are left out.
+ */
+export function useAllItems() {
+  const keys = useVaultKeys()
+
+  return useQuery({
+    // Under the items key, so saving an item refreshes it.
+    queryKey: [ITEM_QUERY_KEY, 'all', 'decrypted'],
+    queryFn: async (): Promise<VaultItem[]> => {
+      const rows: VaultItem[] = []
+
+      for (let seen = 0; ;) {
+        const { data: page } = await services.items.list({ limit: PAGE_SIZE, offset: seen })
+        seen += page.data.length
+
+        for (const item of page.data) {
+          const secret = await decryptItem(keys, item).catch(() => null)
+          if (secret) rows.push({ ...item, secret })
+        }
+        if (page.data.length < PAGE_SIZE || seen >= (page.metadata.total ?? 0)) return rows
+      }
     },
   })
 }
