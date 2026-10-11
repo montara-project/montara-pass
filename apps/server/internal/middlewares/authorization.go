@@ -16,6 +16,8 @@ import (
 	"montara-pass/server/internal/lib/constant"
 )
 
+var errEmailNotVerified = apperr.New(apperr.KindForbidden, "verify your email address first: follow the link in the email we sent you")
+
 // bearerToken returns the token of an "Authorization: Bearer <token>" header,
 // or "" when the header is absent or uses another scheme.
 func bearerToken(header string) string {
@@ -31,6 +33,10 @@ func bearerToken(header string) string {
 // lib.ContextGetUID). It mirrors the "bearer.auth.optional" + "session.auth"
 // checks for routes outside the Authula handler; sliding session renewal
 // still happens on Authula's own routes (e.g. /me).
+//
+// The email must be verified too. Authula signs a user in before that, and
+// other users share items with whoever holds an email address, so an
+// unverified account could collect what was meant for the address's owner.
 func (m *Middlewares) Authorization(c fiber.Ctx) error {
 	userID := m.bearerUserID(c)
 	if userID == "" {
@@ -40,6 +46,19 @@ func (m *Middlewares) Authorization(c fiber.Ctx) error {
 	uid, err := uuid.Parse(userID)
 	if err != nil {
 		return apperr.ErrUnauthorized
+	}
+
+	// ponytail: one more query per request; fold it into the session lookup
+	// if it ever shows up in a profile.
+	verified, err := m.app.Repositories.User.EmailVerified(c.Context(), uid)
+	if errors.Is(err, apperr.ErrNotFound) {
+		return apperr.ErrUnauthorized
+	}
+	if err != nil {
+		return err
+	}
+	if !verified {
+		return errEmailNotVerified
 	}
 	lib.ContextSetUID(c, uid)
 

@@ -43,6 +43,14 @@ func (r *UserRepository) Reconcile(ctx context.Context) error {
 	return err
 }
 
+// EmailVerified reports whether a user has proved they own their email. It
+// reads Authula's own row: the mirror does not carry the flag.
+func (r *UserRepository) EmailVerified(ctx context.Context, id uuid.UUID) (bool, error) {
+	var verified bool
+	err := r.queryRowContext(ctx, `SELECT email_verified FROM authula.users WHERE id = $1`, id).Scan(&verified)
+	return verified, translateNotFound("users", err)
+}
+
 // SetRole changes a mirrored user's role.
 func (r *UserRepository) SetRole(ctx context.Context, id uuid.UUID, role string) error {
 	res, err := r.execContext(ctx, `UPDATE users SET role = $2, updated_at = now() WHERE id = $1`, id, role)

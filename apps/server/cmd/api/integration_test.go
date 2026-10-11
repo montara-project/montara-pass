@@ -281,6 +281,25 @@ func TestIntegration(t *testing.T) {
 
 	vaultFlow(t, call, superToken, userToken, userEmail, user.ID)
 
+	// An address nobody has verified gets no session from signing up, and a
+	// sign-in with it reaches nothing: no vault of its own, and no public key
+	// for others to share with.
+	const squatEmail, squatPass = "squatter@example.com", "squatter-password"
+	status, out := call(http.MethodPost, "/api/v1/auth/email-password/sign-up", "", map[string]string{"name": "Squatter", "email": squatEmail, "password": squatPass})
+	if status != http.StatusCreated || out["access_token"] != nil || cookies != "" {
+		t.Fatalf("sign up: %d %v cookies=%q, want 201 without a session", status, out, cookies)
+	}
+	squatToken := signIn(squatEmail, squatPass)["access_token"].(string)
+	if status, out := call(http.MethodGet, "/api/v1/keys", squatToken, nil); status != http.StatusForbidden {
+		t.Fatalf("keys with an unverified email: %d %v, want 403", status, out)
+	}
+	if status, out := call(http.MethodPost, "/api/v1/items", squatToken, map[string]any{}); status != http.StatusForbidden {
+		t.Fatalf("item with an unverified email: %d %v, want 403", status, out)
+	}
+	if status, out := call(http.MethodGet, "/api/v1/keys/public?email="+squatEmail, superToken, nil); status != http.StatusNotFound {
+		t.Fatalf("public key of an unverified email: %d %v, want 404", status, out)
+	}
+
 	// A browser request from another site is refused before it is authenticated.
 	if status, _ := call(http.MethodPost, "/api/v1/categories", superToken, category, "Sec-Fetch-Site", "cross-site", "Origin", "https://evil.example"); status != http.StatusForbidden {
 		t.Fatalf("cross-site create: %d, want 403", status)

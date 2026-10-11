@@ -241,3 +241,36 @@ func testIdempotency(t *testing.T, stores ...Store) {
 		}
 	}
 }
+
+// TestRateLimitEmail checks that the budget follows the address in the body,
+// however it is spelled, and that a body without one is not counted.
+func TestRateLimitEmail(t *testing.T) {
+	app := fiber.New(fiber.Config{ErrorHandler: func(c fiber.Ctx, err error) error {
+		return c.SendStatus(http.StatusTooManyRequests)
+	}})
+	app.Post("/", RateLimitEmail("test-"+uuid.NewString(), 2, NewStore(nil)), func(c fiber.Ctx) error {
+		return c.SendString("ok")
+	})
+
+	post := func(body string) int {
+		t.Helper()
+		res, err := app.Test(httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res.StatusCode
+	}
+	for _, body := range []string{`{"email":"a@example.com"}`, `{"email":" A@Example.com "}`} {
+		if status := post(body); status != http.StatusOK {
+			t.Fatalf("%s: %d, want 200", body, status)
+		}
+	}
+	if status := post(`{"email":"a@example.com","password":"x"}`); status != http.StatusTooManyRequests {
+		t.Fatalf("third request for one address: %d, want 429", status)
+	}
+	for _, body := range []string{`{"email":"b@example.com"}`, `{}`, `{}`, `{}`, "not json"} {
+		if status := post(body); status != http.StatusOK {
+			t.Fatalf("%s: %d, want 200", body, status)
+		}
+	}
+}

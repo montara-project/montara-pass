@@ -347,9 +347,10 @@ func newAuth(cfg config.Config, mirror func(*authulamodels.User) error, logger *
 				MinPasswordLength:        8,
 				MaxPasswordLength:        128,
 				RequireEmailVerification: true,
-				AutoSignIn:               true,
-				SendEmailOnSignUp:        true,
-				PasswordResetExpiresIn:   time.Hour,
+				// No session before the email is verified: see Authorization.
+				AutoSignIn:             false,
+				SendEmailOnSignUp:      true,
+				PasswordResetExpiresIn: time.Hour,
 			}),
 			magiclinkplugin.New(magiclinkplugintypes.MagicLinkPluginConfig{
 				Enabled:   true,

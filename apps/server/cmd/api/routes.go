@@ -15,11 +15,14 @@ import (
 // origin: its pages and static assets never collide with a route.
 const apiPrefix = "/api"
 
-// Per-IP request budgets per minute: tight on the auth routes, loose on the
-// rest of the API.
+// Request budgets per minute. Per IP: tight on the auth routes, loose on the
+// rest of the API. Per email address on the auth routes, and per IP on the
+// lookup that tells whether an address has an account.
 const (
-	authRateLimit = 30
-	apiRateLimit  = 120
+	authRateLimit      = 30
+	authEmailRateLimit = 10
+	apiRateLimit       = 120
+	publicKeyRateLimit = 20
 )
 
 func routes(r *fiber.App, app *app.Application) {
@@ -37,13 +40,14 @@ func routes(r *fiber.App, app *app.Application) {
 	// so replicas share them, and in memory otherwise.
 	store := middlewares.NewStore(app.Redis)
 
-	r.Use(authBasePath,
-		middlewares.RateLimit("auth", authRateLimit, app.Config.App.Env == config.EnvDevelopment, splitCSV(app.Config.App.RateLimitExemptIPs), store),
-		fiberadapter.New(fiberadapter.Config{Handler: app.Auth.Handler()}),
-	)
-
 	exemptLoopback := app.Config.App.Env == config.EnvDevelopment
 	exemptIPs := splitCSV(app.Config.App.RateLimitExemptIPs)
+
+	r.Use(authBasePath,
+		middlewares.RateLimit("auth", authRateLimit, exemptLoopback, exemptIPs, store),
+		middlewares.RateLimitEmail("auth-email", authEmailRateLimit, store),
+		fiberadapter.New(fiberadapter.Config{Handler: app.Auth.Handler()}),
+	)
 
 	v1 := api.Group("/v1", middlewares.RateLimit("api", apiRateLimit, exemptLoopback, exemptIPs, store))
 
@@ -67,7 +71,7 @@ func routes(r *fiber.App, app *app.Application) {
 	keys.Get("/", h.Key.Get)
 	keys.Post("/", h.Key.Create)
 	keys.Put("/", h.Key.UpdateKDF)
-	keys.Get("/public", h.Key.PublicKey)
+	keys.Get("/public", middlewares.RateLimit("public-key", publicKeyRateLimit, exemptLoopback, exemptIPs, store), h.Key.PublicKey)
 
 	folders := v1.Group("/folders", m.Authorization, once)
 	folders.Get("/", h.Folder.List)
