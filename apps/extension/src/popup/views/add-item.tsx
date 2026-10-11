@@ -4,6 +4,7 @@ import { encryptNewItem, type VaultKeys } from '@/lib/crypto/vault'
 
 import { createItem, SignedOutError } from '../../lib/api'
 import { generatePassword } from '../../lib/generate'
+import { fetchIcon } from '../../lib/icon'
 import { hostOf } from '../../lib/site'
 
 interface AddItemProps {
@@ -33,7 +34,15 @@ export default function AddItem({ keys, tab, onSaved, onCancel, onSignedOut }: A
     setError('')
 
     try {
-      const encrypted = await encryptNewItem(keys, { name: name.trim(), username, password, url })
+      // The tab's own icon, when the login is for the site it shows.
+      const hint = hostOf(url) === host ? tab?.favIconUrl : undefined
+      const encrypted = await encryptNewItem(keys, {
+        name: name.trim(),
+        username,
+        password,
+        url,
+        icon: await fetchIcon(url, hint),
+      })
       await createItem({ type: 'login', ...encrypted })
       onSaved()
     } catch (err) {

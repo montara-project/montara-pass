@@ -112,11 +112,19 @@ opens the popup.
 
 ## Site icons and last use
 
-A login's tile shows the icon of its site: the extension asks the saved
-site itself for `/favicon.ico`, without a referrer, and keeps the keyhole
-when there is none. No icon service is involved, so no third party learns
-which sites are in the vault; each saved site does see one request when the
-vault is listed.
+A login keeps the icon of its site inside its encrypted content, as a PNG
+of at most 64 pixels. The extension fetches it once, when the login is
+saved: the tab's own icon, then `/favicon.ico`, then the icons the page
+names in its `<link>` tags. The request goes to the site itself, with no
+cookies and no referrer, and no icon service is involved, so no third party
+learns which sites are in the vault. Every client then shows the icon
+without asking anyone; the web app shows it too, but cannot fetch one.
+
+A login the user owns that has no icon yet, because it is older or was made
+in the web app, gets one the next time the extension lists the vault. That
+rewrites the item once, which moves its "Last updated". A site without an
+icon is remembered as such and keeps the keyhole. Logins shared by someone
+else are left alone.
 
 Filling a login, from the popup or the inline menu, calls
 [`PUT /api/v1/items/:id/used`](/docs/api-reference/items#mark-as-used). The

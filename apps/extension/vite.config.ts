@@ -1,4 +1,5 @@
 import react from '@vitejs/plugin-react'
+import fs from 'node:fs'
 import path from 'node:path'
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 
@@ -116,6 +117,11 @@ function emitManifest(target: Target): Plugin {
         fileName: 'manifest.json',
         source: JSON.stringify(manifest(target), null, 2),
       })
+    },
+    // Finder leaves one in public/, Vite copies it, and the add-on linter
+    // flags it.
+    closeBundle() {
+      fs.rmSync(path.resolve(import.meta.dirname, `dist/${target}/.DS_Store`), { force: true })
     },
   }
 }

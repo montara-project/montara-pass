@@ -48,11 +48,14 @@ The plaintext of an item is a small JSON object, sealed with the item key:
   "username": "octocat",
   "password": "…",
   "url": "https://github.com",
-  "notes": "…"
+  "notes": "…",
+  "icon": "data:image/png;base64,…"
 }
 ```
 
-A secure note carries `name` and `notes` only. Every item also has a
+`icon` is optional: the [extension](/docs/clients/browser-extension#site-icons-and-last-use)
+adds the site's icon when a login is saved, and clients show it only when it
+is a PNG data URL. A secure note carries `name` and `notes` only. Every item also has a
 `cipher_version` in the clear (currently `1`), so the format can change later
 without guessing.
 

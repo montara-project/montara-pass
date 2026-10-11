@@ -28,14 +28,3 @@ export function matchesSite(savedUrl: string | undefined, pageUrl: string | unde
 
   return pageHost === savedHost || pageHost.endsWith(`.${savedHost}`)
 }
-
-/**
- * Where a saved site keeps its icon. It is asked of the site itself, so no
- * third party learns which sites are in the vault.
- */
-// ponytail: only /favicon.ico is tried; a site that names its icon in a
-// <link> tag keeps the keyhole. Reading the page would cost a fetch per item.
-export function faviconOf(url: string | undefined): string | null {
-  if (!hostOf(url)) return null
-  return `${new URL(url!.includes('://') ? url! : `https://${url}`).origin}/favicon.ico`
-}
