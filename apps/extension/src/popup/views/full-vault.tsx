@@ -27,6 +27,7 @@ import {
   SortIcon,
   StarIcon,
 } from '../icons'
+import { ItemTile } from '../item-tile'
 import { initials } from '../layout'
 import { useVaultItems } from '../use-vault-items'
 import ItemForm, { type FolderOption } from './item-form'
@@ -310,9 +311,7 @@ export default function FullVault({
                 aria-current={item.id === selectedId ? 'true' : undefined}
                 onClick={() => setPane({ mode: 'view', id: item.id })}
               >
-                <span className="tile">
-                  {item.type === 'login' ? <KeyholeIcon /> : <NoteIcon />}
-                </span>
+                <ItemTile item={item} />
                 <span className="item-text">
                   <span className="item-name">{item.secret!.name}</span>
                   <span className="muted">
@@ -397,7 +396,7 @@ function ItemDetail({ item, onCopy, onEdit }: ItemDetailProps) {
   return (
     <div className="stack detail-body">
       <header className="detail-head">
-        <span className="tile tile-large">{isLogin ? <KeyholeIcon /> : <NoteIcon />}</span>
+        <ItemTile item={item} large />
         <div className="item-text">
           <h2 className="detail-title">{secret.name}</h2>
           <span className="muted">
@@ -492,7 +491,10 @@ function ItemDetail({ item, onCopy, onEdit }: ItemDetailProps) {
         )}
       </dl>
 
-      <p className="muted meta">Last updated {new Date(item.updated_at).toLocaleString()}</p>
+      <p className="muted meta">
+        {item.last_used_at && <>Last used {new Date(item.last_used_at).toLocaleString()} · </>}
+        Last updated {new Date(item.updated_at).toLocaleString()}
+      </p>
     </div>
   )
 }

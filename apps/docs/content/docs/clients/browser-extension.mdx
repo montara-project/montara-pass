@@ -110,6 +110,21 @@ that has one, or a field marked `autocomplete="username"`.
 While the vault is locked the menu lists nothing and offers **Unlock**, which
 opens the popup.
 
+## Site icons and last use
+
+A login's tile shows the icon of its site: the extension asks the saved
+site itself for `/favicon.ico`, without a referrer, and keeps the keyhole
+when there is none. No icon service is involved, so no third party learns
+which sites are in the vault; each saved site does see one request when the
+vault is listed.
+
+Filling a login, from the popup or the inline menu, calls
+[`PUT /api/v1/items/:id/used`](/docs/api-reference/items#mark-as-used). The
+time is shown as "Last used …", and the inline menu lists the account used
+last first. It is stored per member, so it follows the user to their other
+browsers and is not shown to the people a login is shared with. A server
+without the route is ignored: the login is filled all the same.
+
 ## Where secrets are kept
 
 | What | Where | Cleared |

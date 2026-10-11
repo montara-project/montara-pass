@@ -189,6 +189,11 @@ export async function updateItem(id: string, body: ItemUpdateRequest): Promise<M
   return res.data
 }
 
+/** Records that the caller filled the item into a page just now. */
+export async function markItemUsed(id: string): Promise<void> {
+  await request(`/api/v1/items/${id}/used`, { method: 'PUT' })
+}
+
 /** Sets the caller's own folder and favorite flag for an item. */
 export async function setItemPlacement(id: string, body: ItemPlacementRequest): Promise<void> {
   await request(`/api/v1/items/${id}/placement`, { method: 'PUT', body: JSON.stringify(body) })
