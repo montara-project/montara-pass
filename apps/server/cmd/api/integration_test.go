@@ -363,6 +363,26 @@ func vaultFlow(
 		t.Fatalf("shared item as the recipient sees it: %v", shared)
 	}
 
+	// A write with an Idempotency-Key happens once: the repeat gets the first
+	// folder back, and no second one is made. Another user's same key is theirs.
+	idem := []string{"Idempotency-Key", "0b6e2c1a-7d0f-4f0e-9a51-3f6c2a9d1e77"}
+	twice := map[string]any{"encrypted_name": b64("once")}
+	_, made := call(http.MethodPost, "/api/v1/folders", ownerToken, twice, idem...)
+	_, repeat := call(http.MethodPost, "/api/v1/folders", ownerToken, twice, idem...)
+	madeID, repeatID := made["data"].(map[string]any)["id"], repeat["data"].(map[string]any)["id"]
+	if madeID == nil || madeID != repeatID {
+		t.Fatalf("repeated create made another folder: %v then %v", madeID, repeatID)
+	}
+	if _, theirs := call(http.MethodPost, "/api/v1/folders", otherToken, twice, idem...); theirs["data"].(map[string]any)["id"] == madeID {
+		t.Fatalf("another user's key was answered with the owner's folder")
+	}
+	if status, out := call(http.MethodGet, "/api/v1/folders", ownerToken, nil); status != http.StatusOK || len(out["data"].([]any)) != 2 {
+		t.Fatalf("owner's folders after a repeated create: %d %v", status, out)
+	}
+	if status, _ := call(http.MethodPost, "/api/v1/folders", ownerToken, twice, "Idempotency-Key", "short"); status != http.StatusBadRequest {
+		t.Fatalf("malformed idempotency key: %d, want 400", status)
+	}
+
 	// Last use is each member's own: the recipient's does not show for the owner.
 	want(http.StatusNotFound, http.MethodPut, "/api/v1/items/00000000-0000-7000-8000-000000000000/used", otherToken, nil)
 	if got := want(http.StatusOK, http.MethodPut, itemPath+"/used", otherToken, nil); got["last_used_at"] == nil {
