@@ -220,6 +220,8 @@
   document.addEventListener(
     'keydown',
     (e) => {
+      // A page can dispatch key events of its own.
+      if (!e.isTrusted) return
       if (e.key === 'Escape' && frame) close()
       if (e.key === 'ArrowDown' && e.altKey && field && e.target === field) {
         e.preventDefault()
