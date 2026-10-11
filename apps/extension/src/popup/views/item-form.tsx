@@ -36,8 +36,8 @@ export interface FolderOption {
 type FieldName = keyof ItemFormDto
 type FieldErrors = Partial<Record<FieldName, string>>
 
-// Only a secure note needs the editor, so it is fetched when one is opened
-// and stays out of the popup's first load.
+// The notes editor is fetched when this form is opened, and so stays out of
+// the popup's first load.
 const NotesEditor = lazy(() => import('../notes-editor'))
 
 function toSecret(value: ItemFormDto): ItemSecret {
@@ -340,35 +340,21 @@ export default function ItemForm({
         </>
       )}
 
-      {value.type === 'secure_note' ? (
-        // A secure note is its notes, so it gets the rich text editor.
-        <div className="form-field">
-          <div className="form-label">
-            <span id={notesId}>Notes</span>
-          </div>
-          <Suspense fallback={<div className="notes-editor notes-loading" />}>
-            <NotesEditor
-              value={value.notes ?? ''}
-              onChange={(notes) => set('notes', notes)}
-              placeholder="Write your note"
-              labelledBy={notesId}
-            />
-          </Suspense>
-          {errors.notes && <p className="error field-error">{errors.notes}</p>}
+      {/* Notes are Markdown for every type, edited as rich text. */}
+      <div className="form-field">
+        <div className="form-label">
+          <span id={notesId}>Notes</span>
         </div>
-      ) : (
-        <Field label="Notes" error={errors.notes}>
-          {(props) => (
-            <textarea
-              {...props}
-              value={value.notes}
-              onChange={(e) => set('notes', e.target.value)}
-              placeholder="anything else"
-              rows={4}
-            />
-          )}
-        </Field>
-      )}
+        <Suspense fallback={<div className="notes-editor notes-loading" />}>
+          <NotesEditor
+            value={value.notes ?? ''}
+            onChange={(notes) => set('notes', notes)}
+            placeholder={value.type === 'secure_note' ? 'Write your note' : 'anything else'}
+            labelledBy={notesId}
+          />
+        </Suspense>
+        {errors.notes && <p className="error field-error">{errors.notes}</p>}
+      </div>
 
       {error && (
         <p className="error" role="alert">

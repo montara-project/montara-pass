@@ -68,7 +68,7 @@ const SORT_LABEL: Record<Sort, string> = {
   updated: 'Sort by last updated',
 }
 
-// Fetched when a secure note is opened, so it stays out of the first load.
+// Fetched when an item with notes is opened, so it stays out of the first load.
 const NotesView = lazy(() =>
   import('../notes-editor').then((module) => ({ default: module.NotesView }))
 )
@@ -574,11 +574,9 @@ function ItemDetail({ item, onCopy, onEdit, onShare }: ItemDetailProps) {
             <dd>
               {!secret.notes ? (
                 <span className="muted">None</span>
-              ) : isLogin ? (
-                secret.notes
               ) : (
-                // A secure note is written as Markdown; until the renderer
-                // has loaded, its text shows as it is.
+                // Notes are written as Markdown; until the renderer has
+                // loaded, the text shows as it is.
                 <Suspense fallback={secret.notes}>
                   <NotesView key={secret.notes} value={secret.notes} />
                 </Suspense>
