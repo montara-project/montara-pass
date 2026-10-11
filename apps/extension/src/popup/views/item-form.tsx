@@ -1,4 +1,12 @@
-import { useId, useState, type FormEvent, type ReactNode, type SelectHTMLAttributes } from 'react'
+import {
+  lazy,
+  Suspense,
+  useId,
+  useState,
+  type FormEvent,
+  type ReactNode,
+  type SelectHTMLAttributes,
+} from 'react'
 
 import type { VaultItem } from '@/types/vault'
 
@@ -27,6 +35,10 @@ export interface FolderOption {
 
 type FieldName = keyof ItemFormDto
 type FieldErrors = Partial<Record<FieldName, string>>
+
+// Only a secure note needs the editor, so it is fetched when one is opened
+// and stays out of the popup's first load.
+const NotesEditor = lazy(() => import('../notes-editor'))
 
 function toSecret(value: ItemFormDto): ItemSecret {
   if (value.type === 'secure_note') {
@@ -142,6 +154,7 @@ export default function ItemForm({
     notes: item?.secret?.notes ?? '',
     folder_id: item?.folder_id ?? NO_FOLDER,
   })
+  const notesId = useId()
   const [errors, setErrors] = useState<FieldErrors>({})
   // Fields are checked as they change once a save has been attempted.
   const [submitted, setSubmitted] = useState(false)
@@ -327,17 +340,35 @@ export default function ItemForm({
         </>
       )}
 
-      <Field label="Notes" error={errors.notes}>
-        {(props) => (
-          <textarea
-            {...props}
-            value={value.notes}
-            onChange={(e) => set('notes', e.target.value)}
-            placeholder="anything else"
-            rows={4}
-          />
-        )}
-      </Field>
+      {value.type === 'secure_note' ? (
+        // A secure note is its notes, so it gets the rich text editor.
+        <div className="form-field">
+          <div className="form-label">
+            <span id={notesId}>Notes</span>
+          </div>
+          <Suspense fallback={<div className="notes-editor notes-loading" />}>
+            <NotesEditor
+              value={value.notes ?? ''}
+              onChange={(notes) => set('notes', notes)}
+              placeholder="Write your note"
+              labelledBy={notesId}
+            />
+          </Suspense>
+          {errors.notes && <p className="error field-error">{errors.notes}</p>}
+        </div>
+      ) : (
+        <Field label="Notes" error={errors.notes}>
+          {(props) => (
+            <textarea
+              {...props}
+              value={value.notes}
+              onChange={(e) => set('notes', e.target.value)}
+              placeholder="anything else"
+              rows={4}
+            />
+          )}
+        </Field>
+      )}
 
       {error && (
         <p className="error" role="alert">
