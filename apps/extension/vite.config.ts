@@ -24,12 +24,18 @@ function manifest(target: Target, apiUrl: string) {
       default_icon: { 16: 'icons/16.png', 32: 'icons/32.png' },
     },
     // activeTab + scripting fill the page the user is looking at, and only
-    // when they click Fill: the extension reads no page on its own.
+    // when they click Fill: the extension reads no page on its own, unless
+    // the user turns on the inline menu (see optional_host_permissions).
     permissions: ['storage', 'activeTab', 'scripting', 'alarms', 'clipboardWrite'],
     // The API the build points at. Another one, set in the popup's settings,
-    // is requested from the optional list at that moment.
+    // is requested from the optional list at that moment. So is every site,
+    // when the user turns on the inline menu.
     host_permissions: [`${new URL(apiUrl).origin}/*`],
     optional_host_permissions: ['http://*/*', 'https://*/*'],
+    // The inline menu is an extension page framed inside the login page.
+    web_accessible_resources: [
+      { resources: ['inline.html'], matches: ['http://*/*', 'https://*/*'] },
+    ],
     background:
       target === 'chrome'
         ? { service_worker: 'background.js', type: 'module' }
@@ -43,7 +49,17 @@ function manifest(target: Target, apiUrl: string) {
       ? {
           browser_specific_settings: {
             // 128 is the first release with optional_host_permissions in MV3.
-            gecko: { id: 'montara-pass@montara-project.dev', strict_min_version: '128.0' },
+            gecko: {
+              id: 'montara-pass@montarapass.com',
+              strict_min_version: '128.0',
+              // What leaves the browser, shown in Firefox's install prompt
+              // (140 and later; older versions ignore the key). The sign-in
+              // email and password go to the API, and so does the vault, as
+              // ciphertext. Nothing is collected about usage or browsing.
+              data_collection_permissions: {
+                required: ['authenticationInfo', 'personallyIdentifyingInfo'],
+              },
+            },
           },
         }
       : {}),
@@ -89,10 +105,15 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         input: {
           popup: path.resolve(import.meta.dirname, 'popup.html'),
+          inline: path.resolve(import.meta.dirname, 'inline.html'),
           background: path.resolve(import.meta.dirname, 'src/background.ts'),
+          // Registered as a content script, which cannot be a module: like
+          // the background script it imports nothing and stays one file.
+          content: path.resolve(import.meta.dirname, 'src/content.ts'),
         },
         output: {
-          // The manifest names background.js, so entries keep their names.
+          // The manifest names background.js and the background script names
+          // content.js, so entries keep their names.
           entryFileNames: '[name].js',
         },
       },

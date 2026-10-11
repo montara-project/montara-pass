@@ -16,7 +16,7 @@ const features = [
   },
   {
     title: "Fill on click",
-    body: "The extension touches the active tab only when you click Fill. It reads no page on its own.",
+    body: "By default the extension touches a page only when you click Fill. A menu inside login fields is opt-in.",
     on: ["extension"],
   },
   {

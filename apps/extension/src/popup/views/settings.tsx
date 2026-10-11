@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 
+import { disableInline, enableInline, isInlineEnabled } from '../../lib/inline'
 import { DEFAULT_SETTINGS, getSettings, saveSettings } from '../../lib/storage'
 
 interface SettingsProps {
@@ -19,13 +20,33 @@ export default function Settings({ onClose }: SettingsProps) {
   const [apiUrl, setApiUrl] = useState(DEFAULT_SETTINGS.apiUrl)
   const [appUrl, setAppUrl] = useState(DEFAULT_SETTINGS.appUrl)
   const [error, setError] = useState('')
+  const [inline, setInline] = useState(false)
 
   useEffect(() => {
     void getSettings().then((settings) => {
       setApiUrl(settings.apiUrl)
       setAppUrl(settings.appUrl)
     })
+    void isInlineEnabled().then(setInline)
   }, [])
+
+  const handleInline = async (wanted: boolean) => {
+    setError('')
+
+    if (wanted) {
+      setInline(await enableInline())
+      return
+    }
+
+    await disableInline()
+    setInline(false)
+
+    // Giving back every site can take a custom API server with it.
+    const { apiUrl: saved } = await getSettings()
+    if (!(await chrome.permissions.contains({ origins: [`${saved}/*`] }))) {
+      setError(`Press Save to let the extension reach ${saved} again.`)
+    }
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -62,6 +83,20 @@ export default function Settings({ onClose }: SettingsProps) {
       <label>
         Web app
         <input value={appUrl} onChange={(e) => setAppUrl(e.target.value)} required />
+      </label>
+
+      <label className="toggle">
+        <input
+          type="checkbox"
+          checked={inline}
+          onChange={(e) => void handleInline(e.target.checked)}
+        />
+        <span>
+          Show Montara Pass in login fields
+          <span className="muted">
+            Lets the extension run on every site you open. Reload open tabs to see it.
+          </span>
+        </span>
       </label>
 
       {error && <p className="error">{error}</p>}

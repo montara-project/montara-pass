@@ -66,8 +66,44 @@ host, or is a subdomain of it. `www.` is ignored on both sides.
 | `login.example.com` | `example.com` | no |
 | `example.com` | `example.com.evil.net` | no |
 
-The extension reads no page on its own. It touches the active tab only when
-**Fill** is clicked, and fills only visible username and password fields.
+By default the extension reads no page on its own. It touches the active tab
+only when **Fill** is clicked, and fills only visible username and password
+fields. The [inline menu](#the-inline-menu) changes that, and is off until it
+is turned on.
+
+## The inline menu
+
+**Settings → Show Montara Pass in login fields** puts a badge inside the
+focused login field. Clicking it, or pressing <kbd>Alt</kbd>+<kbd>↓</kbd> in
+the field, opens a menu under the field with the logins saved for that site;
+picking one fills the form.
+
+Turning it on asks for access to every site, because a content script then
+runs on each page to find its login fields. Turning it off gives that access
+back. Tabs that were already open need a reload to pick up the change.
+
+| Piece | Where it runs | What it can see |
+| --- | --- | --- |
+| `content.js` | the page, top frame only | the page's fields; nothing from the vault |
+| `inline.html` | a frame of the extension's own origin | the unlocked keys and the logins for the site |
+
+The page around the menu can neither read the frame nor script it, and the
+content script never receives a password: the frame fills the form itself,
+the same way the popup does. The frame learns which site it is on from the
+browser's record of its tab, not from the page.
+
+A field gets the badge when it is a password field, a text field in a form
+that has one, or a field marked `autocomplete="username"`.
+
+<Callout title="Clicks a page tries to borrow" type="info">
+  Before filling, the menu checks that it is fully opaque, on top of the page
+  and still on a site the login matches, and it ignores clicks in its first
+  300 ms. The menu sits in the browser's top layer; an overlay placed there
+  after it that lets clicks through is not detected.
+</Callout>
+
+While the vault is locked the menu lists nothing and offers **Unlock**, which
+opens the popup.
 
 ## Where secrets are kept
 
@@ -88,4 +124,11 @@ The extension reads no page on its own. It touches the active tab only when
 | Host permission for the API | Call the API it was built for |
 
 Another API origin, set under **Settings**, is requested from the optional
-host permissions at that moment.
+host permissions at that moment. So is every site, when the inline menu is
+turned on.
+
+For Firefox the manifest also declares what leaves the browser
+(`data_collection_permissions`): authentication information and personally
+identifying information. That covers the sign-in email and password sent to
+the API and the encrypted vault stored there. Firefox 140 and later show it
+when the extension is installed.
