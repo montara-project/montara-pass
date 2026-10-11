@@ -58,6 +58,7 @@ Who can open an item, the owner included, and each member's own view of it.
 | `encrypted_item_key` | The item key wrapped for this member, up to 1024 bytes |
 | `folder_id` | This member's folder for the item, or null |
 | `favorite` | This member's favorite flag |
+| `last_used_at` | When this member last filled the item into a page, or null. Added by `000005` |
 | `shared_by` | Who shared it; null on the owner's row |
 
 ## Rules the database enforces

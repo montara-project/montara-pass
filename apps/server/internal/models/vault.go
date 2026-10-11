@@ -53,6 +53,8 @@ type Item struct {
 	EncryptedItemKey []byte     `db:"encrypted_item_key" json:"encrypted_item_key"`
 	FolderID         *uuid.UUID `db:"folder_id" json:"folder_id"`
 	Favorite         bool       `db:"favorite" json:"favorite"`
+	// When this member last filled the item into a page; nil if never.
+	LastUsedAt *time.Time `db:"last_used_at" json:"last_used_at"`
 }
 
 // ItemMember is one user an item is shared with, the owner included.

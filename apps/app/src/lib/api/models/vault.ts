@@ -51,6 +51,8 @@ export interface Item {
   encrypted_item_key: Base64
   folder_id: string | null
   favorite: boolean
+  /** When the caller last filled the item into a page; missing on an older server. */
+  last_used_at?: ISO8601DateString | null
 }
 
 export interface ItemMember {

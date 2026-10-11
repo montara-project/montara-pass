@@ -26,7 +26,8 @@ const itemSource = `item_members m JOIN items i ON i.id = m.item_id`
 
 const itemColumns = `
 	i.id, i.created_at, i.updated_at, i.deleted_at, i.owner_id, i.type, i.cipher_version,
-	i.encrypted_data, i.revision, m.role, m.encrypted_item_key, m.folder_id, m.favorite`
+	i.encrypted_data, i.revision, m.role, m.encrypted_item_key, m.folder_id, m.favorite,
+	m.last_used_at`
 
 var (
 	errFolderNotFound = apperr.New(apperr.KindNotFound, "folder not found")
@@ -38,7 +39,8 @@ var (
 func scanItem(row rowScanner) (models.Item, error) {
 	var it models.Item
 	err := row.Scan(&it.ID, &it.CreatedAt, &it.UpdatedAt, &it.DeletedAt, &it.OwnerID, &it.Type, &it.CipherVersion,
-		&it.EncryptedData, &it.Revision, &it.Role, &it.EncryptedItemKey, &it.FolderID, &it.Favorite)
+		&it.EncryptedData, &it.Revision, &it.Role, &it.EncryptedItemKey, &it.FolderID, &it.Favorite,
+		&it.LastUsedAt)
 	return it, translateNotFound("items", err)
 }
 
@@ -237,6 +239,20 @@ func (r *ItemRepository) ForceDelete(ctx context.Context, id, ownerID uuid.UUID)
 
 func (r *ItemRepository) ownerWrite(ctx context.Context, query string, id, ownerID uuid.UUID) error {
 	res, err := r.execContext(ctx, query, id, ownerID)
+	if err != nil {
+		return err
+	}
+	return requireAffected(res, "item")
+}
+
+// MarkUsed records that the member filled the item into a page just now. It
+// touches nobody else's view, and not the item's revision or updated_at.
+func (r *ItemRepository) MarkUsed(ctx context.Context, id, userID uuid.UUID) error {
+	res, err := r.execContext(ctx, `
+		UPDATE item_members SET last_used_at = now()
+		WHERE item_id = $1 AND user_id = $2`,
+		id, userID,
+	)
 	if err != nil {
 		return err
 	}

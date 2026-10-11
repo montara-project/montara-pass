@@ -362,6 +362,16 @@ func vaultFlow(
 	if shared["role"] != "viewer" || shared["encrypted_item_key"] != b64("key for other") || shared["folder_id"] != nil || shared["favorite"] != false {
 		t.Fatalf("shared item as the recipient sees it: %v", shared)
 	}
+
+	// Last use is each member's own: the recipient's does not show for the owner.
+	want(http.StatusNotFound, http.MethodPut, "/api/v1/items/00000000-0000-7000-8000-000000000000/used", otherToken, nil)
+	if got := want(http.StatusOK, http.MethodPut, itemPath+"/used", otherToken, nil); got["last_used_at"] == nil {
+		t.Fatalf("last use as the recipient sees it: %v", got)
+	}
+	if got := want(http.StatusOK, http.MethodGet, itemPath, ownerToken, nil); got["last_used_at"] != nil {
+		t.Fatalf("the recipient's last use leaked to the owner: %v", got)
+	}
+
 	if status, out := call(http.MethodGet, "/api/v1/items", otherToken, nil); status != http.StatusOK || len(out["data"].([]any)) != 1 {
 		t.Fatalf("recipient's list: %d %v", status, out)
 	}
