@@ -48,21 +48,65 @@ function manifest(target: Target, apiUrl: string) {
     ...(target === 'firefox'
       ? {
           browser_specific_settings: {
-            // 128 is the first release with optional_host_permissions in MV3.
             gecko: {
               id: 'montara-pass@montarapass.com',
-              strict_min_version: '128.0',
-              // What leaves the browser, shown in Firefox's install prompt
-              // (140 and later; older versions ignore the key). The sign-in
-              // email and password go to the API, and so does the vault, as
-              // ciphertext. Nothing is collected about usage or browsing.
+              // The first releases that read data_collection_permissions:
+              // 140 on desktop, 142 on Android.
+              strict_min_version: '140.0',
+              // What leaves the browser, shown in Firefox's install prompt.
+              // The sign-in email and password go to the API, and so does
+              // the vault, as ciphertext. Nothing is collected about usage
+              // or browsing.
               data_collection_permissions: {
                 required: ['authenticationInfo', 'personallyIdentifyingInfo'],
               },
             },
+            gecko_android: { strict_min_version: '142.0' },
           },
         }
       : {}),
+  }
+}
+
+/**
+ * Two dependencies ship code the add-on linter flags and the extension never
+ * runs: zod probes for eval before compiling a parser (an extension page's
+ * CSP refuses it, so zod always falls back), and react-dom assigns innerHTML
+ * for dangerouslySetInnerHTML, which nothing here uses. Both are swapped for
+ * a throw, so neither can come into use unnoticed.
+ */
+function dropFlaggedCode(): Plugin {
+  const rules = [
+    {
+      file: /zod\/v4\/core\/(util|doc)\.js$/,
+      from: /const F = Function;/g,
+      to: "const F = function () { throw new Error('eval is not available in the extension') };",
+    },
+    {
+      file: /react-dom-client\.production\.js$/,
+      from: /\(domElement\.innerHTML = key\)/g,
+      to: "(() => { throw new Error('dangerouslySetInnerHTML is not available in the extension') })()",
+    },
+  ]
+  const seen = new Set<RegExp>()
+
+  return {
+    name: 'montara-pass-drop-flagged-code',
+    transform(code, id) {
+      for (const rule of rules) {
+        const replaced = rule.file.test(id) ? code.replace(rule.from, rule.to) : code
+        if (replaced !== code) {
+          seen.add(rule.file)
+          return replaced
+        }
+      }
+    },
+    buildEnd() {
+      // A dependency update that moves the code brings the warnings back.
+      for (const rule of rules) {
+        if (!seen.has(rule.file)) this.error(`Nothing left to replace in ${rule.file}`)
+      }
+    },
   }
 }
 
@@ -85,7 +129,7 @@ export default defineConfig(({ mode }) => {
   const apiUrl = env.VITE_DEFAULT_API_URL || 'http://localhost:8080'
 
   return {
-    plugins: [react(), emitManifest(target, apiUrl)],
+    plugins: [react(), dropFlaggedCode(), emitManifest(target, apiUrl)],
     resolve: {
       alias: {
         // The crypto and the API models are the web app's own: the extension

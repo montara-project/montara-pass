@@ -4,8 +4,8 @@ description: Fill and save logins from the vault in Chrome and Firefox.
 ---
 
 `apps/extension` is a Manifest V3 extension for Chrome, other Chromium
-browsers and Firefox 128 or newer. It uses the web app's `lib/crypto` module,
-so it reads and writes the same vault.
+browsers and Firefox 140 or newer (142 on Android). It uses the web app's
+`lib/crypto` module, so it reads and writes the same vault.
 
 <Callout type="info">
   The vault itself is created in the web app. The extension signs in and
@@ -130,5 +130,6 @@ turned on.
 For Firefox the manifest also declares what leaves the browser
 (`data_collection_permissions`): authentication information and personally
 identifying information. That covers the sign-in email and password sent to
-the API and the encrypted vault stored there. Firefox 140 and later show it
-when the extension is installed.
+the API and the encrypted vault stored there. Firefox shows it when the
+extension is installed; 140 is the first release that does, which is why it
+is the minimum version.

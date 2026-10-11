@@ -126,7 +126,7 @@ only needed when the app is hosted somewhere else (`VITE_API_URL`).
 ## Browser extension
 
 `apps/extension` fills and saves logins from the vault in Chrome (and other
-Chromium browsers) and Firefox 128+. It reuses the web app's `lib/crypto`, so
+Chromium browsers) and Firefox 140+. It reuses the web app's `lib/crypto`, so
 both read and write the same ciphertext.
 
 ```sh

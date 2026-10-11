@@ -20,7 +20,7 @@ const faqs = [
   },
   {
     q: "Which browsers does the extension support?",
-    a: "Chrome, other Chromium browsers and Firefox 128 or newer. You build it with pnpm build:extension and load it from disk, then point it at your server's origin.",
+    a: "Chrome, other Chromium browsers and Firefox 140 or newer. You build it with pnpm build:extension and load it from disk, then point it at your server's origin.",
   },
   {
     q: "Is there a mobile app?",
