@@ -20,20 +20,18 @@ type LegalPageProps = {
 export function LegalPage({ eyebrow, title, updated, intro, sections }: LegalPageProps) {
   return (
     <div>
-      <div className="border-b border-line bg-abyss/40">
-        <div className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-          <p className="text-xs font-semibold uppercase tracking-widest text-accent-bright">
-            {eyebrow}
-          </p>
-          <h1 className="mt-3 font-heading text-3xl font-semibold tracking-tight sm:text-4xl">
+      <div className="border-b border-line">
+        <div className="px-6 py-16 sm:px-10 sm:py-20">
+          <p className="font-mono text-xs lowercase text-mist">{eyebrow}</p>
+          <h1 className="mt-4 font-heading text-4xl font-medium leading-[1.05] tracking-tight sm:text-5xl">
             {title}
           </h1>
-          <p className="mt-3 text-sm text-mist">Last updated {updated}</p>
-          <p className="mt-5 max-w-2xl leading-7 text-mist">{intro}</p>
+          <p className="mt-4 font-mono text-xs lowercase text-mist">last updated {updated}</p>
+          <p className="mt-6 max-w-2xl text-pretty text-lg leading-8 text-mist">{intro}</p>
         </div>
       </div>
 
-      <div className="mx-auto grid w-full max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-16 lg:px-8 lg:py-16">
+      <div className="grid gap-10 px-6 py-12 sm:px-10 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-16 lg:py-16">
         <TocNav items={sections.map((s) => ({ id: s.id, title: s.title }))} />
 
         <div className="min-w-0 max-w-3xl">
@@ -43,8 +41,8 @@ export function LegalPage({ eyebrow, title, updated, intro, sections }: LegalPag
               id={section.id}
               className="scroll-mt-24 border-b border-line py-8 first:pt-0 last:border-b-0"
             >
-              <h2 className="font-heading text-xl font-semibold tracking-tight sm:text-2xl">
-                <span className="mr-3 text-accent-bright" aria-hidden="true">
+              <h2 className="font-heading text-xl font-medium tracking-tight sm:text-2xl">
+                <span className="mr-3 font-mono text-sm font-normal text-mist" aria-hidden="true">
                   {String(index + 1).padStart(2, "0")}
                 </span>
                 {section.title}
@@ -59,11 +57,11 @@ export function LegalPage({ eyebrow, title, updated, intro, sections }: LegalPag
                   {section.bullets.map((bullet) => (
                     <li
                       key={bullet.slice(0, 32)}
-                      className="flex gap-3 text-sm leading-6 text-mist"
+                      className="flex gap-3 text-[15px] leading-7 text-mist"
                     >
                       <span
                         aria-hidden="true"
-                        className="mt-2 size-1.5 shrink-0 rounded-full bg-accent-bright"
+                        className="mt-3 size-1 shrink-0 rounded-full bg-mist"
                       />
                       <span>{bullet}</span>
                     </li>
@@ -71,7 +69,7 @@ export function LegalPage({ eyebrow, title, updated, intro, sections }: LegalPag
                 </ul>
               ) : null}
               {section.footnote ? (
-                <p className="mt-4 border-l-2 border-line pl-4 text-sm leading-6 text-mist">
+                <p className="mt-4 border-l-2 border-line pl-4 text-[15px] leading-7 text-mist">
                   {section.footnote}
                 </p>
               ) : null}
@@ -81,7 +79,7 @@ export function LegalPage({ eyebrow, title, updated, intro, sections }: LegalPag
                     <li key={link.href}>
                       <a
                         href={link.href}
-                        className="cursor-pointer text-sm font-medium text-accent-soft underline-offset-4 hover:underline"
+                        className="cursor-pointer text-sm font-medium text-fg underline underline-offset-4 hover:no-underline"
                       >
                         {link.label}
                       </a>

@@ -108,6 +108,31 @@ p {
   flex: 1;
 }
 
+.toggle {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.toggle input {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  accent-color: var(--primary);
+}
+
+.toggle span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toggle .muted {
+  font-weight: 400;
+}
+
 .muted {
   color: var(--muted);
 }
@@ -476,6 +501,58 @@ button.link:hover {
 :root[data-view='full'] body {
   width: auto;
   height: 100vh;
+}
+
+/* ---------- inline menu (inline.html, framed under a login field) ---------- */
+
+:root[data-view='inline'] body {
+  width: auto;
+  height: auto;
+  background: var(--panel);
+}
+
+:root[data-view='inline'] #root {
+  height: auto;
+  overflow: visible;
+}
+
+.inline {
+  display: flex;
+  flex-direction: column;
+  /* Keep in sync with MAX_HEIGHT in src/content.ts. */
+  max-height: 320px;
+}
+
+.inline-head {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px 6px 16px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+}
+
+.inline-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  overflow-y: auto;
+}
+
+.inline-list .card {
+  width: 100%;
+  padding: 8px;
+  border-color: transparent;
+  background: none;
+}
+
+.inline-list .card:hover,
+.inline-list .card:focus-visible {
+  background: var(--hover);
+}
+
+.inline-note {
+  padding: 16px;
 }
 
 /* ---------- sign-in and unlock ---------- */

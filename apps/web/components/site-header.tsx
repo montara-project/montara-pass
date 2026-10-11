@@ -2,21 +2,16 @@
 
 import { useEffect, useState } from "react";
 
-import {
-  ArrowRightIcon,
-  CloseIcon,
-  LogoMark,
-  MenuIcon,
-  MonitorIcon,
-  MoonIcon,
-  SunIcon,
-} from "./icons";
+import { CloseIcon, LogoMark, MenuIcon, MonitorIcon, MoonIcon, SunIcon } from "./icons";
+import { docsUrl } from "./links";
 
 const navLinks = [
-  { href: "/#features", label: "Features" },
   { href: "/#security", label: "Security" },
+  { href: "/#features", label: "Features" },
+  { href: "/#self-host", label: "Self-host" },
   { href: "/#pricing", label: "Pricing" },
   { href: "/#faq", label: "FAQ" },
+  { href: docsUrl(), label: "Docs" },
 ];
 
 type Theme = "light" | "dark" | "system";
@@ -80,14 +75,14 @@ function ThemeToggle() {
         }
         applyTheme(next);
       }}
-      className="flex size-10 cursor-pointer items-center justify-center rounded-lg text-mist transition-colors duration-200 hover:bg-card hover:text-fg"
+      className="flex size-9 cursor-pointer items-center justify-center rounded-lg text-mist transition-colors duration-200 hover:bg-card hover:text-fg"
     >
       {theme === "light" ? (
-        <SunIcon className="size-5" />
+        <SunIcon className="size-4" />
       ) : theme === "dark" ? (
-        <MoonIcon className="size-5" />
+        <MoonIcon className="size-4" />
       ) : (
-        <MonitorIcon className="size-5" />
+        <MonitorIcon className="size-4" />
       )}
     </button>
   );
@@ -98,44 +93,37 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-line bg-ink/80 backdrop-blur-md">
-      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <div className="flex h-16 items-center justify-between px-6 sm:px-10">
         <a
           href="/"
           className="flex cursor-pointer items-center gap-2.5"
           aria-label="Montara Pass — home"
         >
-          <LogoMark className="size-8" />
-          <span className="font-heading text-lg font-semibold tracking-tight">
+          <LogoMark className="size-7" />
+          <span className="font-heading text-base font-semibold tracking-tight">
             Montara<span className="text-accent-bright">Pass</span>
           </span>
         </a>
 
-        <nav aria-label="Main" className="hidden items-center gap-8 md:flex">
+        <nav aria-label="Main" className="hidden items-center gap-6 md:flex lg:gap-7">
           {navLinks.map((link) => (
             <a
               key={link.href}
               href={link.href}
-              className="cursor-pointer text-sm font-medium text-mist transition-colors duration-200 hover:text-fg"
+              className="cursor-pointer text-sm text-mist transition-colors duration-200 hover:text-fg"
             >
               {link.label}
             </a>
           ))}
         </nav>
 
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-2 md:flex">
           <ThemeToggle />
           <a
-            href="/login"
-            className="cursor-pointer rounded-lg px-4 py-2 text-sm font-medium text-mist transition-colors duration-200 hover:text-fg"
+            href="https://app.montarapass.com"
+            className="btn btn-primary rounded-full px-4 py-1.5"
           >
             Log in
-          </a>
-          <a
-            href="/#pricing"
-            className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-on-accent transition-colors duration-200 hover:bg-accent-hover"
-          >
-            Get Montara Pass
-            <ArrowRightIcon className="size-4" />
           </a>
         </div>
 
@@ -163,14 +151,16 @@ export function SiteHeader() {
                 {link.label}
               </a>
             ))}
-            <a
-              href="/#pricing"
-              onClick={() => setOpen(false)}
-              className="mt-3 flex cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-on-accent"
-            >
-              Get Montara Pass
-              <ArrowRightIcon className="size-4" />
-            </a>
+            <div className="mt-3 flex items-center gap-2">
+              <a
+                href="https://app.montarapass.com"
+                onClick={() => setOpen(false)}
+                className="btn btn-primary flex-1 rounded-full"
+              >
+                Log in
+              </a>
+              <ThemeToggle />
+            </div>
           </div>
         </nav>
       ) : null}

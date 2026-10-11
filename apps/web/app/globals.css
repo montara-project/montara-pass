@@ -3,8 +3,10 @@
 @custom-variant light (&:where(.light, .light *));
 
 @theme {
-  --font-heading: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-body: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  /* One family: Inter's optical-size axis switches to its display cut at heading sizes. */
+  --font-heading: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Built from the brand palette: Midnight Navy #101D3A, Electric Blue
      #145CFF and Arctic Cyan #42C8FF. */
@@ -40,15 +42,18 @@ html {
 
 body {
   margin: 0;
-  background: var(--color-ink);
+  /* Diagonal hairline hatch in the gutters outside the page frame. */
+  background:
+    repeating-linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-fg) 4%, transparent) 0 1px,
+      transparent 1px 9px
+    ),
+    var(--color-abyss);
   color: var(--color-fg);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-}
-
-a {
-  color: inherit;
 }
 
 :focus-visible {
@@ -66,19 +71,66 @@ summary::-webkit-details-marker {
   display: none;
 }
 
-/* Scroll reveal — hidden state only when JS can run and motion is allowed. */
-@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
-  .reveal {
-    opacity: 0;
-    transform: translateY(1rem);
+@layer components {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    cursor: pointer;
     transition:
-      opacity 600ms ease-out,
-      transform 600ms ease-out;
+      opacity 200ms,
+      border-color 200ms;
   }
 
-  .reveal-in {
-    opacity: 1;
-    transform: none;
+  /* Neutral ink fill: light on the dark theme, navy on the light one. */
+  .btn-primary {
+    background: var(--color-fg);
+    color: var(--color-ink);
+  }
+
+  .btn-primary:hover {
+    opacity: 0.88;
+  }
+
+  .btn-secondary {
+    border-color: var(--color-line);
+    background: var(--color-card);
+    color: var(--color-fg);
+  }
+
+  .btn-secondary:hover {
+    border-color: color-mix(in srgb, var(--color-mist) 55%, transparent);
+  }
+
+  .btn svg,
+  .nudge svg {
+    transition: transform 200ms;
+  }
+
+  .btn:hover svg,
+  .nudge:hover svg {
+    transform: translateX(2px);
+  }
+}
+
+/* Feature matrix: the checked surface tab dims the cells that lack it. */
+.matrix:has(#surface-app:checked) [data-surfaces]:not([data-surfaces~="app"]),
+.matrix:has(#surface-extension:checked) [data-surfaces]:not([data-surfaces~="extension"]),
+.matrix:has(#surface-api:checked) [data-surfaces]:not([data-surfaces~="api"]) {
+  opacity: 0.3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn svg,
+  .nudge svg {
+    transition: none;
   }
 }
 
