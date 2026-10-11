@@ -99,7 +99,7 @@ function Hero() {
       <div className="mt-10 flex items-center justify-center gap-3 text-left">
         <LogoMark className="size-8 rounded-full" />
         <p className="text-sm leading-5">
-          Built by Montara Labs.
+          Built by Montara Project.
           <span className="block font-mono text-xs lowercase text-mist">
             argon2id · aes-256-gcm · rsa-oaep 3072
           </span>

@@ -72,7 +72,7 @@ export function SiteFooter() {
       </div>
 
       <div className="flex items-center justify-between gap-4 border-t border-line px-6 py-5 sm:px-10">
-        <p className="font-mono text-xs text-mist">© 2026 Montara Labs, Inc.</p>
+        <p className="font-mono text-xs text-mist">© 2026 Montara Project</p>
         <a
           href={REPO_URL}
           aria-label="Montara Pass on GitHub"

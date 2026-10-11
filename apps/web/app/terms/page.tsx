@@ -15,7 +15,7 @@ const sections: LegalSection[] = [
     id: "accepting-these-terms",
     title: "Accepting these terms",
     paragraphs: [
-      "These Terms of Service are an agreement between you and Montara Labs, Inc. (\u201cMontara\u201d, \u201cwe\u201d, \u201cus\u201d) and govern your use of the Montara Pass apps, browser extensions, and related services (the \u201cService\u201d).",
+      "These Terms of Service are an agreement between you and Montara Project (\u201cMontara\u201d, \u201cwe\u201d, \u201cus\u201d) and govern your use of the Montara Pass apps, browser extensions, and related services (the \u201cService\u201d).",
       "By creating an account or using the Service, you agree to these Terms and to our Privacy Policy. If you use the Service on behalf of an organization, you confirm that you have authority to bind that organization.",
     ],
   },
@@ -78,7 +78,7 @@ const sections: LegalSection[] = [
     id: "intellectual-property",
     title: "Intellectual property",
     paragraphs: [
-      "The Service, including its software, design, branding, and documentation, is owned by Montara Labs, Inc. and protected by intellectual property laws. We grant you a personal, non-exclusive, non-transferable license to use the apps for their intended purpose while your account is in good standing.",
+      "The Service, including its software, design, branding, and documentation, is owned by Montara Project and protected by intellectual property laws. We grant you a personal, non-exclusive, non-transferable license to use the apps for their intended purpose while your account is in good standing.",
       "If you send us feedback or suggestions, you grant us a perpetual, royalty-free license to use them to improve the Service, without obligation or attribution.",
     ],
   },
@@ -110,7 +110,7 @@ const sections: LegalSection[] = [
     id: "contact-us",
     title: "Contact us",
     paragraphs: [
-      "Questions about these Terms can be sent to legal@montarapass.com, or by mail to Montara Labs, Inc., 550 Kearny Street, Suite 400, San Francisco, CA 94108.",
+      "Questions about these Terms can be sent to hello@montaraproject.com, or by mail to Montara Project, Semarang, Indonesia.",
     ],
   },
 ];

@@ -84,7 +84,7 @@ const sections: LegalSection[] = [
     title: "Your rights",
     paragraphs: [
       "Wherever you live, you can access, correct, export, or delete your personal data from your account settings. If you are in the EU, UK, or California, you additionally have the rights to object to processing, restrict processing, and opt out of any \u201csale\u201d or \u201csharing\u201d of personal information — which, for Montara Pass, is moot: we never sell or share personal information for advertising.",
-      "To exercise a right or file a complaint, contact privacy@montarapass.com. We respond within 30 days.",
+      "To exercise a right or file a complaint, contact hello@montaraproject.com. We respond within 30 days.",
     ],
   },
   {
@@ -113,7 +113,7 @@ const sections: LegalSection[] = [
     title: "Changes and contact",
     paragraphs: [
       "If we make a material change to this policy, we will notify you by email or in-app notice at least 30 days before it takes effect, and we will update the date above.",
-      "Questions about privacy can be sent to privacy@montarapass.com, or by mail to Montara Labs, Inc., 550 Kearny Street, Suite 400, San Francisco, CA 94108.",
+      "Questions about privacy can be sent to hello@montaraproject.com, or by mail to Montara Project, Semarang, Indonesia.",
     ],
   },
 ];

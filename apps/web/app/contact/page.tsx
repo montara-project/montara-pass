@@ -22,28 +22,28 @@ const channels = [
   {
     icon: MessageSquareIcon,
     title: "Product support",
-    email: "support@montarapass.com",
+    email: "hello@montaraproject.com",
     body: "Account access, syncing, autofill, billing — anything about using Montara Pass day to day.",
     response: "Replies within 1 business day",
   },
   {
     icon: ScanIcon,
     title: "Security disclosure",
-    email: "security@montarapass.com",
+    email: "hello@montaraproject.com",
     body: "Report a vulnerability or a suspected breach. Good-faith reports are always welcome — and never met with legal action.",
     response: "Acknowledged within 24 hours",
   },
   {
     icon: GlobeIcon,
     title: "Business and sales",
-    email: "sales@montarapass.com",
+    email: "hello@montaraproject.com",
     body: "Business plans, volume pricing, procurement, and security reviews for your IT and compliance teams.",
     response: "Replies within 2 business days",
   },
   {
     icon: MailIcon,
     title: "Press and media",
-    email: "press@montarapass.com",
+    email: "hello@montaraproject.com",
     body: "Interviews, commentary on password security, brand assets, and everything else for journalists.",
     response: "Replies within 2 business days",
   },
@@ -140,15 +140,13 @@ export default function ContactPage() {
             </span>
             <h2 className="mt-5 font-heading text-lg font-semibold">Office</h2>
             <address className="mt-3 not-italic leading-7 text-mist">
-              Montara Labs, Inc.
+              Montara Project
               <br />
-              550 Kearny Street, Suite 400
-              <br />
-              San Francisco, CA 94108
+              Semarang, Indonesia
             </address>
             <p className="mt-4 flex items-center gap-1.5 text-xs text-mist/80">
               <ClockIcon className="size-3.5" />
-              Monday to Friday, 9am–6pm Pacific
+              Monday to Friday, 9am–6pm WIB
             </p>
           </div>
 
@@ -160,10 +158,10 @@ export default function ContactPage() {
             <p className="mt-3 text-sm leading-6 text-mist">
               Email{" "}
               <a
-                href="mailto:security@montarapass.com"
+                href="mailto:hello@montaraproject.com"
                 className="cursor-pointer font-medium text-accent-soft underline-offset-4 hover:underline"
               >
-                security@montarapass.com
+                hello@montaraproject.com
               </a>{" "}
               with the details. We acknowledge reports within 24 hours, keep researchers informed
               through the fix, and never take legal action against good-faith disclosure.
