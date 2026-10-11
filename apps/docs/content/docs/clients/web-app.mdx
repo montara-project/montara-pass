@@ -21,6 +21,13 @@ pnpm dev:app        # http://localhost:5173, proxies /api to the API
 | `/trash` | Restore or permanently delete trashed items |
 | `/categories` | The category list; writing needs a super user |
 | `/profile` | Account details and changing the master password |
+| `/generator` | Password generator: length and kinds of characters, with a strength estimate |
+| `/health` | Password health: logins with a weak password, and logins sharing one |
+
+The generator and the health check run in the browser, on the decrypted
+vault; no password is sent anywhere. A password counts as weak by its length
+and variety only: there is no dictionary, so a word with a year and a symbol
+can pass as fair. Both are also in the extension's full-screen view.
 
 An address that matches no route shows a "Page not found" screen. The server
 answers every unknown path outside `/api` with the app's `index.html`, so that

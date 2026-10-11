@@ -147,8 +147,8 @@ create it in the web app first.
 - **Fill** is offered only for a login whose saved URL belongs to the page in
   the active tab. A badge in login fields opens the same list under the field.
 - **Full screen** in the popup opens the vault in a tab: filters, the list and
-  the selected item side by side, with reveal, copy, add and edit. Sharing and
-  folders stay in the web app.
+  the selected item side by side, with reveal, copy, add, edit and share.
+  Folders, and changing who has an item, stay in the web app.
 - The build points at `https://app.montarapass.com`; Settings → Self-hosted
   takes the URL of another server. `pnpm --filter @montara-pass/extension
   watch` builds against the local servers instead

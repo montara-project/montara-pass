@@ -55,9 +55,21 @@ The plaintext of an item is a small JSON object, sealed with the item key:
 
 `icon` is optional: the [extension](/docs/clients/browser-extension#site-icons-and-last-use)
 adds the site's icon when a login is saved, and clients show it only when it
-is a PNG data URL. A secure note carries `name` and `notes` only. Every item also has a
-`cipher_version` in the clear (currently `1`), so the format can change later
-without guessing.
+is a PNG data URL. A secure note carries `name` and `notes` only. `notes`, of either type, are
+Markdown: the web app and the extension's full-screen view edit them as rich
+text, with headings, lists, quotes, code and inline formatting, and the
+extension's item detail renders them the same way. Notes written as plain
+text before that still read as they did: a line break stays a line break.
+An image in a note is shown as its Markdown and never loaded.
+
+A secure note may also carry `"visible": false`. The extension then shows it
+blurred in the item's detail until **Show note** is pressed; the switch is in
+its item form. The flag is part of the encrypted content, so the server does
+not learn which notes are marked. It is a screen for the eyes, not a lock:
+the note is decrypted with the rest of the vault.
+
+Every item also has a `cipher_version` in the clear (currently `1`), so the
+format can change later without guessing.
 
 ## Unlocking
 

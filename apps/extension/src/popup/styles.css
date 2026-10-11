@@ -14,6 +14,8 @@
   --primary-fg: #ffffff;
   --hover: #e4ebfa;
   --danger: #b42318;
+  --warn: #b45309;
+  --good: #15803d;
   --focus: #145cff;
   --tile-from: #145cff;
   --tile-to: #42c8ff;
@@ -38,6 +40,8 @@
     --primary-fg: #ffffff;
     --hover: #1e3160;
     --danger: #ff9a91;
+    --warn: #fbbf24;
+    --good: #4ade80;
     --focus: #42c8ff;
     --avatar: #145cff;
     --shadow: 0 8px 24px rgb(0 0 0 / 0.6);
@@ -379,6 +383,17 @@ button.link:hover {
 .panel > .error,
 .panel > .empty {
   padding: 0 12px 12px;
+}
+
+.share-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px;
+  gap: 16px;
+}
+
+.role {
+  text-transform: capitalize;
+  padding-right: 8px;
 }
 
 .section-title {
@@ -734,7 +749,8 @@ button.auth-link {
 
 .full {
   display: grid;
-  grid-template-columns: 248px minmax(300px, 380px) minmax(0, 1fr);
+  /* The list takes what is left; the item beside it keeps a reading width. */
+  grid-template-columns: 248px minmax(300px, 1fr) minmax(360px, 640px);
   height: 100%;
 }
 
@@ -886,6 +902,53 @@ button.auth-link {
   border-radius: 12px;
 }
 
+/* The list as a table: name, folder, last used. The two extra columns go
+   when the list is too narrow to hold them. */
+.list-col {
+  container-type: inline-size;
+}
+
+.list-head,
+.item-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px 120px;
+  align-items: center;
+}
+
+/* A row starts with its tile, which the heading has no column for. */
+.item-row {
+  grid-template-columns: auto minmax(0, 1fr) 140px 120px;
+}
+
+.list-head {
+  padding: 4px 20px 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.col {
+  padding-left: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+@container (max-width: 520px) {
+  .list-head {
+    display: none;
+  }
+
+  .item-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .col {
+    display: none;
+  }
+}
+
 .item-row[aria-current='true'] {
   background: var(--card);
 }
@@ -894,6 +957,200 @@ button.auth-link {
   min-height: 0;
   overflow-y: auto;
   background: var(--panel);
+}
+
+/* A tool (the generator, the health check) in place of the list and the
+   item beside it. */
+.tool-col {
+  grid-column: 2 / span 2;
+  border-radius: 16px 0 0 0;
+}
+
+/* A tool has the list's column too, so its body may run wider than an item. */
+.detail-body.tool-body {
+  max-width: 1040px;
+}
+
+/* The generator: the password on one side, what shapes it on the other. */
+.gen-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 16px;
+  container-type: inline-size;
+}
+
+.generated,
+.gen-options {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.generated {
+  justify-content: space-between;
+  background: var(--card);
+}
+
+.generated output {
+  display: flex;
+  align-items: center;
+  min-height: 112px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.5;
+  word-break: break-all;
+  user-select: all;
+}
+
+/* Digits and symbols are tinted, so 5 and S, or l and |, are told apart. */
+.ch-digit {
+  color: var(--focus);
+}
+
+.ch-symbol {
+  color: var(--warn);
+}
+
+.strength-label {
+  font-weight: 600;
+}
+
+.strength-label.strength-weak {
+  color: var(--danger);
+}
+
+.strength-label.strength-fair {
+  color: var(--warn);
+}
+
+.strength-label.strength-strong {
+  color: var(--good);
+}
+
+.meter {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--hover);
+}
+
+.meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.2s;
+}
+
+.meter-fill.strength-weak {
+  background: var(--danger);
+}
+
+.meter-fill.strength-fair {
+  background: var(--warn);
+}
+
+.meter-fill.strength-strong {
+  background: var(--good);
+}
+
+.gen-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.gen-length {
+  color: var(--fg);
+  font-size: 17px;
+}
+
+.gen-kinds {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.gen-kinds .toggle.option {
+  justify-content: space-between;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 0;
+}
+
+.gen-kinds .toggle.option + .toggle.option {
+  border-top: 1px solid var(--border);
+}
+
+/* Name and sample side by side: the row is one line. */
+.gen-kinds .toggle span {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+}
+
+@container (max-width: 620px) {
+  .generated,
+  .gen-options {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meter-fill {
+    transition: none;
+  }
+}
+
+input.range {
+  height: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.toggle.option {
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.stats > div {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.stats dt {
+  font-size: 12px;
+}
+
+.stats dd {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.section-title {
+  margin: 8px 0 0;
+  font-size: 15px;
+}
+
+.health-list {
+  margin-top: 6px;
 }
 
 .detail-body {
@@ -970,8 +1227,25 @@ button.auth-link {
   grid-column: 3;
 }
 
+/* Notes run long, so their buttons stay at the top, level with the label,
+   and the text takes the full width under them. */
+.field-notes .icon-button {
+  grid-row: 1;
+}
+
+.field-notes .icon-button:only-of-type {
+  grid-column: 3;
+}
+
 .field-notes dd {
+  grid-column: 1 / -1;
+  margin-top: 4px;
   white-space: pre-wrap;
+}
+
+.field-notes dd.blurred {
+  filter: blur(7px);
+  user-select: none;
 }
 
 .field a {
@@ -1027,6 +1301,165 @@ textarea {
   font: inherit;
   font-weight: 400;
   resize: vertical;
+}
+
+/* The rich text editor of a secure note: a toolbar over the text. */
+.notes-editor {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--field);
+}
+
+.notes-loading {
+  min-height: 170px;
+}
+
+.notes-editor:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.notes-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+button.notes-tool {
+  width: auto;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+button.notes-tool:hover:not(:disabled),
+button.notes-tool[aria-pressed='true'] {
+  background: var(--hover);
+  color: var(--fg);
+}
+
+.notes-divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: var(--border);
+}
+
+.notes-body {
+  position: relative;
+}
+
+.notes-placeholder {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.notes-content {
+  min-height: 130px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 10px 12px;
+  border-radius: 0 0 10px 10px;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+  outline: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* A note being read, not written: it takes the room its text needs. */
+.notes-content.notes-view {
+  min-height: 0;
+  max-height: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+.notes-content a {
+  color: var(--focus);
+}
+
+.notes-content hr {
+  margin: 12px 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+.notes-content table {
+  border-collapse: collapse;
+}
+
+.notes-content th,
+.notes-content td {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+
+.notes-content > * {
+  margin: 0 0 8px;
+}
+
+.notes-content > :last-child {
+  margin-bottom: 0;
+}
+
+.notes-content h1 {
+  font-size: 20px;
+}
+
+.notes-content h2 {
+  font-size: 17px;
+}
+
+.notes-content h3 {
+  font-size: 15px;
+}
+
+.notes-content ul,
+.notes-content ol {
+  padding-left: 20px;
+}
+
+.notes-content li > p {
+  margin: 0;
+}
+
+.notes-content blockquote {
+  padding-left: 12px;
+  border-left: 2px solid var(--border);
+  color: var(--muted);
+}
+
+.notes-content code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--hover);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+}
+
+.notes-content pre {
+  overflow-x: auto;
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--hover);
+}
+
+.notes-content pre code {
+  padding: 0;
+  background: none;
 }
 
 .select-box {
@@ -1204,6 +1637,12 @@ select:disabled {
   .detail-col,
   .full.pane-open .list-col {
     display: none;
+  }
+
+  .detail-col.tool-col {
+    display: block;
+    grid-column: auto;
+    border-radius: 16px 16px 0 0;
   }
 
   .full.pane-open .detail-col {

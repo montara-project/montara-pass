@@ -14,6 +14,8 @@ import { Route as appRouteRouteImport } from './routes/(app)/route'
 import { Route as authRouteRouteImport } from './routes/(auth)/route'
 import { Route as appCategoriesIndexRouteImport } from './routes/(app)/categories/index'
 import { Route as appFoldersIndexRouteImport } from './routes/(app)/folders/index'
+import { Route as appGeneratorIndexRouteImport } from './routes/(app)/generator/index'
+import { Route as appHealthIndexRouteImport } from './routes/(app)/health/index'
 import { Route as appProfileIndexRouteImport } from './routes/(app)/profile/index'
 import { Route as appTrashIndexRouteImport } from './routes/(app)/trash/index'
 import { Route as appVaultIndexRouteImport } from './routes/(app)/vault/index'
@@ -41,6 +43,16 @@ const appCategoriesIndexRoute = appCategoriesIndexRouteImport.update({
 const appFoldersIndexRoute = appFoldersIndexRouteImport.update({
   id: '/folders/',
   path: '/folders/',
+  getParentRoute: () => appRouteRoute,
+} as any)
+const appGeneratorIndexRoute = appGeneratorIndexRouteImport.update({
+  id: '/generator/',
+  path: '/generator/',
+  getParentRoute: () => appRouteRoute,
+} as any)
+const appHealthIndexRoute = appHealthIndexRouteImport.update({
+  id: '/health/',
+  path: '/health/',
   getParentRoute: () => appRouteRoute,
 } as any)
 const appProfileIndexRoute = appProfileIndexRouteImport.update({
@@ -73,6 +85,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/categories/': typeof appCategoriesIndexRoute
   '/folders/': typeof appFoldersIndexRoute
+  '/generator/': typeof appGeneratorIndexRoute
+  '/health/': typeof appHealthIndexRoute
   '/profile/': typeof appProfileIndexRoute
   '/trash/': typeof appTrashIndexRoute
   '/vault/': typeof appVaultIndexRoute
@@ -83,6 +97,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/categories': typeof appCategoriesIndexRoute
   '/folders': typeof appFoldersIndexRoute
+  '/generator': typeof appGeneratorIndexRoute
+  '/health': typeof appHealthIndexRoute
   '/profile': typeof appProfileIndexRoute
   '/trash': typeof appTrashIndexRoute
   '/vault': typeof appVaultIndexRoute
@@ -96,6 +112,8 @@ export interface FileRoutesById {
   '/(auth)': typeof authRouteRouteWithChildren
   '/(app)/categories/': typeof appCategoriesIndexRoute
   '/(app)/folders/': typeof appFoldersIndexRoute
+  '/(app)/generator/': typeof appGeneratorIndexRoute
+  '/(app)/health/': typeof appHealthIndexRoute
   '/(app)/profile/': typeof appProfileIndexRoute
   '/(app)/trash/': typeof appTrashIndexRoute
   '/(app)/vault/': typeof appVaultIndexRoute
@@ -108,6 +126,8 @@ export interface FileRouteTypes {
     | '/'
     | '/categories/'
     | '/folders/'
+    | '/generator/'
+    | '/health/'
     | '/profile/'
     | '/trash/'
     | '/vault/'
@@ -118,6 +138,8 @@ export interface FileRouteTypes {
     | '/'
     | '/categories'
     | '/folders'
+    | '/generator'
+    | '/health'
     | '/profile'
     | '/trash'
     | '/vault'
@@ -130,6 +152,8 @@ export interface FileRouteTypes {
     | '/(auth)'
     | '/(app)/categories/'
     | '/(app)/folders/'
+    | '/(app)/generator/'
+    | '/(app)/health/'
     | '/(app)/profile/'
     | '/(app)/trash/'
     | '/(app)/vault/'
@@ -180,6 +204,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appFoldersIndexRouteImport
       parentRoute: typeof appRouteRoute
     }
+    '/(app)/generator/': {
+      id: '/(app)/generator/'
+      path: '/generator'
+      fullPath: '/generator/'
+      preLoaderRoute: typeof appGeneratorIndexRouteImport
+      parentRoute: typeof appRouteRoute
+    }
+    '/(app)/health/': {
+      id: '/(app)/health/'
+      path: '/health'
+      fullPath: '/health/'
+      preLoaderRoute: typeof appHealthIndexRouteImport
+      parentRoute: typeof appRouteRoute
+    }
     '/(app)/profile/': {
       id: '/(app)/profile/'
       path: '/profile'
@@ -221,6 +259,8 @@ declare module '@tanstack/react-router' {
 interface appRouteRouteChildren {
   appCategoriesIndexRoute: typeof appCategoriesIndexRoute
   appFoldersIndexRoute: typeof appFoldersIndexRoute
+  appGeneratorIndexRoute: typeof appGeneratorIndexRoute
+  appHealthIndexRoute: typeof appHealthIndexRoute
   appProfileIndexRoute: typeof appProfileIndexRoute
   appTrashIndexRoute: typeof appTrashIndexRoute
   appVaultIndexRoute: typeof appVaultIndexRoute
@@ -229,6 +269,8 @@ interface appRouteRouteChildren {
 const appRouteRouteChildren: appRouteRouteChildren = {
   appCategoriesIndexRoute: appCategoriesIndexRoute,
   appFoldersIndexRoute: appFoldersIndexRoute,
+  appGeneratorIndexRoute: appGeneratorIndexRoute,
+  appHealthIndexRoute: appHealthIndexRoute,
   appProfileIndexRoute: appProfileIndexRoute,
   appTrashIndexRoute: appTrashIndexRoute,
   appVaultIndexRoute: appVaultIndexRoute,

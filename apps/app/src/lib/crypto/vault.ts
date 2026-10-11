@@ -43,6 +43,11 @@ export interface ItemSecret {
    * login is saved. '' means the site was asked and has none.
    */
   icon?: string
+  /**
+   * False for a secure note that is shown blurred until it is revealed.
+   * Missing means visible.
+   */
+  visible?: boolean
 }
 
 /**
@@ -54,11 +59,22 @@ export function itemIcon(secret: ItemSecret | null | undefined): string | null {
   return secret?.icon?.startsWith('data:image/png;base64,') ? secret.icon : null
 }
 
-/** An edited secret keeps the icon saved for its site, unless the site changed. */
-export function keepIcon(next: ItemSecret, previous: ItemSecret | null | undefined): ItemSecret {
-  return previous?.icon !== undefined && next.url === previous.url
-    ? { ...next, icon: previous.icon }
-    : next
+/**
+ * What an edit carries over from the secret it replaces, because the form
+ * that made it has no field for it: the icon saved for the site, unless the
+ * site changed, and whether a note is hidden.
+ */
+export function keepUnedited(
+  next: ItemSecret,
+  previous: ItemSecret | null | undefined
+): ItemSecret {
+  return {
+    ...next,
+    ...(previous?.icon !== undefined && next.url === previous.url ? { icon: previous.icon } : {}),
+    ...(previous?.visible !== undefined && next.visible === undefined
+      ? { visible: previous.visible }
+      : {}),
+  }
 }
 
 export class WrongMasterPasswordError extends Error {

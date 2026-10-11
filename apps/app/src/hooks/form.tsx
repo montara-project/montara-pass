@@ -1,6 +1,7 @@
 import { createFormHook } from '@tanstack/react-form'
 
 import PasswordField from '@/components/block/form/password-field'
+import RichTextField from '@/components/block/form/rich-text-field'
 import SelectField from '@/components/block/form/select-field'
 import SubmitButton from '@/components/block/form/submit'
 import TextField from '@/components/block/form/text-field'
@@ -14,6 +15,7 @@ export const { useAppForm } = createFormHook({
     PasswordField,
     SelectField,
     TextareaField,
+    RichTextField,
   },
   formComponents: {
     SubmitButton,

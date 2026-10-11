@@ -67,11 +67,13 @@ function manifest(target: Target) {
 }
 
 /**
- * Two dependencies ship code the add-on linter flags and the extension never
- * runs: zod probes for eval before compiling a parser (an extension page's
- * CSP refuses it, so zod always falls back), and react-dom assigns innerHTML
- * for dangerouslySetInnerHTML, which nothing here uses. Both are swapped for
- * a throw, so neither can come into use unnoticed.
+ * Dependencies ship code the add-on linter flags. Two pieces the extension
+ * never runs: zod probes for eval before compiling a parser (an extension
+ * page's CSP refuses it, so zod always falls back), and react-dom assigns
+ * innerHTML for dangerouslySetInnerHTML, which nothing here uses. Both are
+ * swapped for a throw, so neither can come into use unnoticed. The notes
+ * editor's three are code that does run, and each is replaced by an
+ * equivalent the linter accepts (see the rules).
  */
 function dropFlaggedCode(): Plugin {
   const rules = [
@@ -85,11 +87,37 @@ function dropFlaggedCode(): Plugin {
       from: /\(domElement\.innerHTML = key\)/g,
       to: "(() => { throw new Error('dangerouslySetInnerHTML is not available in the extension') })()",
     },
+    // The notes editor (Milkdown, on ProseMirror and micromark). ProseMirror
+    // parses pasted HTML by assigning innerHTML on a detached document;
+    // the browser's DOMParser gives the same nodes without the assignment.
+    // (`globalThis.`, because the file has ProseMirror's own DOMParser in scope.)
+    {
+      file: /prosemirror-view\/dist\/index\.js$/,
+      from: /elt\.innerHTML = maybeWrapTrusted\(html\);/g,
+      to: "elt.replaceChildren(...new globalThis.DOMParser().parseFromString(maybeWrapTrusted(html), 'text/html').body.childNodes);",
+    },
+    // Not document.write: micromark's tokenizer for the `document` content
+    // type has a method called `write`. Called through a variable, the
+    // linter no longer mistakes it for one.
+    {
+      file: /mdast-util-from-markdown\/lib\/index\.js$/,
+      from: /postprocess\(parse\(options\)\.document\(\)\.write\(preprocess\(\)\(value, encoding, true\)\)\)/g,
+      to: '((feed) => postprocess(feed(preprocess()(value, encoding, true))))(parse(options).document().write)',
+    },
   ]
   const seen = new Set<RegExp>()
 
   return {
     name: 'montara-pass-drop-flagged-code',
+    // Ahead of Vite's own resolver, which would settle the import below.
+    enforce: 'pre',
+    // micromark decodes `&amp;` and its kind through innerHTML in a browser
+    // build; the package's other build looks them up in a table.
+    async resolveId(source, importer, options) {
+      if (source !== 'decode-named-character-reference') return null
+      const found = await this.resolve(source, importer, { ...options, skipSelf: true })
+      return found && { ...found, id: found.id.replace('index.dom.js', 'index.js') }
+    },
     transform(code, id) {
       for (const rule of rules) {
         const replaced = rule.file.test(id) ? code.replace(rule.from, rule.to) : code

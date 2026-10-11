@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 
 import type { VaultItem } from '@/types/vault'
 
@@ -7,6 +7,7 @@ import { decryptFolderName, type VaultKeys } from '@/lib/crypto/vault'
 import { listFolders } from '../../lib/api'
 import { hostOf } from '../../lib/site'
 import { getSettings } from '../../lib/storage'
+import { lastUsedAgo } from '../../lib/usage'
 import {
   ArrowLeftIcon,
   CopyIcon,
@@ -24,6 +25,8 @@ import {
   RefreshIcon,
   SearchIcon,
   SettingsIcon,
+  ShareIcon,
+  ShieldIcon,
   SortIcon,
   StarIcon,
 } from '../icons'
@@ -31,6 +34,9 @@ import { ItemTile } from '../item-tile'
 import { initials } from '../layout'
 import { useVaultItems } from '../use-vault-items'
 import ItemForm, { type FolderOption } from './item-form'
+import PasswordGenerator from './password-generator'
+import PasswordHealth from './password-health'
+import ShareItem from './share-item'
 
 interface FullVaultProps {
   keys: VaultKeys
@@ -44,7 +50,11 @@ interface FullVaultProps {
 type Filter = 'all' | 'login' | 'secure_note' | 'favorite'
 type Sort = 'name' | 'updated'
 /** What the detail pane shows. */
-type Pane = { mode: 'view'; id: string | null } | { mode: 'new' } | { mode: 'edit'; id: string }
+type Pane =
+  | { mode: 'view'; id: string | null }
+  | { mode: 'new' }
+  | { mode: 'edit'; id: string }
+  | { mode: 'share'; id: string }
 
 const FILTERS: { value: Filter; label: string; icon: typeof GridIcon }[] = [
   { value: 'all', label: 'All items', icon: GridIcon },
@@ -57,6 +67,11 @@ const SORT_LABEL: Record<Sort, string> = {
   name: 'Sort by name',
   updated: 'Sort by last updated',
 }
+
+// Fetched when an item with notes is opened, so it stays out of the first load.
+const NotesView = lazy(() =>
+  import('../notes-editor').then((module) => ({ default: module.NotesView }))
+)
 
 const MASK = '••••••••••••'
 
@@ -78,6 +93,8 @@ export default function FullVault({
   const [sort, setSort] = useState<Sort>('name')
   const [search, setSearch] = useState('')
   const [pane, setPane] = useState<Pane>({ mode: 'view', id: null })
+  // A tool takes the place of the list and the item beside it.
+  const [tool, setTool] = useState<'generator' | 'health' | null>(null)
   const [notice, setNotice] = useState('')
   const [refreshing, setRefreshing] = useState(false)
   const [appUrl, setAppUrl] = useState('')
@@ -160,6 +177,7 @@ export default function FullVault({
   }, [readable, filter, search, sort])
 
   const selectedId = pane.mode === 'new' ? null : pane.id
+  const folderNames = useMemo(() => new Map(folders.map((f) => [f.id, f.name])), [folders])
   const selected = readable.find((item) => item.id === selectedId) ?? null
   // On a narrow window the pane covers the list, so it needs to know when it is in use.
   const paneOpen = pane.mode !== 'view' || selected !== null
@@ -192,8 +210,11 @@ export default function FullVault({
             <li key={value}>
               <button
                 className="side-item"
-                aria-current={filter === value ? 'true' : undefined}
-                onClick={() => setFilter(value)}
+                aria-current={!tool && filter === value ? 'true' : undefined}
+                onClick={() => {
+                  setFilter(value)
+                  setTool(null)
+                }}
               >
                 <Icon />
                 <span>{label}</span>
@@ -206,9 +227,29 @@ export default function FullVault({
         <span className="spacer" />
 
         <ul className="side-list">
+          <li>
+            <button
+              className="side-item"
+              aria-current={tool === 'generator' ? 'true' : undefined}
+              onClick={() => setTool('generator')}
+            >
+              <KeyIcon />
+              <span>Password generator</span>
+            </button>
+          </li>
+          <li>
+            <button
+              className="side-item"
+              aria-current={tool === 'health' ? 'true' : undefined}
+              onClick={() => setTool('health')}
+            >
+              <ShieldIcon />
+              <span>Password health</span>
+            </button>
+          </li>
           {appUrl && (
             <li>
-              {/* Sharing and folders live in the web app. */}
+              {/* Folders, the trash and who else has an item live in the web app. */}
               <a className="side-item" href={appUrl} target="_blank" rel="noreferrer">
                 <ExternalLinkIcon />
                 <span>Open web app</span>
@@ -254,115 +295,159 @@ export default function FullVault({
         </div>
       </nav>
 
-      <section className="list-col" aria-label="Items">
-        <label className="search">
-          <SearchIcon />
-          <input
-            type="search"
-            placeholder="Search all items"
-            aria-label="Search all items"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            autoFocus
-          />
-        </label>
+      {tool ? (
+        <section className="detail-col tool-col" aria-label="Tools">
+          {tool === 'generator' ? (
+            <PasswordGenerator onNotice={setNotice} />
+          ) : (
+            <PasswordHealth
+              items={items}
+              onOpen={(id) => {
+                setTool(null)
+                setFilter('all')
+                setSearch('')
+                setPane({ mode: 'view', id })
+              }}
+            />
+          )}
+        </section>
+      ) : (
+        <>
+          <section className="list-col" aria-label="Items">
+            <label className="search">
+              <SearchIcon />
+              <input
+                type="search"
+                placeholder="Search all items"
+                aria-label="Search all items"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                autoFocus
+              />
+            </label>
 
-        <div className="list-tools">
-          <button
-            className="sort"
-            onClick={() => setSort((current) => (current === 'name' ? 'updated' : 'name'))}
-          >
-            {SORT_LABEL[sort]}
-            <SortIcon width={16} height={16} />
-          </button>
-          <span className="spacer" />
-          <button
-            className="icon-button"
-            aria-label="Refresh vault"
-            title="Refresh vault"
-            disabled={refreshing}
-            onClick={() => void refresh()}
-          >
-            <RefreshIcon className={refreshing ? 'spin' : undefined} />
-          </button>
-          <button className="new-item" onClick={() => setPane({ mode: 'new' })}>
-            <PlusIcon width={18} height={18} />
-            New item
-          </button>
-        </div>
-
-        {error && (
-          <p className="error list-message" role="alert">
-            {error}
-          </p>
-        )}
-        {items === null && !error && <p className="muted list-message">Decrypting…</p>}
-        {items !== null && visible.length === 0 && (
-          <p className="muted list-message">
-            {readable.length === 0 ? 'Your vault is empty.' : 'Nothing matches.'}
-          </p>
-        )}
-
-        <ul className="items">
-          {visible.map((item) => (
-            <li key={item.id}>
+            <div className="list-tools">
               <button
-                className="item-row"
-                aria-current={item.id === selectedId ? 'true' : undefined}
-                onClick={() => setPane({ mode: 'view', id: item.id })}
+                className="sort"
+                onClick={() => setSort((current) => (current === 'name' ? 'updated' : 'name'))}
               >
-                <ItemTile item={item} />
-                <span className="item-text">
-                  <span className="item-name">{item.secret!.name}</span>
-                  <span className="muted">
-                    {item.type === 'login' ? item.secret!.username || 'No username' : 'Secure note'}
-                  </span>
-                </span>
+                {SORT_LABEL[sort]}
+                <SortIcon width={16} height={16} />
               </button>
-            </li>
-          ))}
-        </ul>
-      </section>
+              <span className="spacer" />
+              <button
+                className="icon-button"
+                aria-label="Refresh vault"
+                title="Refresh vault"
+                disabled={refreshing}
+                onClick={() => void refresh()}
+              >
+                <RefreshIcon className={refreshing ? 'spin' : undefined} />
+              </button>
+              <button className="new-item" onClick={() => setPane({ mode: 'new' })}>
+                <PlusIcon width={18} height={18} />
+                New item
+              </button>
+            </div>
 
-      <section className="detail-col" aria-label="Item details">
-        {paneOpen && (
-          <button className="link back" onClick={() => setPane({ mode: 'view', id: null })}>
-            <ArrowLeftIcon width={18} height={18} />
-            All items
-          </button>
-        )}
+            {error && (
+              <p className="error list-message" role="alert">
+                {error}
+              </p>
+            )}
+            {items === null && !error && <p className="muted list-message">Decrypting…</p>}
+            {items !== null && visible.length === 0 && (
+              <p className="muted list-message">
+                {readable.length === 0 ? 'Your vault is empty.' : 'Nothing matches.'}
+              </p>
+            )}
 
-        {pane.mode !== 'view' ? (
-          <ItemForm
-            // A different item is a different form, with its own fields.
-            key={pane.mode === 'edit' ? pane.id : 'new'}
-            keys={keys}
-            item={pane.mode === 'edit' ? (selected ?? undefined) : undefined}
-            folders={folders}
-            onCancel={() => setPane({ mode: 'view', id: selectedId })}
-            onSignedOut={onSignedOut}
-            onSaved={(id) => {
-              setNotice('Item saved')
-              setPane({ mode: 'view', id })
-              void load()
-            }}
-          />
-        ) : selected ? (
-          <ItemDetail
-            key={selected.id}
-            item={selected}
-            onCopy={(value, label) => void copy(value, label)}
-            onEdit={() => setPane({ mode: 'edit', id: selected.id })}
-          />
-        ) : (
-          <div className="detail-empty">
-            <span className="tile">
-              <KeyholeIcon />
-            </span>
-            <p className="muted">Select an item to see it, or create a new one.</p>
-          </div>
-        )}
-      </section>
+            {visible.length > 0 && (
+              <div className="list-head" aria-hidden="true">
+                <span>Name</span>
+                <span className="col">Folder</span>
+                <span className="col">Last used</span>
+              </div>
+            )}
+
+            <ul className="items">
+              {visible.map((item) => (
+                <li key={item.id}>
+                  <button
+                    className="item-row"
+                    aria-current={item.id === selectedId ? 'true' : undefined}
+                    onClick={() => setPane({ mode: 'view', id: item.id })}
+                  >
+                    <ItemTile item={item} />
+                    <span className="item-text">
+                      <span className="item-name">{item.secret!.name}</span>
+                      <span className="muted">
+                        {item.type === 'login'
+                          ? item.secret!.username || 'No username'
+                          : 'Secure note'}
+                      </span>
+                    </span>
+                    <span className="col muted">
+                      {folderNames.get(item.folder_id ?? '') ?? '—'}
+                    </span>
+                    <span className="col muted">{lastUsedAgo(item.last_used_at) ?? '—'}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="detail-col" aria-label="Item details">
+            {paneOpen && (
+              <button className="link back" onClick={() => setPane({ mode: 'view', id: null })}>
+                <ArrowLeftIcon width={18} height={18} />
+                All items
+              </button>
+            )}
+
+            {pane.mode === 'share' && selected ? (
+              <ShareItem
+                key={selected.id}
+                keys={keys}
+                item={selected}
+                onDone={() => setPane({ mode: 'view', id: selected.id })}
+                onSignedOut={onSignedOut}
+                onNotice={setNotice}
+              />
+            ) : pane.mode !== 'view' ? (
+              <ItemForm
+                // A different item is a different form, with its own fields.
+                key={pane.mode === 'edit' ? pane.id : 'new'}
+                keys={keys}
+                item={pane.mode === 'edit' ? (selected ?? undefined) : undefined}
+                folders={folders}
+                onCancel={() => setPane({ mode: 'view', id: selectedId })}
+                onSignedOut={onSignedOut}
+                onSaved={(id) => {
+                  setNotice('Item saved')
+                  setPane({ mode: 'view', id })
+                  void load()
+                }}
+              />
+            ) : selected ? (
+              <ItemDetail
+                key={selected.id}
+                item={selected}
+                onCopy={(value, label) => void copy(value, label)}
+                onEdit={() => setPane({ mode: 'edit', id: selected.id })}
+                onShare={() => setPane({ mode: 'share', id: selected.id })}
+              />
+            ) : (
+              <div className="detail-empty">
+                <span className="tile">
+                  <KeyholeIcon />
+                </span>
+                <p className="muted">Select an item to see it, or create a new one.</p>
+              </div>
+            )}
+          </section>
+        </>
+      )}
 
       {notice && (
         <p className="toast" role="status">
@@ -377,15 +462,19 @@ interface ItemDetailProps {
   item: VaultItem
   onCopy: (value: string | undefined, label: string) => void
   onEdit: () => void
+  onShare: () => void
 }
 
-function ItemDetail({ item, onCopy, onEdit }: ItemDetailProps) {
+function ItemDetail({ item, onCopy, onEdit, onShare }: ItemDetailProps) {
   // Hidden again for every item: this component is remounted per item.
   const [revealed, setRevealed] = useState(false)
 
   const secret = item.secret!
   const isLogin = item.type === 'login'
   const canEdit = item.role !== 'viewer'
+  // A secure note marked not visible stays blurred until it is revealed.
+  const hidesNote = !isLogin && secret.visible === false
+  const noteHidden = hidesNote && !revealed
   // Only http(s) addresses become links.
   const website = hostOf(secret.url)
     ? secret.url!.includes('://')
@@ -404,6 +493,13 @@ function ItemDetail({ item, onCopy, onEdit }: ItemDetailProps) {
             {item.role !== 'owner' && ` · shared with you (${item.role})`}
           </span>
         </div>
+        {/* Only the owner hands an item on. */}
+        {item.role === 'owner' && (
+          <button className="secondary" onClick={onShare}>
+            <ShareIcon width={18} height={18} />
+            Share
+          </button>
+        )}
         {canEdit && (
           <button className="secondary" onClick={onEdit}>
             <PencilIcon width={18} height={18} />
@@ -478,7 +574,33 @@ function ItemDetail({ item, onCopy, onEdit }: ItemDetailProps) {
         {(secret.notes || !isLogin) && (
           <div className="field field-notes">
             <dt>Notes</dt>
-            <dd>{secret.notes || <span className="muted">None</span>}</dd>
+            {/* Out of reach while blurred: not selectable, not read aloud. */}
+            <dd
+              className={noteHidden ? 'blurred' : undefined}
+              inert={noteHidden}
+              aria-hidden={noteHidden}
+            >
+              {!secret.notes ? (
+                <span className="muted">None</span>
+              ) : (
+                // Notes are written as Markdown; until the renderer has
+                // loaded, the text shows as it is.
+                <Suspense fallback={secret.notes}>
+                  <NotesView key={secret.notes} value={secret.notes} />
+                </Suspense>
+              )}
+            </dd>
+            {hidesNote && (
+              <button
+                className="icon-button"
+                aria-label={revealed ? 'Hide note' : 'Show note'}
+                title={revealed ? 'Hide note' : 'Show note'}
+                aria-pressed={revealed}
+                onClick={() => setRevealed((shown) => !shown)}
+              >
+                {revealed ? <EyeOffIcon /> : <EyeIcon />}
+              </button>
+            )}
             <button
               className="icon-button"
               aria-label="Copy notes"

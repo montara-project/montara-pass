@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from 'react'
 
 import { encryptNewItem, type VaultKeys } from '@/lib/crypto/vault'
+import { generatePassword } from '@/lib/password'
 
 import { createItem, SignedOutError } from '../../lib/api'
-import { generatePassword } from '../../lib/generate'
 import { fetchIcon } from '../../lib/icon'
 import { hostOf } from '../../lib/site'
 

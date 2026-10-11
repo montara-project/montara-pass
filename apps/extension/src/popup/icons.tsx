@@ -107,6 +107,22 @@ export const LogOutIcon = icon(
 )
 
 /** The tile icon of a login: a keyhole. */
+export const ShareIcon = icon(
+  <>
+    <circle cx="18" cy="5" r="3" />
+    <circle cx="6" cy="12" r="3" />
+    <circle cx="18" cy="19" r="3" />
+    <path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" />
+  </>
+)
+
+export const ShieldIcon = icon(
+  <>
+    <path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6l-7-3Z" />
+    <path d="m9 12 2 2 4-4" />
+  </>
+)
+
 export const KeyholeIcon = icon(
   <>
     <circle cx="12" cy="10" r="3" fill="currentColor" stroke="none" />
