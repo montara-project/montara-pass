@@ -3,6 +3,18 @@
 All notable changes to this project are documented in this file. Versions follow the git tags (`v*`); Docker images are published to ghcr.io with the same version.
 
 
+## [1.2.0](https://github.com/montara-project/montara-pass/compare/v1.1.1...v1.2.0) (2026-10-11)
+
+### Features
+
+* **extension:** add an opt-in inline menu in login fields ([5a07c27](https://github.com/montara-project/montara-pass/commit/5a07c2713f1fa75f64c05a2064f30a1c5faa5c06))
+* **web:** redesign the landing page, header and footer ([d061bdc](https://github.com/montara-project/montara-pass/commit/d061bdc6d6db96479da93b5ee074c53dc5de1ad7))
+* **web:** use real stack logos and link to the docs site ([a84c4a4](https://github.com/montara-project/montara-pass/commit/a84c4a4e142b9a5da5164a22829060b4253ab618))
+
+### Bug Fixes
+
+* **extension:** clear the add-on linter warnings for Firefox ([b9fafd6](https://github.com/montara-project/montara-pass/commit/b9fafd6e2f7e482f70f343b2a0b5c4d67f4849e3))
+
 ## [1.1.1](https://github.com/montara-project/montara-pass/compare/v1.1.0...v1.1.1) (2026-10-10)
 
 ### Features
