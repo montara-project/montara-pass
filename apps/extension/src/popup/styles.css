@@ -1231,6 +1231,11 @@ input.range {
   white-space: pre-wrap;
 }
 
+.field-notes dd.blurred {
+  filter: blur(7px);
+  user-select: none;
+}
+
 .field a {
   color: var(--focus);
 }

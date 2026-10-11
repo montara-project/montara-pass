@@ -62,6 +62,12 @@ extension's item detail renders them the same way. Notes written as plain
 text before that still read as they did: a line break stays a line break.
 An image in a note is shown as its Markdown and never loaded.
 
+A secure note may also carry `"visible": false`. The extension then shows it
+blurred in the item's detail until **Show note** is pressed; the switch is in
+its item form. The flag is part of the encrypted content, so the server does
+not learn which notes are marked. It is a screen for the eyes, not a lock:
+the note is decrypted with the rest of the vault.
+
 Every item also has a `cipher_version` in the clear (currently `1`), so the
 format can change later without guessing.
 

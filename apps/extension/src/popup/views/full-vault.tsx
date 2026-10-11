@@ -472,6 +472,9 @@ function ItemDetail({ item, onCopy, onEdit, onShare }: ItemDetailProps) {
   const secret = item.secret!
   const isLogin = item.type === 'login'
   const canEdit = item.role !== 'viewer'
+  // A secure note marked not visible stays blurred until it is revealed.
+  const hidesNote = !isLogin && secret.visible === false
+  const noteHidden = hidesNote && !revealed
   // Only http(s) addresses become links.
   const website = hostOf(secret.url)
     ? secret.url!.includes('://')
@@ -571,7 +574,12 @@ function ItemDetail({ item, onCopy, onEdit, onShare }: ItemDetailProps) {
         {(secret.notes || !isLogin) && (
           <div className="field field-notes">
             <dt>Notes</dt>
-            <dd>
+            {/* Out of reach while blurred: not selectable, not read aloud. */}
+            <dd
+              className={noteHidden ? 'blurred' : undefined}
+              inert={noteHidden}
+              aria-hidden={noteHidden}
+            >
               {!secret.notes ? (
                 <span className="muted">None</span>
               ) : (
@@ -582,6 +590,17 @@ function ItemDetail({ item, onCopy, onEdit, onShare }: ItemDetailProps) {
                 </Suspense>
               )}
             </dd>
+            {hidesNote && (
+              <button
+                className="icon-button"
+                aria-label={revealed ? 'Hide note' : 'Show note'}
+                title={revealed ? 'Hide note' : 'Show note'}
+                aria-pressed={revealed}
+                onClick={() => setRevealed((shown) => !shown)}
+              >
+                {revealed ? <EyeOffIcon /> : <EyeIcon />}
+              </button>
+            )}
             <button
               className="icon-button"
               aria-label="Copy notes"

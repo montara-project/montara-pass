@@ -15,7 +15,7 @@ import { ItemTypeOptions, type ItemType } from '@/lib/constants/vault'
 import {
   encryptItemUpdate,
   encryptNewItem,
-  keepIcon,
+  keepUnedited,
   type ItemSecret,
   type VaultKeys,
 } from '@/lib/crypto/vault'
@@ -155,6 +155,8 @@ export default function ItemForm({
     folder_id: item?.folder_id ?? NO_FOLDER,
   })
   const notesId = useId()
+  // A secure note may be kept blurred in the item's detail until revealed.
+  const [visible, setVisible] = useState(item?.secret?.visible !== false)
   const [errors, setErrors] = useState<FieldErrors>({})
   // Fields are checked as they change once a save has been attempted.
   const [submitted, setSubmitted] = useState(false)
@@ -182,7 +184,15 @@ export default function ItemForm({
     setBusy(true)
 
     try {
-      const secret = keepIcon(toSecret(parsed), item?.secret)
+      const secret = keepUnedited(
+        {
+          ...toSecret(parsed),
+          // Only "hidden" is written down; a note is visible without it.
+          ...(parsed.type === 'secure_note' && !visible ? { visible: false } : {}),
+        },
+        // What this form sets is not carried over from the old secret.
+        item?.secret && { ...item.secret, visible: undefined }
+      )
       // A new login, a new site, or a site that had no icon last time.
       if (parsed.type === 'login' && !secret.icon) secret.icon = await fetchIcon(secret.url)
 
@@ -355,6 +365,24 @@ export default function ItemForm({
         </Suspense>
         {errors.notes && <p className="error field-error">{errors.notes}</p>}
       </div>
+
+      {value.type === 'secure_note' && (
+        <label className="toggle">
+          <input
+            type="checkbox"
+            role="switch"
+            aria-checked={visible}
+            checked={visible}
+            onChange={(e) => setVisible(e.target.checked)}
+          />
+          <span>
+            Visible
+            <span className="muted">
+              When off, the note is blurred in its detail until you choose to show it.
+            </span>
+          </span>
+        </label>
+      )}
 
       {error && (
         <p className="error" role="alert">
