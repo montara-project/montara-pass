@@ -51,7 +51,7 @@ export function Faq() {
           <details key={item.q} className="group border-b border-line">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-1 py-5 text-[15px] font-medium sm:px-4">
               {item.q}
-              <PlusIcon className="size-4 shrink-0 text-mist transition-transform duration-200 group-open:rotate-45 motion-reduce:transition-none" />
+              <PlusIcon className="size-4 shrink-0 text-mist transition duration-200 group-hover:text-fg group-open:rotate-45 motion-reduce:transition-none" />
             </summary>
             <p className="px-1 pb-6 text-[15px] leading-7 text-mist sm:px-4">{item.a}</p>
           </details>

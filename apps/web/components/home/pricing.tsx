@@ -19,7 +19,10 @@ export function Pricing() {
         <article className={`${card} flex flex-col`}>
           <div className="flex items-center justify-between gap-3">
             <h3 className="font-medium">Self-hosted</h3>
-            <span className={chip}>available now</span>
+            <span className={`${chip} inline-flex items-center gap-1.5`}>
+              <span className="size-1.5 rounded-full bg-accent-bright" />
+              available now
+            </span>
           </div>
           <p className="mt-5 flex items-baseline gap-2">
             <span className="font-heading text-5xl font-medium tracking-tight">$0</span>
@@ -43,7 +46,10 @@ export function Pricing() {
             <span className={chip}>coming soon</span>
           </div>
           <p className="mt-5 flex items-baseline gap-2">
-            <span className="font-heading text-5xl font-medium tracking-tight text-mist/75">
+            <span
+              aria-hidden="true"
+              className="font-heading text-5xl font-medium tracking-tight text-mist/75"
+            >
               $$
             </span>
             <span className="font-mono text-xs lowercase text-mist">not priced yet</span>
@@ -53,7 +59,7 @@ export function Pricing() {
             <Check>We run the server and PostgreSQL</Check>
             <Check>No Docker, no migrations</Check>
             <li className="flex items-start gap-2.5 text-[15px] leading-6 text-accent-bright">
-              <span className="mx-1 mt-1.5 size-2 shrink-0 rounded-full bg-accent-bright" />
+              <span className="mx-[5px] mt-[9px] size-1.5 shrink-0 rounded-full bg-accent-bright" />
               Self-hosted is available today
             </li>
           </ul>
@@ -67,7 +73,7 @@ export function Pricing() {
         </article>
       </div>
 
-      <p className="mx-auto mt-10 max-w-xl px-6 text-center font-mono text-xs leading-5 text-mist">
+      <p className="mx-auto mt-10 max-w-xl text-balance px-6 text-center font-mono text-xs leading-5 text-mist">
         Self-hosting needs Docker, PostgreSQL 18, a domain and a Resend API key for sign-in emails.
       </p>
       <p className="mt-3 px-6 text-center text-sm text-mist">

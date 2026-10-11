@@ -18,7 +18,10 @@ const parts = [
 ];
 
 const deploySteps = [
-  "Create a Compose service from deploy/docker-compose.yml",
+  <>
+    Create a Compose service from{" "}
+    <code className="whitespace-nowrap font-mono text-[0.8125rem]">deploy/docker-compose.yml</code>
+  </>,
   "Set the database password, app secret and public URL",
   "Add a domain for the server on port 8080",
   "Deploy. Migrations run on boot",
@@ -30,7 +33,7 @@ export function Ownership() {
       <Statement
         title={
           <>
-            Your vault. Your server. <Dim>Your Postgres.</Dim>
+            <span className="inline-block">Your vault. Your server.</span> <Dim>Your Postgres.</Dim>
           </>
         }
       >
@@ -45,8 +48,8 @@ export function Ownership() {
             {parts.map((part) => (
               <li key={part.name} className="flex items-center gap-3">
                 <IconTile icon={part.icon} />
-                <span className="text-sm font-medium">{part.name}</span>
-                <span className="ml-auto text-right font-mono text-xs lowercase text-mist">
+                <span className="shrink-0 text-sm font-medium">{part.name}</span>
+                <span className="ml-auto text-balance text-right font-mono text-xs lowercase text-mist">
                   {part.role}
                 </span>
               </li>
@@ -57,9 +60,9 @@ export function Ownership() {
           <h3 className="text-sm text-mist">How you get there</h3>
           <ol className="mt-5 flex flex-col gap-4">
             {deploySteps.map((step, i) => (
-              <li key={step} className="flex min-h-8 items-center gap-3 text-sm font-medium">
+              <li key={i} className="flex min-h-8 items-center gap-3 text-sm font-medium">
                 <span className="font-mono text-xs font-normal text-mist">0{i + 1}</span>
-                {step}
+                <span className="text-pretty">{step}</span>
               </li>
             ))}
           </ol>
@@ -69,12 +72,12 @@ export function Ownership() {
       <p className="mt-12 px-6 text-center">
         <a
           href={docsUrl("getting-started/docker")}
-          className="nudge inline-flex cursor-pointer items-center gap-1.5 text-sm font-medium underline-offset-4 hover:underline"
+          className="nudge -my-2 inline-flex cursor-pointer items-center gap-1.5 py-2 text-sm font-medium underline-offset-4 hover:underline"
         >
           Read the Docker guide
           <ArrowUpRightIcon className="size-4" />
         </a>
-        <span className="mt-2 block font-mono text-xs lowercase text-mist">
+        <span className="mt-2 block text-balance font-mono text-xs lowercase text-mist">
           in the docs: docker, dokploy, configuration and migrations.
         </span>
       </p>

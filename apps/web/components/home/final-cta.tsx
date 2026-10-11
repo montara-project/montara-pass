@@ -12,7 +12,7 @@ export function FinalCta() {
         <h2 className="text-balance font-heading text-5xl font-medium leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl">
           Run your own vault. <Dim>Keep your own keys.</Dim>
         </h2>
-        <p className="mx-auto mt-7 max-w-md text-pretty text-lg leading-8 text-mist">
+        <p className="mx-auto mt-7 max-w-xl text-balance text-lg leading-8 text-mist">
           One Compose file, one PostgreSQL database, one domain.
         </p>
         <a href="#self-host" className="btn btn-primary mt-9">
