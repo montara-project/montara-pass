@@ -28,11 +28,17 @@ as a service worker, Firefox as an event page with an add-on id.
 
 ## Pointing it at a server
 
-The extension needs the **origin** of the server, such as
-`https://pass.example.com`; it adds `/api/v1/…` itself. The defaults come from
-`apps/extension/.env` at build time (`VITE_DEFAULT_API_URL` and
-`VITE_DEFAULT_APP_URL`) and both can be changed under **Settings**. In a
-deployment where the server also serves the web app, the two are the same URL.
+`pnpm build:extension` builds for `https://app.montarapass.com`. To use
+another server, turn on **Settings → Self-hosted** and enter its **Server
+URL**, such as `https://pass.example.com/api`. Only the origin is kept: the
+extension adds `/api/v1/…` itself, and links to the web app on the same
+origin.
+
+`pnpm --filter @montara-pass/extension watch` builds in development mode,
+where the API and the web app run on separate ports. That build points at
+`http://localhost:8080` and `http://localhost:5173`, and its settings show
+both as **API server** and **Web app**. `apps/extension/.env` overrides the
+defaults of either build (`VITE_DEFAULT_API_URL` and `VITE_DEFAULT_APP_URL`).
 
 The API accepts extension origins without a CORS entry.
 
@@ -66,21 +72,20 @@ host, or is a subdomain of it. `www.` is ignored on both sides.
 | `login.example.com` | `example.com` | no |
 | `example.com` | `example.com.evil.net` | no |
 
-By default the extension reads no page on its own. It touches the active tab
-only when **Fill** is clicked, and fills only visible username and password
-fields. The [inline menu](#the-inline-menu) changes that, and is off until it
-is turned on.
+**Fill** touches the active tab only when it is clicked, and fills only
+visible username and password fields. The [inline menu](#the-inline-menu)
+looks for login fields on every page.
 
 ## The inline menu
 
-**Settings → Show Montara Pass in login fields** puts a badge inside the
-focused login field. Clicking it, or pressing <kbd>Alt</kbd>+<kbd>↓</kbd> in
+The extension puts a badge inside the focused login field. Clicking it, or
+pressing <kbd>Alt</kbd>+<kbd>↓</kbd> in
 the field, opens a menu under the field with the logins saved for that site;
 picking one fills the form.
 
-Turning it on asks for access to every site, because a content script then
-runs on each page to find its login fields. Turning it off gives that access
-back. Tabs that were already open need a reload to pick up the change.
+It is always on, which is why the extension asks for access to every site
+when it is installed: a content script runs on each page to find its login
+fields. Nothing about the page leaves the browser.
 
 | Piece | Where it runs | What it can see |
 | --- | --- | --- |
@@ -121,11 +126,7 @@ opens the popup.
 | `activeTab`, `scripting` | Fill the page the user is looking at, on click |
 | `alarms` | The auto-lock timer |
 | `clipboardWrite` | Copy buttons |
-| Host permission for the API | Call the API it was built for |
-
-Another API origin, set under **Settings**, is requested from the optional
-host permissions at that moment. So is every site, when the inline menu is
-turned on.
+| Host permission for every site | Run the inline menu's content script, and call a self-hosted server at any address |
 
 For Firefox the manifest also declares what leaves the browser
 (`data_collection_permissions`): authentication information and personally

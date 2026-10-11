@@ -16,7 +16,7 @@ const features = [
   },
   {
     title: "Fill on click",
-    body: "By default the extension touches a page only when you click Fill. A menu inside login fields is opt-in.",
+    body: "A badge in login fields lists the logins saved for that site. Nothing is filled until you pick one.",
     on: ["extension"],
   },
   {

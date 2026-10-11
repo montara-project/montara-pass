@@ -1,11 +1,11 @@
 // The page side of the inline menu: a badge inside the focused login field and
-// a frame under it that holds the menu (inline.html). It runs only after the
-// user turned the menu on in the settings, and only in the top frame.
+// a frame under it that holds the menu (inline.html). The manifest runs it on
+// every page, in the top frame only.
 //
 // It never sees the vault: the frame is an extension page, which the page
 // around it can neither read nor script, and the frame fills the form itself.
 // Like the background script it imports nothing, so it stays a single file
-// that can be registered as a content script.
+// the manifest can name as a content script.
 // Keep the message names in sync with src/inline/main.tsx.
 
 ;(() => {

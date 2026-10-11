@@ -75,8 +75,8 @@ const sections: LegalSection[] = [
     bullets: [
       "Kept in the browser's local storage: the server address and your session tokens.",
       "Kept in memory only: your unlocked keys, cleared after 15 minutes without use, when the browser closes, or when you lock the vault.",
-      "By default the extension touches a page only when you click Fill, and then only to fill the login form.",
-      "If you turn on the menu in login fields, the extension runs on every site you open to find login fields. That happens in your browser; nothing about the pages is sent anywhere.",
+      "The extension runs on every site you open, to find login fields and offer your saved logins inside them. That happens in your browser; nothing about the pages you visit is sent anywhere.",
+      "It changes a page only when you pick a login or click Fill, and then only to fill the login form.",
     ],
   },
   {

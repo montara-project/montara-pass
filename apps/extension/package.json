@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "watch": "TARGET=chrome vite build --watch",
+    "watch": "TARGET=chrome vite build --watch --mode development",
     "build": "pnpm run build:chrome && pnpm run build:firefox",
     "build:chrome": "TARGET=chrome vite build",
     "build:firefox": "TARGET=firefox vite build",

@@ -115,12 +115,42 @@ p {
   cursor: pointer;
 }
 
+/* A checkbox drawn as a switch. */
 .toggle input {
+  appearance: none;
   flex-shrink: 0;
-  width: 16px;
-  height: 16px;
-  margin: 2px 0 0;
-  accent-color: var(--primary);
+  width: 32px;
+  height: 18px;
+  margin: 1px 0 0;
+  padding: 2px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.toggle input::before {
+  content: '';
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  transition: translate 0.15s;
+}
+
+.toggle input:checked {
+  background: var(--primary);
+}
+
+.toggle input:checked::before {
+  translate: 14px;
+}
+
+input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .toggle span {

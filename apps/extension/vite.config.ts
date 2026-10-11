@@ -6,12 +6,14 @@ import pkg from './package.json' with { type: 'json' }
 
 type Target = 'chrome' | 'firefox'
 
+const ALL_SITES = ['http://*/*', 'https://*/*']
+
 /**
  * The manifest, which is where the two browsers differ: Chrome runs the
  * background script as a service worker, Firefox as an event page, and
  * Firefox wants an add-on id.
  */
-function manifest(target: Target, apiUrl: string) {
+function manifest(target: Target) {
   return {
     manifest_version: 3,
     name: 'Montara Pass',
@@ -23,19 +25,14 @@ function manifest(target: Target, apiUrl: string) {
       default_popup: 'popup.html',
       default_icon: { 16: 'icons/16.png', 32: 'icons/32.png' },
     },
-    // activeTab + scripting fill the page the user is looking at, and only
-    // when they click Fill: the extension reads no page on its own, unless
-    // the user turns on the inline menu (see optional_host_permissions).
+    // activeTab + scripting fill the page the user is looking at.
     permissions: ['storage', 'activeTab', 'scripting', 'alarms', 'clipboardWrite'],
-    // The API the build points at. Another one, set in the popup's settings,
-    // is requested from the optional list at that moment. So is every site,
-    // when the user turns on the inline menu.
-    host_permissions: [`${new URL(apiUrl).origin}/*`],
-    optional_host_permissions: ['http://*/*', 'https://*/*'],
+    // Every site: the inline menu looks for login fields on each page, and
+    // the server may be a self-hosted one at any address.
+    host_permissions: ALL_SITES,
+    content_scripts: [{ matches: ALL_SITES, js: ['content.js'], run_at: 'document_idle' }],
     // The inline menu is an extension page framed inside the login page.
-    web_accessible_resources: [
-      { resources: ['inline.html'], matches: ['http://*/*', 'https://*/*'] },
-    ],
+    web_accessible_resources: [{ resources: ['inline.html'], matches: ALL_SITES }],
     background:
       target === 'chrome'
         ? { service_worker: 'background.js', type: 'module' }
@@ -110,14 +107,14 @@ function dropFlaggedCode(): Plugin {
   }
 }
 
-function emitManifest(target: Target, apiUrl: string): Plugin {
+function emitManifest(target: Target): Plugin {
   return {
     name: 'montara-pass-manifest',
     generateBundle() {
       this.emitFile({
         type: 'asset',
         fileName: 'manifest.json',
-        source: JSON.stringify(manifest(target, apiUrl), null, 2),
+        source: JSON.stringify(manifest(target), null, 2),
       })
     },
   }
@@ -126,10 +123,11 @@ function emitManifest(target: Target, apiUrl: string): Plugin {
 export default defineConfig(({ mode }) => {
   const target: Target = process.env.TARGET === 'firefox' ? 'firefox' : 'chrome'
   const env = loadEnv(mode, import.meta.dirname, 'VITE_')
-  const apiUrl = env.VITE_DEFAULT_API_URL || 'http://localhost:8080'
+  // `pnpm watch` builds in development mode, against the local servers.
+  const dev = mode === 'development'
 
   return {
-    plugins: [react(), dropFlaggedCode(), emitManifest(target, apiUrl)],
+    plugins: [react(), dropFlaggedCode(), emitManifest(target)],
     resolve: {
       alias: {
         // The crypto and the API models are the web app's own: the extension
@@ -138,9 +136,11 @@ export default defineConfig(({ mode }) => {
       },
     },
     define: {
-      'import.meta.env.VITE_DEFAULT_API_URL': JSON.stringify(apiUrl),
+      'import.meta.env.VITE_DEFAULT_API_URL': JSON.stringify(
+        env.VITE_DEFAULT_API_URL || (dev ? 'http://localhost:8080' : 'https://app.montarapass.com')
+      ),
       'import.meta.env.VITE_DEFAULT_APP_URL': JSON.stringify(
-        env.VITE_DEFAULT_APP_URL || 'http://localhost:5173'
+        env.VITE_DEFAULT_APP_URL || (dev ? 'http://localhost:5173' : 'https://app.montarapass.com')
       ),
     },
     build: {
@@ -151,13 +151,13 @@ export default defineConfig(({ mode }) => {
           popup: path.resolve(import.meta.dirname, 'popup.html'),
           inline: path.resolve(import.meta.dirname, 'inline.html'),
           background: path.resolve(import.meta.dirname, 'src/background.ts'),
-          // Registered as a content script, which cannot be a module: like
+          // A content script cannot be a module: like
           // the background script it imports nothing and stays one file.
           content: path.resolve(import.meta.dirname, 'src/content.ts'),
         },
         output: {
-          // The manifest names background.js and the background script names
-          // content.js, so entries keep their names.
+          // The manifest names background.js and content.js, so entries keep
+          // their names.
           entryFileNames: '[name].js',
         },
       },

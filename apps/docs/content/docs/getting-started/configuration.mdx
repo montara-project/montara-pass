@@ -55,9 +55,13 @@ bundle.
 ## Browser extension
 
 `apps/extension` reads its defaults at build time from `apps/extension/.env`.
-Both can be changed later under **Settings** in the extension.
+Without that file a development build (`watch`) uses the local servers and a
+production build uses `https://app.montarapass.com` for both.
 
-| Variable | Default | Purpose |
+| Variable | Development | Purpose |
 | --- | --- | --- |
-| `VITE_DEFAULT_API_URL` | `http://localhost:8080` | Origin of the API. It becomes the extension's host permission. |
+| `VITE_DEFAULT_API_URL` | `http://localhost:8080` | Origin of the API. |
 | `VITE_DEFAULT_APP_URL` | `http://localhost:5173` | The web app that "Open web app" links to. |
+
+A production build's **Settings** offer one **Server URL** behind a
+**Self-hosted** switch; a development build's show both URLs.

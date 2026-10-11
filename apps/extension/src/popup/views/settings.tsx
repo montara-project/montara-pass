@@ -1,11 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react'
 
-import { disableInline, enableInline, isInlineEnabled } from '../../lib/inline'
 import { DEFAULT_SETTINGS, getSettings, saveSettings } from '../../lib/storage'
 
 interface SettingsProps {
   onClose: () => void
 }
+
+/** `pnpm watch`: the API and the web app run apart, each with its own URL. */
+const DEV = import.meta.env.MODE === 'development'
 
 function originOf(value: string): string | null {
   try {
@@ -19,48 +21,31 @@ function originOf(value: string): string | null {
 export default function Settings({ onClose }: SettingsProps) {
   const [apiUrl, setApiUrl] = useState(DEFAULT_SETTINGS.apiUrl)
   const [appUrl, setAppUrl] = useState(DEFAULT_SETTINGS.appUrl)
+  const [selfHosted, setSelfHosted] = useState(false)
   const [error, setError] = useState('')
-  const [inline, setInline] = useState(false)
 
   useEffect(() => {
     void getSettings().then((settings) => {
       setApiUrl(settings.apiUrl)
       setAppUrl(settings.appUrl)
+      setSelfHosted(settings.apiUrl !== DEFAULT_SETTINGS.apiUrl)
     })
-    void isInlineEnabled().then(setInline)
   }, [])
-
-  const handleInline = async (wanted: boolean) => {
-    setError('')
-
-    if (wanted) {
-      setInline(await enableInline())
-      return
-    }
-
-    await disableInline()
-    setInline(false)
-
-    // Giving back every site can take a custom API server with it.
-    const { apiUrl: saved } = await getSettings()
-    if (!(await chrome.permissions.contains({ origins: [`${saved}/*`] }))) {
-      setError(`Press Save to let the extension reach ${saved} again.`)
-    }
-  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
 
-    const apiOrigin = originOf(apiUrl)
-    const appOrigin = originOf(appUrl)
+    // A released build knows one server, which also serves the web app.
+    const apiOrigin = DEV || selfHosted ? originOf(apiUrl) : DEFAULT_SETTINGS.apiUrl
+    const appOrigin = DEV ? originOf(appUrl) : selfHosted ? apiOrigin : DEFAULT_SETTINGS.appUrl
     if (!apiOrigin || !appOrigin) {
-      setError('Both must be http(s) URLs, like https://api.example.com')
+      setError('Enter an http(s) URL, like https://vault.example.com')
       return
     }
 
     // Asked first, straight from the click: the browser only shows a
     // permission prompt in direct response to a user action. It answers true
-    // without a prompt for an origin the extension may already call.
+    // without a prompt unless site access was taken away in the browser.
     const granted = await chrome.permissions.request({ origins: [`${apiOrigin}/*`] })
     if (!granted) {
       setError(`Without access to ${apiOrigin} the extension cannot reach that server.`)
@@ -75,29 +60,47 @@ export default function Settings({ onClose }: SettingsProps) {
     <form className="stack pad" onSubmit={(e) => void handleSubmit(e)}>
       <h1>Settings</h1>
 
-      <label>
-        API server
-        <input value={apiUrl} onChange={(e) => setApiUrl(e.target.value)} required />
-      </label>
+      {DEV ? (
+        <>
+          <label>
+            API server
+            <input value={apiUrl} onChange={(e) => setApiUrl(e.target.value)} required />
+          </label>
 
-      <label>
-        Web app
-        <input value={appUrl} onChange={(e) => setAppUrl(e.target.value)} required />
-      </label>
+          <label>
+            Web app
+            <input value={appUrl} onChange={(e) => setAppUrl(e.target.value)} required />
+          </label>
+        </>
+      ) : (
+        <>
+          <label>
+            Server URL
+            {/* The API lives under /api of the server; only the origin is kept. */}
+            <input
+              value={selfHosted ? apiUrl : `${DEFAULT_SETTINGS.apiUrl}/api`}
+              onChange={(e) => setApiUrl(e.target.value)}
+              placeholder="https://vault.example.com/api"
+              disabled={!selfHosted}
+              required
+            />
+          </label>
 
-      <label className="toggle">
-        <input
-          type="checkbox"
-          checked={inline}
-          onChange={(e) => void handleInline(e.target.checked)}
-        />
-        <span>
-          Show Montara Pass in login fields
-          <span className="muted">
-            Lets the extension run on every site you open. Reload open tabs to see it.
-          </span>
-        </span>
-      </label>
+          <label className="toggle">
+            <input
+              type="checkbox"
+              role="switch"
+              aria-checked={selfHosted}
+              checked={selfHosted}
+              onChange={(e) => setSelfHosted(e.target.checked)}
+            />
+            <span>
+              Self-hosted
+              <span className="muted">Use your own Montara Pass server.</span>
+            </span>
+          </label>
+        </>
+      )}
 
       {error && <p className="error">{error}</p>}
 
