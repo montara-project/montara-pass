@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 
 import type { Models } from '@/lib/api/models'
 import type { VaultItem } from '@/types/vault'
@@ -32,6 +32,7 @@ export default function ShareItem({ keys, item, onDone, onSignedOut, onNotice }:
   const [members, setMembers] = useState<Models.ItemMember[] | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const sharing = useRef(false)
 
   useEffect(() => {
     void listItemMembers(item.id)
@@ -42,6 +43,9 @@ export default function ShareItem({ keys, item, onDone, onSignedOut, onNotice }:
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
+    // A second submit can arrive before the button is drawn as disabled.
+    if (sharing.current) return
+    sharing.current = true
     setBusy(true)
     setError('')
 
@@ -59,7 +63,10 @@ export default function ShareItem({ keys, item, onDone, onSignedOut, onNotice }:
       })
       onNotice(`Shared with ${recipient.name || recipient.email}`)
       setEmail('')
-      setMembers(await listItemMembers(item.id))
+      // The share went through; a list that fails to reload stays as it was.
+      await listItemMembers(item.id)
+        .then(setMembers)
+        .catch(() => undefined)
     } catch (err) {
       if (err instanceof SignedOutError) {
         onSignedOut()
@@ -73,6 +80,7 @@ export default function ShareItem({ keys, item, onDone, onSignedOut, onNotice }:
             : 'Could not share the item'
       )
     } finally {
+      sharing.current = false
       setBusy(false)
     }
   }

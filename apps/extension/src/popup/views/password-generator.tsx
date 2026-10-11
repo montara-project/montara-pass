@@ -44,8 +44,12 @@ export default function PasswordGenerator({ onNotice }: PasswordGeneratorProps) 
   }
 
   const copy = async () => {
-    await navigator.clipboard.writeText(password)
-    onNotice('Password copied')
+    try {
+      await navigator.clipboard.writeText(password)
+      onNotice('Password copied')
+    } catch {
+      onNotice('Could not copy the password')
+    }
   }
 
   const bits = passwordBits(password)
