@@ -67,11 +67,11 @@ export type PasswordStrength = 'weak' | 'fair' | 'strong'
 /**
  * A rough strength from length and variety: the bits a guesser would need if
  * the characters were random, not counting repeats and runs like "aaa" or
- * "1234".
+ * "1234". Rounded to a whole number.
  */
 // ponytail: no dictionary, so "Summer2024!" passes as fair. zxcvbn would
 // catch words, names and dates, at the cost of a few hundred kB in both apps.
-export function passwordStrength(password: string): PasswordStrength {
+export function passwordBits(password: string): number {
   const pool =
     (/[a-z]/.test(password) ? 26 : 0) +
     (/[A-Z]/.test(password) ? 26 : 0) +
@@ -84,8 +84,21 @@ export function passwordStrength(password: string): PasswordStrength {
     if (step !== 0 && step !== 1 && step !== -1) counted++
   }
 
-  const bits = counted * Math.log2(pool || 1)
-  return bits < 50 ? 'weak' : bits < 80 ? 'fair' : 'strong'
+  return Math.round(counted * Math.log2(pool || 1))
+}
+
+/** The bits at which a password stops being weak, and at which it is strong. */
+export const FAIR_BITS = 50
+export const STRONG_BITS = 80
+
+export function passwordStrength(password: string): PasswordStrength {
+  const bits = passwordBits(password)
+  return bits < FAIR_BITS ? 'weak' : bits < STRONG_BITS ? 'fair' : 'strong'
+}
+
+/** What a character is, so a password can be shown with its kinds told apart. */
+export function characterKind(char: string): 'letter' | 'digit' | 'symbol' {
+  return /\d/.test(char) ? 'digit' : /[a-zA-Z]/.test(char) ? 'letter' : 'symbol'
 }
 
 export interface PasswordHealth {

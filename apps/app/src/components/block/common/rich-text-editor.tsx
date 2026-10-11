@@ -1,37 +1,5 @@
-import '@milkdown/kit/prose/view/style/prosemirror.css'
-
-import type { EditorState } from '@milkdown/kit/prose/state'
 import type { ComponentType, ReactNode } from 'react'
 
-import {
-  defaultValueCtx,
-  Editor,
-  editorViewCtx,
-  editorViewOptionsCtx,
-  remarkStringifyOptionsCtx,
-  rootCtx,
-  serializerCtx,
-} from '@milkdown/kit/core'
-import { history, redoCommand, undoCommand } from '@milkdown/kit/plugin/history'
-import {
-  commonmark,
-  liftListItemCommand,
-  remarkPreserveEmptyLinePlugin,
-  toggleEmphasisCommand,
-  toggleInlineCodeCommand,
-  toggleStrongCommand,
-  turnIntoTextCommand,
-  wrapInBlockquoteCommand,
-  wrapInBulletListCommand,
-  wrapInHeadingCommand,
-  wrapInOrderedListCommand,
-} from '@milkdown/kit/preset/commonmark'
-import { gfm, toggleStrikethroughCommand } from '@milkdown/kit/preset/gfm'
-import { lift } from '@milkdown/kit/prose/commands'
-import { redoDepth, undoDepth } from '@milkdown/kit/prose/history'
-import { Plugin, PluginKey } from '@milkdown/kit/prose/state'
-import { $prose, $remark, callCommand } from '@milkdown/kit/utils'
-import { Milkdown, MilkdownProvider, useEditor, useInstance } from '@milkdown/react'
 import {
   IconArrowBackUp,
   IconArrowForwardUp,
@@ -45,12 +13,16 @@ import {
   IconListNumbers,
   IconStrikethrough,
 } from '@tabler/icons-react'
-import { useEffect, useRef, useState } from 'react'
 
+import {
+  MarkdownEditorContent,
+  MarkdownEditorProvider,
+  useMarkdownEditor,
+} from '@/hooks/use-markdown-editor'
 import { cn } from '@/lib/utils'
 
-// A rich text editor that reads and writes Markdown (Milkdown, on ProseMirror
-// and remark), so what it produces stays a plain string any client can show.
+// The web app's rich text editor: a toolbar and a frame around the Markdown
+// editor in hooks/use-markdown-editor.ts.
 
 /** Tailwind resets headings and lists, so the content is styled from here. */
 const CONTENT_CLASS = cn(
@@ -70,92 +42,6 @@ const CONTENT_CLASS = cn(
   '[&_hr]:border-border [&_hr]:my-3',
   '[&_table]:mb-2 [&_td]:border-border [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_th]:border-border [&_th]:border [&_th]:px-2 [&_th]:py-1'
 )
-
-// Without this plugin an empty paragraph is not written out as `<br />`,
-// which every other client would show as those six characters.
-const preset = commonmark.filter(
-  (plugin) => !(remarkPreserveEmptyLinePlugin as unknown[]).includes(plugin)
-)
-
-interface MarkdownNode {
-  type: string
-  title?: string | null
-  children?: MarkdownNode[]
-}
-
-// remark gives an image without a title `null`, which Milkdown's image node
-// refuses, and the whole document then fails to load.
-const imageTitle = $remark('imageTitle', () => () => (tree: MarkdownNode) => {
-  const visit = (node: MarkdownNode) => {
-    if (node.type === 'image') node.title ??= ''
-    node.children?.forEach(visit)
-  }
-  visit(tree)
-})
-
-/** What the toolbar shows for the current selection. */
-interface Active {
-  bold: boolean
-  italic: boolean
-  strike: boolean
-  code: boolean
-  h1: boolean
-  h2: boolean
-  quote: boolean
-  bullet: boolean
-  ordered: boolean
-  canUndo: boolean
-  canRedo: boolean
-  /** Nothing typed yet: the placeholder shows. */
-  empty: boolean
-}
-
-const INACTIVE: Active = {
-  bold: false,
-  italic: false,
-  strike: false,
-  code: false,
-  h1: false,
-  h2: false,
-  quote: false,
-  bullet: false,
-  ordered: false,
-  canUndo: false,
-  canRedo: false,
-  empty: true,
-}
-
-function readActive(state: EditorState): Active {
-  const { $from, from, to, empty } = state.selection
-
-  const marked = (name: string) => {
-    const type = state.schema.marks[name]
-    return empty
-      ? !!type.isInSet(state.storedMarks ?? $from.marks())
-      : state.doc.rangeHasMark(from, to, type)
-  }
-
-  // The blocks around the cursor, innermost first.
-  const around: string[] = []
-  for (let depth = $from.depth; depth > 0; depth--) around.push($from.node(depth).type.name)
-  const list = around.find((name) => name === 'bullet_list' || name === 'ordered_list')
-  const heading = $from.parent.type.name === 'heading' ? $from.parent.attrs.level : 0
-
-  return {
-    bold: marked('strong'),
-    italic: marked('emphasis'),
-    strike: marked('strike_through'),
-    code: marked('inlineCode'),
-    h1: heading === 1,
-    h2: heading === 2,
-    quote: around.includes('blockquote'),
-    bullet: list === 'bullet_list',
-    ordered: list === 'ordered_list',
-    canUndo: undoDepth(state) > 0,
-    canRedo: redoDepth(state) > 0,
-    empty: state.doc.childCount === 1 && state.doc.firstChild!.content.size === 0,
-  }
-}
 
 interface ToolProps {
   label: string
@@ -220,122 +106,15 @@ function EditorBody({
   toolbarEnd,
   'aria-labelledby': labelledBy,
 }: RichTextEditorProps) {
-  const [active, setActive] = useState(INACTIVE)
-
-  // The editor is built once; it reaches the latest props through this.
-  const latest = useRef({ onChange, onBlur, disabled })
-  useEffect(() => {
-    latest.current = { onChange, onBlur, disabled }
-  }, [onChange, onBlur, disabled])
-
-  const initial = useRef(value)
-
-  useEditor(
-    (root) => {
-      // Reports every change as it happens, and keeps the toolbar in step
-      // with the selection.
-      const sync = $prose((ctx) => {
-        const refresh = (state: EditorState) => {
-          const next = readActive(state)
-          setActive((current) =>
-            Object.keys(next).every(
-              (key) => next[key as keyof Active] === current[key as keyof Active]
-            )
-              ? current
-              : next
-          )
-        }
-
-        return new Plugin({
-          key: new PluginKey('rich-text-editor-sync'),
-          props: {
-            handleDOMEvents: {
-              blur: () => {
-                latest.current.onBlur?.()
-                return false
-              },
-            },
-          },
-          view: (view) => {
-            refresh(view.state)
-            return {
-              update: (updated, previous) => {
-                if (!updated.state.doc.eq(previous.doc)) {
-                  latest.current.onChange(ctx.get(serializerCtx)(updated.state.doc).trimEnd())
-                }
-                refresh(updated.state)
-              },
-            }
-          },
-        })
-      })
-
-      return Editor.make()
-        .config((ctx) => {
-          ctx.set(rootCtx, root)
-          ctx.set(defaultValueCtx, initial.current)
-          ctx.update(remarkStringifyOptionsCtx, (options) => ({ ...options, bullet: '-' as const }))
-          ctx.update(editorViewOptionsCtx, (options) => ({
-            ...options,
-            editable: () => !latest.current.disabled,
-            attributes: {
-              class: CONTENT_CLASS,
-              role: 'textbox',
-              'aria-multiline': 'true',
-              ...(labelledBy ? { 'aria-labelledby': labelledBy } : {}),
-            },
-            nodeViews: {
-              // An image is shown as the Markdown that names it and never
-              // loaded: the content may be secret or come from someone else,
-              // and an image address is a request to somewhere.
-              image: (node) => {
-                const dom = document.createElement('span')
-                dom.className = 'text-muted-foreground'
-                dom.textContent = `![${node.attrs.alt ?? ''}](${node.attrs.src ?? ''})`
-                return { dom }
-              },
-            },
-          }))
-        })
-        .use(preset)
-        .use(imageTitle)
-        .use(gfm)
-        .use(history)
-        .use(sync)
-    },
-    [labelledBy]
-  )
-
-  const [loading, getEditor] = useInstance()
-
-  useEffect(() => {
-    if (loading) return
-    // ProseMirror asks `editable` again when its props are set.
-    getEditor()?.action((ctx) => ctx.get(editorViewCtx).setProps({ editable: () => !disabled }))
-  }, [loading, getEditor, disabled])
-
-  const run = <T,>(command: { key: unknown }, payload?: T) => {
-    getEditor()?.action(callCommand(command.key as never, payload as never))
-  }
-
-  const toggleHeading = (level: 1 | 2, on: boolean) =>
-    on ? run(turnIntoTextCommand) : run(wrapInHeadingCommand, level)
-
-  const toggleList = (command: { key: unknown }, on: boolean) => {
-    // Out of the list it is in first, also when changing to the other kind.
-    if (active.bullet || active.ordered) run(liftListItemCommand)
-    if (!on) run(command)
-  }
-
-  const toggleQuote = () => {
-    if (!active.quote) return run(wrapInBlockquoteCommand)
-    getEditor()?.action((ctx) => {
-      const view = ctx.get(editorViewCtx)
-      lift(view.state, view.dispatch)
-    })
-  }
-
-  const off = disabled || loading
+  const { active, off, tools } = useMarkdownEditor({
+    value,
+    onChange,
+    onBlur,
+    disabled,
+    labelledBy,
+    contentClass: CONTENT_CLASS,
+    imageClass: 'text-muted-foreground',
+  })
 
   return (
     <div
@@ -357,28 +136,28 @@ function EditorBody({
           icon={IconBold}
           active={active.bold}
           disabled={off}
-          onClick={() => run(toggleStrongCommand)}
+          onClick={tools.bold}
         />
         <Tool
           label="Italic"
           icon={IconItalic}
           active={active.italic}
           disabled={off}
-          onClick={() => run(toggleEmphasisCommand)}
+          onClick={tools.italic}
         />
         <Tool
           label="Strikethrough"
           icon={IconStrikethrough}
           active={active.strike}
           disabled={off}
-          onClick={() => run(toggleStrikethroughCommand)}
+          onClick={tools.strikethrough}
         />
         <Tool
           label="Inline code"
           icon={IconCode}
           active={active.code}
           disabled={off}
-          onClick={() => run(toggleInlineCodeCommand)}
+          onClick={tools.code}
         />
         <Divider />
         <Tool
@@ -386,21 +165,21 @@ function EditorBody({
           icon={IconH1}
           active={active.h1}
           disabled={off}
-          onClick={() => toggleHeading(1, active.h1)}
+          onClick={() => tools.heading(1)}
         />
         <Tool
           label="Heading 2"
           icon={IconH2}
           active={active.h2}
           disabled={off}
-          onClick={() => toggleHeading(2, active.h2)}
+          onClick={() => tools.heading(2)}
         />
         <Tool
           label="Quote"
           icon={IconBlockquote}
           active={active.quote}
           disabled={off}
-          onClick={toggleQuote}
+          onClick={tools.quote}
         />
         <Divider />
         <Tool
@@ -408,27 +187,27 @@ function EditorBody({
           icon={IconList}
           active={active.bullet}
           disabled={off}
-          onClick={() => toggleList(wrapInBulletListCommand, active.bullet)}
+          onClick={tools.bulletList}
         />
         <Tool
           label="Numbered list"
           icon={IconListNumbers}
           active={active.ordered}
           disabled={off}
-          onClick={() => toggleList(wrapInOrderedListCommand, active.ordered)}
+          onClick={tools.orderedList}
         />
         <Divider />
         <Tool
           label="Undo"
           icon={IconArrowBackUp}
           disabled={off || !active.canUndo}
-          onClick={() => run(undoCommand)}
+          onClick={tools.undo}
         />
         <Tool
           label="Redo"
           icon={IconArrowForwardUp}
           disabled={off || !active.canRedo}
-          onClick={() => run(redoCommand)}
+          onClick={tools.redo}
         />
         {toolbarEnd && <span className="ml-auto">{toolbarEnd}</span>}
       </div>
@@ -439,7 +218,7 @@ function EditorBody({
             {placeholder}
           </div>
         )}
-        <Milkdown />
+        <MarkdownEditorContent />
       </div>
     </div>
   )
@@ -448,8 +227,8 @@ function EditorBody({
 /** A rich text editor whose value is Markdown. */
 export default function RichTextEditor(props: RichTextEditorProps) {
   return (
-    <MilkdownProvider>
+    <MarkdownEditorProvider>
       <EditorBody {...props} />
-    </MilkdownProvider>
+    </MarkdownEditorProvider>
   )
 }
