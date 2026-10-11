@@ -1,0 +1,7 @@
+/* A line break inside a paragraph (a new line without a blank one before it)
+   is kept as a marker that Milkdown draws as a space. Notes written as plain
+   text rely on those breaks, so the marker ends its line here. */
+.ProseMirror span[data-type='hardbreak'][data-is-inline='true']::after {
+  content: '\A';
+  white-space: pre;
+}

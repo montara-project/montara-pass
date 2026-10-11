@@ -1,5 +1,7 @@
 import '@milkdown/kit/prose/view/style/prosemirror.css'
 
+import './use-markdown-editor.css'
+
 import type { EditorState } from '@milkdown/kit/prose/state'
 import type { EditorView } from '@milkdown/kit/prose/view'
 
