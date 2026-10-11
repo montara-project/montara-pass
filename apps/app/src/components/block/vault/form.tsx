@@ -172,9 +172,14 @@ function ItemFieldsForm({
 
       <form.AppField
         name="notes"
-        children={(field) => (
-          <field.TextareaField label="Notes" placeholder="anything else" disabled={readOnly} />
-        )}
+        children={(field) =>
+          // A secure note is its notes, so it gets the rich text editor.
+          type === 'secure_note' ? (
+            <field.RichTextField label="Notes" placeholder="Write your note" disabled={readOnly} />
+          ) : (
+            <field.TextareaField label="Notes" placeholder="anything else" disabled={readOnly} />
+          )
+        }
       />
     </SimpleAlertScrollableDialogForm>
   )

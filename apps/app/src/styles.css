@@ -126,3 +126,10 @@
     display: none;
   }
 }
+
+/* A slim scrollbar in the colour of the scroll area's thumb, for a native
+   scroller that cannot be a ScrollArea (the rich text editor's content). */
+@utility thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
