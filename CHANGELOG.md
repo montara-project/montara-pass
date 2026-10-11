@@ -3,6 +3,31 @@
 All notable changes to this project are documented in this file. Versions follow the git tags (`v*`); Docker images are published to ghcr.io with the same version.
 
 
+## [1.3.0](https://github.com/montara-project/montara-pass/compare/v1.2.0...v1.3.0) (2026-10-11)
+
+### Features
+
+* **app:** add a password generator and a password health check ([defc552](https://github.com/montara-project/montara-pass/commit/defc55248f8a8d208216326bbf7801dd482da9d1))
+* **app:** balance the password generator and split out the Markdown editor ([9ec8df2](https://github.com/montara-project/montara-pass/commit/9ec8df278923b74c167c422da441741b4caa862a))
+* **app:** edit a login's notes as Markdown too ([5c863fc](https://github.com/montara-project/montara-pass/commit/5c863fc1eecc79270c66d7aca200e72d4e6171f9))
+* **app:** edit secure notes as rich text with Milkdown ([ae2f984](https://github.com/montara-project/montara-pass/commit/ae2f9849edc04d1e780157339cad273bbd88c764))
+* **app:** let a secure note be marked not visible ([de5477a](https://github.com/montara-project/montara-pass/commit/de5477a1a47cfc8970eeb88f7b17f0d785c3c806))
+* **extension:** add password tools, list columns and sharing to the full-screen view ([da71e3c](https://github.com/montara-project/montara-pass/commit/da71e3cb06a67f83dd28c5af6dd5530b26ce3153))
+* **extension:** blur a secure note that is not visible until it is shown ([0695bd6](https://github.com/montara-project/montara-pass/commit/0695bd67882bf2622ac438e9711761108ca0e597))
+* **extension:** edit and render a login's notes as Markdown ([75f44a4](https://github.com/montara-project/montara-pass/commit/75f44a47cd1fd46933f46b5060b066aa4127cf9a))
+* **extension:** keep a login's site icon inside the encrypted item ([ef66b6e](https://github.com/montara-project/montara-pass/commit/ef66b6e5d5f9d3848a438e3fba86ddcaf58035e2))
+* **extension:** render a secure note's Markdown in the item detail ([71e4be3](https://github.com/montara-project/montara-pass/commit/71e4be3e9377eedf60a7320d0920d2924a53f76a))
+* **extension:** show site icons and when a login was last used ([ee13304](https://github.com/montara-project/montara-pass/commit/ee133046912e1913985f5ae84821011acd23a24a))
+* **extension:** turn the inline menu on for everyone and offer one server URL ([eac1d59](https://github.com/montara-project/montara-pass/commit/eac1d59edb0b024964111d8f970a1c1e83c5e8cc))
+* **extension:** write secure notes in the Markdown editor and balance the generator ([218306d](https://github.com/montara-project/montara-pass/commit/218306da9544490f2069ac42a682bacab3532366))
+* **server:** record when a member last used an item ([ec6bcb4](https://github.com/montara-project/montara-pass/commit/ec6bcb49296b36e2ddfdd127f30970f858ef9da5))
+
+### Bug Fixes
+
+* **app:** do not rate a repeated block as a strong password ([5afdb27](https://github.com/montara-project/montara-pass/commit/5afdb27e73b6f6fbf66592f232a199764a97f550))
+* **app:** paste code into the Markdown editor as a code block ([37c3e07](https://github.com/montara-project/montara-pass/commit/37c3e07862673cd4c90923755331284fe5736de1))
+* **extension:** handle failures in copy, share and last-used, and show the editor's focus ([5026c8d](https://github.com/montara-project/montara-pass/commit/5026c8d3dab9952854eb05f767134666d1d66832))
+
 ## [1.2.0](https://github.com/montara-project/montara-pass/compare/v1.1.1...v1.2.0) (2026-10-11)
 
 ### Features
