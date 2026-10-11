@@ -21,28 +21,28 @@ const channels = [
   {
     icon: MessageSquareIcon,
     title: "Product support",
-    email: "hello@montaraproject.com",
+    email: "hello@montarapass.com",
     body: "Account access, syncing, autofill, billing — anything about using Montara Pass day to day.",
     response: "Replies within 1 business day",
   },
   {
     icon: ScanIcon,
     title: "Security disclosure",
-    email: "hello@montaraproject.com",
+    email: "hello@montarapass.com",
     body: "Report a vulnerability or a suspected breach. Good-faith reports are always welcome — and never met with legal action.",
     response: "Acknowledged within 24 hours",
   },
   {
     icon: GlobeIcon,
     title: "Business and sales",
-    email: "hello@montaraproject.com",
+    email: "hello@montarapass.com",
     body: "Business plans, volume pricing, procurement, and security reviews for your IT and compliance teams.",
     response: "Replies within 2 business days",
   },
   {
     icon: MailIcon,
     title: "Press and media",
-    email: "hello@montaraproject.com",
+    email: "hello@montarapass.com",
     body: "Interviews, commentary on password security, brand assets, and everything else for journalists.",
     response: "Replies within 2 business days",
   },
@@ -131,10 +131,10 @@ export default function ContactPage() {
             <p className="mt-5 text-[15px] leading-7 text-mist">
               Email{" "}
               <a
-                href="mailto:hello@montaraproject.com"
+                href="mailto:hello@montarapass.com"
                 className="cursor-pointer font-medium text-fg underline-offset-4 hover:underline"
               >
-                hello@montaraproject.com
+                hello@montarapass.com
               </a>{" "}
               with the details. We acknowledge reports within 24 hours, keep researchers informed
               through the fix, and never take legal action against good-faith disclosure.

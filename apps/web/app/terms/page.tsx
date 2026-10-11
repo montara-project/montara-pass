@@ -110,7 +110,7 @@ const sections: LegalSection[] = [
     id: "contact-us",
     title: "Contact us",
     paragraphs: [
-      "Questions about these Terms can be sent to hello@montaraproject.com, or by mail to Montara Project, Semarang, Indonesia.",
+      "Questions about these Terms can be sent to hello@montarapass.com, or by mail to Montara Project, Semarang, Indonesia.",
     ],
   },
 ];

@@ -64,7 +64,7 @@ const sections: LegalSection[] = [
       "Hosting: the website runs on Cloudflare, which processes your request, including your IP address, to deliver it.",
     ],
     footnote:
-      "The contact form on the website does not send anything yet. To reach us, email hello@montaraproject.com; we then hold your message and address for as long as the conversation needs.",
+      "The contact form on the website does not send anything yet. To reach us, email hello@montarapass.com; we then hold your message and address for as long as the conversation needs.",
   },
   {
     id: "browser-extension",
@@ -134,14 +134,14 @@ const sections: LegalSection[] = [
       "Your account and vault are kept until you ask us to delete them.",
     ],
     footnote:
-      "There is no delete-account button in the app yet. Email hello@montaraproject.com from your account's address and we will delete the account. That removes your key set, your folders and every item you own, including for the people you shared them with. Because we hold no keys, a deleted vault cannot be restored.",
+      "There is no delete-account button in the app yet. Email hello@montarapass.com from your account's address and we will delete the account. That removes your key set, your folders and every item you own, including for the people you shared them with. Because we hold no keys, a deleted vault cannot be restored.",
   },
   {
     id: "your-rights",
     title: "Your rights",
     paragraphs: [
       "You can ask us for a copy of the personal data we hold about you, to correct it, or to delete it. Depending on where you live, you may also have the right to object to or restrict our processing and to complain to your data protection authority.",
-      "To exercise a right, contact hello@montaraproject.com. We respond within 30 days. A copy of your vault can only ever be ciphertext; you can read your own items in the app at any time.",
+      "To exercise a right, contact hello@montarapass.com. We respond within 30 days. A copy of your vault can only ever be ciphertext; you can read your own items in the app at any time.",
     ],
   },
   {
@@ -163,7 +163,7 @@ const sections: LegalSection[] = [
     title: "Changes and contact",
     paragraphs: [
       "When this policy changes we update the date above. If a change is material, we tell account holders by email before it takes effect.",
-      "Questions about privacy can be sent to hello@montaraproject.com, or by mail to Montara Project, Semarang, Indonesia.",
+      "Questions about privacy can be sent to hello@montarapass.com, or by mail to Montara Project, Semarang, Indonesia.",
     ],
   },
 ];
