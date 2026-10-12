@@ -123,14 +123,15 @@ masih terbuka.
 - **Perbaikan:** tampilkan fingerprint kunci penerima saat berbagi dan sematkan kunci yang
   pernah dipakai (trust on first use). Minimal, tulis batasan ini di dokumentasi keamanan.
 
-### M-4 · Tebak password hanya dibatasi per IP
+### M-4 · Tebak password tanpa lockout akun
 
 - **Lokasi:** `apps/server/cmd/api/routes.go:21,40-43`, `apps/server/cmd/api/authula.go:347`
-- **Masalah:** tidak ada batas per akun atau lockout; 30 percobaan per menit per IP, dan panjang
-  minimum password login 8 karakter.
-- **Dampak:** tebakan terdistribusi ke satu akun tidak tertahan. Yang didapat adalah sesi dan
-  ciphertext, bukan isi vault, tetapi itu membuka serangan offline ke master password.
-- **Perbaikan:** tambah limiter berkunci email pada sign-in dan reset, naikkan minimum ke 12.
+- **Masalah:** rute auth dibatasi 30 percobaan per menit per IP dan 10 per menit per email,
+  tetapi tidak ada lockout akun, dan panjang minimum password login 8 karakter.
+- **Dampak:** tebakan terdistribusi ke satu akun diperlambat ke 10 per menit, tidak dihentikan.
+  Yang didapat adalah sesi dan ciphertext, bukan isi vault, tetapi itu membuka serangan offline
+  ke master password.
+- **Perbaikan:** tambah lockout akun setelah sejumlah kegagalan, naikkan minimum ke 12.
 
 ### M-5 · Web app tidak mengunci otomatis saat ditinggal
 
