@@ -101,11 +101,11 @@ fields. Nothing about the page leaves the browser.
 
 | Piece | Where it runs | What it can see |
 | --- | --- | --- |
-| `content.js` | the page, top frame only | the page's fields; nothing from the vault |
+| `content.js` | the page, top frame only | the page's fields, including what is typed into them; nothing from the vault |
 | `inline.html` | a frame of the extension's own origin | the unlocked keys and the logins for the site |
 
 The page around the menu can neither read the frame nor script it, and the
-content script never receives a password: the frame fills the form itself,
+content script never receives a password from the vault: the frame fills the form itself,
 the same way the popup does. The frame learns which site it is on from the
 browser's record of its tab, not from the page.
 
@@ -121,6 +121,24 @@ that has one, or a field marked `autocomplete="username"`.
 
 While the vault is locked the menu lists nothing and offers **Unlock**, which
 opens the popup.
+
+## Saving a login as it is submitted
+
+When a form with a filled password field is sent, by a submit, a button or
+<kbd>Enter</kbd>, the content script hands the username and password to the
+background script, which keeps them in `chrome.storage.session` for that tab.
+On the page that follows, or on the same one once the form is gone, a prompt
+in the top right corner offers to save the login. It is the same kind of
+frame as the inline menu, so the page cannot read or script it.
+
+Nothing is shown when the vault already has that username, or that password,
+for the site. Nothing is kept when nobody is signed in, or for the Montara
+Pass app itself, where the password typed is the master password. While the vault
+is locked the prompt offers **Unlock** first. **Not now**, <kbd>Esc</kbd>,
+closing the tab or five minutes without an answer drop the login.
+
+A form the site refuses is offered as well: the extension sees that a form
+was sent, not what the site answered.
 
 ## Site icons and last use
 
@@ -152,6 +170,7 @@ without the route is ignored: the login is filled all the same.
 | Access and refresh tokens | `chrome.storage.local` | on sign out |
 | Unlocked vault keys | `chrome.storage.session` (in memory) | after 15 minutes without use, when the browser closes, on **Lock** |
 | Master password | nowhere | used once to unlock |
+| A login just submitted, until it is saved or declined | `chrome.storage.session` (in memory) | on save, on **Not now**, when the tab closes, after 5 minutes |
 
 ## Permissions
 

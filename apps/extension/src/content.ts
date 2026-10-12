@@ -1,9 +1,11 @@
 // The page side of the inline menu: a badge inside the focused login field and
 // a frame under it that holds the menu (inline.html). The manifest runs it on
-// every page, in the top frame only.
+// every page, in the top frame only. It also notices a login being submitted
+// and frames the prompt that offers to save it (inline.html#save).
 //
-// It never sees the vault: the frame is an extension page, which the page
-// around it can neither read nor script, and the frame fills the form itself.
+// It never sees the vault: the frames are extension pages, which the page
+// around them can neither read nor script, and the menu fills the form itself.
+// A login the user typed into the page is passed on to the background script.
 // Like the background script it imports nothing, so it stays a single file
 // the manifest can name as a content script.
 // Keep the message names in sync with src/inline/main.tsx.
@@ -16,6 +18,8 @@
   let field: HTMLInputElement | null = null
   let frame: HTMLIFrameElement | null = null
   let frameHeight = 56
+  let saveFrame: HTMLIFrameElement | null = null
+  let watch = 0
 
   // A popover sits in the top layer, above whatever the page stacks. The
   // styles are inline and important, so a page stylesheet cannot restyle it.
@@ -41,6 +45,7 @@
   shadow.innerHTML = `
     <style>
       button, iframe { position: fixed; margin: 0; }
+      [hidden] { display: none; }
       button {
         display: grid; place-items: center;
         width: ${BADGE}px; height: ${BADGE}px; padding: 0;
@@ -53,7 +58,7 @@
         box-shadow: 0 8px 24px rgb(0 0 0 / 0.35), 0 0 0 1px rgb(127 127 127 / 0.25);
       }
     </style>
-    <button type="button" tabindex="-1" aria-label="Montara Pass: show logins for this site" title="Montara Pass (Alt+↓)">
+    <button type="button" tabindex="-1" hidden aria-label="Montara Pass: show logins for this site" title="Montara Pass (Alt+↓)">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true">
         <circle cx="12" cy="10" r="3" fill="currentColor" stroke="none" />
         <path d="M12 12v5" />
@@ -135,6 +140,7 @@
   const show = (el: HTMLInputElement) => {
     if (field !== el) close()
     field = el
+    badge.hidden = false
     raise()
     place()
   }
@@ -147,8 +153,10 @@
 
   const hide = () => {
     close()
-    host.remove()
     field = null
+    badge.hidden = true
+    // The save prompt lives in the same host and outlasts the field.
+    if (!saveFrame) host.remove()
   }
 
   const open = () => {
@@ -163,13 +171,13 @@
   }
 
   /**
-   * Whether the menu is really what the user is looking at. A page can fade
+   * Whether a frame is really what the user is looking at. A page can fade
    * the host out or cover it, and so borrow a click meant for something else.
    */
   // ponytail: an overlay with pointer-events: none above the top layer is not
   // seen by elementFromPoint; IntersectionObserver v2 inside the frame closes
   // that gap once Firefox ships it.
-  const menuIsVisible = () => {
+  const isVisible = (frame: HTMLIFrameElement | null) => {
     if (!frame || !host.isConnected) return false
 
     for (const el of [host, document.documentElement]) {
@@ -184,6 +192,91 @@
       document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) === host
     )
   }
+
+  const toBackground = (message: object): Promise<unknown> =>
+    // The extension was updated or removed under a page that is still open.
+    chrome.runtime.sendMessage(message).catch(() => undefined)
+
+  /** Frame the save prompt, if a login submitted in this tab is waiting. */
+  const offerSave = async () => {
+    if (saveFrame || (await toBackground({ type: 'save:pending' })) !== true) return
+
+    saveFrame = document.createElement('iframe')
+    saveFrame.src = `${FRAME_URL}#save`
+    saveFrame.title = 'Montara Pass: save this login'
+    // Out of sight until the prompt reports a height: it has nothing to show
+    // for a login the vault already has. Transparent rather than empty: a
+    // browser does not lay out a frame without area, which would then never
+    // report one.
+    saveFrame.style.cssText =
+      'top: 16px; right: 16px; width: min(340px, calc(100vw - 32px)); height: 120px; opacity: 0; pointer-events: none'
+    shadow.append(saveFrame)
+    raise()
+  }
+
+  const closeSave = () => {
+    saveFrame?.remove()
+    saveFrame = null
+    if (!field) host.remove()
+  }
+
+  /**
+   * Pass on the login in the page's form, if it holds one. Called when the
+   * form looks like it is being sent.
+   */
+  // ponytail: any button press on a page with a filled password field counts
+  // as sending it, so a sign-up the site then refuses is offered too. Telling
+  // them apart means watching the response; add it if the prompt gets noisy.
+  const capture = () => {
+    const inputs = Array.from(document.querySelectorAll('input')).filter(usable)
+    const passwords = inputs.filter((el) => el.type === 'password' && el.value)
+    if (passwords.length === 0) return
+
+    // A sign-up asks for the password twice and a change of password asks for
+    // the old one first: the last field holds the one that counts.
+    const password = passwords[passwords.length - 1]
+    const first = passwords[0]
+    const scope = first.form ? inputs.filter((el) => el.form === first.form) : inputs
+    const before = scope
+      .slice(0, scope.indexOf(first))
+      .filter((el) => ['text', 'email', 'tel'].includes(el.type) && el.value)
+      .reverse()
+    // The email or username, rather than whatever name field is closest.
+    const username =
+      before.find((el) => el.type === 'email' || /username|email/.test(el.autocomplete)) ??
+      before[0]
+
+    void toBackground({
+      type: 'save:capture',
+      username: username?.value ?? '',
+      password: password.value,
+    })
+
+    // A page that loads another one is asked about there. One that only
+    // swaps the form out is asked once the form is gone.
+    clearInterval(watch)
+    let ticks = 0
+    watch = window.setInterval(() => {
+      if (!password.isConnected || !usable(password)) {
+        clearInterval(watch)
+        void offerSave()
+      } else if (++ticks >= 20) {
+        clearInterval(watch)
+      }
+    }, 500)
+  }
+
+  document.addEventListener('submit', (e) => e.isTrusted && capture(), true)
+  document.addEventListener(
+    'click',
+    (e) => {
+      const pressed =
+        e.target instanceof Element &&
+        e.target.closest('button, input[type="submit"], [role="button"]')
+      if (e.isTrusted && pressed) capture()
+    },
+    true
+  )
 
   // The badge must not take the focus from the field it belongs to.
   badge.addEventListener('mousedown', (e) => e.preventDefault())
@@ -222,6 +315,7 @@
     (e) => {
       // A page can dispatch key events of its own.
       if (!e.isTrusted) return
+      if (e.key === 'Enter' && e.target instanceof HTMLInputElement) capture()
       if (e.key === 'Escape' && frame) close()
       if (e.key === 'ArrowDown' && e.altKey && field && e.target === field) {
         e.preventDefault()
@@ -240,7 +334,20 @@
 
     switch (message?.type) {
       case 'inline:check':
-        sendResponse(menuIsVisible())
+        sendResponse(isVisible(frame))
+        break
+      case 'save:check':
+        sendResponse(isVisible(saveFrame))
+        break
+      case 'save:resize':
+        if (saveFrame && message.height > 0) {
+          saveFrame.style.height = `${clamp(Number(message.height), 40, window.innerHeight - 32)}px`
+          saveFrame.style.opacity = '1'
+          saveFrame.style.pointerEvents = 'auto'
+        }
+        break
+      case 'save:close':
+        closeSave()
         break
       case 'inline:resize':
         frameHeight = clamp(Number(message.height) || 0, 40, MAX_HEIGHT)
@@ -257,4 +364,7 @@
 
   // A field that already has the focus when the script arrives.
   if (isLoginField(document.activeElement)) show(document.activeElement)
+
+  // A login submitted on the page before this one.
+  void offerSave()
 })()

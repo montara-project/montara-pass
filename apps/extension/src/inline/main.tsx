@@ -1,14 +1,24 @@
 import '../popup/styles.css'
 
-import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  StrictMode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react'
 import { createRoot } from 'react-dom/client'
 
-import type { VaultKeys } from '@/lib/crypto/vault'
 import type { VaultItem } from '@/types/vault'
 
-import { markItemUsed } from '../lib/api'
+import { encryptNewItem, type VaultKeys } from '@/lib/crypto/vault'
+
+import { createItem, markItemUsed, SignedOutError } from '../lib/api'
 import { fillLogin } from '../lib/autofill'
-import { loadVault } from '../lib/session'
+import { fetchIcon } from '../lib/icon'
+import { clearPendingLogin, loadVault, pendingLogin, type PendingLogin } from '../lib/session'
 import { hostOf, matchesSite } from '../lib/site'
 import { lastUsedLabel } from '../lib/usage'
 import { ExpandIcon } from '../popup/icons'
@@ -18,9 +28,15 @@ import { useVaultItems } from '../popup/use-vault-items'
 
 // The inline menu: an extension page that src/content.ts frames under a login
 // field. It lists the logins saved for the page around it and fills the one
-// that is picked. Keep the message names in sync with src/content.ts.
+// that is picked. Opened as inline.html#save it is the save prompt instead: it
+// offers to keep the login the page just submitted, unless the vault has it.
+// Keep the message names in sync with src/content.ts.
 
 document.documentElement.dataset.view = 'inline'
+
+const SAVE = window.location.hash === '#save'
+/** The content script tells its two frames apart by the prefix. */
+const CHANNEL = SAVE ? 'save' : 'inline'
 
 /** The tab this frame sits in, as the browser reports it. */
 interface Page {
@@ -36,6 +52,12 @@ const openedAt = performance.now()
 function toPage(page: Page, message: object): Promise<unknown> {
   // Frame 0 is the page itself, where the content script runs.
   return chrome.tabs.sendMessage(page.tabId, message, { frameId: 0 })
+}
+
+/** Drop the submitted login and take the save prompt away. */
+async function dismiss(page: Page): Promise<void> {
+  await clearPendingLogin(page.tabId)
+  await toPage(page, { type: 'save:close' })
 }
 
 function Logins({ page, keys, onLocked }: { page: Page; keys: VaultKeys; onLocked: () => void }) {
@@ -108,6 +130,135 @@ function Logins({ page, keys, onLocked }: { page: Page; keys: VaultKeys; onLocke
   )
 }
 
+/** Offer to save the login the page just submitted. */
+function SaveLogin({
+  page,
+  keys,
+  onLocked,
+}: {
+  page: Page
+  keys: VaultKeys
+  onLocked: () => void
+}) {
+  const { items, error: loadError } = useVaultItems(keys, onLocked)
+  // undefined while it is being read.
+  const [login, setLogin] = useState<PendingLogin | null | undefined>(undefined)
+  const [username, setUsername] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
+  const shownAt = useRef(Infinity)
+
+  useEffect(() => {
+    void pendingLogin(page.tabId).then((found) => {
+      setLogin(found)
+      setUsername(found?.username ?? '')
+    })
+  }, [page.tabId])
+
+  // Already in the vault: the same account on this site, or the same password
+  // when the page asked for no username.
+  const known = useMemo(
+    () =>
+      !!login &&
+      (items ?? []).some(
+        (item) =>
+          item.type === 'login' &&
+          matchesSite(item.secret?.url, login.url) &&
+          (item.secret?.password === login.password ||
+            (login.username !== '' && item.secret?.username === login.username))
+      ),
+    [items, login]
+  )
+
+  const ready = !!login && items !== null && !known && !saved
+  useEffect(() => {
+    if (ready) shownAt.current = performance.now()
+  }, [ready])
+
+  useEffect(() => {
+    // Nothing to ask about. A vault that could not be read is asked again on
+    // the next page, so the login is kept for it.
+    if (login === null || loadError) void toPage(page, { type: 'save:close' })
+    // Once saved it is known too, and the prompt closes by itself.
+    else if (known && !saved) void dismiss(page)
+  }, [login, loadError, known, saved, page])
+
+  const save = async (e: FormEvent) => {
+    e.preventDefault()
+    const { isTrusted, timeStamp } = e.nativeEvent
+    if (!login || !isTrusted || timeStamp - shownAt.current < SETTLE_MS) return
+    if ((await toPage(page, { type: 'save:check' })) !== true) return
+
+    setBusy(true)
+    setError('')
+    try {
+      // The tab's own icon, when it still shows the site the login is for.
+      const tab = await chrome.tabs.get(page.tabId)
+      const hint = hostOf(tab.url) === hostOf(login.url) ? tab.favIconUrl : undefined
+      const encrypted = await encryptNewItem(keys, {
+        name: hostOf(login.url) ?? login.url,
+        username,
+        password: login.password,
+        url: login.url,
+        icon: await fetchIcon(login.url, hint),
+      })
+      await createItem({ type: 'login', ...encrypted })
+      await clearPendingLogin(page.tabId)
+      setSaved(true)
+      setTimeout(() => void toPage(page, { type: 'save:close' }), 1200)
+    } catch (err) {
+      if (err instanceof SignedOutError) {
+        onLocked()
+        return
+      }
+      setError(err instanceof Error ? err.message : 'Could not save the login')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (saved) return <p className="inline-note">Saved to Montara Pass.</p>
+  if (!ready) return null
+
+  return (
+    <form className="inline-note stack" onSubmit={(e) => void save(e)}>
+      <p>
+        <strong>Save this login?</strong>
+        <br />
+        <span className="muted">{hostOf(login.url)}</span>
+      </p>
+
+      <label>
+        Username
+        <input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="off" />
+      </label>
+
+      <label>
+        Password
+        <div className="row">
+          <input type={showPassword ? 'text' : 'password'} value={login.password} readOnly />
+          <button type="button" className="link" onClick={() => setShowPassword((v) => !v)}>
+            {showPassword ? 'Hide' : 'Show'}
+          </button>
+        </div>
+      </label>
+
+      {error && <p className="error">{error}</p>}
+
+      <div className="row">
+        <button type="submit" disabled={busy}>
+          {busy ? 'Saving…' : 'Save'}
+        </button>
+        <button type="button" className="link" onClick={() => void dismiss(page)}>
+          Not now
+        </button>
+      </div>
+    </form>
+  )
+}
+
 function Inline() {
   const [page, setPage] = useState<Page | null>(null)
   // undefined while the session is being read.
@@ -134,7 +285,7 @@ function Inline() {
 
     const observer = new ResizeObserver(() => {
       const height = Math.ceil(document.body.getBoundingClientRect().height)
-      void toPage(page, { type: 'inline:resize', height })
+      void toPage(page, { type: `${CHANNEL}:resize`, height })
     })
     observer.observe(document.body)
     return () => observer.disconnect()
@@ -144,7 +295,9 @@ function Inline() {
     if (!page) return
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') void toPage(page, { type: 'inline:close', refocus: true })
+      if (e.key !== 'Escape') return
+      if (SAVE) void dismiss(page)
+      else void toPage(page, { type: 'inline:close', refocus: true })
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
@@ -160,6 +313,22 @@ function Inline() {
   }
 
   if (!page || keys === undefined) return null
+
+  if (SAVE) {
+    return keys ? (
+      <SaveLogin page={page} keys={keys} onLocked={() => setKeys(null)} />
+    ) : (
+      <div className="inline-note stack">
+        <p className="muted">Unlock Montara Pass to save this login.</p>
+        <div className="row">
+          <button onClick={() => void unlock()}>Unlock</button>
+          <button className="link" onClick={() => void dismiss(page)}>
+            Not now
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="inline">
