@@ -61,8 +61,13 @@ return 0`)
 // keeping two copies of one request apart for the length of a handler.
 type redisLock struct {
 	client redis.UniversalClient
-	// The token each held key was taken with, for the unlock.
-	held sync.Map
+
+	mu sync.Mutex
+	// The tokens each held key was taken with, oldest first, for the unlock.
+	// More than one when a lock ran out under its holder and another request
+	// took the key: Unlock does not say who is calling, and the one that ran
+	// out is the one that started first.
+	held map[string][]string
 }
 
 func (l *redisLock) Lock(key string) error {
@@ -84,7 +89,12 @@ func (l *redisLock) Lock(key string) error {
 			return err
 		}
 		if ok {
-			l.held.Store(key, token)
+			l.mu.Lock()
+			if l.held == nil {
+				l.held = map[string][]string{}
+			}
+			l.held[key] = append(l.held[key], token)
+			l.mu.Unlock()
 			return nil
 		}
 
@@ -97,10 +107,19 @@ func (l *redisLock) Lock(key string) error {
 }
 
 func (l *redisLock) Unlock(key string) error {
-	token, ok := l.held.LoadAndDelete(key)
-	if !ok {
+	l.mu.Lock()
+	tokens := l.held[key]
+	if len(tokens) == 0 {
+		l.mu.Unlock()
 		return nil
 	}
+	token := tokens[0]
+	if len(tokens) == 1 {
+		delete(l.held, key)
+	} else {
+		l.held[key] = tokens[1:]
+	}
+	l.mu.Unlock()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

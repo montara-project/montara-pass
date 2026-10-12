@@ -56,6 +56,38 @@ func TestIdempotencyRedis(t *testing.T) {
 	testIdempotency(t, redisReplicas(t, 2)...)
 }
 
+// TestRedisLockTokens checks that a holder whose lock ran out does not release
+// the lock of whoever took the key after it.
+func TestRedisLockTokens(t *testing.T) {
+	lock := redisReplicas(t, 1)[0].lock.(*redisLock)
+	key := "test-" + uuid.NewString()
+	held := func() bool {
+		n, err := lock.client.Exists(t.Context(), lockPrefix+key).Result()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return n == 1
+	}
+
+	if err := lock.Lock(key); err != nil {
+		t.Fatal(err)
+	}
+	// The first holder's lock runs out, and a second takes the key.
+	if err := lock.client.Del(t.Context(), lockPrefix+key).Err(); err != nil {
+		t.Fatal(err)
+	}
+	if err := lock.Lock(key); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := lock.Unlock(key); err != nil || !held() {
+		t.Fatalf("the first holder's unlock released the second's lock (err %v)", err)
+	}
+	if err := lock.Unlock(key); err != nil || held() {
+		t.Fatalf("the second holder's unlock left the lock in place (err %v)", err)
+	}
+}
+
 // TestRateLimitRedis checks that two replicas count against one budget, and
 // that two limiters do not count against each other's.
 func TestRateLimitRedis(t *testing.T) {
@@ -78,6 +110,7 @@ func TestRateLimitRedis(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		defer res.Body.Close()
 		return res.StatusCode
 	}
 	for i := range 3 {
@@ -258,6 +291,7 @@ func TestRateLimitEmail(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		defer res.Body.Close()
 		return res.StatusCode
 	}
 	for _, body := range []string{`{"email":"a@example.com"}`, `{"email":" A@Example.com "}`} {
