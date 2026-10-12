@@ -10,6 +10,16 @@ export function hostOf(url: string | undefined): string | null {
   }
 }
 
+/** The origin of an http(s) URL, or null for anything else. */
+export function originOf(value: string | undefined): string | null {
+  try {
+    const url = new URL((value ?? '').trim())
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.origin : null
+  } catch {
+    return null
+  }
+}
+
 /** Whether a URL is plain http. An address saved without a scheme is https. */
 const isPlainHttp = (url: string | undefined) => /^http:\/\//i.test(url ?? '')
 

@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 
+import { originOf } from '../../lib/site'
 import { DEFAULT_SETTINGS, getSettings, saveSettings } from '../../lib/storage'
 
 interface SettingsProps {
@@ -8,15 +9,6 @@ interface SettingsProps {
 
 /** `pnpm watch`: the API and the web app run apart, each with its own URL. */
 const DEV = import.meta.env.MODE === 'development'
-
-function originOf(value: string): string | null {
-  try {
-    const url = new URL(value.trim())
-    return url.protocol === 'http:' || url.protocol === 'https:' ? url.origin : null
-  } catch {
-    return null
-  }
-}
 
 export default function Settings({ onClose }: SettingsProps) {
   const [apiUrl, setApiUrl] = useState(DEFAULT_SETTINGS.apiUrl)

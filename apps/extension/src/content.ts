@@ -381,9 +381,13 @@
       case 'inline:check':
         sendResponse(isVisible(frame))
         break
+      // Asked again here: the login may have run out under an open prompt.
       case 'save:check':
-        sendResponse(isVisible(saveFrame))
-        break
+        void toBackground({ type: 'save:pending' }).then((pending) =>
+          sendResponse(pending === true && isVisible(saveFrame))
+        )
+        // The answer comes later.
+        return true
       case 'save:resize':
         if (saveFrame && message.height > 0) {
           saveFrame.style.height = `${clamp(Number(message.height), 40, window.innerHeight - 32)}px`

@@ -26,7 +26,7 @@ import {
   storePendingLogin,
   type PendingLogin,
 } from '../lib/session'
-import { hostOf, matchesSite } from '../lib/site'
+import { hostOf, matchesSite, originOf } from '../lib/site'
 import { getSettings, getTokens } from '../lib/storage'
 import { lastUsedLabel } from '../lib/usage'
 import { ExpandIcon, KeyIcon, RefreshIcon } from '../popup/icons'
@@ -241,12 +241,18 @@ function SaveLogin({
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
   const shownAt = useRef(Infinity)
+  const saving = useRef(false)
 
   useEffect(() => {
     void pendingLogin(page.tabId).then((found) => {
       setLogin(found)
       setUsername(found?.username ?? '')
     })
+
+    // It runs out after a while, also under an open prompt, which then closes.
+    const reread = () => void pendingLogin(page.tabId).then((found) => found || setLogin(null))
+    chrome.storage.session.onChanged.addListener(reread)
+    return () => chrome.storage.session.onChanged.removeListener(reread)
   }, [page.tabId])
 
   // Already in the vault: the same account on this site, or the same password
@@ -270,44 +276,53 @@ function SaveLogin({
   }, [ready])
 
   useEffect(() => {
+    // Saved: the prompt says so, then closes by itself.
+    if (saved) return
     // Nothing to ask about. A vault that could not be read is asked again on
     // the next page, so the login is kept for it.
     if (login === null || loadError) void toPage(page, { type: 'save:close' })
-    // Once saved it is known too, and the prompt closes by itself.
-    else if (known && !saved) void dismiss(page)
+    else if (known) void dismiss(page)
   }, [login, loadError, known, saved, page])
 
   const save = async (e: FormEvent) => {
     e.preventDefault()
     const { isTrusted, timeStamp } = e.nativeEvent
     if (!login || !isTrusted || timeStamp - shownAt.current < SETTLE_MS) return
-    if ((await toPage(page, { type: 'save:check' })) !== true) return
+    // A second submit while the first is still asking the page: one save.
+    if (saving.current) return
+    saving.current = true
 
-    setBusy(true)
-    setError('')
     try {
-      // The tab's own icon, when it still shows the site the login is for.
-      const tab = await chrome.tabs.get(page.tabId)
-      const hint = hostOf(tab.url) === hostOf(login.url) ? tab.favIconUrl : undefined
-      const encrypted = await encryptNewItem(keys, {
-        name: hostOf(login.url) ?? login.url,
-        username,
-        password: login.password,
-        url: login.url,
-        icon: await fetchIcon(login.url, hint),
-      })
-      await createItem({ type: 'login', ...encrypted })
-      await clearPendingLogin(page.tabId)
-      setSaved(true)
-      setTimeout(() => void toPage(page, { type: 'save:close' }), 1200)
-    } catch (err) {
-      if (err instanceof SignedOutError) {
-        onLocked()
-        return
+      if ((await toPage(page, { type: 'save:check' })) !== true) return
+
+      setBusy(true)
+      setError('')
+      try {
+        // The tab's own icon, when it still shows the site the login is for.
+        const tab = await chrome.tabs.get(page.tabId)
+        const hint = hostOf(tab.url) === hostOf(login.url) ? tab.favIconUrl : undefined
+        const encrypted = await encryptNewItem(keys, {
+          name: hostOf(login.url) ?? login.url,
+          username,
+          password: login.password,
+          url: login.url,
+          icon: await fetchIcon(login.url, hint),
+        })
+        await createItem({ type: 'login', ...encrypted })
+        setSaved(true)
+        await clearPendingLogin(page.tabId)
+        setTimeout(() => void toPage(page, { type: 'save:close' }), 1200)
+      } catch (err) {
+        if (err instanceof SignedOutError) {
+          onLocked()
+          return
+        }
+        setError(err instanceof Error ? err.message : 'Could not save the login')
+      } finally {
+        setBusy(false)
       }
-      setError(err instanceof Error ? err.message : 'Could not save the login')
     } finally {
-      setBusy(false)
+      saving.current = false
     }
   }
 
@@ -364,8 +379,8 @@ function Inline() {
   useEffect(() => {
     if (!NEW || !page) return
     void getSettings().then(({ apiUrl, appUrl }) => {
-      const origin = hostOf(page.url) ? new URL(page.url).origin : ''
-      setSuggesting(origin !== '' && origin !== apiUrl && origin !== appUrl)
+      const origin = originOf(page.url)
+      setSuggesting(origin !== null && origin !== originOf(apiUrl) && origin !== originOf(appUrl))
     })
   }, [page])
 

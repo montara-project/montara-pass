@@ -46,8 +46,12 @@ export interface PendingLogin {
   url: string
 }
 
-/** Keep in sync with src/background.ts. */
+/**
+ * The key a tab's pending login is stored under, and the name of the alarm
+ * that drops it. Keep both in sync with src/background.ts.
+ */
 const pendingKey = (tabId: number) => `pending:${tabId}`
+const PENDING_TTL_MINUTES = 5
 
 export async function pendingLogin(tabId: number): Promise<PendingLogin | null> {
   const stored = await chrome.storage.session.get(pendingKey(tabId))
@@ -57,8 +61,10 @@ export async function pendingLogin(tabId: number): Promise<PendingLogin | null> 
 /** Hold a login for the save prompt, as the background script does. */
 export async function storePendingLogin(tabId: number, login: PendingLogin): Promise<void> {
   await chrome.storage.session.set({ [pendingKey(tabId)]: { ...login, at: Date.now() } })
+  await chrome.alarms.create(pendingKey(tabId), { delayInMinutes: PENDING_TTL_MINUTES })
 }
 
 export async function clearPendingLogin(tabId: number): Promise<void> {
   await chrome.storage.session.remove(pendingKey(tabId))
+  await chrome.alarms.clear(pendingKey(tabId))
 }

@@ -10,16 +10,32 @@ const TOKENS_KEY = 'tokens'
 const SETTINGS_KEY = 'settings'
 /** A sign-up may take a redirect or two before it lands somewhere. */
 const PENDING_TTL_MS = 5 * 60_000
-const pendingKey = (tabId: number) => `pending:${tabId}`
+/** The key a tab's pending login is stored under, and the name of its alarm. */
+const PENDING_PREFIX = 'pending:'
+const pendingKey = (tabId: number) => `${PENDING_PREFIX}${tabId}`
+
+/** The origin of a URL, or null for what is not one. */
+const originOf = (value: unknown) => {
+  try {
+    return new URL(String(value)).origin
+  } catch {
+    return null
+  }
+}
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === AUTO_LOCK_ALARM) {
     void chrome.storage.session.remove(VAULT_SESSION_KEY)
   }
+  // A login nobody answered for: gone even if its prompt is still open.
+  if (alarm.name.startsWith(PENDING_PREFIX)) {
+    void chrome.storage.session.remove(alarm.name)
+  }
 })
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   void chrome.storage.session.remove(pendingKey(tabId))
+  void chrome.alarms.clear(pendingKey(tabId))
 })
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -59,12 +75,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Montara Pass itself: what is typed there is the master password,
         // which is kept nowhere.
         const settings = stored[SETTINGS_KEY] as { apiUrl?: string; appUrl?: string } | undefined
+        // Compared as origins: a configured URL may carry a path or a slash.
         const own = [
           settings?.apiUrl ?? import.meta.env.VITE_DEFAULT_API_URL,
           settings?.appUrl ?? import.meta.env.VITE_DEFAULT_APP_URL,
-        ]
+        ].map(originOf)
         if (own.includes(pending.url)) return
 
+        void chrome.alarms.create(key, { delayInMinutes: PENDING_TTL_MS / 60_000 })
         return chrome.storage.session.set({ [key]: pending })
       })
       return
@@ -74,6 +92,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       void chrome.storage.session.get(key).then((stored) => {
         const pending = stored[key] as { at: number } | undefined
         const fresh = Date.now() - (pending?.at ?? 0) < PENDING_TTL_MS
+        // The alarm is late when the computer slept through it.
         if (pending && !fresh) void chrome.storage.session.remove(key)
         sendResponse(fresh)
       })
