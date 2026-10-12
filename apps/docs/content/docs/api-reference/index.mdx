@@ -90,8 +90,36 @@ Limits are per client IP, per minute:
 | `/api/v1/auth/*` | 30 |
 | everything else under `/api/v1` | 120 |
 
-In `development`, loopback is exempt. The counters are kept in memory, so each
-instance of the API has its own budget.
+In `development`, loopback is exempt. With `REDIS_URL` set every instance of
+the API counts against the same budget; without it the counters are kept in
+memory and each instance has its own.
+
+## Idempotency
+
+A write under `/api/v1` that needs a signed-in user may carry a key the
+client makes up, and is then run only once:
+
+```http
+Idempotency-Key: 0b6e2c1a-7d0f-4f0e-9a51-3f6c2a9d1e77
+```
+
+Sent again within 30 minutes, the same request gets the first answer back,
+with `Idempotent-Replayed: true`, instead of being run again; two sent at the
+same moment are taken one after the other. A client can therefore repeat a
+`POST` whose answer it never received without making a second item.
+
+- The key is 16 to 128 letters, digits, `-` or `_`; a UUID fits. Anything
+  else is answered `400`.
+- A key repeats only the request it first came with: the same user, method,
+  address and body. With any of those different it is a new request.
+- Only an answer without an error is kept. A request that failed is run again
+  when it is sent again.
+- Without the header, and for `GET`, nothing changes.
+
+The web app and the extension send a key with every write. With `REDIS_URL`
+set the answers, and the lock that keeps two copies of a request apart, are
+shared by every replica. Without it they are kept in the server's memory, so
+a repeat that reaches another replica is run again.
 
 ## CORS
 

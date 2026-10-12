@@ -24,6 +24,7 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/static"
 
 	"montara-pass/server/internal/app"
+	"montara-pass/server/internal/config"
 	"montara-pass/server/internal/middlewares"
 )
 
@@ -54,6 +55,9 @@ func newServer(app *app.Application) (*fiber.App, error) {
 		TrustProxy:       len(proxies) > 0,
 		TrustProxyConfig: fiber.TrustProxyConfig{Proxies: proxies},
 		ProxyHeader:      fiber.HeaderXForwardedFor,
+		// Without this the whole header is the "IP", and a client that sends
+		// its own X-Forwarded-For gets a fresh rate limit with every value.
+		EnableIPValidation: true,
 		// Bound how long a slow client can hold a connection.
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 30 * time.Second,
@@ -63,7 +67,10 @@ func newServer(app *app.Application) (*fiber.App, error) {
 	// Middleware
 	server.Use(recover.New())
 	server.Use(logger.New())
-	server.Use(helmet.New())
+	server.Use(helmet.New(helmet.Config{
+		ContentSecurityPolicy: contentSecurityPolicy,
+		HSTSMaxAge:            hstsMaxAge(app.Config.App.Env),
+	}))
 	server.Use(requestid.New())
 	server.Use(compress.New())
 
@@ -101,6 +108,27 @@ func newServer(app *app.Application) (*fiber.App, error) {
 	serveWebApp(server, app)
 
 	return server, nil
+}
+
+// contentSecurityPolicy is what the web app may load: its own files and
+// nothing injected. 'wasm-unsafe-eval' is for Argon2id, which runs as
+// WebAssembly; styles are loosened because the UI libraries set them inline;
+// images may be remote because a Google account brings its picture, and the
+// typeface comes from Google Fonts.
+const contentSecurityPolicy = "default-src 'self'; " +
+	"script-src 'self' 'wasm-unsafe-eval'; " +
+	"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+	"img-src 'self' data: blob: https:; " +
+	"font-src 'self' data: https://fonts.gstatic.com; " +
+	"object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+
+// hstsMaxAge is a year wherever the API is reached over HTTPS, and off in
+// development, which runs on plain http://localhost.
+func hstsMaxAge(env string) int {
+	if env == config.EnvDevelopment {
+		return 0
+	}
+	return 365 * 24 * 60 * 60
 }
 
 // publicDir holds the built web app (apps/app), relative to the working

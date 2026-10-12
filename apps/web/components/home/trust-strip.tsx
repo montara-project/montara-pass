@@ -13,7 +13,7 @@ export function TrustStrip() {
       <p className="border-line px-6 py-5 text-sm font-medium max-md:border-b sm:px-10 md:border-r md:py-7">
         What it runs on.
       </p>
-      <ul className="flex flex-wrap items-center gap-x-10 gap-y-4 px-6 py-5 sm:px-10 md:justify-between md:py-7">
+      <ul className="grid grid-cols-2 items-center gap-x-10 gap-y-4 px-6 py-5 sm:flex sm:flex-wrap sm:px-10 md:justify-between md:py-7">
         {stack.map((item) => (
           <li key={item.name} className="flex items-center gap-2.5 text-sm text-mist">
             <span className="flex size-8 items-center justify-center rounded-lg border border-line bg-card">

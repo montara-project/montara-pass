@@ -27,8 +27,17 @@ export async function generateKeyPair(): Promise<ExportedKeyPair> {
   return { publicKey: new Uint8Array(publicKey), privateKey: new Uint8Array(privateKey) }
 }
 
-export function importPublicKey(spki: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
-  return crypto.subtle.importKey('spki', spki, IMPORT_PARAMS, false, ['encrypt'])
+/**
+ * Import someone's public key. It comes from the server, so a key shorter
+ * than the ones made here is refused: an item key wrapped with it would be
+ * only as safe as that key.
+ */
+export async function importPublicKey(spki: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
+  const key = await crypto.subtle.importKey('spki', spki, IMPORT_PARAMS, false, ['encrypt'])
+  if ((key.algorithm as RsaHashedKeyAlgorithm).modulusLength < ALGORITHM.modulusLength) {
+    throw new Error('This public key is too short to be trusted.')
+  }
+  return key
 }
 
 /** The imported private key cannot be exported again from this page. */

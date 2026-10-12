@@ -76,7 +76,7 @@ export function SiteFooter() {
         <a
           href={REPO_URL}
           aria-label="Montara Pass on GitHub"
-          className="cursor-pointer text-mist transition-colors duration-200 hover:text-fg"
+          className="-m-2 cursor-pointer p-2 text-mist transition-colors duration-200 hover:text-fg"
         >
           <GithubIcon className="size-4.5" />
         </a>

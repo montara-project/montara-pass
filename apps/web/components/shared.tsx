@@ -4,7 +4,7 @@ type Icon = typeof LockIcon;
 
 /** The gray half of a two-tone heading. */
 export function Dim({ children }: { children: React.ReactNode }) {
-  return <span className="text-mist/75">{children}</span>;
+  return <span className="inline-block text-mist/75">{children}</span>;
 }
 
 /** A centred statement: two-tone heading and, at most, two lines of subcopy. */
@@ -41,7 +41,7 @@ export function Check({ children }: { children: React.ReactNode }) {
   return (
     <li className="flex items-start gap-2.5 text-[15px] leading-6 text-mist">
       <CheckIcon className="mt-0.5 size-4 shrink-0 text-fg" />
-      <span>{children}</span>
+      <span className="text-pretty">{children}</span>
     </li>
   );
 }

@@ -15,11 +15,14 @@ import (
 // origin: its pages and static assets never collide with a route.
 const apiPrefix = "/api"
 
-// Per-IP request budgets per minute: tight on the auth routes, loose on the
-// rest of the API.
+// Request budgets per minute. Per IP: tight on the auth routes, loose on the
+// rest of the API. Per email address on the auth routes, and per IP on the
+// lookup that tells whether an address has an account.
 const (
-	authRateLimit = 30
-	apiRateLimit  = 120
+	authRateLimit      = 30
+	authEmailRateLimit = 10
+	apiRateLimit       = 120
+	publicKeyRateLimit = 20
 )
 
 func routes(r *fiber.App, app *app.Application) {
@@ -33,43 +36,50 @@ func routes(r *fiber.App, app *app.Application) {
 	// Authula: email & password, Google OAuth2 and magic-link sign-in,
 	// plus GET /me and POST /sign-out, all under authBasePath. The limiter
 	// guards password guessing and sign-in/reset email flooding.
-	r.Use(authBasePath,
-		middlewares.RateLimit(authRateLimit, app.Config.App.Env == config.EnvDevelopment, splitCSV(app.Config.App.RateLimitExemptIPs)),
-		fiberadapter.New(fiberadapter.Config{Handler: app.Auth.Handler()}),
-	)
+	// Counts, idempotent answers and their locks: in Redis when there is one,
+	// so replicas share them, and in memory otherwise.
+	store := middlewares.NewStore(app.Redis)
 
 	exemptLoopback := app.Config.App.Env == config.EnvDevelopment
 	exemptIPs := splitCSV(app.Config.App.RateLimitExemptIPs)
 
-	// ponytail: the limiters count in memory, so each replica has its own
-	// budget; give them shared storage once there is more than one instance.
-	v1 := api.Group("/v1", middlewares.RateLimit(apiRateLimit, exemptLoopback, exemptIPs))
+	r.Use(authBasePath,
+		middlewares.RateLimit("auth", authRateLimit, exemptLoopback, exemptIPs, store),
+		middlewares.RateLimitEmail("auth-email", authEmailRateLimit, store),
+		fiberadapter.New(fiberadapter.Config{Handler: app.Auth.Handler()}),
+	)
+
+	v1 := api.Group("/v1", middlewares.RateLimit("api", apiRateLimit, exemptLoopback, exemptIPs, store))
+
+	// A write that carries an Idempotency-Key is run once, however often it
+	// is sent. It needs the user, so it goes after Authorization.
+	once := middlewares.Idempotency(store)
 
 	// Reads are public; writes need a signed-in super user.
 	categories := v1.Group("/categories")
 	categories.Get("/", h.Category.List)
 	categories.Get("/:id", h.Category.Get)
-	categories.Post("/", m.Authorization, m.SuperUser, h.Category.Create)
-	categories.Put("/:id", m.Authorization, m.SuperUser, h.Category.Update)
-	categories.Delete("/:id", m.Authorization, m.SuperUser, h.Category.Delete)
-	categories.Put("/:id/restore", m.Authorization, m.SuperUser, h.Category.Restore)
-	categories.Delete("/:id/force", m.Authorization, m.SuperUser, h.Category.DeletePermanently)
+	categories.Post("/", m.Authorization, m.SuperUser, once, h.Category.Create)
+	categories.Put("/:id", m.Authorization, m.SuperUser, once, h.Category.Update)
+	categories.Delete("/:id", m.Authorization, m.SuperUser, once, h.Category.Delete)
+	categories.Put("/:id/restore", m.Authorization, m.SuperUser, once, h.Category.Restore)
+	categories.Delete("/:id/force", m.Authorization, m.SuperUser, once, h.Category.DeletePermanently)
 
 	// The end-to-end encrypted vault: everything below needs a signed-in
 	// user, and every payload is ciphertext the server cannot read.
-	keys := v1.Group("/keys", m.Authorization)
+	keys := v1.Group("/keys", m.Authorization, once)
 	keys.Get("/", h.Key.Get)
 	keys.Post("/", h.Key.Create)
 	keys.Put("/", h.Key.UpdateKDF)
-	keys.Get("/public", h.Key.PublicKey)
+	keys.Get("/public", middlewares.RateLimit("public-key", publicKeyRateLimit, exemptLoopback, exemptIPs, store), h.Key.PublicKey)
 
-	folders := v1.Group("/folders", m.Authorization)
+	folders := v1.Group("/folders", m.Authorization, once)
 	folders.Get("/", h.Folder.List)
 	folders.Post("/", h.Folder.Create)
 	folders.Put("/:id", h.Folder.Update)
 	folders.Delete("/:id", h.Folder.Delete)
 
-	items := v1.Group("/items", m.Authorization)
+	items := v1.Group("/items", m.Authorization, once)
 	items.Get("/", h.Item.List)
 	items.Post("/", h.Item.Create)
 	items.Get("/:id", h.Item.Get)

@@ -48,3 +48,9 @@ idempotent: the categories, and the `SUPER_USER` account.
 `apps/server/cmd/api` has an integration test that drives the API end to end.
 It is skipped unless `TEST_DB_DSN` points at a PostgreSQL 18 database it is
 allowed to wipe.
+
+With `TEST_REDIS_URL` as well, that test keeps its rate limit counts and
+idempotency keys in Redis, and `apps/server/internal/middlewares` runs its
+Redis tests: two replicas sharing one budget, one answer and one lock. They
+are skipped without it. Point it at a database number nothing else uses, such
+as `redis://localhost:6379/15`.

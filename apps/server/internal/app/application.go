@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	authula "github.com/Authula/authula"
+	"github.com/redis/go-redis/v9"
 
 	"montara-pass/server/internal/config"
 	"montara-pass/server/internal/repositories"
@@ -20,4 +21,6 @@ type Application struct {
 	DB           *sql.DB
 	Repositories repositories.Repositories
 	Auth         *authula.Auth
+	// Redis is nil unless REDIS_URL is set; see middlewares.NewStore.
+	Redis redis.UniversalClient
 }

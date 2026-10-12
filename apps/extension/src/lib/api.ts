@@ -44,7 +44,12 @@ async function errorFrom(res: Response): Promise<ApiError> {
   return new ApiError(message, res.status)
 }
 
-async function send(path: string, init: RequestInit, accessToken?: string): Promise<Response> {
+async function send(
+  path: string,
+  init: RequestInit,
+  accessToken?: string,
+  idempotencyKey?: string
+): Promise<Response> {
   const { apiUrl } = await getSettings()
 
   try {
@@ -56,6 +61,7 @@ async function send(path: string, init: RequestInit, accessToken?: string): Prom
       headers: {
         ...(init.body ? { 'Content-Type': 'application/json' } : {}),
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
       },
     })
   } catch {
@@ -89,12 +95,17 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const tokens = await getTokens()
   if (!tokens) throw new SignedOutError()
 
-  let res = await send(path, init, tokens.accessToken)
+  // A write names itself, so the API runs it once however often it arrives:
+  // the same key goes with the second try after a token refresh.
+  const write = init.method !== undefined && init.method !== 'GET'
+  const key = write ? crypto.randomUUID() : undefined
+
+  let res = await send(path, init, tokens.accessToken, key)
   if (res.status === 401) {
     refreshing ??= refreshAccessToken().finally(() => {
       refreshing = null
     })
-    res = await send(path, init, await refreshing)
+    res = await send(path, init, await refreshing, key)
 
     if (res.status === 401) {
       await clearTokens()

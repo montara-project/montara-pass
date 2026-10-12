@@ -161,7 +161,19 @@ func TestIntegration(t *testing.T) {
 		t.Fatalf("reseed: %v", err)
 	}
 
-	server, err := newServer(&app.Application{Config: cfg, Logger: logger, DB: db, Repositories: repos, Auth: auth})
+	application := &app.Application{Config: cfg, Logger: logger, DB: db, Repositories: repos, Auth: auth}
+	// With TEST_REDIS_URL the rate limiter and the idempotency keys go
+	// through Redis, as they do with REDIS_URL; without it, through memory.
+	if url := os.Getenv("TEST_REDIS_URL"); url != "" {
+		client, err := connectRedis(url)
+		if err != nil {
+			t.Fatalf("connect redis: %v", err)
+		}
+		defer client.Close()
+		application.Redis = client
+	}
+
+	server, err := newServer(application)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -269,6 +281,25 @@ func TestIntegration(t *testing.T) {
 
 	vaultFlow(t, call, superToken, userToken, userEmail, user.ID)
 
+	// An address nobody has verified gets no session from signing up, and a
+	// sign-in with it reaches nothing: no vault of its own, and no public key
+	// for others to share with.
+	const squatEmail, squatPass = "squatter@example.com", "squatter-password"
+	status, out := call(http.MethodPost, "/api/v1/auth/email-password/sign-up", "", map[string]string{"name": "Squatter", "email": squatEmail, "password": squatPass})
+	if status != http.StatusCreated || out["access_token"] != nil || cookies != "" {
+		t.Fatalf("sign up: %d %v cookies=%q, want 201 without a session", status, out, cookies)
+	}
+	squatToken := signIn(squatEmail, squatPass)["access_token"].(string)
+	if status, out := call(http.MethodGet, "/api/v1/keys", squatToken, nil); status != http.StatusForbidden {
+		t.Fatalf("keys with an unverified email: %d %v, want 403", status, out)
+	}
+	if status, out := call(http.MethodPost, "/api/v1/items", squatToken, map[string]any{}); status != http.StatusForbidden {
+		t.Fatalf("item with an unverified email: %d %v, want 403", status, out)
+	}
+	if status, out := call(http.MethodGet, "/api/v1/keys/public?email="+squatEmail, superToken, nil); status != http.StatusNotFound {
+		t.Fatalf("public key of an unverified email: %d %v, want 404", status, out)
+	}
+
 	// A browser request from another site is refused before it is authenticated.
 	if status, _ := call(http.MethodPost, "/api/v1/categories", superToken, category, "Sec-Fetch-Site", "cross-site", "Origin", "https://evil.example"); status != http.StatusForbidden {
 		t.Fatalf("cross-site create: %d, want 403", status)
@@ -361,6 +392,26 @@ func vaultFlow(
 	shared := want(http.StatusOK, http.MethodGet, itemPath, otherToken, nil)
 	if shared["role"] != "viewer" || shared["encrypted_item_key"] != b64("key for other") || shared["folder_id"] != nil || shared["favorite"] != false {
 		t.Fatalf("shared item as the recipient sees it: %v", shared)
+	}
+
+	// A write with an Idempotency-Key happens once: the repeat gets the first
+	// folder back, and no second one is made. Another user's same key is theirs.
+	idem := []string{"Idempotency-Key", "0b6e2c1a-7d0f-4f0e-9a51-3f6c2a9d1e77"}
+	twice := map[string]any{"encrypted_name": b64("once")}
+	_, made := call(http.MethodPost, "/api/v1/folders", ownerToken, twice, idem...)
+	_, repeat := call(http.MethodPost, "/api/v1/folders", ownerToken, twice, idem...)
+	madeID, repeatID := made["data"].(map[string]any)["id"], repeat["data"].(map[string]any)["id"]
+	if madeID == nil || madeID != repeatID {
+		t.Fatalf("repeated create made another folder: %v then %v", madeID, repeatID)
+	}
+	if _, theirs := call(http.MethodPost, "/api/v1/folders", otherToken, twice, idem...); theirs["data"].(map[string]any)["id"] == madeID {
+		t.Fatalf("another user's key was answered with the owner's folder")
+	}
+	if status, out := call(http.MethodGet, "/api/v1/folders", ownerToken, nil); status != http.StatusOK || len(out["data"].([]any)) != 2 {
+		t.Fatalf("owner's folders after a repeated create: %d %v", status, out)
+	}
+	if status, _ := call(http.MethodPost, "/api/v1/folders", ownerToken, twice, "Idempotency-Key", "short"); status != http.StatusBadRequest {
+		t.Fatalf("malformed idempotency key: %d, want 400", status)
 	}
 
 	// Last use is each member's own: the recipient's does not show for the owner.

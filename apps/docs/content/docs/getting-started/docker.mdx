@@ -51,8 +51,10 @@ docker run --rm --env-file apps/server/.env \
 ## Dokploy
 
 `deploy/docker-compose.yml` is a ready-made stack for
-[Dokploy](https://dokploy.com): PostgreSQL 18 with a named volume, and the
-server image built from the repository.
+[Dokploy](https://dokploy.com): PostgreSQL 18 with a named volume, Redis for
+the rate limit counts and idempotent answers (kept in memory only, since all
+of it expires within the hour), and the server image built from the
+repository.
 
 1. Create a **Compose** service from the repository and set the compose path
    to `./deploy/docker-compose.yml`.

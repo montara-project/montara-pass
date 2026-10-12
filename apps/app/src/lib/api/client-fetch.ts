@@ -32,6 +32,13 @@ api.interceptors.request.use((config) => {
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`
   }
+
+  // A write names itself, so the API runs it once however often it arrives.
+  // The key is kept when the request is sent again after a token refresh.
+  const safe = ['get', 'head', 'options'].includes((config.method ?? 'get').toLowerCase())
+  if (!safe && !config.headers.has('Idempotency-Key')) {
+    config.headers.set('Idempotency-Key', crypto.randomUUID())
+  }
   return config
 })
 

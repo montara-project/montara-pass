@@ -602,6 +602,13 @@ button.link:hover {
   background: none;
 }
 
+/* The suggested password, with the button that draws another beside it. */
+.inline-list .row .card {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+
 .inline-list .card:hover,
 .inline-list .card:focus-visible {
   background: var(--hover);

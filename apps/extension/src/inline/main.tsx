@@ -1,26 +1,59 @@
 import '../popup/styles.css'
 
-import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  StrictMode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react'
 import { createRoot } from 'react-dom/client'
 
-import type { VaultKeys } from '@/lib/crypto/vault'
 import type { VaultItem } from '@/types/vault'
 
-import { markItemUsed } from '../lib/api'
-import { fillLogin } from '../lib/autofill'
-import { loadVault } from '../lib/session'
-import { hostOf, matchesSite } from '../lib/site'
+import { encryptNewItem, type VaultKeys } from '@/lib/crypto/vault'
+import { generatePassword } from '@/lib/password'
+
+import { createItem, markItemUsed, SignedOutError } from '../lib/api'
+import { fillLogin, fillNewPassword } from '../lib/autofill'
+import { fetchIcon } from '../lib/icon'
+import {
+  clearPendingLogin,
+  loadVault,
+  pendingLogin,
+  storePendingLogin,
+  type PendingLogin,
+} from '../lib/session'
+import { hostOf, matchesSite, originOf } from '../lib/site'
+import { getSettings, getTokens } from '../lib/storage'
 import { lastUsedLabel } from '../lib/usage'
-import { ExpandIcon } from '../popup/icons'
+import { ExpandIcon, KeyIcon, RefreshIcon } from '../popup/icons'
 import { ItemTile } from '../popup/item-tile'
 import { openFullScreen } from '../popup/layout'
 import { useVaultItems } from '../popup/use-vault-items'
 
 // The inline menu: an extension page that src/content.ts frames under a login
 // field. It lists the logins saved for the page around it and fills the one
-// that is picked. Keep the message names in sync with src/content.ts.
+// that is picked. Opened as inline.html#save it is the save prompt instead: it
+// offers to keep the login the page just submitted, unless the vault has it.
+// Keep the message names in sync with src/content.ts.
 
 document.documentElement.dataset.view = 'inline'
+
+/** What the content script asks for, as inline.html#flag,flag. */
+const FLAGS = new Set(window.location.hash.slice(1).split(','))
+const SAVE = FLAGS.has('save')
+/** The field is choosing a password: a generated one is offered. */
+const NEW = FLAGS.has('new')
+/**
+ * Opened by the focus alone (inline.html#auto): the frame is out of sight
+ * until the menu asks to be shown, and goes away when it has no login to offer.
+ */
+const AUTO = FLAGS.has('auto')
+/** The content script tells its two frames apart by the prefix. */
+const CHANNEL = SAVE ? 'save' : 'inline'
 
 /** The tab this frame sits in, as the browser reports it. */
 interface Page {
@@ -38,7 +71,81 @@ function toPage(page: Page, message: object): Promise<unknown> {
   return chrome.tabs.sendMessage(page.tabId, message, { frameId: 0 })
 }
 
-function Logins({ page, keys, onLocked }: { page: Page; keys: VaultKeys; onLocked: () => void }) {
+/** Drop the submitted login and take the save prompt away. */
+async function dismiss(page: Page): Promise<void> {
+  await clearPendingLogin(page.tabId)
+  await toPage(page, { type: 'save:close' })
+}
+
+/** A generated password for the sign-up form the menu sits under. */
+function Suggestion({ page }: { page: Page }) {
+  const [password, setPassword] = useState(() => generatePassword())
+
+  const use = async (click: Event) => {
+    if (!click.isTrusted || click.timeStamp - openedAt < SETTLE_MS) return
+
+    // The page may have navigated, or hidden the menu, since it was drawn.
+    const tab = await chrome.tabs.get(page.tabId)
+    if (!hostOf(tab.url) || hostOf(tab.url) !== hostOf(page.url)) return
+    if ((await toPage(page, { type: 'inline:check' })) !== true) return
+
+    // Kept for the save prompt before it is filled: a password nobody has
+    // seen must not be lost if the form goes out some way that is not noticed.
+    // Sending the form replaces this with what it held, username included.
+    await storePendingLogin(page.tabId, {
+      username: '',
+      password,
+      url: new URL(tab.url!).origin,
+    })
+    await chrome.scripting.executeScript({
+      target: { tabId: page.tabId },
+      func: fillNewPassword,
+      args: [password],
+    })
+    void toPage(page, { type: 'inline:close' })
+  }
+
+  return (
+    <div className="inline-list">
+      <div className="row">
+        <button
+          className="card"
+          aria-label="Use the suggested password"
+          onClick={(e) => void use(e.nativeEvent)}
+        >
+          <span className="tile">
+            <KeyIcon />
+          </span>
+          <span className="item-text">
+            <span className="item-name">Suggested password</span>
+            <span className="muted mono">{password}</span>
+          </span>
+        </button>
+        <button
+          className="icon-button"
+          aria-label="Suggest another password"
+          title="Suggest another"
+          onClick={() => setPassword(generatePassword())}
+        >
+          <RefreshIcon width={18} height={18} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function Logins({
+  page,
+  keys,
+  suggesting,
+  onLocked,
+}: {
+  page: Page
+  keys: VaultKeys
+  /** A generated password is on offer above, so the menu has something to show. */
+  suggesting: boolean
+  onLocked: () => void
+}) {
   const { items, error } = useVaultItems(keys, onLocked)
   const first = useRef<HTMLButtonElement>(null)
 
@@ -61,6 +168,12 @@ function Logins({ page, keys, onLocked }: { page: Page; keys: VaultKeys; onLocke
     return () => window.removeEventListener('focus', focusFirst)
   }, [matches])
 
+  useEffect(() => {
+    if (!AUTO) return
+    if (matches.length > 0) void toPage(page, { type: 'inline:show' })
+    else if (!suggesting && (error || items !== null)) void toPage(page, { type: 'inline:quiet' })
+  }, [page, matches, items, error, suggesting])
+
   const fill = async (item: VaultItem, click: Event) => {
     if (!click.isTrusted || click.timeStamp - openedAt < SETTLE_MS || !item.secret) return
 
@@ -79,6 +192,7 @@ function Logins({ page, keys, onLocked }: { page: Page; keys: VaultKeys; onLocke
     void toPage(page, { type: 'inline:close' })
   }
 
+  if (suggesting && matches.length === 0) return null
   if (error) return <p className="inline-note error">{error}</p>
   if (items === null) return <p className="inline-note muted">Decrypting…</p>
   if (matches.length === 0) {
@@ -108,10 +222,171 @@ function Logins({ page, keys, onLocked }: { page: Page; keys: VaultKeys; onLocke
   )
 }
 
+/** Offer to save the login the page just submitted. */
+function SaveLogin({
+  page,
+  keys,
+  onLocked,
+}: {
+  page: Page
+  keys: VaultKeys
+  onLocked: () => void
+}) {
+  const { items, error: loadError } = useVaultItems(keys, onLocked)
+  // undefined while it is being read.
+  const [login, setLogin] = useState<PendingLogin | null | undefined>(undefined)
+  const [username, setUsername] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
+  const shownAt = useRef(Infinity)
+  const saving = useRef(false)
+
+  useEffect(() => {
+    void pendingLogin(page.tabId).then((found) => {
+      setLogin(found)
+      setUsername(found?.username ?? '')
+    })
+
+    // It runs out after a while, also under an open prompt, which then closes.
+    const reread = () => void pendingLogin(page.tabId).then((found) => found || setLogin(null))
+    chrome.storage.session.onChanged.addListener(reread)
+    return () => chrome.storage.session.onChanged.removeListener(reread)
+  }, [page.tabId])
+
+  // Already in the vault: the same account on this site, or the same password
+  // when the page asked for no username.
+  const known = useMemo(
+    () =>
+      !!login &&
+      (items ?? []).some(
+        (item) =>
+          item.type === 'login' &&
+          matchesSite(item.secret?.url, login.url) &&
+          (item.secret?.password === login.password ||
+            (login.username !== '' && item.secret?.username === login.username))
+      ),
+    [items, login]
+  )
+
+  const ready = !!login && items !== null && !known && !saved
+  useEffect(() => {
+    if (ready) shownAt.current = performance.now()
+  }, [ready])
+
+  useEffect(() => {
+    // Saved: the prompt says so, then closes by itself.
+    if (saved) return
+    // Nothing to ask about. A vault that could not be read is asked again on
+    // the next page, so the login is kept for it.
+    if (login === null || loadError) void toPage(page, { type: 'save:close' })
+    else if (known) void dismiss(page)
+  }, [login, loadError, known, saved, page])
+
+  const save = async (e: FormEvent) => {
+    e.preventDefault()
+    const { isTrusted, timeStamp } = e.nativeEvent
+    if (!login || !isTrusted || timeStamp - shownAt.current < SETTLE_MS) return
+    // A second submit while the first is still asking the page: one save.
+    if (saving.current) return
+    saving.current = true
+
+    try {
+      if ((await toPage(page, { type: 'save:check' })) !== true) return
+
+      setBusy(true)
+      setError('')
+      try {
+        // The tab's own icon, when it still shows the site the login is for.
+        const tab = await chrome.tabs.get(page.tabId)
+        const hint = hostOf(tab.url) === hostOf(login.url) ? tab.favIconUrl : undefined
+        const encrypted = await encryptNewItem(keys, {
+          name: hostOf(login.url) ?? login.url,
+          username,
+          password: login.password,
+          url: login.url,
+          icon: await fetchIcon(login.url, hint),
+        })
+        await createItem({ type: 'login', ...encrypted })
+        setSaved(true)
+        await clearPendingLogin(page.tabId)
+        setTimeout(() => void toPage(page, { type: 'save:close' }), 1200)
+      } catch (err) {
+        if (err instanceof SignedOutError) {
+          onLocked()
+          return
+        }
+        setError(err instanceof Error ? err.message : 'Could not save the login')
+      } finally {
+        setBusy(false)
+      }
+    } finally {
+      saving.current = false
+    }
+  }
+
+  if (saved) return <p className="inline-note">Saved to Montara Pass.</p>
+  if (!ready) return null
+
+  return (
+    <form className="inline-note stack" onSubmit={(e) => void save(e)}>
+      <p>
+        <strong>Save this login?</strong>
+        <br />
+        <span className="muted">{hostOf(login.url)}</span>
+      </p>
+
+      <label>
+        Username
+        <input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="off" />
+      </label>
+
+      <label>
+        Password
+        <div className="row">
+          <input type={showPassword ? 'text' : 'password'} value={login.password} readOnly />
+          <button type="button" className="link" onClick={() => setShowPassword((v) => !v)}>
+            {showPassword ? 'Hide' : 'Show'}
+          </button>
+        </div>
+      </label>
+
+      {error && <p className="error">{error}</p>}
+
+      <div className="row">
+        <button type="submit" disabled={busy}>
+          {busy ? 'Saving…' : 'Save'}
+        </button>
+        <button type="button" className="link" onClick={() => void dismiss(page)}>
+          Not now
+        </button>
+      </div>
+    </form>
+  )
+}
+
 function Inline() {
   const [page, setPage] = useState<Page | null>(null)
   // undefined while the session is being read.
   const [keys, setKeys] = useState<VaultKeys | null | undefined>(undefined)
+
+  // undefined while the settings are being read.
+  const [suggesting, setSuggesting] = useState<boolean | undefined>(NEW ? undefined : false)
+
+  // Not on Montara Pass itself: the password chosen there is the master
+  // password, which the vault it unlocks cannot keep.
+  useEffect(() => {
+    if (!NEW || !page) return
+    void getSettings().then(({ apiUrl, appUrl }) => {
+      const origin = originOf(page.url)
+      setSuggesting(origin !== null && origin !== originOf(apiUrl) && origin !== originOf(appUrl))
+    })
+  }, [page])
+
+  useEffect(() => {
+    if (AUTO && page && keys && suggesting) void toPage(page, { type: 'inline:show' })
+  }, [page, keys, suggesting])
 
   const readVault = useCallback(() => {
     void loadVault()
@@ -134,7 +409,7 @@ function Inline() {
 
     const observer = new ResizeObserver(() => {
       const height = Math.ceil(document.body.getBoundingClientRect().height)
-      void toPage(page, { type: 'inline:resize', height })
+      void toPage(page, { type: `${CHANNEL}:resize`, height })
     })
     observer.observe(document.body)
     return () => observer.disconnect()
@@ -144,11 +419,21 @@ function Inline() {
     if (!page) return
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') void toPage(page, { type: 'inline:close', refocus: true })
+      if (e.key !== 'Escape') return
+      if (SAVE) void dismiss(page)
+      else void toPage(page, { type: 'inline:close', refocus: true })
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [page])
+
+  // Locked: Unlock is worth offering to someone who is signed in.
+  useEffect(() => {
+    if (!AUTO || !page || keys !== null) return
+    void getTokens().then((tokens) =>
+      toPage(page, { type: tokens ? 'inline:show' : 'inline:quiet' })
+    )
+  }, [page, keys])
 
   const unlock = async () => {
     try {
@@ -159,7 +444,23 @@ function Inline() {
     }
   }
 
-  if (!page || keys === undefined) return null
+  if (!page || keys === undefined || suggesting === undefined) return null
+
+  if (SAVE) {
+    return keys ? (
+      <SaveLogin page={page} keys={keys} onLocked={() => setKeys(null)} />
+    ) : (
+      <div className="inline-note stack">
+        <p className="muted">Unlock Montara Pass to save this login.</p>
+        <div className="row">
+          <button onClick={() => void unlock()}>Unlock</button>
+          <button className="link" onClick={() => void dismiss(page)}>
+            Not now
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="inline">
@@ -176,8 +477,9 @@ function Inline() {
         </button>
       </header>
 
+      {keys && suggesting && <Suggestion page={page} />}
       {keys ? (
-        <Logins page={page} keys={keys} onLocked={() => setKeys(null)} />
+        <Logins page={page} keys={keys} suggesting={suggesting} onLocked={() => setKeys(null)} />
       ) : (
         <div className="inline-note stack">
           <p className="muted">Montara Pass is locked.</p>
