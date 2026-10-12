@@ -3,6 +3,26 @@
 All notable changes to this project are documented in this file. Versions follow the git tags (`v*`); Docker images are published to ghcr.io with the same version.
 
 
+## [1.4.0](https://github.com/montara-project/montara-pass/compare/v1.3.0...v1.4.0) (2026-10-12)
+
+### Features
+
+* **app,extension:** send an idempotency key with every write ([98ff599](https://github.com/montara-project/montara-pass/commit/98ff5999dedd272340e489d4dbf24c2af349a396))
+* **extension:** offer to save a login as it is submitted ([949ea5e](https://github.com/montara-project/montara-pass/commit/949ea5ec93269f1cec91fa10d7deb324896c467e))
+* **extension:** suggest a generated password on sign-up forms ([929ed2d](https://github.com/montara-project/montara-pass/commit/929ed2da48b0b0220368b7c0139da12c4cba7283))
+* **server:** run a write once when it carries an Idempotency-Key ([1ce0cfb](https://github.com/montara-project/montara-pass/commit/1ce0cfb12a13c2d8e5f38cdf48725cf348329a19))
+* **server:** share rate limits and idempotency keys through Redis ([b43e623](https://github.com/montara-project/montara-pass/commit/b43e62330245cd3f77f401d2f0861906cfeb596b))
+
+### Bug Fixes
+
+* **app:** lock the vault after 15 idle minutes and refuse short public keys ([22f0a42](https://github.com/montara-project/montara-pass/commit/22f0a422807eeab11fd84fe2c059833d9ee9035f))
+* **app:** lock the vault when a click arrives after the deadline ([c60d88b](https://github.com/montara-project/montara-pass/commit/c60d88b571dccce08a21c648506b7a151fdd2e95))
+* **extension:** expire a pending login under an open save prompt ([2766278](https://github.com/montara-project/montara-pass/commit/27662783b2100812d711c9a6f80b7c8324db064e))
+* **extension:** ignore synthetic key events and plain http pages ([6078aa8](https://github.com/montara-project/montara-pass/commit/6078aa813eab03880bb0273f3f514c27a22620d2))
+* **extension:** open the inline menu when a login field is entered ([73fe601](https://github.com/montara-project/montara-pass/commit/73fe6018b5a381f4b52a9f2ec1f0e1750e086906))
+* **server:** keep one idempotency lock token per holder ([6874496](https://github.com/montara-project/montara-pass/commit/6874496abf9a61195950be3b354ffd811d10b486))
+* **server:** refuse unverified emails and harden rate limits and headers ([f4bf6e7](https://github.com/montara-project/montara-pass/commit/f4bf6e794cde922ff859627b28ede72f6f9ea8ea))
+
 ## [1.3.0](https://github.com/montara-project/montara-pass/compare/v1.2.0...v1.3.0) (2026-10-11)
 
 ### Features
