@@ -28,7 +28,16 @@ let lockAt = 0
 
 function restartAutoLock() {
   clearTimeout(autoLock)
-  if (!useVaultStore.getState().keys) return
+  if (!useVaultStore.getState().keys) {
+    lockAt = 0
+    return
+  }
+  // The deadline passed while the timer could not run (the computer slept):
+  // the click that would push it back locks the vault instead.
+  if (lockAt !== 0 && Date.now() >= lockAt) {
+    useVaultStore.getState().lock()
+    return
+  }
 
   lockAt = Date.now() + AUTO_LOCK_MINUTES * 60_000
   autoLock = setTimeout(() => useVaultStore.getState().lock(), AUTO_LOCK_MINUTES * 60_000)
