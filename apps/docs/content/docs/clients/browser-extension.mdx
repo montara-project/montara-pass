@@ -90,10 +90,12 @@ looks for login fields on every page.
 
 ## The inline menu
 
-The extension puts a badge inside the focused login field. Clicking it, or
-pressing <kbd>Alt</kbd>+<kbd>↓</kbd> in
-the field, opens a menu under the field with the logins saved for that site;
-picking one fills the form.
+The extension puts a badge inside the focused login field. Entering an empty
+login field opens a menu under it with the logins saved for that site;
+picking one fills the form. The menu stays away when the site has no saved
+login or nobody is signed in, and closes on typing. <kbd>Esc</kbd> closes it
+for the rest of the page. The badge, or <kbd>Alt</kbd>+<kbd>↓</kbd> in the
+field, opens it at any time.
 
 It is always on, which is why the extension asks for access to every site
 when it is installed: a content script runs on each page to find its login
@@ -110,7 +112,8 @@ the same way the popup does. The frame learns which site it is on from the
 browser's record of its tab, not from the page.
 
 A field gets the badge when it is a password field, a text field in a form
-that has one, or a field marked `autocomplete="username"`.
+that has one, or a field that takes a username or an email going by its
+type, `autocomplete`, `name` or `id`.
 
 <Callout title="Clicks a page tries to borrow" type="info">
   Before filling, the menu checks that it is fully opaque, on top of the page

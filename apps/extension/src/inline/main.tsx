@@ -20,6 +20,7 @@ import { fillLogin } from '../lib/autofill'
 import { fetchIcon } from '../lib/icon'
 import { clearPendingLogin, loadVault, pendingLogin, type PendingLogin } from '../lib/session'
 import { hostOf, matchesSite } from '../lib/site'
+import { getTokens } from '../lib/storage'
 import { lastUsedLabel } from '../lib/usage'
 import { ExpandIcon } from '../popup/icons'
 import { ItemTile } from '../popup/item-tile'
@@ -35,6 +36,11 @@ import { useVaultItems } from '../popup/use-vault-items'
 document.documentElement.dataset.view = 'inline'
 
 const SAVE = window.location.hash === '#save'
+/**
+ * Opened by the focus alone (inline.html#auto): the frame is out of sight
+ * until the menu asks to be shown, and goes away when it has no login to offer.
+ */
+const AUTO = window.location.hash === '#auto'
 /** The content script tells its two frames apart by the prefix. */
 const CHANNEL = SAVE ? 'save' : 'inline'
 
@@ -82,6 +88,12 @@ function Logins({ page, keys, onLocked }: { page: Page; keys: VaultKeys; onLocke
     window.addEventListener('focus', focusFirst)
     return () => window.removeEventListener('focus', focusFirst)
   }, [matches])
+
+  useEffect(() => {
+    if (!AUTO) return
+    if (matches.length > 0) void toPage(page, { type: 'inline:show' })
+    else if (error || items !== null) void toPage(page, { type: 'inline:quiet' })
+  }, [page, matches, items, error])
 
   const fill = async (item: VaultItem, click: Event) => {
     if (!click.isTrusted || click.timeStamp - openedAt < SETTLE_MS || !item.secret) return
@@ -302,6 +314,14 @@ function Inline() {
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [page])
+
+  // Locked: Unlock is worth offering to someone who is signed in.
+  useEffect(() => {
+    if (!AUTO || !page || keys !== null) return
+    void getTokens().then((tokens) =>
+      toPage(page, { type: tokens ? 'inline:show' : 'inline:quiet' })
+    )
+  }, [page, keys])
 
   const unlock = async () => {
     try {

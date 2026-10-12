@@ -18,6 +18,8 @@
   let field: HTMLInputElement | null = null
   let frame: HTMLIFrameElement | null = null
   let frameHeight = 56
+  /** The menu was turned down on this page: it no longer opens by itself. */
+  let dismissed = false
   let saveFrame: HTMLIFrameElement | null = null
   let watch = 0
 
@@ -79,14 +81,18 @@
 
   /**
    * A password field, or the text field that goes with one: in the same form,
-   * or anywhere on a page without forms. A field marked autocomplete=username
-   * counts on its own, for sign-ins that ask for the password on a second step.
+   * or anywhere on a page without forms. A field that says it takes a
+   * username or an email counts on its own, for sign-ins that ask for the
+   * password on a second step.
    */
+  // ponytail: by name alone, so a newsletter box on a site with a saved login
+  // counts too. Tell them apart by the form around the field if that annoys.
   const isLoginField = (target: EventTarget | null): target is HTMLInputElement => {
     if (!(target instanceof HTMLInputElement) || !usable(target)) return false
     if (target.type === 'password') return true
     if (!['text', 'email', 'tel'].includes(target.type)) return false
-    if (target.autocomplete === 'username') return true
+    if (target.type === 'email' || /user|email|login/i.test(target.autocomplete)) return true
+    if (/user|email|login/i.test(`${target.name} ${target.id}`)) return true
 
     const scope: ParentNode = target.form ?? document
     return Array.from(scope.querySelectorAll<HTMLInputElement>('input[type="password"]')).some(
@@ -143,6 +149,8 @@
     badge.hidden = false
     raise()
     place()
+    // The logins for the site, offered as soon as an empty field is entered.
+    if (!el.value && !dismissed) open(true)
   }
 
   const close = () => {
@@ -159,12 +167,16 @@
     if (!saveFrame) host.remove()
   }
 
-  const open = () => {
+  /** @param auto opened by the focus alone, not by the badge or the keyboard */
+  const open = (auto = false) => {
     if (frame || !field) return
 
     frame = document.createElement('iframe')
-    frame.src = FRAME_URL
+    frame.src = auto ? `${FRAME_URL}#auto` : FRAME_URL
     frame.title = 'Montara Pass'
+    // Nobody asked for it, so it stays out of sight until the menu says it
+    // has a login to offer. Transparent rather than empty: see offerSave.
+    if (auto) frame.style.cssText = 'opacity: 0; pointer-events: none'
     shadow.append(frame)
     raise()
     place()
@@ -280,7 +292,12 @@
 
   // The badge must not take the focus from the field it belongs to.
   badge.addEventListener('mousedown', (e) => e.preventDefault())
-  badge.addEventListener('click', () => (frame ? close() : open()))
+  badge.addEventListener('click', () => {
+    // An unasked menu that has nothing to show yet makes way for a real one.
+    if (frame && frame.style.opacity !== '0') return close()
+    close()
+    open()
+  })
 
   document.addEventListener(
     'focusin',
@@ -293,10 +310,10 @@
   document.addEventListener(
     'focusout',
     () => {
-      // Once the focus has settled: an open menu keeps the badge, since using
-      // the menu is what moved the focus.
+      // Once the focus has settled. Inside the menu it keeps the badge, since
+      // using the menu is what moved it there.
       setTimeout(() => {
-        if (!frame && document.activeElement !== field) hide()
+        if (document.activeElement !== field && document.activeElement !== host) hide()
       })
     },
     true
@@ -316,15 +333,22 @@
       // A page can dispatch key events of its own.
       if (!e.isTrusted) return
       if (e.key === 'Enter' && e.target instanceof HTMLInputElement) capture()
-      if (e.key === 'Escape' && frame) close()
+      if (e.key === 'Escape' && frame) {
+        dismissed = true
+        close()
+      }
       if (e.key === 'ArrowDown' && e.altKey && field && e.target === field) {
         e.preventDefault()
+        close()
         open()
         frame?.addEventListener('load', () => frame?.focus(), { once: true })
       }
     },
     true
   )
+
+  // Typing a login by hand: the menu would only be in the way.
+  document.addEventListener('input', (e) => e.isTrusted && e.target === field && close(), true)
 
   window.addEventListener('scroll', place, { capture: true, passive: true })
   window.addEventListener('resize', place)
@@ -353,8 +377,17 @@
         frameHeight = clamp(Number(message.height) || 0, 40, MAX_HEIGHT)
         place()
         break
+      case 'inline:show':
+        if (frame) frame.style.opacity = frame.style.pointerEvents = ''
+        break
+      // Nothing to offer after all: the badge stays for whoever wants to look.
+      case 'inline:quiet':
+        close()
+        if (document.activeElement !== field) hide()
+        break
       case 'inline:close': {
         const last = field
+        dismissed = true
         hide()
         if (message.refocus) last?.focus()
         break
