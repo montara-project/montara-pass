@@ -54,6 +54,11 @@ export async function pendingLogin(tabId: number): Promise<PendingLogin | null> 
   return (stored[pendingKey(tabId)] as PendingLogin | undefined) ?? null
 }
 
+/** Hold a login for the save prompt, as the background script does. */
+export async function storePendingLogin(tabId: number, login: PendingLogin): Promise<void> {
+  await chrome.storage.session.set({ [pendingKey(tabId)]: { ...login, at: Date.now() } })
+}
+
 export async function clearPendingLogin(tabId: number): Promise<void> {
   await chrome.storage.session.remove(pendingKey(tabId))
 }

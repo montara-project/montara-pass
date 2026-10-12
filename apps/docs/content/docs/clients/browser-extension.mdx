@@ -111,6 +111,16 @@ content script never receives a password from the vault: the frame fills the for
 the same way the popup does. The frame learns which site it is on from the
 browser's record of its tab, not from the page.
 
+In a password field that is choosing a password, the menu also offers a
+generated one, with a button to draw another. Picking it fills the password
+and its confirmation, and keeps it for the
+[save prompt](#saving-a-login-as-it-is-submitted) straight away, so it is
+not lost if the form is sent in a way the extension does not notice. A field
+counts when it is marked `autocomplete="new-password"`, comes with a second
+password field, or sits in a form or at an address that reads like a
+sign-up. Nothing is suggested on Montara Pass itself, where the password
+being chosen is the master password, or while the vault is locked.
+
 A field gets the badge when it is a password field, a text field in a form
 that has one, or a field that takes a username or an email going by its
 type, `autocomplete`, `name` or `id`.

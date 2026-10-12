@@ -1,4 +1,41 @@
 /**
+ * Fill the new-password fields of a sign-up form. Serialized and run inside
+ * the page like fillLogin, so it is self-contained too.
+ *
+ * @returns how many fields were filled
+ */
+export function fillNewPassword(password: string): number {
+  const usable = (el: HTMLInputElement) => {
+    const style = getComputedStyle(el)
+    return (
+      !el.disabled &&
+      !el.readOnly &&
+      style.visibility !== 'hidden' &&
+      style.display !== 'none' &&
+      el.getClientRects().length > 0
+    )
+  }
+
+  const passwords = Array.from(
+    document.querySelectorAll<HTMLInputElement>('input[type="password"]')
+  ).filter((el) => usable(el) && el.autocomplete !== 'current-password')
+  const marked = passwords.filter((el) => el.autocomplete === 'new-password')
+  // The password and its confirmation. Three unmarked fields are a change of
+  // password, which asks for the old one first.
+  // ponytail: by position; a page with a sign-in and a sign-up form side by
+  // side gets both filled. Fill only the focused field's form if that shows up.
+  const targets = marked.length > 0 ? marked : passwords.slice(passwords.length > 2 ? 1 : 0)
+
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+  for (const el of targets) {
+    setter?.call(el, password)
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+    el.dispatchEvent(new Event('change', { bubbles: true }))
+  }
+  return targets.length
+}
+
+/**
  * Fill the login form of the current page. This function is serialized and
  * run inside the page by chrome.scripting, so it must stay self-contained:
  * no imports and no outer variables.

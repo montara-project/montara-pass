@@ -100,6 +100,26 @@
     )
   }
 
+  const SIGN_UP = /sign.?up|regist|join|creat|daftar|new.?(user|account)/i
+
+  /**
+   * A password field that is choosing a password rather than giving one: it
+   * says so, it comes with a field to repeat it, or the form or the address
+   * reads like a sign-up. The menu then offers a generated one.
+   */
+  const isNewPassword = (el: HTMLInputElement) => {
+    if (el.type !== 'password' || el.autocomplete === 'current-password') return false
+    if (el.autocomplete === 'new-password') return true
+
+    const scope: ParentNode = el.form ?? document
+    const passwords = scope.querySelectorAll<HTMLInputElement>('input[type="password"]')
+    if (Array.from(passwords).filter(usable).length > 1) return true
+
+    // getAttribute: a field named "id" or "action" hides the form's own.
+    const form = ['id', 'name', 'action'].map((name) => el.form?.getAttribute(name) ?? '')
+    return SIGN_UP.test(`${location.pathname} ${form.join(' ')}`)
+  }
+
   const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max))
 
   const place = () => {
@@ -172,7 +192,8 @@
     if (frame || !field) return
 
     frame = document.createElement('iframe')
-    frame.src = auto ? `${FRAME_URL}#auto` : FRAME_URL
+    const flags = [auto && 'auto', isNewPassword(field) && 'new'].filter(Boolean)
+    frame.src = `${FRAME_URL}#${flags.join(',')}`
     frame.title = 'Montara Pass'
     // Nobody asked for it, so it stays out of sight until the menu says it
     // has a login to offer. Transparent rather than empty: see offerSave.
