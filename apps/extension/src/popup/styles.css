@@ -362,11 +362,22 @@ a.icon-button {
   background: var(--field);
   color: var(--muted);
   cursor: text;
+  transition:
+    border-color 120ms ease-out,
+    box-shadow 120ms ease-out;
 }
 
+/* Focus is here every time the popup opens, so it is shown on the box
+   itself rather than as a second ring around it. */
 .search:focus-within {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 1px var(--focus);
+  color: var(--fg);
+}
+
+.search input::-webkit-search-cancel-button {
+  cursor: pointer;
+  opacity: 0.6;
 }
 
 .search input {
@@ -387,10 +398,15 @@ a.icon-button {
   background: var(--panel);
 }
 
-.panel > .notice,
-.panel > .error,
-.panel > .empty {
+.panel > .error {
   padding: 0 12px 12px;
+}
+
+/* Nothing to list: said in the middle of where the list would be. */
+.panel > .empty {
+  padding: 56px 24px;
+  text-align: center;
+  text-wrap: balance;
 }
 
 .share-grid {
@@ -439,9 +455,21 @@ a.icon-button {
   background: var(--hover);
 }
 
+/* Above the list: how it is ordered, and how much of it there is. */
+.list-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 12px 4px 4px;
+}
+
+.list-count {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
 .sort {
   height: 32px;
-  margin: 0 0 4px 4px;
   padding: 0 8px;
   background: none;
   color: var(--muted);
@@ -601,6 +629,7 @@ a.icon-button {
 .item-name {
   font-size: 15px;
   font-weight: 500;
+  letter-spacing: -0.005em;
 }
 
 .item-text .muted {
@@ -619,6 +648,7 @@ a.icon-button {
 .full-screen {
   height: 36px;
   padding: 0 14px;
+  font-weight: 500;
 }
 
 .spin {
@@ -1865,6 +1895,14 @@ select:disabled {
   background: var(--card);
   box-shadow: var(--shadow);
   font-weight: 500;
+}
+
+/* In the popup it clears the bar along the bottom. */
+:root:not([data-view='full']) .toast {
+  bottom: 68px;
+  max-width: calc(100% - 32px);
+  font-size: 13px;
+  text-align: center;
 }
 
 /* A narrow window: the sidebar becomes a strip of filters, and the list and

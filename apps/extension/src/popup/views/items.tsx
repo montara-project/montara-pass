@@ -70,6 +70,13 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
   const [tab, setTab] = useState<chrome.tabs.Tab | null>(null)
   const [search, setSearch] = useState('')
   const [notice, setNotice] = useState('')
+
+  // A notice says what just happened, then gets out of the way.
+  useEffect(() => {
+    if (!notice) return
+    const timer = setTimeout(() => setNotice(''), 2500)
+    return () => clearTimeout(timer)
+  }, [notice])
   const [adding, setAdding] = useState(false)
   const [sort, setSort] = useState<Sort>('name')
   const [refreshing, setRefreshing] = useState(false)
@@ -258,6 +265,13 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
   const place = (item: VaultItem, folderId: string | null, done: string) =>
     act(() => setItemPlacement(item.id, { folder_id: folderId, favorite: item.favorite }), done)
 
+  // Over the list rather than in it, so the rows do not jump when it comes and goes.
+  const toast = notice && (
+    <p className="toast" role="status">
+      {notice}
+    </p>
+  )
+
   const subItem = sub && items?.find((item) => item.id === sub.id)
   if (sub && subItem) {
     const back = (said?: string) => {
@@ -267,6 +281,7 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
 
     return (
       <div className="vault-sub">
+        {toast}
         <button className="link back" onClick={() => back()}>
           <ArrowLeftIcon width={18} height={18} />
           All items
@@ -367,11 +382,6 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
 
       {/* The menu hangs from a place on the screen, so the list must not move under it. */}
       <main className="panel" onScroll={() => rowMenu && setRowMenu(null)}>
-        {notice && (
-          <p className="notice" role="status">
-            {notice}
-          </p>
-        )}
         {error && (
           <p className="error" role="alert">
             {error}
@@ -408,13 +418,20 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
           </section>
         )}
 
-        <button
-          className="sort"
-          onClick={() => setSort((current) => (current === 'name' ? 'updated' : 'name'))}
-        >
-          {SORT_LABEL[sort]}
-          <SortIcon width={16} height={16} />
-        </button>
+        <div className="list-bar">
+          <button
+            className="sort"
+            onClick={() => setSort((current) => (current === 'name' ? 'updated' : 'name'))}
+          >
+            {SORT_LABEL[sort]}
+            <SortIcon width={16} height={16} />
+          </button>
+          {visible.length > 0 && (
+            <span className="muted list-count">
+              {visible.length} {visible.length === 1 ? 'item' : 'items'}
+            </span>
+          )}
+        </div>
 
         {items === null && !error && <p className="muted empty">Decrypting…</p>}
 
@@ -619,6 +636,8 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
         </div>
       )}
 
+      {toast}
+
       <footer className="bottombar">
         <button className="icon-button" aria-label="Settings" title="Settings" onClick={onSettings}>
           <SettingsIcon />
@@ -643,7 +662,7 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
 
         <span className="spacer" />
 
-        <button className="full-screen" onClick={() => void handleFullScreen()}>
+        <button className="secondary full-screen" onClick={() => void handleFullScreen()}>
           <ExpandIcon width={18} height={18} />
           Full screen
         </button>
