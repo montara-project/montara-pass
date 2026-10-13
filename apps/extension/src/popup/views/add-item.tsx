@@ -1,13 +1,13 @@
-import { useState, type FormEvent } from 'react'
+import { useState } from 'react'
 
 import { encryptNewItem, type VaultKeys } from '@/lib/crypto/vault'
-import { generatePassword } from '@/lib/password'
 
 import { createItem, SignedOutError } from '../../lib/api'
 import { fetchIcon } from '../../lib/icon'
+import { AddLoginFormSchema, type AddLoginFormDto } from '../../lib/schemas'
 import { hostOf } from '../../lib/site'
-import { ArrowLeftIcon, EyeIcon, EyeOffIcon } from '../icons'
-import { Field } from './item-form'
+import { checked, useAppForm } from '../form'
+import { ArrowLeftIcon } from '../icons'
 
 interface AddItemProps {
   keys: VaultKeys
@@ -22,41 +22,45 @@ interface AddItemProps {
 export default function AddItem({ keys, tab, onSaved, onCancel, onSignedOut }: AddItemProps) {
   const host = hostOf(tab?.url)
 
-  const [name, setName] = useState(host ?? '')
-  const [url, setUrl] = useState(host && tab?.url ? new URL(tab.url).origin : '')
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
+  // What saving said, as opposed to what the fields say about themselves.
   const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    setBusy(true)
-    setError('')
-
-    try {
-      // The tab's own icon, when the login is for the site it shows.
-      const hint = hostOf(url) === host ? tab?.favIconUrl : undefined
-      const encrypted = await encryptNewItem(keys, {
-        name: name.trim(),
-        username,
-        password,
-        url,
-        icon: await fetchIcon(url, hint),
-      })
-      await createItem({ type: 'login', ...encrypted })
-      onSaved()
-    } catch (err) {
-      if (err instanceof SignedOutError) {
-        onSignedOut()
-        return
-      }
-      setError(err instanceof Error ? err.message : 'Could not save the login')
-    } finally {
-      setBusy(false)
-    }
+  const defaultValues: AddLoginFormDto = {
+    name: host ?? '',
+    url: host && tab?.url ? new URL(tab.url).origin : '',
+    username: '',
+    password: '',
   }
+
+  const form = useAppForm({
+    defaultValues,
+    validationLogic: checked,
+    validators: { onDynamic: AddLoginFormSchema },
+    onSubmit: async ({ value }) => {
+      setError('')
+
+      try {
+        const { name, url, username, password } = AddLoginFormSchema.parse(value)
+        // The tab's own icon, when the login is for the site it shows.
+        const hint = hostOf(url) === host ? tab?.favIconUrl : undefined
+        const encrypted = await encryptNewItem(keys, {
+          name,
+          username,
+          password,
+          url,
+          icon: await fetchIcon(url, hint),
+        })
+        await createItem({ type: 'login', ...encrypted })
+        onSaved()
+      } catch (err) {
+        if (err instanceof SignedOutError) {
+          onSignedOut()
+          return
+        }
+        setError(err instanceof Error ? err.message : 'Could not save the login')
+      }
+    },
+  })
 
   return (
     <div className="vault-sub">
@@ -65,87 +69,67 @@ export default function AddItem({ keys, tab, onSaved, onCancel, onSignedOut }: A
         All items
       </button>
 
-      <form className="stack detail-body" onSubmit={(e) => void handleSubmit(e)}>
+      <form
+        className="stack detail-body"
+        noValidate
+        onSubmit={(e) => {
+          e.preventDefault()
+          void form.handleSubmit()
+        }}
+      >
         <header>
           <h1 className="detail-title">Add login</h1>
           <p className="muted">Encrypted in your browser before it is saved.</p>
         </header>
 
-        <Field label="Name" required>
-          {(props) => (
-            <input
-              {...props}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+        <form.AppField
+          name="name"
+          children={(field) => (
+            <field.TextField
+              label="Name"
+              required
               placeholder="e.g. Work email"
               // Named after the site already: the account is what is left to type.
               autoFocus={!host}
-              required
             />
           )}
-        </Field>
+        />
 
-        <Field label="URL">
-          {(props) => (
-            <input
-              {...props}
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
+        <form.AppField
+          name="url"
+          children={(field) => (
+            <field.TextField
+              label="URL"
               placeholder="https://example.com"
               inputMode="url"
               autoComplete="off"
             />
           )}
-        </Field>
+        />
 
-        <Field label="Username">
-          {(props) => (
-            <input
-              {...props}
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+        <form.AppField
+          name="username"
+          children={(field) => (
+            <field.TextField
+              label="Username"
               placeholder="username or email"
               autoComplete="off"
               autoFocus={!!host}
             />
           )}
-        </Field>
+        />
 
-        <Field label="Password">
-          {(props) => (
-            <div className="row">
-              <div className="password-box">
-                <input
-                  {...props}
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="password"
-                  autoComplete="off"
-                />
-                <button
-                  type="button"
-                  className="icon-button"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  aria-pressed={showPassword}
-                  onClick={() => setShowPassword((shown) => !shown)}
-                >
-                  {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                </button>
-              </div>
-              <button
-                type="button"
-                className="secondary"
-                onClick={() => {
-                  setPassword(generatePassword())
-                  setShowPassword(true)
-                }}
-              >
-                Generate
-              </button>
-            </div>
+        <form.AppField
+          name="password"
+          children={(field) => (
+            <field.PasswordField
+              label="Password"
+              placeholder="password"
+              autoComplete="off"
+              generate
+            />
           )}
-        </Field>
+        />
 
         {error && (
           <p className="error" role="alert">
@@ -157,9 +141,9 @@ export default function AddItem({ keys, tab, onSaved, onCancel, onSignedOut }: A
           <button type="button" className="secondary" onClick={onCancel}>
             Cancel
           </button>
-          <button type="submit" disabled={busy}>
-            {busy ? 'Saving…' : 'Save'}
-          </button>
+          <form.AppForm>
+            <form.SubmitButton label="Save" busyLabel="Saving…" />
+          </form.AppForm>
         </div>
       </form>
     </div>

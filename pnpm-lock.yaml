@@ -181,6 +181,9 @@ importers:
 
   apps/extension:
     dependencies:
+      '@tanstack/react-form':
+        specifier: 1.33.5
+        version: 1.33.5(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       react:
         specifier: 19.3.0
         version: 19.3.0
@@ -190,6 +193,9 @@ importers:
       tldts:
         specifier: 7.4.18
         version: 7.4.18
+      zod:
+        specifier: 4.6.5
+        version: 4.6.5
     devDependencies:
       '@types/chrome':
         specifier: 0.3.4

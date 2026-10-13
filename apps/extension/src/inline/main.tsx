@@ -1,14 +1,6 @@
 import '../popup/styles.css'
 
-import {
-  StrictMode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type FormEvent,
-} from 'react'
+import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 
 import type { VaultItem } from '@/types/vault'
@@ -27,6 +19,7 @@ import {
   rpIdFor,
   type PasskeyRequest,
 } from '../lib/passkey'
+import { SaveLoginFormSchema, type SaveLoginFormDto } from '../lib/schemas'
 import {
   clearPendingLogin,
   loadVault,
@@ -37,6 +30,7 @@ import {
 import { fillsSite, hostOf, matchesSite, originOf } from '../lib/site'
 import { getSettings, getTokens } from '../lib/storage'
 import { lastUsedLabel } from '../lib/usage'
+import { checked, useAppForm } from '../popup/form'
 import { CloseIcon, ExpandIcon, KeyIcon, RefreshIcon } from '../popup/icons'
 import { ItemTile } from '../popup/item-tile'
 import { openFullScreen } from '../popup/layout'
@@ -296,19 +290,58 @@ function SaveLogin({
   const { items, error: loadError } = useVaultItems(keys, onLocked)
   // undefined while it is being read.
   const [login, setLogin] = useState<PendingLogin | null | undefined>(undefined)
-  const [username, setUsername] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
   const shownAt = useRef(Infinity)
   const saving = useRef(false)
 
+  // The username the page sent, once it has been read: it can be put right.
+  const defaultValues: SaveLoginFormDto = { username: login?.username ?? '' }
+
+  const form = useAppForm({
+    defaultValues,
+    validationLogic: checked,
+    validators: { onDynamic: SaveLoginFormSchema },
+    onSubmit: async ({ value }) => {
+      // A second submit while the first is still asking the page: one save.
+      if (!login || saving.current) return
+      saving.current = true
+
+      try {
+        if ((await toPage(page, { type: 'save:check' })) !== true) return
+
+        setError('')
+        try {
+          // The tab's own icon, when it still shows the site the login is for.
+          const tab = await chrome.tabs.get(page.tabId)
+          const hint = hostOf(tab.url) === hostOf(login.url) ? tab.favIconUrl : undefined
+          const encrypted = await encryptNewItem(keys, {
+            name: hostOf(login.url) ?? login.url,
+            username: value.username ?? '',
+            password: login.password,
+            url: login.url,
+            icon: await fetchIcon(login.url, hint),
+          })
+          await createItem({ type: 'login', ...encrypted })
+          setSaved(true)
+          await clearPendingLogin(page.tabId)
+          setTimeout(() => void toPage(page, { type: 'save:close' }), 1200)
+        } catch (err) {
+          if (err instanceof SignedOutError) {
+            onLocked()
+            return
+          }
+          setError(err instanceof Error ? err.message : 'Could not save the login')
+        }
+      } finally {
+        saving.current = false
+      }
+    },
+  })
+
   useEffect(() => {
-    void pendingLogin(page.tabId).then((found) => {
-      setLogin(found)
-      setUsername(found?.username ?? '')
-    })
+    void pendingLogin(page.tabId).then(setLogin)
 
     // It runs out after a while, also under an open prompt, which then closes.
     const reread = () => void pendingLogin(page.tabId).then((found) => found || setLogin(null))
@@ -348,63 +381,32 @@ function SaveLogin({
     else if (known) void dismiss(page)
   }, [login, loadError, known, saved, page])
 
-  const save = async (e: FormEvent) => {
-    e.preventDefault()
-    const { isTrusted, timeStamp } = e.nativeEvent
-    if (!login || !isTrusted || timeStamp - shownAt.current < SETTLE_MS) return
-    // A second submit while the first is still asking the page: one save.
-    if (saving.current) return
-    saving.current = true
-
-    try {
-      if ((await toPage(page, { type: 'save:check' })) !== true) return
-
-      setBusy(true)
-      setError('')
-      try {
-        // The tab's own icon, when it still shows the site the login is for.
-        const tab = await chrome.tabs.get(page.tabId)
-        const hint = hostOf(tab.url) === hostOf(login.url) ? tab.favIconUrl : undefined
-        const encrypted = await encryptNewItem(keys, {
-          name: hostOf(login.url) ?? login.url,
-          username,
-          password: login.password,
-          url: login.url,
-          icon: await fetchIcon(login.url, hint),
-        })
-        await createItem({ type: 'login', ...encrypted })
-        setSaved(true)
-        await clearPendingLogin(page.tabId)
-        setTimeout(() => void toPage(page, { type: 'save:close' }), 1200)
-      } catch (err) {
-        if (err instanceof SignedOutError) {
-          onLocked()
-          return
-        }
-        setError(err instanceof Error ? err.message : 'Could not save the login')
-      } finally {
-        setBusy(false)
-      }
-    } finally {
-      saving.current = false
-    }
-  }
+  /** A send the user made, once the prompt had been on screen long enough to be read. */
+  const meant = ({ isTrusted, timeStamp }: Event) =>
+    isTrusted && timeStamp - shownAt.current >= SETTLE_MS
 
   if (saved) return <p className="inline-note">Saved to Montara Pass.</p>
   if (!ready) return null
 
   return (
-    <form className="inline-note stack" onSubmit={(e) => void save(e)}>
+    <form
+      className="inline-note stack"
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (meant(e.nativeEvent)) void form.handleSubmit()
+      }}
+    >
       <p>
         <strong>Save this login?</strong>
         <br />
         <span className="muted">{hostOf(login.url)}</span>
       </p>
 
-      <label>
-        Username
-        <input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="off" />
-      </label>
+      <form.AppField
+        name="username"
+        children={(field) => <field.TextField label="Username" autoComplete="off" />}
+      />
 
       <label>
         Password
@@ -419,9 +421,9 @@ function SaveLogin({
       {error && <p className="error">{error}</p>}
 
       <div className="row">
-        <button type="submit" disabled={busy}>
-          {busy ? 'Saving…' : 'Save'}
-        </button>
+        <form.AppForm>
+          <form.SubmitButton label="Save" busyLabel="Saving…" />
+        </form.AppForm>
         <button type="button" className="link" onClick={() => void dismiss(page)}>
           Not now
         </button>

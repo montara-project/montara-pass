@@ -162,6 +162,10 @@ create it in the web app first.
 - **Full screen** in the popup opens the vault in a tab: filters, the list and
   the selected item side by side, with reveal, copy, add, edit and share.
   Folders, and changing who has an item, stay in the web app.
+- Forms are TanStack Form, set up as its form composition guide has it
+  (`apps/extension/src/popup/form`): a view names its fields and picks a
+  bound component for each. They are checked with zod, by the web app's own
+  schemas where it has one and by `src/lib/schemas.ts` otherwise.
 - The build points at `https://app.montarapass.com`; Settings → Server →
   Self-hosted takes the URL of another server.
   `pnpm --filter @montara-pass/extension watch` builds against the local servers instead
