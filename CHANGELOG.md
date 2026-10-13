@@ -3,6 +3,16 @@
 All notable changes to this project are documented in this file. Versions follow the git tags (`v*`); Docker images are published to ghcr.io with the same version.
 
 
+## [1.6.0](https://github.com/montara-project/montara-pass/compare/v1.5.0...v1.6.0) (2026-10-13)
+
+### Features
+
+* **extension:** offer a site's logins in the corner of its sign-in page ([cd7b1f1](https://github.com/montara-project/montara-pass/commit/cd7b1f1e8e90079c4d64c43fc15ab6eefb5c1380))
+
+### Bug Fixes
+
+* **extension:** tie a sign-in field's error to its input ([617dbe6](https://github.com/montara-project/montara-pass/commit/617dbe646dc86655bcf9e90027c9550b10d728a1))
+
 ## [1.5.0](https://github.com/montara-project/montara-pass/compare/v1.4.0...v1.5.0) (2026-10-13)
 
 ### Features
