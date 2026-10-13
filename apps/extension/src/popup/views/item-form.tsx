@@ -233,7 +233,13 @@ export default function ItemForm({
   }
 
   return (
-    <form className="stack detail-body" noValidate onSubmit={(e) => void handleSubmit(e)}>
+    <form
+      className="stack detail-body"
+      // The stylesheet gives a secure note's editor the room a login's notes do not need.
+      data-type={value.type}
+      noValidate
+      onSubmit={(e) => void handleSubmit(e)}
+    >
       <header>
         <h2 className="detail-title">{item ? 'Edit Item' : 'Create Item'}</h2>
         <p className="muted">Encrypted in your browser before it is saved.</p>
@@ -368,7 +374,7 @@ export default function ItemForm({
       </div>
 
       {value.type === 'secure_note' && (
-        <label className="toggle">
+        <label className="toggle option">
           <input
             type="checkbox"
             role="switch"

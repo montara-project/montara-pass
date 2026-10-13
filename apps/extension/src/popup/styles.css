@@ -124,13 +124,14 @@ p {
 .toggle input {
   appearance: none;
   flex-shrink: 0;
-  width: 32px;
-  height: 18px;
-  margin: 1px 0 0;
+  width: 38px;
+  height: 22px;
+  margin: 0;
   padding: 2px;
   border: 0;
   border-radius: 999px;
-  background: var(--border);
+  /* Told apart from the surface it sits on, also when it is off. */
+  background: color-mix(in srgb, var(--fg) 26%, transparent);
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -138,8 +139,8 @@ p {
 .toggle input::before {
   content: '';
   display: block;
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: #fff;
   transition: translate 0.15s;
@@ -150,7 +151,7 @@ p {
 }
 
 .toggle input:checked::before {
-  translate: 14px;
+  translate: 16px;
 }
 
 input:disabled {
@@ -1083,28 +1084,6 @@ a.set-row:active {
   font-size: 13px;
 }
 
-/* The switch of a row: a little larger than in a form, and its track is
-   told apart from the card when it is off. */
-.set-row.toggle input {
-  width: 38px;
-  height: 22px;
-  margin: 0;
-  background: color-mix(in srgb, var(--fg) 26%, transparent);
-}
-
-.set-row.toggle input::before {
-  width: 18px;
-  height: 18px;
-}
-
-.set-row.toggle input:checked {
-  background: var(--primary);
-}
-
-.set-row.toggle input:checked::before {
-  translate: 16px;
-}
-
 @media (prefers-reduced-motion: reduce) {
   a.set-row,
   .set-row.toggle input,
@@ -1898,8 +1877,9 @@ button.notes-tool[aria-pressed='true'] {
 
 .notes-placeholder {
   position: absolute;
-  top: 10px;
-  left: 12px;
+  top: 12px;
+  left: 14px;
+  line-height: 1.6;
   color: var(--muted);
   pointer-events: none;
 }
@@ -1908,7 +1888,8 @@ button.notes-tool[aria-pressed='true'] {
   min-height: 130px;
   max-height: 320px;
   overflow-y: auto;
-  padding: 10px 12px;
+  padding: 12px 14px;
+  line-height: 1.6;
   border-radius: 0 0 10px 10px;
   font-weight: 400;
   overflow-wrap: anywhere;
@@ -1948,13 +1929,13 @@ button.notes-tool[aria-pressed='true'] {
   margin: 0 0 8px;
 }
 
-/* A note being read gets a reading rhythm: room between its blocks, more
-   above a heading than under it, and code set apart on the field's color. */
-.notes-view > * {
+/* A note gets a reading rhythm, written or read: room between its blocks
+   and more above a heading than under it. */
+.notes-content > * {
   margin-bottom: 12px;
 }
 
-.notes-view > :is(h1, h2, h3) {
+.notes-content > :is(h1, h2, h3) {
   margin: 20px 0 8px;
   font-weight: 600;
   line-height: 1.3;
@@ -1962,13 +1943,20 @@ button.notes-tool[aria-pressed='true'] {
   text-wrap: balance;
 }
 
-.notes-view > :first-child {
+.notes-content > :first-child {
   margin-top: 0;
 }
 
-.notes-view li + li {
+.notes-content li + li {
   margin-top: 4px;
 }
+
+.notes-content pre {
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+/* Being read, its code is set apart on the field's color. */
 
 .notes-content.notes-view code {
   background: var(--field);
@@ -2160,6 +2148,13 @@ textarea,
   .notes-editor {
     transition: none;
   }
+}
+
+/* A secure note is its notes: in a tab its editor takes the height the
+   window has to give, where a login's notes keep to a few lines. */
+.detail-col form[data-type='secure_note'] .notes-content {
+  min-height: 240px;
+  max-height: max(320px, calc(100vh - 470px));
 }
 
 /* In a tab, the form's heading stands a little apart from its fields, and
