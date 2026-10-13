@@ -715,7 +715,13 @@ a.icon-button {
   flex-direction: column;
   gap: 14px;
   min-height: 100%;
-  padding: 36px 28px 24px;
+  /* The mark sits a little low: with the account at the foot, the form
+     reads as the middle of the popup rather than its top. */
+  padding: 52px 28px 24px;
+}
+
+.auth ::selection {
+  background: color-mix(in srgb, var(--primary) 40%, transparent);
 }
 
 .auth-mark {
@@ -728,12 +734,21 @@ a.icon-button {
   margin: 8px 0 6px;
   font-size: 26px;
   font-weight: 700;
+  letter-spacing: -0.02em;
   text-align: center;
+  text-wrap: balance;
 }
 
 .auth-note {
   font-size: 13px;
   text-align: center;
+  /* No last line of two words. */
+  text-wrap: balance;
+}
+
+.auth .error {
+  padding: 0 2px;
+  font-size: 13px;
 }
 
 .auth-field {
@@ -745,11 +760,23 @@ a.icon-button {
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--card);
+  transition:
+    border-color 120ms ease-out,
+    box-shadow 120ms ease-out;
 }
 
+.auth-field:hover {
+  border-color: var(--muted);
+}
+
+.auth-field:has([aria-invalid='true']) {
+  border-color: var(--danger);
+}
+
+/* The same ring every other control gets, drawn on the box. */
 .auth-field:focus-within {
-  border-color: var(--fg);
-  box-shadow: 0 0 0 1px var(--fg);
+  border-color: var(--focus);
+  box-shadow: 0 0 0 1px var(--focus);
 }
 
 .auth-field-text {
@@ -773,6 +800,18 @@ a.icon-button {
   border-radius: 0;
   background: none;
   font-size: 15px;
+  transition:
+    filter 120ms ease-out,
+    scale 120ms ease-out;
+}
+
+.auth-submit:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.auth-submit:active:not(:disabled) {
+  filter: brightness(0.95);
+  scale: 0.99;
 }
 
 /* The box around it shows the focus. */
@@ -782,7 +821,6 @@ a.icon-button {
 
 .auth-field .icon-button {
   flex-shrink: 0;
-  color: var(--fg);
 }
 
 .auth-submit {
@@ -790,41 +828,77 @@ a.icon-button {
   margin-top: 6px;
   border-radius: 12px;
   font-size: 15px;
+  caret-color: var(--focus);
 }
 
 .auth-foot {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   margin-top: auto;
   padding-top: 24px;
 }
 
-.auth-foot .avatar {
+/* Whose vault this is: the picture and the address as one thing. */
+.auth-account {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 4px 14px 4px 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+}
+
+.auth-account .avatar {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  margin: 0 0 2px;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  font-size: 11px;
 }
 
 .auth-email {
-  max-width: 100%;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
 }
 
+/* The way out of the screen, kept quieter than the way through it. */
 button.auth-link {
   height: auto;
   padding: 4px 6px;
   background: none;
-  color: var(--fg);
+  color: var(--muted);
+  font-size: 13px;
   font-weight: 500;
   text-decoration: underline;
+  text-decoration-color: var(--border);
   text-underline-offset: 3px;
+}
+
+button.auth-link:hover {
+  color: var(--fg);
+  text-decoration-color: currentColor;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-field,
+  .auth-submit {
+    transition: none;
+  }
+
+  .auth-submit:active:not(:disabled) {
+    scale: none;
+  }
 }
 
 /* ---------- settings: sections of cards, a row to a setting ---------- */
