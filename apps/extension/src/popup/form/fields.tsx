@@ -257,6 +257,7 @@ export function AuthField({
   ...input
 }: { label: string; invalid?: boolean } & InputProps) {
   const id = useId()
+  const errorId = `${id}-error`
   const error = useFieldError()
   const [revealed, setRevealed] = useState(false)
   const secret = type === 'password'
@@ -271,6 +272,7 @@ export function AuthField({
             type={secret && revealed ? 'text' : type}
             // What the server or the vault refused marks the field as well.
             {...(invalid ? { 'aria-invalid': true } : {})}
+            {...(error ? { 'aria-describedby': errorId } : {})}
             {...input}
           />
         </div>
@@ -286,7 +288,11 @@ export function AuthField({
           </button>
         )}
       </div>
-      {error && <p className="error">{error}</p>}
+      {error && (
+        <p className="error" id={errorId}>
+          {error}
+        </p>
+      )}
     </>
   )
 }
