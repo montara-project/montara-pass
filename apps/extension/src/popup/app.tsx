@@ -80,7 +80,7 @@ export default function App() {
     setStage({ name: 'signed-out' })
   }
 
-  // In a tab, everything that is not the vault itself sits in a centered card.
+  // In a tab, the popup-sized forms sit in a centered card.
   const framed = (node: ReactNode) =>
     isFullScreen ? (
       <div className="full-center">
@@ -91,12 +91,21 @@ export default function App() {
     )
 
   if (showSettings) {
-    return framed(
+    const leaving = (act: () => Promise<void>) => () => {
+      setShowSettings(false)
+      void act()
+    }
+    // Signed in is every stage that got past the tokens.
+    const signedIn = ['no-vault', 'locked', 'unlocked'].includes(stage.name)
+
+    return (
       <Settings
         onClose={() => {
           setShowSettings(false)
           boot()
         }}
+        onLock={stage.name === 'unlocked' ? leaving(handleLock) : undefined}
+        onSignOut={signedIn ? leaving(handleSignOut) : undefined}
       />
     )
   }

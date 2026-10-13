@@ -741,7 +741,134 @@ button.auth-link {
   text-underline-offset: 3px;
 }
 
-/* Sign-in, unlock and settings, which are popup-sized forms, in a tab. */
+/* ---------- settings: sections of cards, a row to a setting ---------- */
+
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+:root[data-view='full'] .settings {
+  padding: 40px 24px;
+}
+
+.set-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.set-head h1 {
+  flex: 1;
+}
+
+.set-version {
+  font-size: 12px;
+}
+
+.set-section h2 {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.set-card {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+.set-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  min-height: 60px;
+  padding: 12px 16px;
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.set-row + .set-row {
+  border-top: 1px solid var(--border);
+}
+
+a.set-row:hover {
+  background: var(--hover);
+}
+
+a.set-row:focus-visible {
+  outline-offset: -2px;
+}
+
+a.set-row svg {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.set-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-weight: 500;
+}
+
+.set-text .muted,
+.set-text .error {
+  font-size: 13px;
+  font-weight: 400;
+  overflow-wrap: anywhere;
+}
+
+.set-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.set-value {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+/* A row with a field: beside its label where there is room, under it in the popup. */
+.set-field {
+  flex-wrap: wrap;
+}
+
+.set-field input {
+  flex: 1 1 240px;
+  max-width: 360px;
+}
+
+.set-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 24px;
+  padding-bottom: 8px;
+  font-size: 13px;
+}
+
+.set-foot a {
+  color: var(--muted);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.set-foot a:hover {
+  color: var(--fg);
+  text-decoration: underline;
+}
+
+/* Sign-in and unlock, which are popup-sized forms, in a tab. */
 .full-center {
   display: flex;
   min-height: 100%;
