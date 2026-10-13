@@ -2,6 +2,8 @@
 
 Hasil audit keamanan dan review kode `montara-pass`, diurutkan menurut tingkat keparahan.
 Diaudit pada 2026-10-11, branch `dev` (`b43e623`), versi 1.3.0.
+Audit lanjutan pada 2026-10-13, branch `feat/extension-passkeys` (`a7b4a30`), untuk
+`apps/extension` dan `apps/app`: menambah M-7, M-8, L-10 sampai L-13, dan bagian over-engineering.
 
 ## Ringkasan
 
@@ -9,8 +11,8 @@ Diaudit pada 2026-10-11, branch `dev` (`b43e623`), versi 1.3.0.
 | -------- | ------ | --------------------------------------------------------------------- |
 | Critical | 0      | Isi vault bisa dibaca tanpa syarat                                    |
 | High     | 2      | Rahasia bocor atau pertahanan utama bisa dilewati, dengan syarat ringan |
-| Medium   | 6      | Memperbesar dampak serangan lain, atau melemahkan klaim zero-knowledge |
-| Low      | 9      | Pengerasan dan kebersihan                                             |
+| Medium   | 8      | Memperbesar dampak serangan lain, atau melemahkan klaim zero-knowledge |
+| Low      | 13     | Pengerasan dan kebersihan                                             |
 
 Tidak ada SQL injection, IDOR, atau kebocoran plaintext yang ditemukan: semua query memakai
 bind parameter, setiap akses item lewat `item_members`, dan error 500 tidak membocorkan detail.
@@ -30,12 +32,18 @@ bind parameter, setiap akses item lewat `item_members`, dan error 500 tidak memb
 | L-1 | Terbuka | Butuh perubahan API dan klien |
 | L-2 | Terbuka | Butuh format cipher baru dan migrasi |
 | L-3 | Diperbaiki | Event sintetis diabaikan |
-| L-4 | Sebagian | Login https tidak lagi ditawarkan di halaman http (kecuali localhost). Public suffix list belum ada |
+| L-4 | Diperbaiki | Login https tidak lagi ditawarkan di halaman http (kecuali localhost). Sufiks publik (`tldts`) tidak lagi dianggap induk |
 | L-5 | Diperbaiki | Klien menolak public key di bawah 3072-bit |
 | L-6 | Diperbaiki | `GET /keys/public` dibatasi 20/menit per IP |
 | L-7 | Terbuka | Menghapus clipboard bisa menimpa salinan lain, membacanya memunculkan izin browser |
 | L-8 | Terbuka | |
 | L-9 | Terbuka | |
+| M-7 | Diperbaiki | Tiap frame diberi token rahasia lewat `postMessage` dan content script hanya mendengar pesan yang membawanya. Diuji di Chromium; Firefox belum |
+| M-8 | Terbuka | Urutan rilis menutup web app; ekstensi lama butuh versi klien minimum di server |
+| L-10 | Diperbaiki | `rpIdFor` menolak sufiks publik (`tldts`) |
+| L-11 | Diperbaiki | Item bukan milik sendiri diberi label "Shared with you" di menu inline dan prompt passkey |
+| L-12 | Diperbaiki | `setAccessLevel('TRUSTED_CONTEXTS')` di background. Efeknya belum diuji, dan browser tanpa API ini tetap terbuka |
+| L-13 | Sebagian | Didokumentasikan di README. Verifikasi ulang per permintaan butuh keputusan desain |
 
 Dari bagian over-engineering: `login-form.tsx` dihapus dan `routes.go` dirapikan; dua lainnya
 masih terbuka.
@@ -48,6 +56,15 @@ masih terbuka.
   inline menu, `lib/`), `deploy/`, `apps/server/Dockerfile`.
 - **Tidak dibaca:** komponen UI `apps/app` (±150 file), `apps/docs`, handler dan repository
   kategori, `cmd/migrate`, workflow rilis.
+- **Audit 2026-10-13:** `apps/extension/src` dibaca penuh, termasuk alur passkey yang baru
+  (`passkey-page.ts`, `lib/passkey.ts`, prompt di `inline/main.tsx`). Di `apps/app/src` yang
+  dibaca adalah `lib/`, `hooks/use-markdown-editor.ts` dan `package.json`; komponen UI hanya
+  dipindai dengan pencarian (sink HTML, `href`, redirect, penyimpanan browser, impor dan ekspor
+  yang tidak terpakai), tidak dibaca satu per satu. Alur passkey belum pernah dijalankan di
+  browser saat audit ini ditulis. Setelah perbaikan, ekstensi hasil build diuji di Chromium
+  (Playwright, API tiruan): simpan dan login passkey dengan verifikasi tanda tangan, jatuh ke
+  browser saat belum sign in, salinan prompt yang dibingkai halaman, menu inline, dan prompt
+  simpan. Firefox dan server sungguhan belum.
 - **Metode:** baca kode dan source dependency (Authula v1.46.0, Fiber v3.5.0) plus
   `pnpm audit --prod`. Tidak ada pengujian terhadap server yang berjalan, jadi setiap temuan
   berstatus "terbukti dari kode", belum dieksploitasi.
@@ -150,6 +167,44 @@ masih terbuka.
 - **Perbaikan:** naikkan `vinext` dan `@milkdown/*`, atau pakai `pnpm.overrides`. Modul Go belum
   dipindai karena `govulncheck` tidak terpasang.
 
+### M-7 · Klik di salinan tersembunyi menu inline dianggap klik di menu yang terlihat
+
+- **Lokasi:** `apps/extension/src/content.ts:481-490` (`inline:check`, `save:check`),
+  `apps/extension/vite.config.ts` (`web_accessible_resources`),
+  `apps/extension/src/inline/main.tsx:102,195,311`
+- **Masalah:** `inline.html` bisa dibingkai oleh situs mana pun, bukan hanya oleh content script.
+  Sebelum mengisi atau menyimpan, frame bertanya ke content script apakah menu terlihat, dan
+  content script menjawab untuk frame buatannya sendiri tanpa memeriksa frame mana yang
+  bertanya (`sender.frameId`).
+- **Dampak:** halaman membingkai salinan `inline.html` yang transparan di bawah tombol umpan,
+  sementara menu asli terbuka di tempat lain. Satu klik pada umpan mengisi login ke halaman itu
+  tanpa pengguna memilihnya. Yang terisi hanya login yang cocok dengan situsnya, tetapi itu
+  mencakup login domain induk: halaman di `a.example.com` mendapat password yang disimpan untuk
+  `example.com`. Prompt simpan dan password saran bisa dipicu dengan cara yang sama.
+- **Syarat:** vault terbuka, pengguna mengklik sesuatu di halaman penyerang, dan ada login
+  tersimpan untuk host itu atau induknya.
+- **Perbaikan (diterapkan):** content script mengirim token acak ke tiap frame buatannya lewat
+  `contentWindow.postMessage` dengan target origin ekstensi, dan hanya mendengar pesan
+  `inline:*`, `save:*` dan `passkey:*` yang membawa token frame itu. Mengikat lewat
+  `sender.frameId` tidak bisa: di Chrome `chrome.runtime.getFrameId` tidak ada di content script
+  dan `sender.frameId` kosong untuk pesan dari frame ekstensi. Pengikat pertama untuk passkey
+  (commit `a7b4a30`) memakai `getFrameId` dan karena itu mematikan prompt passkey di Chrome.
+
+### M-8 · Klien lama menghapus passkey saat item diedit
+
+- **Lokasi:** `apps/app/src/lib/crypto/vault.ts:85-97` (`keepUnedited`),
+  `apps/app/src/components/block/vault/form.tsx:266`,
+  `apps/extension/src/popup/views/item-form.tsx:187`
+- **Masalah:** passkey disimpan di isi terenkripsi item login. Klien sebelum `a7b4a30` menyusun
+  ulang isi item dari form saat menyimpan dan tidak mengenal field `passkey`, jadi field itu
+  hilang. Server tidak bisa mencegahnya karena tidak melihat isinya.
+- **Dampak:** pengguna menyimpan passkey dari ekstensi baru, lalu mengganti nama item itu di web
+  app yang belum di-deploy ulang atau di ekstensi lama di browser lain. Private key hilang
+  permanen, sedangkan situs masih mendaftarkan passkey itu: pengguna terkunci dari akunnya bila
+  tidak punya cara login lain.
+- **Perbaikan:** deploy `apps/app` sebelum merilis ekstensi. Untuk ekstensi lama yang sudah
+  terpasang, satu-satunya penutup penuh adalah versi klien minimum yang ditolak server.
+
 ---
 
 ## Low
@@ -164,6 +219,10 @@ masih terbuka.
 | L-6  | Pengguna yang login bisa memeriksa apakah sebuah email terdaftar (120/menit) | `internal/handlers/key.go:89-100` | Limiter yang lebih ketat untuk rute ini |
 | L-7  | Password yang disalin tidak dihapus dari clipboard | `apps/app/src/components/block/vault/column.tsx:164` | Kosongkan setelah ±30 detik |
 | L-8  | Sampah tidak pernah dibersihkan; migrasi menyebut job yang tidak ada | `migrations/000004_create_vault.up.sql:62` | Tambah job purge atau hapus klaimnya |
+| L-10 | `rpIdFor` tidak memakai public suffix list: halaman di `a.github.io` boleh menyebut `github.io` sebagai relying party, yang ditolak browser. Yang terbuka hanya passkey yang dibuat untuk nama semacam itu | `apps/extension/src/lib/passkey.ts:82-98` | Bundel daftarnya (mis. `tldts`), sekaligus menutup sisa L-4 |
+| L-11 | Passkey dan login di item yang dibagikan ditawarkan seperti milik sendiri, tanpa tanda. Pembagi bisa membuat penerima masuk ke akun milik pembagi | `apps/extension/src/inline/main.tsx:164-170,411-424` | Tandai item yang `role`-nya bukan `owner`, atau minta konfirmasi sekali |
+| L-12 | Token sesi di `chrome.storage.local` terbuka untuk content script (bawaan browser), jadi proses halaman yang diretas bisa membacanya. Kunci vault tidak terdampak: ada di `storage.session` | `apps/extension/src/lib/storage.ts:24-44`, `apps/extension/src/background.ts` | `chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' })` di background; periksa dulu dukungan Firefox |
+| L-13 | Flag user-verified selalu diset pada passkey, tanpa verifikasi ulang per permintaan. Situs yang meminta `userVerification: 'required'` hanya mendapat "vault dibuka dengan master password dalam 15 menit terakhir" | `apps/extension/src/lib/passkey.ts:129-146` | Minta master password lagi untuk permintaan `required`, atau dokumentasikan |
 | L-9  | CI tidak menjalankan `go test`, lint, atau audit dependency; workflow hanya rilis dan react-doctor | `.github/workflows/` | Satu workflow untuk test, lint, `pnpm audit`, `govulncheck` |
 
 Catatan untuk L-6 dan H-1: `users.email` di tabel mirror tidak unik dan baris pengguna yang
@@ -174,7 +233,7 @@ Selama belum ada jalur hapus akun ini tidak bisa dipicu; tambahkan indeks unik s
 
 ## Over-engineering
 
-Bagian ini hanya menyentuh file yang terbaca selama audit keamanan; `apps/app` belum disisir.
+Daftar pertama dari audit 2026-10-11, hanya file yang terbaca saat audit keamanan.
 
 - `delete:` `apps/web/components/login-form.tsx` tidak diimpor di mana pun. Gantinya: tidak ada. (213 baris)
 - `delete:` `.agents/skills/authula` dan `.agents/skills/postgres-best-practices` identik dengan salinan di `.claude/skills`. Gantinya: symlink. (20 file)
@@ -182,3 +241,22 @@ Bagian ini hanya menyentuh file yang terbaca selama audit keamanan; `apps/app` b
 - `shrink:` `apps/server/cmd/api/routes.go:41` menghitung ulang `exemptLoopback` dan `exemptIPs` yang dideklarasikan di baris 45-46. Gantinya: pindahkan deklarasi ke atas dan pakai di kedua limiter.
 
 net: ±-300 baris, -0 dependency.
+
+### `apps/app` dan `apps/extension` (2026-10-13)
+
+Diurutkan dari potongan terbesar. Yang bertanda (selesai) sudah diterapkan; sisanya terbuka
+karena menyentuh puluhan komponen UI yang belum punya uji.
+
+- `native:` dua klien HTTP untuk API yang sama dengan aturan refresh-401 yang sama: axios di `apps/app/src/lib/api/client-fetch.ts`, `resource.ts` dan `axios-error.ts`, lalu `fetch` di `apps/extension/src/lib/api.ts`. Gantinya: satu klien `fetch` yang dipakai keduanya; ekstensi sudah mengimpor dari `@/`. (±250 baris, -1 dependency)
+- `yagni:` dua pustaka ikon di `apps/app`: `@tabler/icons-react` (20 file) dan `lucide-react` (12 file, hampir semuanya di `components/ui`). Gantinya: tabler saja. (-1 dependency)
+- `native:` `nuqs` dipakai di 4 file untuk state halaman dan pencarian di URL. Gantinya: `validateSearch` dan `useSearch` milik TanStack Router, yang sudah terpasang. (-1 dependency)
+- (selesai) `delete:` `apps/app/src/components/ui/tabs.tsx` dan `ui/pagination.tsx` tidak diimpor di mana pun. Gantinya: tidak ada. (99 baris)
+- (selesai) `stdlib:` `date-fns` dipakai satu file, `apps/app/src/lib/date.ts`, untuk dua format tetap. Gantinya: `new Intl.DateTimeFormat('en-GB', { dateStyle: 'short', timeStyle: 'medium' })`. (-1 dependency)
+- (selesai) `yagni:` `@t3-oss/env-core` di `apps/app/src/config/env.ts` memvalidasi dua variabel opsional yang sama-sama punya nilai bawaan. Gantinya: `import.meta.env.VITE_API_URL || window.location.origin`. (-1 dependency, ±10 baris)
+- (selesai) `delete:` ekspor yang tidak dirujuk di mana pun: `getTotal` (`lib/constants/paginate.ts`), `requiredNonNegativeInteger` (`lib/validation.ts`), `IncludeParam` (`lib/api/dtos/paginate.ts`), `ResourceProps` (`types/api.ts`), `SetupVaultFormDto` dan `UnlockFormDto` (`lib/api/dtos/vault/schema.ts`), `DataGridApiFetchParams`, `DataGridApiResponse` dan `DataGridRequestParams` (`ui/data-grid.tsx`), `BadgeProps`, `BadgeButtonProps` dan `BadgeDotProps` (`ui/badge.tsx`). Gantinya: tidak ada. (±40 baris)
+- `delete:` bagian komponen `components/ui` yang tidak dipakai di luar filenya, antara lain `DropdownMenuSub*`, `DropdownMenuCheckboxItem`, `DropdownMenuRadio*`, `SidebarInput`, `SidebarMenuSkeleton`, `SelectGroup`, `SheetFooter`, `FieldSet`, `BadgeButton`, `CardTable`. Ini salinan shadcn, jadi baru layak dipotong kalau filenya memang disentuh. Belum dihitung.
+- `yagni:` `zustand` untuk satu store berisi satu nilai (`apps/app/src/lib/stores/vault.ts`). Gantinya: variabel modul dengan `useSyncExternalStore`. Paling kecil untungnya; biarkan kalau store kedua sudah direncanakan. (-1 dependency)
+
+`apps/extension` sendiri ramping: tiga dependency runtime (`tldts` ditambahkan untuk L-10), dan pengulangan yang ada (`usable()` di tiga tempat, konstanta di `background.ts` dan `lib/session.ts`) dipaksa oleh aturan bahwa content script dan fungsi yang disuntikkan tidak boleh mengimpor.
+
+net: ±-400 baris, -5 dependency mungkin (-6 dengan `zustand`).
