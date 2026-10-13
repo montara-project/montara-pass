@@ -79,10 +79,3 @@ export type Resources<TMethods extends readonly HTTP_METHOD[], TData> = Pick<
   ResourceMethods<TData>,
   API_METHOD_MAP[TMethods[number]]
 >
-
-export interface ResourceProps {
-  method: HTTP_METHOD
-  url: string
-  data?: Record<string, unknown>
-  headers?: Record<string, string>
-}

@@ -66,6 +66,7 @@ export default function Unlock({ userKeys, onUnlocked, onSignOut }: UnlockProps)
         autoComplete="off"
         autoFocus
         required
+        aria-invalid={error ? true : undefined}
       />
 
       {error && (
@@ -83,12 +84,12 @@ export default function Unlock({ userKeys, onUnlocked, onSignOut }: UnlockProps)
 
       <div className="auth-foot">
         {email && (
-          <>
+          <span className="auth-account">
             <span className="avatar" aria-hidden="true">
               {initials(email)}
             </span>
             <span className="auth-email">{email}</span>
-          </>
+          </span>
         )}
         <button type="button" className="auth-link" onClick={onSignOut}>
           Switch account

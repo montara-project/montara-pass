@@ -31,7 +31,12 @@ function manifest(target: Target) {
     // Every site: the inline menu looks for login fields on each page, and
     // the server may be a self-hosted one at any address.
     host_permissions: ALL_SITES,
-    content_scripts: [{ matches: ALL_SITES, js: ['content.js'], run_at: 'document_idle' }],
+    content_scripts: [
+      { matches: ALL_SITES, js: ['content.js'], run_at: 'document_idle' },
+      // In the page's own world and ahead of its scripts: it stands in for
+      // navigator.credentials, which only the page's world can replace.
+      { matches: ALL_SITES, js: ['passkey-page.js'], run_at: 'document_start', world: 'MAIN' },
+    ],
     // The inline menu is an extension page framed inside the login page.
     web_accessible_resources: [{ resources: ['inline.html'], matches: ALL_SITES }],
     background:
@@ -188,6 +193,7 @@ export default defineConfig(({ mode }) => {
           // A content script cannot be a module: like
           // the background script it imports nothing and stays one file.
           content: path.resolve(import.meta.dirname, 'src/content.ts'),
+          'passkey-page': path.resolve(import.meta.dirname, 'src/passkey-page.ts'),
         },
         output: {
           // The manifest names background.js and content.js, so entries keep

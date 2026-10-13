@@ -15,7 +15,7 @@ import Unlock from './views/unlock'
 
 type Stage =
   | { name: 'loading' }
-  | { name: 'error'; message: string }
+  | { name: 'error'; message: string; signedIn: boolean }
   | { name: 'signed-out' }
   | { name: 'no-vault'; appUrl: string }
   | { name: 'locked'; userKeys: Models.UserKeys }
@@ -23,8 +23,12 @@ type Stage =
 
 /** Works out where the user left off: signed out, locked, or unlocked. */
 async function resolveStage(): Promise<Stage> {
+  // Whether it got as far as finding the tokens, for an error that comes after.
+  let signedIn = false
+
   try {
     if (!(await getTokens())) return { name: 'signed-out' }
+    signedIn = true
 
     // Still unlocked from a previous opening: no request needed to show the vault.
     const keys = await loadVault()
@@ -36,7 +40,11 @@ async function resolveStage(): Promise<Stage> {
       : { name: 'no-vault', appUrl: (await getSettings()).appUrl }
   } catch (error) {
     if (error instanceof SignedOutError) return { name: 'signed-out' }
-    return { name: 'error', message: error instanceof Error ? error.message : String(error) }
+    return {
+      name: 'error',
+      message: error instanceof Error ? error.message : String(error),
+      signedIn,
+    }
   }
 }
 
@@ -80,7 +88,7 @@ export default function App() {
     setStage({ name: 'signed-out' })
   }
 
-  // In a tab, everything that is not the vault itself sits in a centered card.
+  // In a tab, the popup-sized forms sit in a centered card.
   const framed = (node: ReactNode) =>
     isFullScreen ? (
       <div className="full-center">
@@ -91,12 +99,24 @@ export default function App() {
     )
 
   if (showSettings) {
-    return framed(
+    const leaving = (act: () => Promise<void>) => () => {
+      setShowSettings(false)
+      void act()
+    }
+    // Signed in is every stage that got past the tokens, an error after them included.
+    const signedIn =
+      stage.name === 'error'
+        ? stage.signedIn
+        : ['no-vault', 'locked', 'unlocked'].includes(stage.name)
+
+    return (
       <Settings
         onClose={() => {
           setShowSettings(false)
           boot()
         }}
+        onLock={stage.name === 'unlocked' ? leaving(handleLock) : undefined}
+        onSignOut={signedIn ? leaving(handleSignOut) : undefined}
       />
     )
   }

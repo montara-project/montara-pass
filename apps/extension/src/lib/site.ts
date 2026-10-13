@@ -1,3 +1,5 @@
+import { getDomain } from 'tldts'
+
 /** The hostname of a URL, or null for anything that is not http(s). */
 export function hostOf(url: string | undefined): string | null {
   if (!url) return null
@@ -8,6 +10,12 @@ export function hostOf(url: string | undefined): string | null {
   } catch {
     return null
   }
+}
+
+/** A saved address as a link, or null for anything that is not http(s). */
+export function linkOf(url: string | undefined): string | null {
+  if (!url || !hostOf(url)) return null
+  return url.includes('://') ? url : `https://${url}`
 }
 
 /** The origin of an http(s) URL, or null for anything else. */
@@ -28,7 +36,9 @@ const isPlainHttp = (url: string | undefined) => /^http:\/\//i.test(url ?? '')
  * for a match, so a look-alike domain cannot be handed the real site's
  * password with one click. The saved host must equal the page's host or be a
  * parent of it: a login saved for example.com also fits login.example.com,
- * but not the other way round and not example.com.evil.net. A page served
+ * but not the other way round and not example.com.evil.net. A suffix many
+ * share is nobody's parent: a login saved on github.io stays there, and is not
+ * www.github.io's either, which is somebody else's site. A page served
  * over plain http gets only logins saved for http: anyone on the network can
  * put such a page in front of the user. localhost is the exception.
  */
@@ -38,9 +48,28 @@ export function matchesSite(savedUrl: string | undefined, pageUrl: string | unde
   if (!saved || !page) return false
   if (isPlainHttp(pageUrl) && !isPlainHttp(savedUrl) && page !== 'localhost') return false
 
-  const strip = (host: string) => host.replace(/^www\./, '')
+  const owned = (host: string) => !!getDomain(host, { allowPrivateDomains: true })
+  // www is another name for a site only where the name without it is one.
+  const strip = (host: string) => {
+    const bare = host.replace(/^www\./, '')
+    return owned(bare) ? bare : host
+  }
   const savedHost = strip(saved)
   const pageHost = strip(page)
 
-  return pageHost === savedHost || pageHost.endsWith(`.${savedHost}`)
+  if (pageHost === savedHost) return true
+  return pageHost.endsWith(`.${savedHost}`) && owned(savedHost)
+}
+
+/**
+ * Whether a saved login is one to fill into the page: it belongs there, and
+ * has something to type. A login that holds only a passkey has no password to
+ * fill; it signs in through the passkey prompt instead.
+ */
+export function fillsSite(
+  secret: { url?: string; password?: string; passkey?: unknown } | null | undefined,
+  pageUrl: string | undefined
+): boolean {
+  if (!secret || (secret.passkey && !secret.password)) return false
+  return matchesSite(secret.url, pageUrl)
 }

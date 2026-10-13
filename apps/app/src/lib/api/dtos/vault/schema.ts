@@ -20,8 +20,6 @@ export const UnlockFormSchema = z.object({
   master_password: requiredString('master password'),
 })
 
-export type UnlockFormDto = z.infer<typeof UnlockFormSchema>
-
 export const SetupVaultFormSchema = z
   .object({
     master_password: masterPassword('master password'),
@@ -31,8 +29,6 @@ export const SetupVaultFormSchema = z
     message: 'The confirmation does not match the master password.',
     path: ['confirm_password'],
   })
-
-export type SetupVaultFormDto = z.infer<typeof SetupVaultFormSchema>
 
 export const ChangeMasterPasswordFormSchema = z
   .object({

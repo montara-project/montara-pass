@@ -51,6 +51,7 @@ export default function SignIn({ onSignedIn, onSettings }: SignInProps) {
         onChange={setPassword}
         autoComplete="current-password"
         required
+        aria-invalid={error ? true : undefined}
       />
 
       {error && (

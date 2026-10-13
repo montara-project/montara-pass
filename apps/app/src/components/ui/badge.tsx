@@ -4,20 +4,6 @@ import * as React from 'react'
 
 import { cn } from '@/lib/utils'
 
-export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {
-  asChild?: boolean
-  dotClassName?: string
-  disabled?: boolean
-}
-
-export interface BadgeButtonProps
-  extends React.ButtonHTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeButtonVariants> {
-  asChild?: boolean
-}
-
-export type BadgeDotProps = React.HTMLAttributes<HTMLSpanElement>
-
 const badgeVariants = cva(
   'inline-flex items-center whitespace-nowrap justify-center border border-transparent font-medium focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 [&_svg]:-ms-px [&_svg]:shrink-0',
   {

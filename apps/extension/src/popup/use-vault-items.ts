@@ -2,15 +2,44 @@ import { useCallback, useEffect, useState } from 'react'
 
 import type { VaultItem } from '@/types/vault'
 
-import { decryptItem, encryptItemUpdate, type VaultKeys } from '@/lib/crypto/vault'
+import {
+  decryptFolderName,
+  decryptItem,
+  encryptItemUpdate,
+  type VaultKeys,
+} from '@/lib/crypto/vault'
 
-import { getProfile, listItems, SignedOutError, updateItem } from '../lib/api'
+import type { FolderOption } from './views/item-form'
+
+import { getProfile, listFolders, listItems, SignedOutError, updateItem } from '../lib/api'
 import { fetchIcon } from '../lib/icon'
 import { hostOf } from '../lib/site'
 
 export interface VaultUser {
   name: string
   email: string
+}
+
+/** The user's folders by name. They are made in the web app; here items are only filed in them. */
+export function useFolders(keys: VaultKeys): FolderOption[] {
+  const [folders, setFolders] = useState<FolderOption[]>([])
+
+  useEffect(() => {
+    void listFolders()
+      .then((rows) =>
+        Promise.all(
+          rows.map(async (folder) => ({
+            id: folder.id,
+            name: await decryptFolderName(keys, folder.encrypted_name).catch(() => '(unreadable)'),
+          }))
+        )
+      )
+      .then((rows) => setFolders(rows.sort((a, b) => a.name.localeCompare(b.name))))
+      // Everything still works without them: there is just no folder to pick.
+      .catch(() => undefined)
+  }, [keys])
+
+  return folders
 }
 
 /**

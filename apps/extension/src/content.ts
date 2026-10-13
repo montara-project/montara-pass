@@ -6,12 +6,16 @@
 // It never sees the vault: the frames are extension pages, which the page
 // around them can neither read nor script, and the menu fills the form itself.
 // A login the user typed into the page is passed on to the background script.
+// A request for a passkey comes from src/passkey-page.ts and is answered by a
+// third frame (inline.html#passkey); the answer passes through here on its way
+// back to the page that asked.
 // Like the background script it imports nothing, so it stays a single file
 // the manifest can name as a content script.
-// Keep the message names in sync with src/inline/main.tsx.
+// Keep the message names in sync with src/inline/main.tsx and src/passkey-page.ts.
 
 ;(() => {
   const FRAME_URL = chrome.runtime.getURL('inline.html')
+  const ORIGIN = window.location.origin
   const BADGE = 24
   const MAX_HEIGHT = 320
 
@@ -22,6 +26,10 @@
   let dismissed = false
   let saveFrame: HTMLIFrameElement | null = null
   let watch = 0
+  /** The request the page is waiting on, as it sent it: the prompt reads it. */
+  let passkey: { id: string } | null = null
+  let passkeyFrame: HTMLIFrameElement | null = null
+  let passkeyTimer = 0
 
   // A popover sits in the top layer, above whatever the page stacks. The
   // styles are inline and important, so a page stylesheet cannot restyle it.
@@ -179,12 +187,34 @@
     frameHeight = 56
   }
 
+  // inline.html can be framed by the page as well, so a frame made here has
+  // to be told from a copy. Each one is sent a token through its own window,
+  // which only an extension page can receive, and sends it back with every
+  // message. A copy has none to send. (The browser does not say which frame a
+  // message came from: Chrome leaves the sender's frame id out here.)
+  const tokens = new WeakMap<HTMLIFrameElement, string>()
+
+  const greet = (target: HTMLIFrameElement) => {
+    const token = Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) =>
+      byte.toString(16).padStart(2, '0')
+    ).join('')
+    tokens.set(target, token)
+    target.addEventListener('load', () =>
+      target.contentWindow?.postMessage({ montaraPassFrame: token }, new URL(FRAME_URL).origin)
+    )
+  }
+
+  /** Take the host out of the page once nothing in it is left to show. */
+  const release = () => {
+    if (!field && !saveFrame && !passkeyFrame) host.remove()
+  }
+
   const hide = () => {
     close()
     field = null
     badge.hidden = true
-    // The save prompt lives in the same host and outlasts the field.
-    if (!saveFrame) host.remove()
+    // The prompts live in the same host and outlast the field.
+    release()
   }
 
   /** @param auto opened by the focus alone, not by the badge or the keyboard */
@@ -192,6 +222,7 @@
     if (frame || !field) return
 
     frame = document.createElement('iframe')
+    greet(frame)
     const flags = [auto && 'auto', isNewPassword(field) && 'new'].filter(Boolean)
     frame.src = `${FRAME_URL}#${flags.join(',')}`
     frame.title = 'Montara Pass'
@@ -235,6 +266,7 @@
     if (saveFrame || (await toBackground({ type: 'save:pending' })) !== true) return
 
     saveFrame = document.createElement('iframe')
+    greet(saveFrame)
     saveFrame.src = `${FRAME_URL}#save`
     saveFrame.title = 'Montara Pass: save this login'
     // Out of sight until the prompt reports a height: it has nothing to show
@@ -250,7 +282,78 @@
   const closeSave = () => {
     saveFrame?.remove()
     saveFrame = null
-    if (!field) host.remove()
+    release()
+  }
+
+  /**
+   * Answer the page's request for a passkey, if one is waiting, and take the
+   * prompt away. An empty answer leaves the request to the browser.
+   */
+  const closePasskey = (answer: object = {}) => {
+    clearTimeout(passkeyTimer)
+    if (passkey) {
+      window.postMessage({ montaraPass: 'passkey:answer', id: passkey.id, ...answer }, ORIGIN)
+    }
+    passkey = null
+    passkeyFrame?.remove()
+    passkeyFrame = null
+    release()
+  }
+
+  /** A message from src/passkey-page.ts, which anything in the page can send as well. */
+  const onPageMessage = async (message: {
+    montaraPass?: unknown
+    id?: unknown
+    kind?: unknown
+  }) => {
+    if (typeof message.id !== 'string') return
+
+    if (message.montaraPass === 'passkey:cancel' && passkey?.id === message.id) {
+      // The page no longer waits for an answer.
+      passkey = null
+      closePasskey()
+    }
+    if (message.montaraPass !== 'passkey:ask') return
+
+    const request = { ...message, id: message.id }
+    // Whether a site can keep a passkey here at all, rather than a request for one.
+    const asking = message.kind === 'available'
+    if (!asking) {
+      // One at a time: an older request goes to the browser.
+      closePasskey()
+      passkey = request
+    }
+
+    let available = false
+    try {
+      available = (await chrome.runtime.sendMessage({ type: 'passkey:available' })) === true
+    } catch {
+      // The extension was updated or removed under a page that is still open.
+    }
+
+    if (asking) {
+      window.postMessage({ montaraPass: 'passkey:answer', id: request.id, available }, ORIGIN)
+      return
+    }
+    // Called off, or replaced, in the meantime.
+    if (passkey !== request) return
+    // Nobody is signed in: there is no vault to keep a passkey in.
+    if (!available) return closePasskey()
+
+    passkeyFrame = document.createElement('iframe')
+    greet(passkeyFrame)
+    passkeyFrame.src = `${FRAME_URL}#passkey`
+    passkeyFrame.title = 'Montara Pass: passkey'
+    // Out of sight until the prompt reports a height, as the save prompt is:
+    // it has nothing to show for a site the vault holds no passkey for. On
+    // the left, clear of the save prompt.
+    passkeyFrame.style.cssText =
+      'top: 16px; left: 16px; width: min(340px, calc(100vw - 32px)); height: 120px; opacity: 0; pointer-events: none'
+    shadow.append(passkeyFrame)
+    raise()
+    // A prompt that does not come up, because the vault is slow to load or
+    // the frame never did, must not leave the page waiting.
+    passkeyTimer = window.setTimeout(closePasskey, 5000)
   }
 
   /**
@@ -377,6 +480,22 @@
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (sender.id !== chrome.runtime.id) return
 
+    // Only the frames made here are heard, each on its own channel: a copy
+    // the page hid under something else would otherwise have its click
+    // vouched for by the one in plain sight.
+    const channel = String(message?.type).split(':')[0]
+    const speaker =
+      channel === 'inline'
+        ? frame
+        : channel === 'save'
+          ? saveFrame
+          : channel === 'passkey'
+            ? passkeyFrame
+            : null
+    if (!speaker || typeof message.token !== 'string' || tokens.get(speaker) !== message.token) {
+      return
+    }
+
     switch (message?.type) {
       case 'inline:check':
         sendResponse(isVisible(frame))
@@ -397,6 +516,25 @@
         break
       case 'save:close':
         closeSave()
+        break
+      case 'passkey:request':
+        sendResponse(passkey)
+        break
+      case 'passkey:check':
+        sendResponse(isVisible(passkeyFrame))
+        break
+      case 'passkey:resize':
+        if (passkeyFrame && message.height > 0) {
+          // On screen: from here on the user is the one to answer.
+          clearTimeout(passkeyTimer)
+          passkeyFrame.style.height = `${clamp(Number(message.height), 40, window.innerHeight - 32)}px`
+          passkeyFrame.style.opacity = '1'
+          passkeyFrame.style.pointerEvents = 'auto'
+        }
+        break
+      // The prompt's answer: a credential, an error, or nothing to offer.
+      case 'passkey:done':
+        if (passkey?.id === message.id) closePasskey(message.answer)
         break
       case 'inline:resize':
         frameHeight = clamp(Number(message.height) || 0, 40, MAX_HEIGHT)
@@ -425,4 +563,15 @@
 
   // A login submitted on the page before this one.
   void offerSave()
+
+  // A page without an origin of its own has no passkeys either.
+  if (ORIGIN !== 'null') {
+    window.addEventListener('message', (e) => {
+      if (e.source === window && typeof e.data === 'object' && e.data !== null) {
+        void onPageMessage(e.data)
+      }
+    })
+    // src/passkey-page.ts holds its requests until it hears this.
+    window.postMessage({ montaraPass: 'passkey:ready' }, ORIGIN)
+  }
 })()

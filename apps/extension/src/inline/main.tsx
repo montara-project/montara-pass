@@ -20,13 +20,21 @@ import { createItem, markItemUsed, SignedOutError } from '../lib/api'
 import { fillLogin, fillNewPassword } from '../lib/autofill'
 import { fetchIcon } from '../lib/icon'
 import {
+  assertPasskey,
+  createPasskey,
+  ES256,
+  parseRequest,
+  rpIdFor,
+  type PasskeyRequest,
+} from '../lib/passkey'
+import {
   clearPendingLogin,
   loadVault,
   pendingLogin,
   storePendingLogin,
   type PendingLogin,
 } from '../lib/session'
-import { hostOf, matchesSite, originOf } from '../lib/site'
+import { fillsSite, hostOf, matchesSite, originOf } from '../lib/site'
 import { getSettings, getTokens } from '../lib/storage'
 import { lastUsedLabel } from '../lib/usage'
 import { ExpandIcon, KeyIcon, RefreshIcon } from '../popup/icons'
@@ -38,6 +46,8 @@ import { useVaultItems } from '../popup/use-vault-items'
 // field. It lists the logins saved for the page around it and fills the one
 // that is picked. Opened as inline.html#save it is the save prompt instead: it
 // offers to keep the login the page just submitted, unless the vault has it.
+// Opened as inline.html#passkey it answers the page's request for a passkey:
+// it offers to make one, or to sign in with one the vault holds.
 // Keep the message names in sync with src/content.ts.
 
 document.documentElement.dataset.view = 'inline'
@@ -52,8 +62,10 @@ const NEW = FLAGS.has('new')
  * until the menu asks to be shown, and goes away when it has no login to offer.
  */
 const AUTO = FLAGS.has('auto')
-/** The content script tells its two frames apart by the prefix. */
-const CHANNEL = SAVE ? 'save' : 'inline'
+/** The page asked navigator.credentials for a passkey (src/passkey-page.ts). */
+const PASSKEY = FLAGS.has('passkey')
+/** The content script tells its frames apart by the prefix. */
+const CHANNEL = SAVE ? 'save' : PASSKEY ? 'passkey' : 'inline'
 
 /** The tab this frame sits in, as the browser reports it. */
 interface Page {
@@ -66,10 +78,27 @@ interface Page {
 const SETTLE_MS = 300
 const openedAt = performance.now()
 
-function toPage(page: Page, message: object): Promise<unknown> {
+// The content script hears only the frames it made itself: it sends each a
+// token through the frame's own window, and every message carries it back. A
+// copy of this page that a site framed is sent none, and so never gets a
+// word in. The first one counts: whatever the page posts later is not it.
+const token = new Promise<string>((resolve) => {
+  window.addEventListener('message', (e) => {
+    const sent: unknown = e.data?.montaraPassFrame
+    if (e.source === window.parent && typeof sent === 'string') resolve(sent)
+  })
+})
+
+async function toPage(page: Page, message: object): Promise<unknown> {
   // Frame 0 is the page itself, where the content script runs.
-  return chrome.tabs.sendMessage(page.tabId, message, { frameId: 0 })
+  return chrome.tabs.sendMessage(page.tabId, { ...message, token: await token }, { frameId: 0 })
 }
+
+/**
+ * Said under a login or a passkey that somebody else shared: it signs in to
+ * an account of theirs, which what is typed there then belongs to.
+ */
+const sharedLabel = (item: VaultItem) => (item.role === 'owner' ? null : 'Shared with you')
 
 /** Drop the submitted login and take the save prompt away. */
 async function dismiss(page: Page): Promise<void> {
@@ -152,7 +181,7 @@ function Logins({
   const matches = useMemo(
     () =>
       (items ?? [])
-        .filter((item) => item.type === 'login' && matchesSite(item.secret?.url, page.url))
+        .filter((item) => item.type === 'login' && fillsSite(item.secret, page.url))
         // The account signed in with last comes first.
         .sort((a, b) => (b.last_used_at ?? '').localeCompare(a.last_used_at ?? '')),
     [items, page.url]
@@ -206,14 +235,15 @@ function Logins({
           key={item.id}
           className="card"
           ref={index === 0 ? first : undefined}
-          aria-label={`Fill ${item.secret!.name}`}
+          // The label replaces what the button shows, so it says the same.
+          aria-label={[`Fill ${item.secret!.name}`, sharedLabel(item)].filter(Boolean).join(', ')}
           onClick={(e) => void fill(item, e.nativeEvent)}
         >
           <ItemTile item={item} />
           <span className="item-text">
             <span className="item-name">{item.secret!.username || item.secret!.name}</span>
             <span className="muted">
-              {lastUsedLabel(item.last_used_at) ?? hostOf(item.secret!.url)}
+              {sharedLabel(item) ?? lastUsedLabel(item.last_used_at) ?? hostOf(item.secret!.url)}
             </span>
           </span>
         </button>
@@ -256,7 +286,8 @@ function SaveLogin({
   }, [page.tabId])
 
   // Already in the vault: the same account on this site, or the same password
-  // when the page asked for no username.
+  // when the page asked for no username. A login that holds only a passkey
+  // does not know the account's password.
   const known = useMemo(
     () =>
       !!login &&
@@ -265,7 +296,9 @@ function SaveLogin({
           item.type === 'login' &&
           matchesSite(item.secret?.url, login.url) &&
           (item.secret?.password === login.password ||
-            (login.username !== '' && item.secret?.username === login.username))
+            (login.username !== '' &&
+              item.secret?.username === login.username &&
+              !!item.secret.password))
       ),
     [items, login]
   )
@@ -366,6 +399,283 @@ function SaveLogin({
   )
 }
 
+/** Sign in with a passkey from the vault, or make one, once the vault is open. */
+function PasskeyChoice({
+  page,
+  keys,
+  request,
+  rpId,
+  origin,
+  finish,
+  onWorking,
+  onLocked,
+}: {
+  page: Page
+  keys: VaultKeys
+  request: PasskeyRequest
+  rpId: string
+  origin: string
+  finish: (answer?: object) => void
+  /** Told while a passkey is being saved or signed with, and when that is over. */
+  onWorking: (working: boolean) => void
+  onLocked: () => void
+}) {
+  const { items, error } = useVaultItems(keys, onLocked)
+  const [busy, setBusy] = useState(false)
+  const [failure, setFailure] = useState('')
+  const shownAt = useRef(Infinity)
+  const working = useRef(false)
+  const creating = request.kind === 'create'
+
+  // The passkeys that may sign in. For a new passkey, the ones the site says
+  // the account already has.
+  const matches = useMemo(
+    () =>
+      (items ?? [])
+        .filter((item) => {
+          const passkey = item.secret?.passkey
+          if (passkey?.rpId !== rpId) return false
+          // A site that names none takes any passkey made for it.
+          return (
+            (!creating && request.ids.length === 0) || request.ids.includes(passkey.credentialId)
+          )
+        })
+        .sort((a, b) => (b.last_used_at ?? '').localeCompare(a.last_used_at ?? '')),
+    [items, rpId, creating, request.ids]
+  )
+
+  // Nothing to offer: the vault could not be read, it holds no passkey for
+  // the site, or the account's passkey is here already and the new one is
+  // meant for some other place.
+  const nothing = !!error || (items !== null && matches.length > 0 === creating)
+  useEffect(() => {
+    if (nothing) finish()
+  }, [nothing, finish])
+
+  const ready = items !== null && !nothing
+  useEffect(() => {
+    if (ready) shownAt.current = performance.now()
+  }, [ready])
+
+  /** @param item the passkey to sign in with; none makes a new one */
+  const confirm = async (click: Event, item?: VaultItem) => {
+    if (!click.isTrusted || click.timeStamp - shownAt.current < SETTLE_MS) return
+    if (working.current) return
+    working.current = true
+    onWorking(true)
+
+    try {
+      // The page may have navigated, or hidden the prompt, since it was drawn.
+      const tab = await chrome.tabs.get(page.tabId)
+      if (originOf(tab.url) !== origin) return
+      if ((await toPage(page, { type: 'passkey:check' })) !== true) return
+
+      setBusy(true)
+      setFailure('')
+      const passkey = item?.secret?.passkey
+      if (passkey) {
+        const credential = await assertPasskey(passkey, request, origin)
+        // Signed in either way: the note of it gets a moment, since the answer
+        // takes this frame away, but a slow server does not hold up the page.
+        await Promise.race([
+          markItemUsed(item.id).catch(() => undefined),
+          new Promise((resolve) => setTimeout(resolve, 1500)),
+        ])
+        finish({ credential })
+      } else {
+        const made = await createPasskey(request, rpId, origin)
+        const encrypted = await encryptNewItem(keys, {
+          name: rpId,
+          username: request.user?.name,
+          url: origin,
+          icon: await fetchIcon(origin, tab.favIconUrl),
+          passkey: made.passkey,
+        })
+        // Kept before the site hears of it: a passkey registered and then
+        // lost would lock its owner out.
+        await createItem({ type: 'login', ...encrypted })
+        finish({ credential: made.credential })
+      }
+    } catch (err) {
+      if (err instanceof SignedOutError) {
+        onLocked()
+        return
+      }
+      setFailure(err instanceof Error ? err.message : 'Could not use the passkey')
+    } finally {
+      working.current = false
+      onWorking(false)
+      setBusy(false)
+    }
+  }
+
+  if (!ready) return null
+
+  // Asked for the autofill menu, the page is not waiting: it gets the
+  // browser's own back. Asked outright, it is told the user said no.
+  const decline = () => finish(request.conditional ? {} : { error: 'NotAllowedError' })
+
+  return (
+    <div className="inline">
+      <header className="inline-head">
+        <span>{creating ? 'Save a passkey?' : 'Sign in with a passkey'}</span>
+      </header>
+
+      {creating ? (
+        <p className="inline-note">
+          {request.user?.name}
+          <br />
+          <span className="muted">{rpId}</span>
+        </p>
+      ) : (
+        <div className="inline-list">
+          {matches.map((item) => (
+            <button
+              key={item.id}
+              className="card"
+              disabled={busy}
+              aria-label={[
+                `Sign in as ${item.secret!.username || item.secret!.name}`,
+                sharedLabel(item),
+              ]
+                .filter(Boolean)
+                .join(', ')}
+              onClick={(e) => void confirm(e.nativeEvent, item)}
+            >
+              <ItemTile item={item} />
+              <span className="item-text">
+                <span className="item-name">{item.secret!.username || item.secret!.name}</span>
+                <span className="muted">
+                  {sharedLabel(item) ?? lastUsedLabel(item.last_used_at) ?? rpId}
+                </span>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {failure && <p className="inline-note error">{failure}</p>}
+
+      <div className="inline-note row">
+        {creating && (
+          <button disabled={busy} onClick={(e) => void confirm(e.nativeEvent)}>
+            {busy ? 'Saving…' : 'Save passkey'}
+          </button>
+        )}
+        {!request.conditional && (
+          <button className="link" disabled={busy} onClick={() => finish()}>
+            Use another device
+          </button>
+        )}
+        {/* Not while a passkey is being saved: the site would never hear of it. */}
+        <button className="link" disabled={busy} onClick={decline}>
+          {request.conditional ? 'Not now' : 'Cancel'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Answer the page's request for a passkey. Whatever cannot be answered here
+ * is left to the browser, which asks the computer or a security key as if
+ * Montara Pass were not installed.
+ */
+function PasskeyPrompt({
+  page,
+  keys,
+  onLocked,
+  onUnlock,
+}: {
+  page: Page
+  keys: VaultKeys | null
+  onLocked: () => void
+  onUnlock: () => void
+}) {
+  const [request, setRequest] = useState<PasskeyRequest | null>(null)
+  const answered = useRef(false)
+  const working = useRef(false)
+  const onWorking = useCallback((value: boolean) => {
+    working.current = value
+  }, [])
+
+  useEffect(() => {
+    void toPage(page, { type: 'passkey:request' }).then((raw) => {
+      const parsed = parseRequest(raw)
+      // Not a request this can answer.
+      if (!parsed) void toPage(page, { type: 'passkey:done', id: (raw as PasskeyRequest)?.id })
+      setRequest(parsed)
+    })
+  }, [page])
+
+  /** @param answer a credential or an error; nothing leaves it to the browser */
+  const finish = useCallback(
+    (answer: object = {}) => {
+      if (!request || answered.current) return
+      answered.current = true
+      void toPage(page, { type: 'passkey:done', id: request.id, answer })
+    },
+    [page, request]
+  )
+
+  // The site is the page's own, as the browser names it, never as the page does.
+  const origin = originOf(page.url)
+  const rpId = request && rpIdFor(request.rpId, page.url)
+  const answerable =
+    !!request && !!origin && !!rpId && (request.kind === 'get' || request.algs.includes(ES256))
+  // Locked, the vault cannot say whether it holds a passkey for the site. A
+  // page that only asked for the autofill menu is not worth an Unlock for that.
+  const quiet = !answerable || (!keys && request.conditional)
+
+  useEffect(() => {
+    if (request && quiet) finish()
+  }, [request, quiet, finish])
+
+  useEffect(() => {
+    if (!request) return
+
+    const onKey = (e: KeyboardEvent) => {
+      // Not while a passkey is being saved, as with the buttons: the site
+      // would never hear of it.
+      if (e.key !== 'Escape' || working.current) return
+      finish(request.conditional ? {} : { error: 'NotAllowedError' })
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [request, finish])
+
+  if (!request || quiet || !origin || !rpId) return null
+
+  if (!keys) {
+    return (
+      <div className="inline-note stack">
+        <p className="muted">
+          Unlock Montara Pass to {request.kind === 'create' ? 'save' : 'sign in with'} a passkey.
+        </p>
+        <div className="row">
+          <button onClick={onUnlock}>Unlock</button>
+          <button className="link" onClick={() => finish()}>
+            Use another device
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <PasskeyChoice
+      page={page}
+      keys={keys}
+      request={request}
+      rpId={rpId}
+      origin={origin}
+      finish={finish}
+      onWorking={onWorking}
+      onLocked={onLocked}
+    />
+  )
+}
+
 function Inline() {
   const [page, setPage] = useState<Page | null>(null)
   // undefined while the session is being read.
@@ -419,7 +729,8 @@ function Inline() {
     if (!page) return
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
+      // The passkey prompt answers the page itself.
+      if (e.key !== 'Escape' || PASSKEY) return
       if (SAVE) void dismiss(page)
       else void toPage(page, { type: 'inline:close', refocus: true })
     }
@@ -445,6 +756,17 @@ function Inline() {
   }
 
   if (!page || keys === undefined || suggesting === undefined) return null
+
+  if (PASSKEY) {
+    return (
+      <PasskeyPrompt
+        page={page}
+        keys={keys}
+        onLocked={() => setKeys(null)}
+        onUnlock={() => void unlock()}
+      />
+    )
+  }
 
   if (SAVE) {
     return keys ? (

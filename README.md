@@ -147,12 +147,22 @@ create it in the web app first.
   minutes without use, when the browser closes, and on Lock.
 - **Fill** is offered only for a login whose saved URL belongs to the page in
   the active tab. A badge in login fields opens the same list under the field.
+- **Passkeys**: a script in the page's own world stands in for
+  `navigator.credentials` (top frame only). With the vault unlocked, a prompt
+  offers to save a new passkey or to sign in with a saved one; the key (ES256)
+  is kept in the login's encrypted content, so the server needs no change and
+  the passkey works on any computer the vault is unlocked on. Whatever the
+  vault cannot answer goes to the browser's own passkeys, unchanged. A
+  passkey always reports the user as verified: that means the vault was
+  unlocked with the master password within the auto-lock time, not that
+  anyone was asked again for this sign-in.
+  `node apps/extension/src/lib/passkey.check.ts` checks the signing.
 - **Full screen** in the popup opens the vault in a tab: filters, the list and
   the selected item side by side, with reveal, copy, add, edit and share.
   Folders, and changing who has an item, stay in the web app.
-- The build points at `https://app.montarapass.com`; Settings → Self-hosted
-  takes the URL of another server. `pnpm --filter @montara-pass/extension
-  watch` builds against the local servers instead
+- The build points at `https://app.montarapass.com`; Settings → Server →
+  Self-hosted takes the URL of another server.
+  `pnpm --filter @montara-pass/extension watch` builds against the local servers instead
   (`apps/extension/.env.example`).
 
 ## Docs

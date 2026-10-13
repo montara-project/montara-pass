@@ -1,9 +1,4 @@
-import {
-  type ColumnFiltersState,
-  type ReactTable,
-  type RowData,
-  type SortingState,
-} from '@tanstack/react-table'
+import { type ReactTable, type RowData } from '@tanstack/react-table'
 import { createContext, type ReactNode, useContext } from 'react'
 
 import { cn } from '@/lib/utils'
@@ -24,35 +19,11 @@ declare module '@tanstack/react-table' {
   }
 }
 
-export type DataGridApiFetchParams = {
-  pageIndex: number
-  pageSize: number
-  sorting?: SortingState
-  filters?: ColumnFiltersState
-  searchQuery?: string
-}
-
-export type DataGridApiResponse<T> = {
-  data: T[]
-  empty: boolean
-  pagination: {
-    total: number
-    page: number
-  }
-}
-
 export interface DataGridContextProps<TData extends RowData> {
   props: DataGridProps<TData>
   table: ReactTable<any, TData>
   recordCount: number
   isLoading: boolean
-}
-
-export type DataGridRequestParams = {
-  pageIndex: number
-  pageSize: number
-  sorting?: SortingState
-  columnFilters?: ColumnFiltersState
 }
 
 export interface DataGridProps<TData extends RowData> {
