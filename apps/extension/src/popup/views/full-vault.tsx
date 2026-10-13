@@ -1,11 +1,9 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 
+import type { VaultKeys } from '@/lib/crypto/vault'
 import type { VaultItem } from '@/types/vault'
 
-import { decryptFolderName, type VaultKeys } from '@/lib/crypto/vault'
-
-import { listFolders } from '../../lib/api'
-import { hostOf } from '../../lib/site'
+import { linkOf } from '../../lib/site'
 import { getSettings } from '../../lib/storage'
 import { lastUsedAgo } from '../../lib/usage'
 import {
@@ -32,8 +30,8 @@ import {
 } from '../icons'
 import { ItemTile } from '../item-tile'
 import { initials } from '../layout'
-import { useVaultItems } from '../use-vault-items'
-import ItemForm, { type FolderOption } from './item-form'
+import { useFolders, useVaultItems } from '../use-vault-items'
+import ItemForm from './item-form'
 import PasswordGenerator from './password-generator'
 import PasswordHealth from './password-health'
 import ShareItem from './share-item'
@@ -98,29 +96,13 @@ export default function FullVault({
   const [notice, setNotice] = useState('')
   const [refreshing, setRefreshing] = useState(false)
   const [appUrl, setAppUrl] = useState('')
-  const [folders, setFolders] = useState<FolderOption[]>([])
+  const folders = useFolders(keys)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     void getSettings().then((settings) => setAppUrl(settings.appUrl))
   }, [])
-
-  // Folders are made in the web app; here they are only offered in the item form.
-  useEffect(() => {
-    void listFolders()
-      .then((rows) =>
-        Promise.all(
-          rows.map(async (folder) => ({
-            id: folder.id,
-            name: await decryptFolderName(keys, folder.encrypted_name).catch(() => '(unreadable)'),
-          }))
-        )
-      )
-      .then((rows) => setFolders(rows.sort((a, b) => a.name.localeCompare(b.name))))
-      // The form still works without them: it just offers "No folder".
-      .catch(() => undefined)
-  }, [keys])
 
   // The account menu closes on Escape and on a click anywhere else.
   useEffect(() => {
@@ -476,11 +458,7 @@ function ItemDetail({ item, onCopy, onEdit, onShare }: ItemDetailProps) {
   const hidesNote = !isLogin && secret.visible === false
   const noteHidden = hidesNote && !revealed
   // Only http(s) addresses become links.
-  const website = hostOf(secret.url)
-    ? secret.url!.includes('://')
-      ? secret.url!
-      : `https://${secret.url}`
-    : null
+  const website = linkOf(secret.url)
 
   return (
     <div className="stack detail-body">

@@ -201,6 +201,11 @@ export async function updateItem(id: string, body: ItemUpdateRequest): Promise<M
   return res.data
 }
 
+/** Moves an item the caller owns to the trash; the web app restores it. */
+export async function trashItem(id: string): Promise<void> {
+  await request(`/api/v1/items/${id}`, { method: 'DELETE' })
+}
+
 /** Records that the caller filled the item into a page just now. */
 export async function markItemUsed(id: string): Promise<void> {
   await request(`/api/v1/items/${id}/used`, { method: 'PUT' })

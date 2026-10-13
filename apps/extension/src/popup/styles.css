@@ -260,6 +260,13 @@ button.link:hover {
   color: var(--muted);
 }
 
+/* A link drawn as one. */
+a.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .icon-button:hover:not(:disabled) {
   background: var(--hover);
   color: var(--fg);
@@ -464,6 +471,87 @@ button.link:hover {
 .items li:hover,
 .items li:focus-within {
   background: var(--hover);
+}
+
+/* A row's two buttons wait out of sight until the row is pointed at or
+   holds focus, or its menu is open. They keep their room either way, so the
+   text beside them never jumps. */
+.row-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+
+.items li:hover .row-actions,
+.items li:focus-within .row-actions,
+.items li:has([aria-expanded='true']) .row-actions {
+  opacity: 1;
+}
+
+.items li:has([aria-expanded='true']) {
+  background: var(--hover);
+}
+
+/* Nothing hovers on a touch screen. */
+@media (hover: none) {
+  .row-actions {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row-actions {
+    transition: none;
+  }
+}
+
+/* Hung from the row's More button, over the list rather than inside it: the
+   list scrolls, and would cut the menu off. */
+.row-menu {
+  position: fixed;
+  top: auto;
+  max-width: 280px;
+  overflow-y: auto;
+}
+
+.menu-item svg {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+}
+
+.menu-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menu-rule {
+  margin: 6px 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+.menu-note {
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.menu-danger,
+.menu-danger svg {
+  color: var(--danger);
+}
+
+/* Editing or sharing an item, in the popup: the full-screen form at popup width. */
+.vault-sub .back {
+  display: inline-flex;
+  margin: 12px 0 0 12px;
+}
+
+.vault-sub .detail-body {
+  padding: 12px 20px 20px;
 }
 
 .tile {

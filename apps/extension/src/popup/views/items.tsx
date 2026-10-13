@@ -1,35 +1,59 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react'
 
 import type { VaultKeys } from '@/lib/crypto/vault'
 import type { VaultItem } from '@/types/vault'
 
-import { markItemUsed } from '../../lib/api'
+import { markItemUsed, setItemPlacement, SignedOutError, trashItem } from '../../lib/api'
 import { fillLogin } from '../../lib/autofill'
-import { hostOf, matchesSite } from '../../lib/site'
+import { hostOf, linkOf, matchesSite } from '../../lib/site'
 import { lastUsedLabel } from '../../lib/usage'
 import {
+  ArrowLeftIcon,
+  CheckIcon,
   CopyIcon,
   ExpandIcon,
+  ExternalLinkIcon,
+  FolderIcon,
   KeyIcon,
   LockIcon,
   LogOutIcon,
+  MoreIcon,
+  PencilIcon,
   PlusIcon,
   RefreshIcon,
   SearchIcon,
   SettingsIcon,
+  ShareIcon,
   SortIcon,
+  TrashIcon,
   UserIcon,
 } from '../icons'
 import { ItemTile } from '../item-tile'
 import { initials, openFullScreen } from '../layout'
-import { useVaultItems } from '../use-vault-items'
+import { useFolders, useVaultItems } from '../use-vault-items'
 import AddItem from './add-item'
+import ItemForm from './item-form'
+import ShareItem from './share-item'
 
 type Sort = 'name' | 'updated'
 
 const SORT_LABEL: Record<Sort, string> = {
   name: 'Sort by name',
   updated: 'Sort by last updated',
+}
+
+/** The open menu of a row: whose it is, where it hangs, and which of its two pages shows. */
+interface RowMenu {
+  id: string
+  style: CSSProperties
+  page: 'actions' | 'folders'
 }
 
 interface ItemsProps {
@@ -51,6 +75,43 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
   const [refreshing, setRefreshing] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const folders = useFolders(keys)
+  // Editing or sharing an item takes the place of the list.
+  const [sub, setSub] = useState<{ mode: 'edit' | 'share'; id: string } | null>(null)
+  const [rowMenu, setRowMenu] = useState<RowMenu | null>(null)
+  const rowMenuRef = useRef<HTMLDivElement>(null)
+  /** The More button the menu was opened from: focus goes back to it. */
+  const openerRef = useRef<HTMLButtonElement | null>(null)
+
+  // A row's menu closes on Escape and on a click anywhere else.
+  useEffect(() => {
+    if (!rowMenu) return
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setRowMenu(null)
+      openerRef.current?.focus()
+    }
+    const onClick = (e: MouseEvent) => {
+      const target = e.target as Node
+      // Its own button closes it by itself, on the click that follows.
+      if (rowMenuRef.current?.contains(target) || openerRef.current?.contains(target)) return
+      setRowMenu(null)
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('mousedown', onClick)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('mousedown', onClick)
+    }
+  }, [rowMenu])
+
+  // Opening the menu, or turning its page, puts focus on the first choice.
+  const menuId = rowMenu?.id
+  const menuPage = rowMenu?.page
+  useEffect(() => {
+    rowMenuRef.current?.querySelector('button')?.focus()
+  }, [menuId, menuPage])
 
   useEffect(() => {
     // activeTab lets the popup see the URL and title of the tab it was opened on.
@@ -147,6 +208,97 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
     }
   }
 
+  const openRowMenu = (item: VaultItem, button: HTMLButtonElement) => {
+    if (rowMenu?.id === item.id) {
+      setRowMenu(null)
+      return
+    }
+
+    // Hung under the button, or over it when there is more room above.
+    const rect = button.getBoundingClientRect()
+    const below = window.innerHeight - rect.bottom
+    const right = window.innerWidth - rect.right
+    openerRef.current = button
+    setRowMenu({
+      id: item.id,
+      page: 'actions',
+      style:
+        below >= rect.top
+          ? { top: rect.bottom + 4, right, maxHeight: below - 12 }
+          : { bottom: window.innerHeight - rect.top + 4, right, maxHeight: rect.top - 12 },
+    })
+  }
+
+  /** Up and down walk the choices of the menu. */
+  const walkMenu = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+    e.preventDefault()
+
+    const choices = [...e.currentTarget.querySelectorAll('button')]
+    const next =
+      choices.indexOf(document.activeElement as HTMLButtonElement) +
+      (e.key === 'ArrowDown' ? 1 : -1)
+    choices[(next + choices.length) % choices.length]?.focus()
+  }
+
+  /** Runs a menu choice that changes the vault, then says how it went. */
+  const act = async (change: () => Promise<void>, done: string) => {
+    setRowMenu(null)
+
+    try {
+      await change()
+      setNotice(done)
+      await load()
+    } catch (err) {
+      if (err instanceof SignedOutError) onSignedOut()
+      else setNotice(err instanceof Error ? err.message : 'That did not work')
+    }
+  }
+
+  const place = (item: VaultItem, folderId: string | null, done: string) =>
+    act(() => setItemPlacement(item.id, { folder_id: folderId, favorite: item.favorite }), done)
+
+  const subItem = sub && items?.find((item) => item.id === sub.id)
+  if (sub && subItem) {
+    const back = (said?: string) => {
+      setSub(null)
+      if (said) setNotice(said)
+    }
+
+    return (
+      <div className="vault-sub">
+        <button className="link back" onClick={() => back()}>
+          <ArrowLeftIcon width={18} height={18} />
+          All items
+        </button>
+
+        {sub.mode === 'share' ? (
+          <ShareItem
+            keys={keys}
+            item={subItem}
+            onDone={() => back()}
+            onSignedOut={onSignedOut}
+            onNotice={setNotice}
+          />
+        ) : (
+          <ItemForm
+            keys={keys}
+            item={subItem}
+            folders={folders}
+            onCancel={() => back()}
+            onSignedOut={onSignedOut}
+            onSaved={() => {
+              back('Item saved')
+              void load()
+            }}
+          />
+        )}
+      </div>
+    )
+  }
+
+  const menuItem = rowMenu && items?.find((item) => item.id === rowMenu.id)
+
   if (adding) {
     return (
       <AddItem
@@ -213,7 +365,8 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
         />
       </label>
 
-      <main className="panel">
+      {/* The menu hangs from a place on the screen, so the list must not move under it. */}
+      <main className="panel" onScroll={() => rowMenu && setRowMenu(null)}>
         {notice && (
           <p className="notice" role="status">
             {notice}
@@ -275,6 +428,7 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
           {visible.map((item) => {
             const isLogin = item.type === 'login'
             const name = item.secret!.name
+            const website = isLogin ? linkOf(item.secret!.url) : null
 
             return (
               <li key={item.id}>
@@ -287,40 +441,183 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
                   </span>
                 </div>
 
-                {isLogin ? (
-                  <>
-                    <button
+                {/* Shown on hover and on keyboard focus; always there to a screen reader. */}
+                <span className="row-actions">
+                  {website && (
+                    <a
                       className="icon-button"
-                      aria-label={`Copy username of ${name}`}
-                      title="Copy username"
-                      onClick={() => void copy(item.secret!.username, 'username')}
+                      href={website}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`Launch website of ${name}`}
+                      title="Launch website"
                     >
-                      <UserIcon />
-                    </button>
-                    <button
-                      className="icon-button"
-                      aria-label={`Copy password of ${name}`}
-                      title="Copy password"
-                      onClick={() => void copy(item.secret!.password, 'password')}
-                    >
-                      <KeyIcon />
-                    </button>
-                  </>
-                ) : (
+                      <ExternalLinkIcon />
+                    </a>
+                  )}
                   <button
                     className="icon-button"
-                    aria-label={`Copy note ${name}`}
-                    title="Copy note"
-                    onClick={() => void copy(item.secret!.notes, 'note')}
+                    aria-label={`More actions for ${name}`}
+                    title="More"
+                    aria-haspopup="menu"
+                    aria-expanded={rowMenu?.id === item.id}
+                    onClick={(e) => openRowMenu(item, e.currentTarget)}
                   >
-                    <CopyIcon />
+                    <MoreIcon />
                   </button>
-                )}
+                </span>
               </li>
             )
           })}
         </ul>
       </main>
+
+      {rowMenu && menuItem && (
+        <div
+          className="menu row-menu"
+          role="menu"
+          tabIndex={-1}
+          aria-label={`Actions for ${menuItem.secret!.name}`}
+          style={rowMenu.style}
+          ref={rowMenuRef}
+          onKeyDown={walkMenu}
+        >
+          {rowMenu.page === 'folders' ? (
+            <>
+              <button
+                role="menuitem"
+                className="menu-item"
+                onClick={() => setRowMenu({ ...rowMenu, page: 'actions' })}
+              >
+                <ArrowLeftIcon />
+                Back
+              </button>
+              <hr className="menu-rule" />
+              {folders.length === 0 && (
+                <p className="muted menu-note">No folders yet. Make one in the web app.</p>
+              )}
+              {folders.map((folder) => (
+                <button
+                  key={folder.id}
+                  role="menuitemradio"
+                  aria-checked={folder.id === menuItem.folder_id}
+                  className="menu-item"
+                  onClick={() => void place(menuItem, folder.id, `Moved to ${folder.name}`)}
+                >
+                  {folder.id === menuItem.folder_id ? <CheckIcon /> : <FolderIcon />}
+                  <span className="menu-label">{folder.name}</span>
+                </button>
+              ))}
+            </>
+          ) : (
+            <>
+              {menuItem.type === 'login' ? (
+                <>
+                  <button
+                    role="menuitem"
+                    className="menu-item"
+                    onClick={() => {
+                      setRowMenu(null)
+                      void copy(menuItem.secret!.username, 'username')
+                    }}
+                  >
+                    <UserIcon />
+                    Copy username
+                  </button>
+                  <button
+                    role="menuitem"
+                    className="menu-item"
+                    onClick={() => {
+                      setRowMenu(null)
+                      void copy(menuItem.secret!.password, 'password')
+                    }}
+                  >
+                    <KeyIcon />
+                    Copy password
+                  </button>
+                </>
+              ) : (
+                <button
+                  role="menuitem"
+                  className="menu-item"
+                  onClick={() => {
+                    setRowMenu(null)
+                    void copy(menuItem.secret!.notes, 'note')
+                  }}
+                >
+                  <CopyIcon />
+                  Copy note
+                </button>
+              )}
+
+              <hr className="menu-rule" />
+              <button
+                role="menuitem"
+                className="menu-item"
+                onClick={() => setRowMenu({ ...rowMenu, page: 'folders' })}
+              >
+                <FolderIcon />
+                Move to folder
+              </button>
+              {menuItem.folder_id && (
+                <button
+                  role="menuitem"
+                  className="menu-item"
+                  onClick={() => void place(menuItem, null, 'Removed from its folder')}
+                >
+                  <FolderIcon />
+                  Remove from folder
+                </button>
+              )}
+
+              {menuItem.role !== 'viewer' && (
+                <button
+                  role="menuitem"
+                  className="menu-item"
+                  onClick={() => {
+                    setRowMenu(null)
+                    setSub({ mode: 'edit', id: menuItem.id })
+                  }}
+                >
+                  <PencilIcon />
+                  Edit
+                </button>
+              )}
+
+              {/* Only the owner hands an item on, or throws it away. */}
+              {menuItem.role === 'owner' && (
+                <>
+                  <button
+                    role="menuitem"
+                    className="menu-item"
+                    onClick={() => {
+                      setRowMenu(null)
+                      setSub({ mode: 'share', id: menuItem.id })
+                    }}
+                  >
+                    <ShareIcon />
+                    Share
+                  </button>
+                  <hr className="menu-rule" />
+                  <button
+                    role="menuitem"
+                    className="menu-item menu-danger"
+                    onClick={() =>
+                      void act(
+                        () => trashItem(menuItem.id),
+                        'Moved to the trash. The web app can restore it.'
+                      )
+                    }
+                  >
+                    <TrashIcon />
+                    Move to trash
+                  </button>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       <footer className="bottombar">
         <button className="icon-button" aria-label="Settings" title="Settings" onClick={onSettings}>
