@@ -17,10 +17,12 @@ import { lastUsedLabel } from '../../lib/usage'
 import {
   ArrowLeftIcon,
   CheckIcon,
+  ChevronRightIcon,
   CopyIcon,
   ExpandIcon,
   ExternalLinkIcon,
   FolderIcon,
+  FolderMinusIcon,
   KeyIcon,
   LockIcon,
   LogOutIcon,
@@ -231,8 +233,13 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
       page: 'actions',
       style:
         below >= rect.top
-          ? { top: rect.bottom + 4, right, maxHeight: below - 12 }
-          : { bottom: window.innerHeight - rect.top + 4, right, maxHeight: rect.top - 12 },
+          ? { top: rect.bottom + 4, right, maxHeight: below - 12, transformOrigin: 'top right' }
+          : {
+              bottom: window.innerHeight - rect.top + 4,
+              right,
+              maxHeight: rect.top - 12,
+              transformOrigin: 'bottom right',
+            },
     })
   }
 
@@ -575,6 +582,8 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
               >
                 <FolderIcon />
                 Move to folder
+                {/* It opens the list of folders rather than doing something. */}
+                <ChevronRightIcon className="menu-more" />
               </button>
               {menuItem.folder_id && (
                 <button
@@ -582,7 +591,7 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
                   className="menu-item"
                   onClick={() => void place(menuItem, null, 'Removed from its folder')}
                 >
-                  <FolderIcon />
+                  <FolderMinusIcon />
                   Remove from folder
                 </button>
               )}

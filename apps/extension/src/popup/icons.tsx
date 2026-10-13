@@ -201,3 +201,10 @@ export const TrashIcon = icon(
 )
 
 export const CheckIcon = icon(<path d="m5 12 5 5L20 7" />)
+
+export const ChevronRightIcon = icon(<path d="m9 6 6 6-6 6" />)
+
+/** A folder with something taken out of it. */
+export const FolderMinusIcon = icon(
+  <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM9.5 13h5" />
+)
