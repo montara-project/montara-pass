@@ -50,6 +50,10 @@
 
 * {
   box-sizing: border-box;
+  /* Every list that scrolls: a thin bar in the theme's own color, where the
+     browser's default is a wide grey one. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
 }
 
 body {
@@ -1381,8 +1385,6 @@ button.notes-tool[aria-pressed='true'] {
   font-weight: 400;
   overflow-wrap: anywhere;
   outline: none;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
 }
 
 /* A note being read, not written: it takes the room its text needs. */
