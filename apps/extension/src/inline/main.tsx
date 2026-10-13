@@ -235,7 +235,8 @@ function Logins({
           key={item.id}
           className="card"
           ref={index === 0 ? first : undefined}
-          aria-label={`Fill ${item.secret!.name}`}
+          // The label replaces what the button shows, so it says the same.
+          aria-label={[`Fill ${item.secret!.name}`, sharedLabel(item)].filter(Boolean).join(', ')}
           onClick={(e) => void fill(item, e.nativeEvent)}
         >
           <ItemTile item={item} />
@@ -533,7 +534,12 @@ function PasskeyChoice({
               key={item.id}
               className="card"
               disabled={busy}
-              aria-label={`Sign in as ${item.secret!.username || item.secret!.name}`}
+              aria-label={[
+                `Sign in as ${item.secret!.username || item.secret!.name}`,
+                sharedLabel(item),
+              ]
+                .filter(Boolean)
+                .join(', ')}
               onClick={(e) => void confirm(e.nativeEvent, item)}
             >
               <ItemTile item={item} />
