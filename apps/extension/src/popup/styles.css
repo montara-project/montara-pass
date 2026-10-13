@@ -17,9 +17,6 @@
   --warn: #b45309;
   --good: #15803d;
   --focus: #145cff;
-  --tile-from: #145cff;
-  --tile-to: #42c8ff;
-  --tile-fg: #101d3a;
   --accent: #42c8ff;
   --accent-fg: #101d3a;
   --avatar: #101d3a;
@@ -477,14 +474,14 @@ button.link:hover {
   width: 36px;
   height: 36px;
   margin-right: 8px;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  background: linear-gradient(160deg, var(--tile-from), var(--tile-to));
-  color: var(--tile-fg);
+  background: var(--bg);
+  color: var(--fg);
 }
 
 .tile-favicon {
   padding: 6px;
-  background: #fff;
 }
 
 .tile img {
@@ -495,6 +492,7 @@ button.link:hover {
 
 .tile-accent {
   margin-right: 0;
+  border-color: transparent;
   background: var(--accent);
   color: var(--accent-fg);
 }
