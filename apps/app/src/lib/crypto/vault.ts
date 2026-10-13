@@ -31,6 +31,21 @@ export interface VaultKeys {
   publicKey: CryptoKey
 }
 
+/**
+ * A passkey kept with a login. The extension makes it when a site asks for
+ * one, and signs that site's challenges with it (apps/extension/src/lib/passkey.ts).
+ */
+export interface Passkey {
+  /** The name the site knows the credential by, as base64url. */
+  credentialId: string
+  /** The relying party it was made for: the only one it signs for. */
+  rpId: string
+  /** The account id the site gave, as base64url. */
+  userHandle: string
+  /** The ES256 private key: PKCS#8, as base64url. */
+  privateKey: string
+}
+
 /** What an item holds once decrypted. `type` decides which fields are used. */
 export interface ItemSecret {
   name: string
@@ -48,6 +63,8 @@ export interface ItemSecret {
    * Missing means visible.
    */
   visible?: boolean
+  /** The passkey for the site, when the extension made one. */
+  passkey?: Passkey
 }
 
 /**
@@ -62,7 +79,8 @@ export function itemIcon(secret: ItemSecret | null | undefined): string | null {
 /**
  * What an edit carries over from the secret it replaces, because the form
  * that made it has no field for it: the icon saved for the site, unless the
- * site changed, and whether a note is hidden.
+ * site changed, whether a note is hidden, and the passkey, which names its
+ * own site and would be lost for good.
  */
 export function keepUnedited(
   next: ItemSecret,
@@ -70,6 +88,7 @@ export function keepUnedited(
 ): ItemSecret {
   return {
     ...next,
+    ...(previous?.passkey ? { passkey: previous.passkey } : {}),
     ...(previous?.icon !== undefined && next.url === previous.url ? { icon: previous.icon } : {}),
     ...(previous?.visible !== undefined && next.visible === undefined
       ? { visible: previous.visible }

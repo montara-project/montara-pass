@@ -1,7 +1,8 @@
 // The background script locks the vault when the auto-lock alarm fires, tells
-// the inline menu which tab it sits in, and holds a login that was just
-// submitted until the save prompt takes it. It imports nothing, so it stays a
-// single file the manifest can name.
+// the inline menu which tab it sits in, holds a login that was just submitted
+// until the save prompt takes it, and says whether anyone is signed in to
+// answer a request for a passkey. It imports nothing, so it stays a single
+// file the manifest can name.
 // Keep the names in sync with src/lib/session.ts and src/lib/storage.ts.
 
 const AUTO_LOCK_ALARM = 'auto-lock'
@@ -97,6 +98,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse(fresh)
       })
       // The answer comes later.
+      return true
+    // Whether a page's request for a passkey is worth a prompt: only with
+    // somebody signed in, whose vault can hold one.
+    case 'passkey:available':
+      void chrome.storage.local.get(TOKENS_KEY).then((stored) => sendResponse(!!stored[TOKENS_KEY]))
       return true
   }
 })

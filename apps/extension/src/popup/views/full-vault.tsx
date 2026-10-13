@@ -568,6 +568,13 @@ function ItemDetail({ item, onCopy, onEdit, onShare }: ItemDetailProps) {
                 )}
               </dd>
             </div>
+
+            {secret.passkey && (
+              <div className="field">
+                <dt>Passkey</dt>
+                <dd>Signs in to {secret.passkey.rpId}</dd>
+              </div>
+            )}
           </>
         )}
 
