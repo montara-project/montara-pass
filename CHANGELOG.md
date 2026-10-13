@@ -3,6 +3,22 @@
 All notable changes to this project are documented in this file. Versions follow the git tags (`v*`); Docker images are published to ghcr.io with the same version.
 
 
+## [1.5.0](https://github.com/montara-project/montara-pass/compare/v1.4.0...v1.5.0) (2026-10-13)
+
+### Features
+
+* **extension:** give a popup row two buttons, launch and more ([3b2628e](https://github.com/montara-project/montara-pass/commit/3b2628e25dbc2239b2bf68b57c23f3509fec73fb))
+* **extension:** lay settings out as sections of cards ([73ecf86](https://github.com/montara-project/montara-pass/commit/73ecf86b6bf96eb697574df5715b799bff5dacfb))
+* **extension:** save passkeys in the vault and sign in with them ([a7b4a30](https://github.com/montara-project/montara-pass/commit/a7b4a30fea968fd96eac42d58cf838d6d5937a47))
+
+### Bug Fixes
+
+* **app:** show a dash for a date that cannot be read ([a5060b6](https://github.com/montara-project/montara-pass/commit/a5060b6d00b04553b35ccae8072d0abd6e758bfb))
+* **extension:** do not offer a passkey-only login for filling ([3eb45f5](https://github.com/montara-project/montara-pass/commit/3eb45f514d58470a94e21c24f29f83f305c9202a))
+* **extension:** hear only the frames the content script made ([1d89fe8](https://github.com/montara-project/montara-pass/commit/1d89fe8a4780ecd1c46459785fb57726f9e0358f))
+* **extension:** keep www apart on a shared suffix, and say shared aloud ([d383223](https://github.com/montara-project/montara-pass/commit/d38322359ba7cbd1be2a40097742f8d1232c224b))
+* **extension:** offer sign out in settings after a failed start ([40099ed](https://github.com/montara-project/montara-pass/commit/40099ede45ff3cfafafdfc4d97d765ccc29106a6))
+
 ## [1.4.0](https://github.com/montara-project/montara-pass/compare/v1.3.0...v1.4.0) (2026-10-12)
 
 ### Features
