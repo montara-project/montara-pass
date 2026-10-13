@@ -34,7 +34,7 @@ import {
   storePendingLogin,
   type PendingLogin,
 } from '../lib/session'
-import { hostOf, matchesSite, originOf } from '../lib/site'
+import { fillsSite, hostOf, matchesSite, originOf } from '../lib/site'
 import { getSettings, getTokens } from '../lib/storage'
 import { lastUsedLabel } from '../lib/usage'
 import { ExpandIcon, KeyIcon, RefreshIcon } from '../popup/icons'
@@ -181,7 +181,7 @@ function Logins({
   const matches = useMemo(
     () =>
       (items ?? [])
-        .filter((item) => item.type === 'login' && matchesSite(item.secret?.url, page.url))
+        .filter((item) => item.type === 'login' && fillsSite(item.secret, page.url))
         // The account signed in with last comes first.
         .sort((a, b) => (b.last_used_at ?? '').localeCompare(a.last_used_at ?? '')),
     [items, page.url]

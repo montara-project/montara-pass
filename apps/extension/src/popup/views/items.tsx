@@ -12,7 +12,7 @@ import type { VaultItem } from '@/types/vault'
 
 import { markItemUsed, setItemPlacement, SignedOutError, trashItem } from '../../lib/api'
 import { fillLogin } from '../../lib/autofill'
-import { hostOf, linkOf, matchesSite } from '../../lib/site'
+import { fillsSite, hostOf, linkOf } from '../../lib/site'
 import { lastUsedLabel } from '../../lib/usage'
 import {
   ArrowLeftIcon,
@@ -167,10 +167,7 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
   // Logins saved for the page in the active tab: the only ones Fill is offered
   // for, so a look-alike domain is never one click away from a real password.
   const forThisSite = useMemo(
-    () =>
-      (items ?? []).filter(
-        (item) => item.type === 'login' && matchesSite(item.secret?.url, tab?.url)
-      ),
+    () => (items ?? []).filter((item) => item.type === 'login' && fillsSite(item.secret, tab?.url)),
     [items, tab]
   )
 

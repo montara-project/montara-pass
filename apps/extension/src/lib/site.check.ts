@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict'
 
 // By address, so Node finds the file without the bundler's resolution.
-const { matchesSite } = (await import(
+const { matchesSite, fillsSite } = (await import(
   new URL('./site.ts', import.meta.url).href
 )) as typeof import('./site')
 
@@ -26,5 +26,15 @@ assert.ok(!fits('https://github.io', 'https://www.github.io'))
 assert.ok(!fits('https://www.github.io', 'https://github.io'))
 assert.ok(fits('https://www.github.io', 'https://www.github.io'))
 assert.ok(fits('https://ada.github.io', 'https://www.ada.github.io'))
+
+// Fill is for a login with something to type: not one that is only a passkey.
+const page = 'https://example.com'
+assert.ok(fillsSite({ url: page, password: 'pw' }, page))
+assert.ok(fillsSite({ url: page, password: 'pw', passkey: {} }, page))
+assert.ok(fillsSite({ url: page }, page))
+assert.ok(!fillsSite({ url: page, passkey: {} }, page))
+assert.ok(!fillsSite({ url: page, password: '', passkey: {} }, page))
+assert.ok(!fillsSite({ url: 'https://other.com', password: 'pw' }, page))
+assert.ok(!fillsSite(null, page))
 
 console.log('site: ok')

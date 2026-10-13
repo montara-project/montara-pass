@@ -60,3 +60,16 @@ export function matchesSite(savedUrl: string | undefined, pageUrl: string | unde
   if (pageHost === savedHost) return true
   return pageHost.endsWith(`.${savedHost}`) && owned(savedHost)
 }
+
+/**
+ * Whether a saved login is one to fill into the page: it belongs there, and
+ * has something to type. A login that holds only a passkey has no password to
+ * fill; it signs in through the passkey prompt instead.
+ */
+export function fillsSite(
+  secret: { url?: string; password?: string; passkey?: unknown } | null | undefined,
+  pageUrl: string | undefined
+): boolean {
+  if (!secret || (secret.passkey && !secret.password)) return false
+  return matchesSite(secret.url, pageUrl)
+}
