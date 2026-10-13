@@ -16,14 +16,6 @@ export const requiredString = (attribute: string) =>
     .trim()
     .nonempty(required(attribute))
 
-export const requiredNonNegativeInteger = (attribute: string) =>
-  z
-    .number({
-      error: (issue) => (issue.input === undefined ? required(attribute) : mustBeNumber(attribute)),
-    })
-    .int(mustBeInteger(attribute))
-    .min(0, `The ${attribute} must be at least 0.`)
-
 export const optionalNumber = (attribute: string) =>
   z
     .number({ error: mustBeNumber(attribute) })

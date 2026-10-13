@@ -11,7 +11,4 @@ export const PaginateSchema = z.object({
   limit: optionalNumber('limit'),
 })
 
-/** Relation names a list request may embed, comma-separated (?include=). */
-export type IncludeParam = { include?: string }
-
 export type PaginateDto = z.infer<typeof PaginateSchema>

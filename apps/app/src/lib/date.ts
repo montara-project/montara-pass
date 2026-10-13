@@ -1,22 +1,15 @@
-import { format as formatDateFn } from 'date-fns'
+type DateLike = Date | string | number | null | undefined
 
-/**
- * Format date using date-fns
- * @param date - Date to format
- * @param formatStr - Format string (default: 'dd/MM/yyyy')
- * @returns Formatted date string
- */
-export function formatDate(
-  date: Date | string | number | null | undefined,
-  formatStr?: string
-): string {
-  if (!date) return '-'
-  return formatDateFn(date, formatStr || 'dd/MM/yyyy')
+// en-GB writes a date as dd/MM/yyyy.
+const date = new Intl.DateTimeFormat('en-GB', { dateStyle: 'short' })
+const dateTime = new Intl.DateTimeFormat('en-GB', { dateStyle: 'short', timeStyle: 'medium' })
+
+/** dd/MM/yyyy, or '-' for no date. */
+export function formatDate(value: DateLike): string {
+  return value ? date.format(new Date(value)) : '-'
 }
 
-/**
- * Format date with time (dd/MM/yyyy, HH:mm:ss)
- */
-export function formatDateTime(date: Date | string | number | null | undefined): string {
-  return formatDate(date, 'dd/MM/yyyy, HH:mm:ss')
+/** dd/MM/yyyy, HH:mm:ss, or '-' for no date. */
+export function formatDateTime(value: DateLike): string {
+  return value ? dateTime.format(new Date(value)) : '-'
 }
