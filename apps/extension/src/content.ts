@@ -1,7 +1,9 @@
 // The page side of the inline menu: a badge inside the focused login field and
 // a frame under it that holds the menu (inline.html). The manifest runs it on
 // every page, in the top frame only. It also notices a login being submitted
-// and frames the prompt that offers to save it (inline.html#save).
+// and frames the prompt that offers to save it (inline.html#save). On a page
+// that asks for a login it frames, in the same corner, the logins the vault
+// has for the site (inline.html#offer).
 //
 // It never sees the vault: the frames are extension pages, which the page
 // around them can neither read nor script, and the menu fills the form itself.
@@ -26,6 +28,9 @@
   let dismissed = false
   let saveFrame: HTMLIFrameElement | null = null
   let watch = 0
+  let offerFrame: HTMLIFrameElement | null = null
+  /** The offer was made on this page, taken or not: it is made once. */
+  let offered = false
   /** The request the page is waiting on, as it sent it: the prompt reads it. */
   let passkey: { id: string } | null = null
   let passkeyFrame: HTMLIFrameElement | null = null
@@ -177,8 +182,9 @@
     badge.hidden = false
     raise()
     place()
-    // The logins for the site, offered as soon as an empty field is entered.
-    if (!el.value && !dismissed) open(true)
+    // The logins for the site, offered as soon as an empty field is entered,
+    // unless the corner of the page is offering them already.
+    if (!el.value && !dismissed && !offerShown()) open(true)
   }
 
   const close = () => {
@@ -206,7 +212,7 @@
 
   /** Take the host out of the page once nothing in it is left to show. */
   const release = () => {
-    if (!field && !saveFrame && !passkeyFrame) host.remove()
+    if (!field && !saveFrame && !passkeyFrame && !offerFrame) host.remove()
   }
 
   const hide = () => {
@@ -282,6 +288,47 @@
   const closeSave = () => {
     saveFrame?.remove()
     saveFrame = null
+    release()
+  }
+
+  const offerShown = () => !!offerFrame && offerFrame.style.opacity === '1'
+
+  /**
+   * Frame the logins the vault has for this site, if the page asks for one:
+   * it has a password field that is not choosing a new password, or a field
+   * that says it takes a username. Any other email box is not a sign-in.
+   */
+  // ponytail: looked for when the page arrives and once more a little later,
+  // for forms a script draws. A sign-in a single-page app brings up after
+  // that is not noticed here; the menu under its field still offers the same.
+  const offerLogins = () => {
+    if (offered || saveFrame) return
+
+    const asks = Array.from(document.querySelectorAll('input'))
+      .filter(usable)
+      .some((el) =>
+        el.type === 'password'
+          ? !isNewPassword(el)
+          : ['text', 'email', 'tel'].includes(el.type) && /username/i.test(el.autocomplete)
+      )
+    if (!asks) return
+    offered = true
+
+    offerFrame = document.createElement('iframe')
+    greet(offerFrame)
+    offerFrame.src = `${FRAME_URL}#offer`
+    offerFrame.title = 'Montara Pass: logins for this site'
+    // Out of sight until it reports a height, as the save prompt is: locked,
+    // signed out or with no login for the site, it has nothing to show.
+    offerFrame.style.cssText =
+      'top: 16px; right: 16px; width: min(340px, calc(100vw - 32px)); height: 120px; opacity: 0; pointer-events: none'
+    shadow.append(offerFrame)
+    raise()
+  }
+
+  const closeOffer = () => {
+    offerFrame?.remove()
+    offerFrame = null
     release()
   }
 
@@ -367,6 +414,10 @@
     const inputs = Array.from(document.querySelectorAll('input')).filter(usable)
     const passwords = inputs.filter((el) => el.type === 'password' && el.value)
     if (passwords.length === 0) return
+
+    // Signing in by hand: the logins on offer are no longer wanted, and the
+    // corner is free for the prompt that asks to save this one.
+    closeOffer()
 
     // A sign-up asks for the password twice and a change of password asks for
     // the old one first: the last field holds the one that counts.
@@ -461,6 +512,7 @@
         dismissed = true
         close()
       }
+      if (e.key === 'Escape' && offerShown()) closeOffer()
       if (e.key === 'ArrowDown' && e.altKey && field && e.target === field) {
         e.preventDefault()
         close()
@@ -491,7 +543,9 @@
           ? saveFrame
           : channel === 'passkey'
             ? passkeyFrame
-            : null
+            : channel === 'offer'
+              ? offerFrame
+              : null
     if (!speaker || typeof message.token !== 'string' || tokens.get(speaker) !== message.token) {
       return
     }
@@ -516,6 +570,21 @@
         break
       case 'save:close':
         closeSave()
+        break
+      case 'offer:check':
+        sendResponse(isVisible(offerFrame))
+        break
+      case 'offer:resize':
+        if (offerFrame && message.height > 0) {
+          offerFrame.style.height = `${clamp(Number(message.height), 40, Math.min(MAX_HEIGHT, window.innerHeight - 32))}px`
+          offerFrame.style.opacity = '1'
+          offerFrame.style.pointerEvents = 'auto'
+          // The same logins, opened unasked under the field, would say it twice.
+          if (frame?.src.split('#')[1]?.includes('auto')) close()
+        }
+        break
+      case 'offer:close':
+        closeOffer()
         break
       case 'passkey:request':
         sendResponse(passkey)
@@ -561,8 +630,12 @@
   // A field that already has the focus when the script arrives.
   if (isLoginField(document.activeElement)) show(document.activeElement)
 
-  // A login submitted on the page before this one.
-  void offerSave()
+  // A login submitted on the page before this one. Asked about first: the
+  // logins for the site are not offered over it.
+  void offerSave().then(() => {
+    offerLogins()
+    setTimeout(offerLogins, 1500)
+  })
 
   // A page without an origin of its own has no passkeys either.
   if (ORIGIN !== 'null') {
