@@ -614,6 +614,27 @@ a.icon-button {
   padding: 12px 20px 20px;
 }
 
+/* The form's own heading, a line apart from what it says about itself. */
+.vault-sub .detail-body > header:not(.detail-head) {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.vault-sub .detail-body > header:not(.detail-head) .muted {
+  font-size: 13px;
+}
+
+/* The way through the form is the wider of its two buttons. */
+.vault-sub .form-actions {
+  margin-top: 4px;
+}
+
+.vault-sub .form-actions button[type='submit'] {
+  flex: 1;
+}
+
 .tile {
   display: inline-flex;
   flex-shrink: 0;

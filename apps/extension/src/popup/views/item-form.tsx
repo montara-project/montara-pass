@@ -78,7 +78,8 @@ interface FieldProps {
   }) => ReactNode
 }
 
-function Field({ label, required, error, children }: FieldProps) {
+/** A labelled field of the item forms, with its error under it. */
+export function Field({ label, required, error, children }: FieldProps) {
   const id = useId()
   const errorId = `${id}-error`
 
