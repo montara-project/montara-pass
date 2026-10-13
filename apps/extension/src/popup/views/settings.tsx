@@ -1,9 +1,12 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useSelector } from '@tanstack/react-form'
+import { useEffect, useRef, useState } from 'react'
 
 import { getProfile } from '../../lib/api'
+import { ServerFormSchema } from '../../lib/schemas'
 import { AUTO_LOCK_MINUTES } from '../../lib/session'
 import { originOf } from '../../lib/site'
 import { DEFAULT_SETTINGS, getSettings, saveSettings } from '../../lib/storage'
+import { checked, useAppForm } from '../form'
 import { ArrowLeftIcon, ExternalLinkIcon } from '../icons'
 
 interface SettingsProps {
@@ -20,23 +23,69 @@ const DEV = import.meta.env.MODE === 'development'
 const SITE_URL = 'https://montarapass.com'
 const DOCS_URL = 'https://docs.montarapass.com/docs'
 
+/**
+ * The two origins a valid server form stands for. A released build knows one
+ * server, which also serves the web app.
+ */
+function originsOf(value: { selfHosted: boolean; apiUrl: string; appUrl: string }) {
+  const apiOrigin = DEV || value.selfHosted ? originOf(value.apiUrl)! : DEFAULT_SETTINGS.apiUrl
+  const appOrigin = DEV
+    ? originOf(value.appUrl)!
+    : value.selfHosted
+      ? apiOrigin
+      : DEFAULT_SETTINGS.appUrl
+  return { apiOrigin, appOrigin }
+}
+
 export default function Settings({ onClose, onLock, onSignOut }: SettingsProps) {
   const [saved, setSaved] = useState(DEFAULT_SETTINGS)
-  const [apiUrl, setApiUrl] = useState(DEFAULT_SETTINGS.apiUrl)
-  const [appUrl, setAppUrl] = useState(DEFAULT_SETTINGS.appUrl)
-  const [selfHosted, setSelfHosted] = useState(false)
   const [email, setEmail] = useState('')
+  // What the browser said about reaching the server, as opposed to the fields.
   const [error, setError] = useState('')
+
+  /** The browser's answer to the last request for access to the server. */
+  const asked = useRef<Promise<boolean>>(Promise.resolve(false))
 
   const signedIn = !!onSignOut
 
+  const form = useAppForm({
+    // What is saved, once it has been read: the form starts over from it.
+    defaultValues: {
+      selfHosted: saved.apiUrl !== DEFAULT_SETTINGS.apiUrl,
+      apiUrl: saved.apiUrl,
+      appUrl: saved.appUrl,
+    },
+    validationLogic: checked,
+    validators: { onDynamic: ServerFormSchema },
+    onSubmit: async ({ value }) => {
+      setError('')
+
+      const { apiOrigin, appOrigin } = originsOf(value)
+      if (!(await asked.current)) {
+        setError(`Without access to ${apiOrigin} the extension cannot reach that server.`)
+        return
+      }
+
+      await saveSettings({ apiUrl: apiOrigin, appUrl: appOrigin })
+      onClose()
+    },
+  })
+
+  /**
+   * Ask the browser for the server's site before the form goes through its
+   * checks: a permission prompt is only shown in direct response to a user
+   * action, and the form answers a moment later. It says yes without a prompt
+   * unless site access was taken away in the browser.
+   */
+  const ask = () => {
+    const value = form.state.values
+    asked.current = ServerFormSchema.safeParse(value).success
+      ? chrome.permissions.request({ origins: [`${originsOf(value).apiOrigin}/*`] })
+      : Promise.resolve(false)
+  }
+
   useEffect(() => {
-    void getSettings().then((settings) => {
-      setSaved(settings)
-      setApiUrl(settings.apiUrl)
-      setAppUrl(settings.appUrl)
-      setSelfHosted(settings.apiUrl !== DEFAULT_SETTINGS.apiUrl)
-    })
+    void getSettings().then(setSaved)
   }, [])
 
   // The row shows without the address when the server cannot be reached.
@@ -47,34 +96,20 @@ export default function Settings({ onClose, onLock, onSignOut }: SettingsProps) 
       .catch(() => {})
   }, [signedIn])
 
+  const { selfHosted, apiUrl, appUrl } = useSelector(form.store, (state) => state.values)
   const wasSelfHosted = saved.apiUrl !== DEFAULT_SETTINGS.apiUrl
   const changed = DEV
     ? apiUrl !== saved.apiUrl || appUrl !== saved.appUrl
     : selfHosted !== wasSelfHosted || (selfHosted && apiUrl !== saved.apiUrl)
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-
-    // A released build knows one server, which also serves the web app.
-    const apiOrigin = DEV || selfHosted ? originOf(apiUrl) : DEFAULT_SETTINGS.apiUrl
-    const appOrigin = DEV ? originOf(appUrl) : selfHosted ? apiOrigin : DEFAULT_SETTINGS.appUrl
-    if (!apiOrigin || !appOrigin) {
-      setError('Enter an http(s) URL, like https://vault.example.com')
-      return
-    }
-
-    // Asked first, straight from the click: the browser only shows a
-    // permission prompt in direct response to a user action. It answers true
-    // without a prompt unless site access was taken away in the browser.
-    const granted = await chrome.permissions.request({ origins: [`${apiOrigin}/*`] })
-    if (!granted) {
-      setError(`Without access to ${apiOrigin} the extension cannot reach that server.`)
-      return
-    }
-
-    await saveSettings({ apiUrl: apiOrigin, appUrl: appOrigin })
-    onClose()
-  }
+  // One line under the fields says what is wrong with them, or with the server.
+  const fieldError = useSelector(form.store, (state) =>
+    Object.values(state.fieldMeta)
+      .filter((meta) => meta?.isTouched)
+      .flatMap((meta) => meta!.errors as { message?: string }[])
+      .find((issue) => issue?.message)
+  )?.message
+  const shownError = fieldError || error
 
   return (
     <div className="settings">
@@ -138,36 +173,44 @@ export default function Settings({ onClose, onLock, onSignOut }: SettingsProps) 
 
       <section className="set-section" aria-labelledby="set-server">
         <h2 id="set-server">Server</h2>
-        <form className="set-card" onSubmit={(e) => void handleSubmit(e)}>
+        <form
+          className="set-card"
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault()
+            ask()
+            void form.handleSubmit()
+          }}
+        >
           {DEV ? (
             <>
-              <label className="set-row set-field">
+              <label className="set-row set-field" htmlFor="set-api-dev">
                 <span className="set-text">API server</span>
-                <input value={apiUrl} onChange={(e) => setApiUrl(e.target.value)} required />
+                <form.AppField
+                  name="apiUrl"
+                  children={(field) => <field.Input id="set-api-dev" />}
+                />
               </label>
 
-              <label className="set-row set-field">
+              <label className="set-row set-field" htmlFor="set-app">
                 <span className="set-text">Web app</span>
-                <input value={appUrl} onChange={(e) => setAppUrl(e.target.value)} required />
+                <form.AppField name="appUrl" children={(field) => <field.Input id="set-app" />} />
               </label>
             </>
           ) : (
             <>
-              <label className="set-row toggle">
+              <label className="set-row toggle" htmlFor="set-self-hosted">
                 <span className="set-text">
                   Self-hosted
                   <span className="muted">Use your own Montara Pass server</span>
                 </span>
-                <input
-                  type="checkbox"
-                  role="switch"
-                  aria-checked={selfHosted}
-                  checked={selfHosted}
-                  onChange={(e) => setSelfHosted(e.target.checked)}
+                <form.AppField
+                  name="selfHosted"
+                  children={(field) => <field.Switch id="set-self-hosted" />}
                 />
               </label>
 
-              <label className="set-row set-field">
+              <label className="set-row set-field" htmlFor="set-api">
                 <span className="set-text">
                   Server URL
                   <span className="muted">
@@ -175,22 +218,26 @@ export default function Settings({ onClose, onLock, onSignOut }: SettingsProps) 
                   </span>
                 </span>
                 {/* The API lives under /api of the server; only the origin is kept. */}
-                <input
-                  value={selfHosted ? apiUrl : `${DEFAULT_SETTINGS.apiUrl}/api`}
-                  onChange={(e) => setApiUrl(e.target.value)}
-                  placeholder="https://vault.example.com/api"
-                  disabled={!selfHosted}
-                  required
-                />
+                {selfHosted ? (
+                  <form.AppField
+                    name="apiUrl"
+                    children={(field) => (
+                      <field.Input id="set-api" placeholder="https://vault.example.com/api" />
+                    )}
+                  />
+                ) : (
+                  // The server every release knows: shown, not asked for.
+                  <input id="set-api" value={`${DEFAULT_SETTINGS.apiUrl}/api`} disabled readOnly />
+                )}
               </label>
             </>
           )}
 
           <div className="set-row">
             <span className="set-text">
-              {error ? (
+              {shownError ? (
                 <span className="error" role="alert">
-                  {error}
+                  {shownError}
                 </span>
               ) : (
                 <span className="muted">
@@ -198,9 +245,9 @@ export default function Settings({ onClose, onLock, onSignOut }: SettingsProps) 
                 </span>
               )}
             </span>
-            <button type="submit" disabled={!changed}>
-              Save
-            </button>
+            <form.AppForm>
+              <form.SubmitButton label="Save" busyLabel="Saving…" disabled={!changed} />
+            </form.AppForm>
           </div>
         </form>
       </section>

@@ -124,13 +124,14 @@ p {
 .toggle input {
   appearance: none;
   flex-shrink: 0;
-  width: 32px;
-  height: 18px;
-  margin: 1px 0 0;
+  width: 38px;
+  height: 22px;
+  margin: 0;
   padding: 2px;
   border: 0;
   border-radius: 999px;
-  background: var(--border);
+  /* Told apart from the surface it sits on, also when it is off. */
+  background: color-mix(in srgb, var(--fg) 26%, transparent);
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -138,8 +139,8 @@ p {
 .toggle input::before {
   content: '';
   display: block;
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   background: #fff;
   transition: translate 0.15s;
@@ -150,7 +151,7 @@ p {
 }
 
 .toggle input:checked::before {
-  translate: 14px;
+  translate: 16px;
 }
 
 input:disabled {
@@ -614,6 +615,27 @@ a.icon-button {
   padding: 12px 20px 20px;
 }
 
+/* The form's own heading, a line apart from what it says about itself. */
+.vault-sub .detail-body > header:not(.detail-head) {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.vault-sub .detail-body > header:not(.detail-head) .muted {
+  font-size: 13px;
+}
+
+/* The way through the form is the wider of its two buttons. */
+.vault-sub .form-actions {
+  margin-top: 4px;
+}
+
+.vault-sub .form-actions button[type='submit'] {
+  flex: 1;
+}
+
 .tile {
   display: inline-flex;
   flex-shrink: 0;
@@ -1060,28 +1082,6 @@ a.set-row:active {
   height: 34px;
   padding: 0 14px;
   font-size: 13px;
-}
-
-/* The switch of a row: a little larger than in a form, and its track is
-   told apart from the card when it is off. */
-.set-row.toggle input {
-  width: 38px;
-  height: 22px;
-  margin: 0;
-  background: color-mix(in srgb, var(--fg) 26%, transparent);
-}
-
-.set-row.toggle input::before {
-  width: 18px;
-  height: 18px;
-}
-
-.set-row.toggle input:checked {
-  background: var(--primary);
-}
-
-.set-row.toggle input:checked::before {
-  translate: 16px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1610,8 +1610,21 @@ input.range {
   border-radius: 14px;
 }
 
+/* Beside the item's name the buttons are a size down: the name leads. */
+.detail-head button {
+  flex-shrink: 0;
+  height: 36px;
+  padding: 0 14px;
+  font-weight: 500;
+}
+
+.detail-head .tile {
+  margin-right: 6px;
+}
+
 .fields {
   margin: 0;
+  overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 14px;
   background: var(--card);
@@ -1627,6 +1640,21 @@ input.range {
 
 .field + .field {
   border-top: 1px solid var(--border);
+}
+
+/* The row under the pointer is lit, so it is plain which value its buttons act on. */
+.field {
+  transition: background-color 120ms ease-out;
+}
+
+.field:hover {
+  background: var(--hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field {
+    transition: none;
+  }
 }
 
 .field dt {
@@ -1668,17 +1696,62 @@ input.range {
 
 .field-notes dd {
   grid-column: 1 / -1;
-  margin-top: 4px;
+  grid-row: 2;
+  margin-top: 8px;
+  line-height: 1.6;
   white-space: pre-wrap;
 }
 
+/* A note is read, not acted on: the row does not light up under the pointer. */
+.field-notes:hover {
+  background: none;
+}
+
+/* Hidden, only the top of the note is there, and none of it can be made out:
+   its length and its shape would say something too. */
 .field-notes dd.blurred {
-  filter: blur(7px);
+  max-height: 200px;
+  overflow: hidden;
+  filter: blur(9px);
+  opacity: 0.7;
   user-select: none;
 }
 
-.field a {
+/* Over the blurred note, in the same cell of the grid. */
+.note-veil {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  place-self: center;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.note-veil button {
+  height: 36px;
+  margin-top: 4px;
+  padding: 0 14px;
+  background: var(--panel);
+  font-weight: 500;
+}
+
+.note-veil button:hover {
+  background: var(--hover);
+}
+
+/* A value that is a link: quiet until it is pointed at. */
+.field dd a {
   color: var(--focus);
+  text-decoration-color: color-mix(in srgb, var(--focus) 40%, transparent);
+  text-underline-offset: 3px;
+}
+
+.field dd a:hover {
+  text-decoration-color: currentColor;
 }
 
 .mono {
@@ -1687,6 +1760,12 @@ input.range {
 
 .meta {
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Under the card, in line with what the card holds. */
+.fields + .meta {
+  padding-left: 17px;
 }
 
 .detail-empty {
@@ -1744,8 +1823,8 @@ textarea {
 }
 
 .notes-editor:focus-within {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 1px var(--focus);
 }
 
 .notes-toolbar {
@@ -1769,6 +1848,16 @@ button.notes-tool {
   font-weight: 600;
 }
 
+button.notes-tool svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* The letters stand for what they do to the text, so they are set that way. */
+button.notes-tool i {
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
 button.notes-tool:hover:not(:disabled),
 button.notes-tool[aria-pressed='true'] {
   background: var(--hover);
@@ -1788,8 +1877,9 @@ button.notes-tool[aria-pressed='true'] {
 
 .notes-placeholder {
   position: absolute;
-  top: 10px;
-  left: 12px;
+  top: 12px;
+  left: 14px;
+  line-height: 1.6;
   color: var(--muted);
   pointer-events: none;
 }
@@ -1798,7 +1888,8 @@ button.notes-tool[aria-pressed='true'] {
   min-height: 130px;
   max-height: 320px;
   overflow-y: auto;
-  padding: 10px 12px;
+  padding: 12px 14px;
+  line-height: 1.6;
   border-radius: 0 0 10px 10px;
   font-weight: 400;
   overflow-wrap: anywhere;
@@ -1836,6 +1927,52 @@ button.notes-tool[aria-pressed='true'] {
 
 .notes-content > * {
   margin: 0 0 8px;
+}
+
+/* A note gets a reading rhythm, written or read: room between its blocks
+   and more above a heading than under it. */
+.notes-content > * {
+  margin-bottom: 12px;
+}
+
+.notes-content > :is(h1, h2, h3) {
+  margin: 20px 0 8px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+.notes-content > :first-child {
+  margin-top: 0;
+}
+
+.notes-content li + li {
+  margin-top: 4px;
+}
+
+.notes-content pre {
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+/* Being read, its code is set apart on the field's color. */
+
+.notes-content.notes-view code {
+  background: var(--field);
+}
+
+.notes-content.notes-view pre {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--field);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.notes-content.notes-view pre code {
+  background: none;
 }
 
 .notes-content > :last-child {
@@ -1977,6 +2114,65 @@ select:disabled {
 
 .form-actions {
   justify-content: flex-end;
+}
+
+/* A text field shows focus on its own box, as the search and sign-in fields
+   do, not as a second ring around it. Switches and sliders keep the ring. */
+input:not([type='checkbox'], [type='range']):focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 1px var(--focus);
+}
+
+/* Fields drawn by the box around them, which shows the focus itself. */
+.search input:focus-visible,
+.auth-field input:focus-visible {
+  box-shadow: none;
+}
+
+input,
+select,
+textarea,
+.notes-editor {
+  transition:
+    border-color 120ms ease-out,
+    box-shadow 120ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  input,
+  select,
+  textarea,
+  .notes-editor {
+    transition: none;
+  }
+}
+
+/* A secure note is its notes: in a tab its editor takes the height the
+   window has to give, where a login's notes keep to a few lines. */
+.detail-col form[data-type='secure_note'] .notes-content {
+  min-height: 240px;
+  max-height: max(320px, calc(100vh - 470px));
+}
+
+/* In a tab, the form's heading stands a little apart from its fields, and
+   the way out of a long form stays in reach at the bottom of the pane. */
+.detail-col .detail-body > header:not(.detail-head) {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.detail-col form > .form-actions:last-child {
+  position: sticky;
+  bottom: 0;
+  margin: 0 -32px -32px;
+  padding: 16px 32px 24px;
+  /* What scrolls under it fades out rather than being cut. */
+  background: linear-gradient(to bottom, transparent, var(--panel) 16px);
 }
 
 @media (max-width: 520px) {

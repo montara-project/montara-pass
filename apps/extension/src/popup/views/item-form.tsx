@@ -1,16 +1,8 @@
-import {
-  lazy,
-  Suspense,
-  useId,
-  useState,
-  type FormEvent,
-  type ReactNode,
-  type SelectHTMLAttributes,
-} from 'react'
+import { useStore } from '@tanstack/react-form'
+import { useState } from 'react'
 
 import type { VaultItem } from '@/types/vault'
 
-import { ItemFormSchema, type ItemFormDto } from '@/lib/api/dtos/vault/schema'
 import { ItemTypeOptions, type ItemType } from '@/lib/constants/vault'
 import {
   encryptItemUpdate,
@@ -19,11 +11,11 @@ import {
   type ItemSecret,
   type VaultKeys,
 } from '@/lib/crypto/vault'
-import { generatePassword } from '@/lib/password'
 
 import { ApiError, createItem, setItemPlacement, SignedOutError, updateItem } from '../../lib/api'
 import { fetchIcon } from '../../lib/icon'
-import { ChevronDownIcon, EyeIcon, EyeOffIcon } from '../icons'
+import { ItemEditFormSchema, type ItemEditFormDto } from '../../lib/schemas'
+import { checked, useAppForm } from '../form'
 
 /** Select value standing for "no folder". */
 const NO_FOLDER = ''
@@ -33,14 +25,7 @@ export interface FolderOption {
   name: string
 }
 
-type FieldName = keyof ItemFormDto
-type FieldErrors = Partial<Record<FieldName, string>>
-
-// The notes editor is fetched when this form is opened, and so stays out of
-// the popup's first load.
-const NotesEditor = lazy(() => import('../notes-editor'))
-
-function toSecret(value: ItemFormDto): ItemSecret {
+function toSecret(value: ItemEditFormDto): ItemSecret {
   if (value.type === 'secure_note') {
     return { name: value.name, notes: value.notes }
   }
@@ -51,73 +36,6 @@ function toSecret(value: ItemFormDto): ItemSecret {
     url: value.url,
     notes: value.notes,
   }
-}
-
-/** The first message per field, in the words the web app uses. */
-function validate(value: ItemFormDto): FieldErrors {
-  const result = ItemFormSchema.safeParse(value)
-  if (result.success) return {}
-
-  const errors: FieldErrors = {}
-  for (const issue of result.error.issues) {
-    const field = issue.path[0] as FieldName
-    errors[field] ??= issue.message
-  }
-  return errors
-}
-
-interface FieldProps {
-  label: string
-  required?: boolean
-  error?: string
-  children: (props: {
-    id: string
-    'aria-required'?: true
-    'aria-invalid'?: true
-    'aria-describedby'?: string
-  }) => ReactNode
-}
-
-function Field({ label, required, error, children }: FieldProps) {
-  const id = useId()
-  const errorId = `${id}-error`
-
-  return (
-    <div className="form-field">
-      <div className="form-label">
-        <label htmlFor={id}>{label}</label>
-        {/* Kept out of the label so the field is still called "Name". */}
-        {required && (
-          <span className="asterisk" aria-hidden="true">
-            *
-          </span>
-        )}
-      </div>
-      {children({
-        id,
-        ...(required ? { 'aria-required': true as const } : {}),
-        ...(error ? { 'aria-invalid': true as const, 'aria-describedby': errorId } : {}),
-      })}
-      {error && (
-        <p className="error field-error" id={errorId}>
-          {error}
-        </p>
-      )}
-    </div>
-  )
-}
-
-/**
- * A native select drawn like the other fields: the browser's own arrow and
- * inner padding are dropped, and the chevron is ours.
- */
-function Select({ children, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <div className="select-box">
-      <select {...props}>{children}</select>
-      <ChevronDownIcon width={16} height={16} />
-    </div>
-  )
 }
 
 interface ItemFormProps {
@@ -145,7 +63,10 @@ export default function ItemForm({
   onCancel,
   onSignedOut,
 }: ItemFormProps) {
-  const [value, setValue] = useState<ItemFormDto>({
+  // What saving said, as opposed to what the fields say about themselves.
+  const [error, setError] = useState('')
+
+  const defaultValues: ItemEditFormDto = {
     type: (item?.type as ItemType | undefined) ?? 'login',
     name: item?.secret?.name ?? '',
     username: item?.secret?.username ?? '',
@@ -153,235 +74,175 @@ export default function ItemForm({
     url: item?.secret?.url ?? '',
     notes: item?.secret?.notes ?? '',
     folder_id: item?.folder_id ?? NO_FOLDER,
-  })
-  const notesId = useId()
-  // A secure note may be kept blurred in the item's detail until revealed.
-  const [visible, setVisible] = useState(item?.secret?.visible !== false)
-  const [errors, setErrors] = useState<FieldErrors>({})
-  // Fields are checked as they change once a save has been attempted.
-  const [submitted, setSubmitted] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
-
-  const set = (field: FieldName, next: string) => {
-    const updated = { ...value, [field]: next }
-    setValue(updated)
-    if (submitted) setErrors(validate(updated))
+    // A secure note may be kept blurred in the item's detail until revealed.
+    visible: item?.secret?.visible !== false,
   }
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    setSubmitted(true)
-    setError('')
+  const form = useAppForm({
+    defaultValues,
+    validationLogic: checked,
+    validators: { onDynamic: ItemEditFormSchema },
+    onSubmit: async ({ value }) => {
+      setError('')
 
-    const found = validate(value)
-    setErrors(found)
-    if (Object.keys(found).length > 0) return
+      const parsed = ItemEditFormSchema.parse(value)
+      const folderId = parsed.folder_id || null
 
-    const parsed = ItemFormSchema.parse(value)
-    const folderId = parsed.folder_id || null
-    setBusy(true)
+      try {
+        const secret = keepUnedited(
+          {
+            ...toSecret(parsed),
+            // Only "hidden" is written down; a note is visible without it.
+            ...(parsed.type === 'secure_note' && !parsed.visible ? { visible: false } : {}),
+          },
+          // What this form sets is not carried over from the old secret.
+          item?.secret && { ...item.secret, visible: undefined }
+        )
+        // A new login, a new site, or a site that had no icon last time.
+        if (parsed.type === 'login' && !secret.icon) secret.icon = await fetchIcon(secret.url)
 
-    try {
-      const secret = keepUnedited(
-        {
-          ...toSecret(parsed),
-          // Only "hidden" is written down; a note is visible without it.
-          ...(parsed.type === 'secure_note' && !visible ? { visible: false } : {}),
-        },
-        // What this form sets is not carried over from the old secret.
-        item?.secret && { ...item.secret, visible: undefined }
-      )
-      // A new login, a new site, or a site that had no icon last time.
-      if (parsed.type === 'login' && !secret.icon) secret.icon = await fetchIcon(secret.url)
-
-      if (item) {
-        await updateItem(item.id, {
-          encrypted_data: await encryptItemUpdate(keys, item, secret),
-          // The API refuses the write if someone else changed the item since.
-          revision: item.revision,
-        })
-        if (folderId !== item.folder_id) {
-          await setItemPlacement(item.id, { folder_id: folderId, favorite: item.favorite })
+        if (item) {
+          await updateItem(item.id, {
+            encrypted_data: await encryptItemUpdate(keys, item, secret),
+            // The API refuses the write if someone else changed the item since.
+            revision: item.revision,
+          })
+          if (folderId !== item.folder_id) {
+            await setItemPlacement(item.id, { folder_id: folderId, favorite: item.favorite })
+          }
+          onSaved(item.id)
+        } else {
+          const created = await createItem({
+            type: parsed.type,
+            folder_id: folderId,
+            ...(await encryptNewItem(keys, secret)),
+          })
+          onSaved(created.id)
         }
-        onSaved(item.id)
-      } else {
-        const created = await createItem({
-          type: parsed.type,
-          folder_id: folderId,
-          ...(await encryptNewItem(keys, secret)),
-        })
-        onSaved(created.id)
+      } catch (err) {
+        if (err instanceof SignedOutError) {
+          onSignedOut()
+          return
+        }
+        setError(
+          err instanceof ApiError && err.status === 409
+            ? 'This item was changed somewhere else. Refresh the vault and try again.'
+            : err instanceof Error
+              ? err.message
+              : 'Could not save the item'
+        )
       }
-    } catch (err) {
-      if (err instanceof SignedOutError) {
-        onSignedOut()
-        return
-      }
-      setError(
-        err instanceof ApiError && err.status === 409
-          ? 'This item was changed somewhere else. Refresh the vault and try again.'
-          : err instanceof Error
-            ? err.message
-            : 'Could not save the item'
-      )
-    } finally {
-      setBusy(false)
-    }
-  }
+    },
+  })
+
+  const type = useStore(form.store, (state) => state.values.type)
 
   return (
-    <form className="stack detail-body" noValidate onSubmit={(e) => void handleSubmit(e)}>
+    <form
+      className="stack detail-body"
+      // The stylesheet gives a secure note's editor the room a login's notes do not need.
+      data-type={type}
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault()
+        void form.handleSubmit()
+      }}
+    >
       <header>
         <h2 className="detail-title">{item ? 'Edit Item' : 'Create Item'}</h2>
         <p className="muted">Encrypted in your browser before it is saved.</p>
       </header>
 
       <div className="form-grid">
-        <Field label="Type" required error={errors.type}>
-          {(props) => (
-            <Select
-              {...props}
-              value={value.type}
-              onChange={(e) => set('type', e.target.value)}
-              // The type of an existing item is fixed.
-              disabled={Boolean(item)}
-            >
+        <form.AppField
+          name="type"
+          children={(field) => (
+            // The type of an existing item is fixed.
+            <field.SelectField label="Type" required disabled={Boolean(item)}>
               {ItemTypeOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
               ))}
-            </Select>
+            </field.SelectField>
           )}
-        </Field>
+        />
 
-        <Field label="Folder" error={errors.folder_id}>
-          {(props) => (
-            <Select
-              {...props}
-              value={value.folder_id}
-              onChange={(e) => set('folder_id', e.target.value)}
-            >
+        <form.AppField
+          name="folder_id"
+          children={(field) => (
+            <field.SelectField label="Folder">
               <option value={NO_FOLDER}>No folder</option>
               {folders.map((folder) => (
                 <option key={folder.id} value={folder.id}>
                   {folder.name}
                 </option>
               ))}
-            </Select>
+            </field.SelectField>
           )}
-        </Field>
+        />
       </div>
 
-      <Field label="Name" required error={errors.name}>
-        {(props) => (
-          <input
-            {...props}
-            value={value.name}
-            onChange={(e) => set('name', e.target.value)}
-            placeholder="e.g. GitHub"
-            autoFocus
-          />
+      <form.AppField
+        name="name"
+        children={(field) => (
+          <field.TextField label="Name" required placeholder="e.g. GitHub" autoFocus />
         )}
-      </Field>
+      />
 
-      {value.type === 'login' && (
+      {type === 'login' && (
         <>
-          <Field label="Username" error={errors.username}>
-            {(props) => (
-              <input
-                {...props}
-                value={value.username}
-                onChange={(e) => set('username', e.target.value)}
+          <form.AppField
+            name="username"
+            children={(field) => (
+              <field.TextField
+                label="Username"
                 placeholder="username or email"
                 autoComplete="off"
               />
             )}
-          </Field>
+          />
 
-          <Field label="Password" error={errors.password}>
-            {(props) => (
-              <div className="row">
-                <div className="password-box">
-                  <input
-                    {...props}
-                    type={showPassword ? 'text' : 'password'}
-                    value={value.password}
-                    onChange={(e) => set('password', e.target.value)}
-                    placeholder="password"
-                    autoComplete="off"
-                  />
-                  <button
-                    type="button"
-                    className="icon-button"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    aria-pressed={showPassword}
-                    onClick={() => setShowPassword((shown) => !shown)}
-                  >
-                    {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => {
-                    set('password', generatePassword())
-                    setShowPassword(true)
-                  }}
-                >
-                  Generate
-                </button>
-              </div>
-            )}
-          </Field>
-
-          <Field label="URL" error={errors.url}>
-            {(props) => (
-              <input
-                {...props}
-                value={value.url}
-                onChange={(e) => set('url', e.target.value)}
-                placeholder="https://example.com"
+          <form.AppField
+            name="password"
+            children={(field) => (
+              <field.PasswordField
+                label="Password"
+                placeholder="password"
+                autoComplete="off"
+                generate
               />
             )}
-          </Field>
+          />
+
+          <form.AppField
+            name="url"
+            children={(field) => <field.TextField label="URL" placeholder="https://example.com" />}
+          />
         </>
       )}
 
       {/* Notes are Markdown for every type, edited as rich text. */}
-      <div className="form-field">
-        <div className="form-label">
-          <span id={notesId}>Notes</span>
-        </div>
-        <Suspense fallback={<div className="notes-editor notes-loading" />}>
-          <NotesEditor
-            value={value.notes ?? ''}
-            onChange={(notes) => set('notes', notes)}
-            placeholder={value.type === 'secure_note' ? 'Write your note' : 'anything else'}
-            labelledBy={notesId}
+      <form.AppField
+        name="notes"
+        children={(field) => (
+          <field.NotesField
+            label="Notes"
+            placeholder={type === 'secure_note' ? 'Write your note' : 'anything else'}
           />
-        </Suspense>
-        {errors.notes && <p className="error field-error">{errors.notes}</p>}
-      </div>
+        )}
+      />
 
-      {value.type === 'secure_note' && (
-        <label className="toggle">
-          <input
-            type="checkbox"
-            role="switch"
-            aria-checked={visible}
-            checked={visible}
-            onChange={(e) => setVisible(e.target.checked)}
-          />
-          <span>
-            Visible
-            <span className="muted">
-              When off, the note is blurred in its detail until you choose to show it.
-            </span>
-          </span>
-        </label>
+      {type === 'secure_note' && (
+        <form.AppField
+          name="visible"
+          children={(field) => (
+            <field.SwitchField
+              label="Visible"
+              description="When off, the note is blurred in its detail until you choose to show it."
+            />
+          )}
+        />
       )}
 
       {error && (
@@ -394,9 +255,9 @@ export default function ItemForm({
         <button type="button" className="secondary" onClick={onCancel}>
           Cancel
         </button>
-        <button type="submit" disabled={busy}>
-          {busy ? 'Saving…' : item ? 'Update' : 'Save'}
-        </button>
+        <form.AppForm>
+          <form.SubmitButton label={item ? 'Update' : 'Save'} busyLabel="Saving…" />
+        </form.AppForm>
       </div>
     </form>
   )

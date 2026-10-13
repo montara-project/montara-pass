@@ -440,6 +440,13 @@ export default function FullVault({
   )
 }
 
+/** When something happened to an item, to the minute: the seconds say nothing. */
+const WHEN = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+
+function When({ at }: { at: string }) {
+  return <time dateTime={at}>{WHEN.format(new Date(at))}</time>
+}
+
 interface ItemDetailProps {
   item: VaultItem
   onCopy: (value: string | undefined, label: string) => void
@@ -545,6 +552,18 @@ function ItemDetail({ item, onCopy, onEdit, onShare }: ItemDetailProps) {
                   secret.url || <span className="muted">None</span>
                 )}
               </dd>
+              {website && (
+                <a
+                  className="icon-button"
+                  href={website}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Open website"
+                  title="Open website"
+                >
+                  <ExternalLinkIcon />
+                </a>
+              )}
             </div>
 
             {secret.passkey && (
@@ -575,15 +594,25 @@ function ItemDetail({ item, onCopy, onEdit, onShare }: ItemDetailProps) {
                 </Suspense>
               )}
             </dd>
-            {hidesNote && (
+            {/* Hidden, the note says so itself and offers to be shown. */}
+            {noteHidden && (
+              <div className="note-veil">
+                <EyeOffIcon />
+                <p>This note is hidden.</p>
+                <button className="secondary" onClick={() => setRevealed(true)}>
+                  <EyeIcon width={18} height={18} />
+                  Show note
+                </button>
+              </div>
+            )}
+            {hidesNote && revealed && (
               <button
                 className="icon-button"
-                aria-label={revealed ? 'Hide note' : 'Show note'}
-                title={revealed ? 'Hide note' : 'Show note'}
-                aria-pressed={revealed}
-                onClick={() => setRevealed((shown) => !shown)}
+                aria-label="Hide note"
+                title="Hide note"
+                onClick={() => setRevealed(false)}
               >
-                {revealed ? <EyeOffIcon /> : <EyeIcon />}
+                <EyeOffIcon />
               </button>
             )}
             <button
@@ -599,8 +628,12 @@ function ItemDetail({ item, onCopy, onEdit, onShare }: ItemDetailProps) {
       </dl>
 
       <p className="muted meta">
-        {item.last_used_at && <>Last used {new Date(item.last_used_at).toLocaleString()} · </>}
-        Last updated {new Date(item.updated_at).toLocaleString()}
+        {item.last_used_at && (
+          <>
+            Last used <When at={item.last_used_at} /> ·{' '}
+          </>
+        )}
+        Last updated <When at={item.updated_at} />
       </p>
     </div>
   )

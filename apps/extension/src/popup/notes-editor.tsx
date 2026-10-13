@@ -1,10 +1,12 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 
 import {
   MarkdownEditorContent,
   MarkdownEditorProvider,
   useMarkdownEditor,
 } from '@/hooks/use-markdown-editor'
+
+import { CodeIcon, ListIcon, ListOrderedIcon, QuoteIcon, RedoIcon, UndoIcon } from './icons'
 
 // The extension's rich text editor for a secure note: its own toolbar around
 // the Markdown editor the web app uses, so both write the same notes.
@@ -22,7 +24,7 @@ interface NotesEditorProps {
 interface ToolProps {
   label: string
   /** What the button shows; the label is what it is called. */
-  glyph: string
+  glyph: ReactNode
   active?: boolean
   disabled?: boolean
   onClick: () => void
@@ -58,24 +60,30 @@ function Editor({ value, onChange, placeholder, labelledBy }: NotesEditorProps) 
   return (
     <div className="notes-editor">
       <div className="notes-toolbar" role="toolbar" aria-label="Formatting">
-        <Tool label="Bold" glyph="B" active={active.bold} disabled={off} onClick={tools.bold} />
+        <Tool
+          label="Bold"
+          glyph={<b>B</b>}
+          active={active.bold}
+          disabled={off}
+          onClick={tools.bold}
+        />
         <Tool
           label="Italic"
-          glyph="I"
+          glyph={<i>I</i>}
           active={active.italic}
           disabled={off}
           onClick={tools.italic}
         />
         <Tool
           label="Strikethrough"
-          glyph="S"
+          glyph={<s>S</s>}
           active={active.strike}
           disabled={off}
           onClick={tools.strikethrough}
         />
         <Tool
           label="Inline code"
-          glyph="</>"
+          glyph={<CodeIcon />}
           active={active.code}
           disabled={off}
           onClick={tools.code}
@@ -95,25 +103,41 @@ function Editor({ value, onChange, placeholder, labelledBy }: NotesEditorProps) 
           disabled={off}
           onClick={() => tools.heading(2)}
         />
-        <Tool label="Quote" glyph="”" active={active.quote} disabled={off} onClick={tools.quote} />
+        <Tool
+          label="Quote"
+          glyph={<QuoteIcon />}
+          active={active.quote}
+          disabled={off}
+          onClick={tools.quote}
+        />
         <span className="notes-divider" aria-hidden="true" />
         <Tool
           label="Bulleted list"
-          glyph="•"
+          glyph={<ListIcon />}
           active={active.bullet}
           disabled={off}
           onClick={tools.bulletList}
         />
         <Tool
           label="Numbered list"
-          glyph="1."
+          glyph={<ListOrderedIcon />}
           active={active.ordered}
           disabled={off}
           onClick={tools.orderedList}
         />
         <span className="notes-divider" aria-hidden="true" />
-        <Tool label="Undo" glyph="↶" disabled={off || !active.canUndo} onClick={tools.undo} />
-        <Tool label="Redo" glyph="↷" disabled={off || !active.canRedo} onClick={tools.redo} />
+        <Tool
+          label="Undo"
+          glyph={<UndoIcon />}
+          disabled={off || !active.canUndo}
+          onClick={tools.undo}
+        />
+        <Tool
+          label="Redo"
+          glyph={<RedoIcon />}
+          disabled={off || !active.canRedo}
+          onClick={tools.redo}
+        />
       </div>
 
       <div className="notes-body">

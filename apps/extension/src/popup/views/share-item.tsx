@@ -1,13 +1,14 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import type { Models } from '@/lib/api/models'
 import type { VaultItem } from '@/types/vault'
 
-import { SHARE_ROLES, type ShareRole } from '@/lib/constants/vault'
+import { ShareFormSchema, type ShareFormDto } from '@/lib/api/dtos/vault/schema'
+import { SHARE_ROLES } from '@/lib/constants/vault'
 import { wrapItemKeyFor, type VaultKeys } from '@/lib/crypto/vault'
 
 import { ApiError, getPublicKey, listItemMembers, shareItem, SignedOutError } from '../../lib/api'
-import { ChevronDownIcon } from '../icons'
+import { checked, useAppForm } from '../form'
 import { ItemTile } from '../item-tile'
 
 interface ShareItemProps {
@@ -27,11 +28,9 @@ interface ShareItemProps {
  * re-encrypts the item for the people who are left.
  */
 export default function ShareItem({ keys, item, onDone, onSignedOut, onNotice }: ShareItemProps) {
-  const [email, setEmail] = useState('')
-  const [role, setRole] = useState<ShareRole>('viewer')
   const [members, setMembers] = useState<Models.ItemMember[] | null>(null)
+  // What sharing said, as opposed to what the fields say about themselves.
   const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
   const sharing = useRef(false)
 
   useEffect(() => {
@@ -41,52 +40,66 @@ export default function ShareItem({ keys, item, onDone, onSignedOut, onNotice }:
       .catch(() => setMembers([]))
   }, [item.id])
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault()
-    // A second submit can arrive before the button is drawn as disabled.
-    if (sharing.current) return
-    sharing.current = true
-    setBusy(true)
-    setError('')
+  const defaultValues: ShareFormDto = { email: '', role: 'viewer' }
 
-    try {
-      const recipient = await getPublicKey(email.trim())
-      if (!recipient) {
-        setError(`${email.trim()} has no vault yet. They need to sign up and create one first.`)
-        return
-      }
+  const form = useAppForm({
+    defaultValues,
+    validationLogic: checked,
+    validators: { onDynamic: ShareFormSchema },
+    onSubmit: async ({ value, formApi }) => {
+      // A second submit can arrive before the button is drawn as disabled.
+      if (sharing.current) return
+      sharing.current = true
+      setError('')
 
-      await shareItem(item.id, {
-        user_id: recipient.user_id,
-        role,
-        encrypted_item_key: await wrapItemKeyFor(keys, item, recipient),
-      })
-      onNotice(`Shared with ${recipient.name || recipient.email}`)
-      setEmail('')
-      // The share went through; a list that fails to reload stays as it was.
-      await listItemMembers(item.id)
-        .then(setMembers)
-        .catch(() => undefined)
-    } catch (err) {
-      if (err instanceof SignedOutError) {
-        onSignedOut()
-        return
+      const { email, role } = ShareFormSchema.parse(value)
+
+      try {
+        const recipient = await getPublicKey(email)
+        if (!recipient) {
+          setError(`${email} has no vault yet. They need to sign up and create one first.`)
+          return
+        }
+
+        await shareItem(item.id, {
+          user_id: recipient.user_id,
+          role,
+          encrypted_item_key: await wrapItemKeyFor(keys, item, recipient),
+        })
+        onNotice(`Shared with ${recipient.name || recipient.email}`)
+        // Ready for the next person, with the same access as the last.
+        formApi.resetField('email')
+        // The share went through; a list that fails to reload stays as it was.
+        await listItemMembers(item.id)
+          .then(setMembers)
+          .catch(() => undefined)
+      } catch (err) {
+        if (err instanceof SignedOutError) {
+          onSignedOut()
+          return
+        }
+        setError(
+          err instanceof ApiError && err.status === 409
+            ? 'They already have access to this item.'
+            : err instanceof Error
+              ? err.message
+              : 'Could not share the item'
+        )
+      } finally {
+        sharing.current = false
       }
-      setError(
-        err instanceof ApiError && err.status === 409
-          ? 'They already have access to this item.'
-          : err instanceof Error
-            ? err.message
-            : 'Could not share the item'
-      )
-    } finally {
-      sharing.current = false
-      setBusy(false)
-    }
-  }
+    },
+  })
 
   return (
-    <form className="stack detail-body" onSubmit={(e) => void handleSubmit(e)}>
+    <form
+      className="stack detail-body"
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault()
+        void form.handleSubmit()
+      }}
+    >
       <header className="detail-head">
         <ItemTile item={item} large />
         <div className="item-text">
@@ -96,31 +109,30 @@ export default function ShareItem({ keys, item, onDone, onSignedOut, onNotice }:
       </header>
 
       <div className="share-grid">
-        <label>
-          Email
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="their account email"
-            autoFocus
-            required
-          />
-        </label>
+        <form.AppField
+          name="email"
+          children={(field) => (
+            <field.TextField
+              label="Email"
+              type="email"
+              placeholder="their account email"
+              autoFocus
+            />
+          )}
+        />
 
-        <label>
-          Access
-          <div className="select-box">
-            <select value={role} onChange={(e) => setRole(e.target.value as ShareRole)}>
+        <form.AppField
+          name="role"
+          children={(field) => (
+            <field.SelectField label="Access">
               {SHARE_ROLES.map((value) => (
                 <option key={value} value={value}>
                   {value[0].toUpperCase() + value.slice(1)}
                 </option>
               ))}
-            </select>
-            <ChevronDownIcon width={16} height={16} />
-          </div>
-        </label>
+            </field.SelectField>
+          )}
+        />
       </div>
 
       {error && (
@@ -133,9 +145,9 @@ export default function ShareItem({ keys, item, onDone, onSignedOut, onNotice }:
         <button type="button" className="secondary" onClick={onDone}>
           Done
         </button>
-        <button type="submit" disabled={busy}>
-          {busy ? 'Sharing…' : 'Share'}
-        </button>
+        <form.AppForm>
+          <form.SubmitButton label="Share" busyLabel="Sharing…" />
+        </form.AppForm>
       </div>
 
       <section className="stack">
