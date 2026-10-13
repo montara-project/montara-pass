@@ -210,3 +210,25 @@ export const FolderMinusIcon = icon(
 )
 
 export const CloseIcon = icon(<path d="M6 6l12 12M18 6 6 18" />)
+
+// The marks of the notes toolbar.
+export const CodeIcon = icon(<path d="m8 7-5 5 5 5m8-10 5 5-5 5" />)
+
+export const QuoteIcon = icon(<path d="M5 17c2 0 3-1.5 3-4V7H4v5h4m7 5c2 0 3-1.5 3-4V7h-4v5h4" />)
+
+export const ListIcon = icon(
+  <>
+    <path d="M9 6h11M9 12h11M9 18h11" />
+    <circle cx="4.5" cy="6" r="1" />
+    <circle cx="4.5" cy="12" r="1" />
+    <circle cx="4.5" cy="18" r="1" />
+  </>
+)
+
+export const ListOrderedIcon = icon(
+  <path d="M10 6h10M10 12h10M10 18h10M4 4.5 5.5 4v4.5M4 14.5c0-1.5 2.5-1.5 2.5 0 0 1.2-2.5 1.8-2.5 3.5h2.5" />
+)
+
+export const UndoIcon = icon(<path d="M4 9h10a5 5 0 0 1 0 10h-3M4 9l4-4M4 9l4 4" />)
+
+export const RedoIcon = icon(<path d="M20 9H10a5 5 0 0 0 0 10h3M20 9l-4-4m4 4-4 4" />)

@@ -1765,8 +1765,8 @@ textarea {
 }
 
 .notes-editor:focus-within {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 1px var(--focus);
 }
 
 .notes-toolbar {
@@ -1788,6 +1788,16 @@ button.notes-tool {
   color: var(--muted);
   font-size: 13px;
   font-weight: 600;
+}
+
+button.notes-tool svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* The letters stand for what they do to the text, so they are set that way. */
+button.notes-tool i {
+  font-family: Georgia, 'Times New Roman', serif;
 }
 
 button.notes-tool:hover:not(:disabled),
@@ -1998,6 +2008,58 @@ select:disabled {
 
 .form-actions {
   justify-content: flex-end;
+}
+
+/* A text field shows focus on its own box, as the search and sign-in fields
+   do, not as a second ring around it. Switches and sliders keep the ring. */
+input:not([type='checkbox'], [type='range']):focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: var(--focus);
+  box-shadow: 0 0 0 1px var(--focus);
+}
+
+/* Fields drawn by the box around them, which shows the focus itself. */
+.search input:focus-visible,
+.auth-field input:focus-visible {
+  box-shadow: none;
+}
+
+input,
+select,
+textarea,
+.notes-editor {
+  transition:
+    border-color 120ms ease-out,
+    box-shadow 120ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  input,
+  select,
+  textarea,
+  .notes-editor {
+    transition: none;
+  }
+}
+
+/* In a tab, the form's heading stands a little apart from its fields, and
+   the way out of a long form stays in reach at the bottom of the pane. */
+.detail-col .detail-body > header:not(.detail-head) {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.detail-col form > .form-actions:last-child {
+  position: sticky;
+  bottom: 0;
+  margin: 0 -32px -32px;
+  padding: 16px 32px 24px;
+  /* What scrolls under it fades out rather than being cut. */
+  background: linear-gradient(to bottom, transparent, var(--panel) 16px);
 }
 
 @media (max-width: 520px) {
