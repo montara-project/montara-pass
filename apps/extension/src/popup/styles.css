@@ -862,18 +862,7 @@ a.icon-button {
   border-radius: 0;
   background: none;
   font-size: 15px;
-  transition:
-    filter 120ms ease-out,
-    scale 120ms ease-out;
-}
-
-.auth-submit:hover:not(:disabled) {
-  filter: brightness(1.1);
-}
-
-.auth-submit:active:not(:disabled) {
-  filter: brightness(0.95);
-  scale: 0.99;
+  caret-color: var(--focus);
 }
 
 /* The box around it shows the focus. */
@@ -890,7 +879,18 @@ a.icon-button {
   margin-top: 6px;
   border-radius: 12px;
   font-size: 15px;
-  caret-color: var(--focus);
+  transition:
+    filter 120ms ease-out,
+    scale 120ms ease-out;
+}
+
+.auth-submit:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.auth-submit:active:not(:disabled) {
+  filter: brightness(0.95);
+  scale: 0.99;
 }
 
 .auth-foot {
@@ -978,10 +978,28 @@ button.auth-link:hover {
   padding: 40px 24px;
 }
 
+/* Stays in reach while the page scrolls under it; its negative margins
+   let it cover the page's own padding. */
 .set-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
+  margin: -16px -16px -12px;
+  padding: 12px 16px;
+  background: var(--bg);
+}
+
+:root[data-view='full'] .set-head {
+  margin: -40px -24px -12px;
+  padding: 28px 24px 12px;
+}
+
+/* The arrow, not the button around it, lines up with the cards below. */
+.set-head .icon-button {
+  margin-left: -8px;
 }
 
 .set-head h1 {
@@ -990,11 +1008,15 @@ button.auth-link:hover {
 
 .set-version {
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
+/* A section's name is a label for its card, quieter than the rows in it. */
 .set-section h2 {
-  margin: 0 0 10px;
-  font-size: 15px;
+  margin: 0 0 8px;
+  padding-left: 4px;
+  color: var(--muted);
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -1021,8 +1043,53 @@ button.auth-link:hover {
   border-top: 1px solid var(--border);
 }
 
+a.set-row {
+  transition: background-color 120ms ease-out;
+}
+
 a.set-row:hover {
   background: var(--hover);
+}
+
+a.set-row:active {
+  background: var(--border);
+}
+
+/* Beside a label the buttons are a size down, so the row reads label first. */
+.set-row button {
+  height: 34px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+/* The switch of a row: a little larger than in a form, and its track is
+   told apart from the card when it is off. */
+.set-row.toggle input {
+  width: 38px;
+  height: 22px;
+  margin: 0;
+  background: color-mix(in srgb, var(--fg) 26%, transparent);
+}
+
+.set-row.toggle input::before {
+  width: 18px;
+  height: 18px;
+}
+
+.set-row.toggle input:checked {
+  background: var(--primary);
+}
+
+.set-row.toggle input:checked::before {
+  translate: 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  a.set-row,
+  .set-row.toggle input,
+  .set-row.toggle input::before {
+    transition: none;
+  }
 }
 
 a.set-row:focus-visible {
@@ -1058,6 +1125,8 @@ a.set-row svg {
 .set-value {
   flex-shrink: 0;
   color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* A row with a field: beside its label where there is room, under it in the popup. */
