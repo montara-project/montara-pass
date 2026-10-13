@@ -1631,8 +1631,21 @@ input.range {
   border-radius: 14px;
 }
 
+/* Beside the item's name the buttons are a size down: the name leads. */
+.detail-head button {
+  flex-shrink: 0;
+  height: 36px;
+  padding: 0 14px;
+  font-weight: 500;
+}
+
+.detail-head .tile {
+  margin-right: 6px;
+}
+
 .fields {
   margin: 0;
+  overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 14px;
   background: var(--card);
@@ -1648,6 +1661,21 @@ input.range {
 
 .field + .field {
   border-top: 1px solid var(--border);
+}
+
+/* The row under the pointer is lit, so it is plain which value its buttons act on. */
+.field {
+  transition: background-color 120ms ease-out;
+}
+
+.field:hover {
+  background: var(--hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field {
+    transition: none;
+  }
 }
 
 .field dt {
@@ -1689,17 +1717,62 @@ input.range {
 
 .field-notes dd {
   grid-column: 1 / -1;
-  margin-top: 4px;
+  grid-row: 2;
+  margin-top: 8px;
+  line-height: 1.6;
   white-space: pre-wrap;
 }
 
+/* A note is read, not acted on: the row does not light up under the pointer. */
+.field-notes:hover {
+  background: none;
+}
+
+/* Hidden, only the top of the note is there, and none of it can be made out:
+   its length and its shape would say something too. */
 .field-notes dd.blurred {
-  filter: blur(7px);
+  max-height: 200px;
+  overflow: hidden;
+  filter: blur(9px);
+  opacity: 0.7;
   user-select: none;
 }
 
-.field a {
+/* Over the blurred note, in the same cell of the grid. */
+.note-veil {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  place-self: center;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.note-veil button {
+  height: 36px;
+  margin-top: 4px;
+  padding: 0 14px;
+  background: var(--panel);
+  font-weight: 500;
+}
+
+.note-veil button:hover {
+  background: var(--hover);
+}
+
+/* A value that is a link: quiet until it is pointed at. */
+.field dd a {
   color: var(--focus);
+  text-decoration-color: color-mix(in srgb, var(--focus) 40%, transparent);
+  text-underline-offset: 3px;
+}
+
+.field dd a:hover {
+  text-decoration-color: currentColor;
 }
 
 .mono {
@@ -1708,6 +1781,12 @@ input.range {
 
 .meta {
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Under the card, in line with what the card holds. */
+.fields + .meta {
+  padding-left: 17px;
 }
 
 .detail-empty {
@@ -1867,6 +1946,45 @@ button.notes-tool[aria-pressed='true'] {
 
 .notes-content > * {
   margin: 0 0 8px;
+}
+
+/* A note being read gets a reading rhythm: room between its blocks, more
+   above a heading than under it, and code set apart on the field's color. */
+.notes-view > * {
+  margin-bottom: 12px;
+}
+
+.notes-view > :is(h1, h2, h3) {
+  margin: 20px 0 8px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+.notes-view > :first-child {
+  margin-top: 0;
+}
+
+.notes-view li + li {
+  margin-top: 4px;
+}
+
+.notes-content.notes-view code {
+  background: var(--field);
+}
+
+.notes-content.notes-view pre {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--field);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.notes-content.notes-view pre code {
+  background: none;
 }
 
 .notes-content > :last-child {
