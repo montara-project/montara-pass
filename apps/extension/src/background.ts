@@ -24,6 +24,14 @@ const originOf = (value: unknown) => {
   }
 }
 
+// The session tokens are for the extension's own pages. A content script
+// shares its process with the page it runs in, and has no use for them.
+// Not every browser can close the store: the vault keys are in the session
+// store, which is closed everywhere.
+void chrome.storage.local
+  .setAccessLevel?.({ accessLevel: 'TRUSTED_CONTEXTS' })
+  ?.catch(() => undefined)
+
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === AUTO_LOCK_ALARM) {
     void chrome.storage.session.remove(VAULT_SESSION_KEY)

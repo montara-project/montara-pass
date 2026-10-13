@@ -152,7 +152,10 @@ create it in the web app first.
   offers to save a new passkey or to sign in with a saved one; the key (ES256)
   is kept in the login's encrypted content, so the server needs no change and
   the passkey works on any computer the vault is unlocked on. Whatever the
-  vault cannot answer goes to the browser's own passkeys, unchanged.
+  vault cannot answer goes to the browser's own passkeys, unchanged. A
+  passkey always reports the user as verified: that means the vault was
+  unlocked with the master password within the auto-lock time, not that
+  anyone was asked again for this sign-in.
   `node apps/extension/src/lib/passkey.check.ts` checks the signing.
 - **Full screen** in the popup opens the vault in a tab: filters, the list and
   the selected item side by side, with reveal, copy, add, edit and share.

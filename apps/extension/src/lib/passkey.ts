@@ -1,3 +1,5 @@
+import { getDomain } from 'tldts'
+
 import type { Passkey } from '@/lib/crypto/vault'
 
 // The authenticator side of WebAuthn: what a security key or the operating
@@ -73,12 +75,10 @@ export function parseRequest(raw: unknown): PasskeyRequest | null {
 
 /**
  * The relying party a page may speak for, or null: its own host, or a parent
- * domain it names. Only over https, localhost aside.
+ * domain it names, as long as that parent is somebody's domain and not a
+ * suffix many share (a.github.io may not name github.io). Only over https,
+ * localhost aside.
  */
-// ponytail: no public suffix list, so a.github.io may name github.io, which a
-// browser refuses. Only a passkey made for such a name is exposed by that,
-// which takes a site living at the suffix itself. Bundle the list (tldts) if
-// it should match the browser exactly.
 export function rpIdFor(requested: string | undefined, pageUrl: string): string | null {
   let url: URL
   try {
@@ -94,7 +94,9 @@ export function rpIdFor(requested: string | undefined, pageUrl: string): string 
 
   const rpId = requested ?? host
   if (rpId === host) return host
-  return rpId.includes('.') && host.endsWith(`.${rpId}`) ? rpId : null
+  if (!host.endsWith(`.${rpId}`)) return null
+  // No domain of its own: a public suffix, as the browser's list has them.
+  return getDomain(rpId, { allowPrivateDomains: true }) ? rpId : null
 }
 
 const utf8 = (value: string): Bytes => new TextEncoder().encode(value)

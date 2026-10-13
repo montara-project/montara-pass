@@ -78,10 +78,27 @@ interface Page {
 const SETTLE_MS = 300
 const openedAt = performance.now()
 
-function toPage(page: Page, message: object): Promise<unknown> {
+// The content script hears only the frames it made itself: it sends each a
+// token through the frame's own window, and every message carries it back. A
+// copy of this page that a site framed is sent none, and so never gets a
+// word in. The first one counts: whatever the page posts later is not it.
+const token = new Promise<string>((resolve) => {
+  window.addEventListener('message', (e) => {
+    const sent: unknown = e.data?.montaraPassFrame
+    if (e.source === window.parent && typeof sent === 'string') resolve(sent)
+  })
+})
+
+async function toPage(page: Page, message: object): Promise<unknown> {
   // Frame 0 is the page itself, where the content script runs.
-  return chrome.tabs.sendMessage(page.tabId, message, { frameId: 0 })
+  return chrome.tabs.sendMessage(page.tabId, { ...message, token: await token }, { frameId: 0 })
 }
+
+/**
+ * Said under a login or a passkey that somebody else shared: it signs in to
+ * an account of theirs, which what is typed there then belongs to.
+ */
+const sharedLabel = (item: VaultItem) => (item.role === 'owner' ? null : 'Shared with you')
 
 /** Drop the submitted login and take the save prompt away. */
 async function dismiss(page: Page): Promise<void> {
@@ -225,7 +242,7 @@ function Logins({
           <span className="item-text">
             <span className="item-name">{item.secret!.username || item.secret!.name}</span>
             <span className="muted">
-              {lastUsedLabel(item.last_used_at) ?? hostOf(item.secret!.url)}
+              {sharedLabel(item) ?? lastUsedLabel(item.last_used_at) ?? hostOf(item.secret!.url)}
             </span>
           </span>
         </button>
@@ -389,6 +406,7 @@ function PasskeyChoice({
   rpId,
   origin,
   finish,
+  onWorking,
   onLocked,
 }: {
   page: Page
@@ -397,6 +415,8 @@ function PasskeyChoice({
   rpId: string
   origin: string
   finish: (answer?: object) => void
+  /** Told while a passkey is being saved or signed with, and when that is over. */
+  onWorking: (working: boolean) => void
   onLocked: () => void
 }) {
   const { items, error } = useVaultItems(keys, onLocked)
@@ -441,6 +461,7 @@ function PasskeyChoice({
     if (!click.isTrusted || click.timeStamp - shownAt.current < SETTLE_MS) return
     if (working.current) return
     working.current = true
+    onWorking(true)
 
     try {
       // The page may have navigated, or hidden the prompt, since it was drawn.
@@ -482,6 +503,7 @@ function PasskeyChoice({
       setFailure(err instanceof Error ? err.message : 'Could not use the passkey')
     } finally {
       working.current = false
+      onWorking(false)
       setBusy(false)
     }
   }
@@ -517,7 +539,9 @@ function PasskeyChoice({
               <ItemTile item={item} />
               <span className="item-text">
                 <span className="item-name">{item.secret!.username || item.secret!.name}</span>
-                <span className="muted">{lastUsedLabel(item.last_used_at) ?? rpId}</span>
+                <span className="muted">
+                  {sharedLabel(item) ?? lastUsedLabel(item.last_used_at) ?? rpId}
+                </span>
               </span>
             </button>
           ))}
@@ -564,6 +588,10 @@ function PasskeyPrompt({
 }) {
   const [request, setRequest] = useState<PasskeyRequest | null>(null)
   const answered = useRef(false)
+  const working = useRef(false)
+  const onWorking = useCallback((value: boolean) => {
+    working.current = value
+  }, [])
 
   useEffect(() => {
     void toPage(page, { type: 'passkey:request' }).then((raw) => {
@@ -601,7 +629,10 @@ function PasskeyPrompt({
     if (!request) return
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') finish(request.conditional ? {} : { error: 'NotAllowedError' })
+      // Not while a passkey is being saved, as with the buttons: the site
+      // would never hear of it.
+      if (e.key !== 'Escape' || working.current) return
+      finish(request.conditional ? {} : { error: 'NotAllowedError' })
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
@@ -633,6 +664,7 @@ function PasskeyPrompt({
       rpId={rpId}
       origin={origin}
       finish={finish}
+      onWorking={onWorking}
       onLocked={onLocked}
     />
   )

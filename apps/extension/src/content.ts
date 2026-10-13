@@ -187,12 +187,22 @@
     frameHeight = 56
   }
 
-  /** The id the browser gives a frame, as a message from it carries. */
-  // Chrome 106 and Firefox 96 have it; the types do not yet.
-  const frameIdOf = (target: HTMLIFrameElement): number =>
-    (chrome.runtime as unknown as { getFrameId(target: HTMLIFrameElement): number }).getFrameId(
-      target
+  // inline.html can be framed by the page as well, so a frame made here has
+  // to be told from a copy. Each one is sent a token through its own window,
+  // which only an extension page can receive, and sends it back with every
+  // message. A copy has none to send. (The browser does not say which frame a
+  // message came from: Chrome leaves the sender's frame id out here.)
+  const tokens = new WeakMap<HTMLIFrameElement, string>()
+
+  const greet = (target: HTMLIFrameElement) => {
+    const token = Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) =>
+      byte.toString(16).padStart(2, '0')
+    ).join('')
+    tokens.set(target, token)
+    target.addEventListener('load', () =>
+      target.contentWindow?.postMessage({ montaraPassFrame: token }, new URL(FRAME_URL).origin)
     )
+  }
 
   /** Take the host out of the page once nothing in it is left to show. */
   const release = () => {
@@ -212,6 +222,7 @@
     if (frame || !field) return
 
     frame = document.createElement('iframe')
+    greet(frame)
     const flags = [auto && 'auto', isNewPassword(field) && 'new'].filter(Boolean)
     frame.src = `${FRAME_URL}#${flags.join(',')}`
     frame.title = 'Montara Pass'
@@ -255,6 +266,7 @@
     if (saveFrame || (await toBackground({ type: 'save:pending' })) !== true) return
 
     saveFrame = document.createElement('iframe')
+    greet(saveFrame)
     saveFrame.src = `${FRAME_URL}#save`
     saveFrame.title = 'Montara Pass: save this login'
     // Out of sight until the prompt reports a height: it has nothing to show
@@ -329,6 +341,7 @@
     if (!available) return closePasskey()
 
     passkeyFrame = document.createElement('iframe')
+    greet(passkeyFrame)
     passkeyFrame.src = `${FRAME_URL}#passkey`
     passkeyFrame.title = 'Montara Pass: passkey'
     // Out of sight until the prompt reports a height, as the save prompt is:
@@ -467,13 +480,19 @@
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (sender.id !== chrome.runtime.id) return
 
-    // inline.html can be framed by the page as well. Only the prompt framed
-    // here speaks for a passkey: a copy the page hid under something else
-    // would otherwise have its click vouched for by the one in plain sight.
-    if (
-      String(message?.type).startsWith('passkey:') &&
-      (!passkeyFrame || sender.frameId !== frameIdOf(passkeyFrame))
-    ) {
+    // Only the frames made here are heard, each on its own channel: a copy
+    // the page hid under something else would otherwise have its click
+    // vouched for by the one in plain sight.
+    const channel = String(message?.type).split(':')[0]
+    const speaker =
+      channel === 'inline'
+        ? frame
+        : channel === 'save'
+          ? saveFrame
+          : channel === 'passkey'
+            ? passkeyFrame
+            : null
+    if (!speaker || typeof message.token !== 'string' || tokens.get(speaker) !== message.token) {
       return
     }
 
