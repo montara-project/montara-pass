@@ -147,6 +147,8 @@ create it in the web app first.
   minutes without use, when the browser closes, and on Lock.
 - **Fill** is offered only for a login whose saved URL belongs to the page in
   the active tab. A badge in login fields opens the same list under the field.
+  A page that asks for a login is offered those logins in its top right
+  corner as soon as it opens; picking one fills the form.
 - **Passkeys**: a script in the page's own world stands in for
   `navigator.credentials` (top frame only). With the vault unlocked, a prompt
   offers to save a new passkey or to sign in with a saved one; the key (ES256)

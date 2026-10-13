@@ -37,7 +37,7 @@ import {
 import { fillsSite, hostOf, matchesSite, originOf } from '../lib/site'
 import { getSettings, getTokens } from '../lib/storage'
 import { lastUsedLabel } from '../lib/usage'
-import { ExpandIcon, KeyIcon, RefreshIcon } from '../popup/icons'
+import { CloseIcon, ExpandIcon, KeyIcon, RefreshIcon } from '../popup/icons'
 import { ItemTile } from '../popup/item-tile'
 import { openFullScreen } from '../popup/layout'
 import { useVaultItems } from '../popup/use-vault-items'
@@ -48,6 +48,8 @@ import { useVaultItems } from '../popup/use-vault-items'
 // offers to keep the login the page just submitted, unless the vault has it.
 // Opened as inline.html#passkey it answers the page's request for a passkey:
 // it offers to make one, or to sign in with one the vault holds.
+// Opened as inline.html#offer it sits in the corner of a page that asks for a
+// login and lists the ones saved for it, without waiting for a field.
 // Keep the message names in sync with src/content.ts.
 
 document.documentElement.dataset.view = 'inline'
@@ -64,8 +66,10 @@ const NEW = FLAGS.has('new')
 const AUTO = FLAGS.has('auto')
 /** The page asked navigator.credentials for a passkey (src/passkey-page.ts). */
 const PASSKEY = FLAGS.has('passkey')
+/** The page asks for a login: the ones saved for it are offered in its corner. */
+const OFFER = FLAGS.has('offer')
 /** The content script tells its frames apart by the prefix. */
-const CHANNEL = SAVE ? 'save' : PASSKEY ? 'passkey' : 'inline'
+const CHANNEL = SAVE ? 'save' : PASSKEY ? 'passkey' : OFFER ? 'offer' : 'inline'
 
 /** The tab this frame sits in, as the browser reports it. */
 interface Page {
@@ -203,13 +207,23 @@ function Logins({
     else if (!suggesting && (error || items !== null)) void toPage(page, { type: 'inline:quiet' })
   }, [page, matches, items, error, suggesting])
 
+  // In the corner it is shown for a login to pick, and for nothing else.
+  const offering = OFFER && matches.length > 0
+  const shownAt = useRef(Infinity)
+  useEffect(() => {
+    if (offering) shownAt.current = performance.now()
+    else if (OFFER && (error || items !== null)) void toPage(page, { type: 'offer:close' })
+  }, [page, offering, items, error])
+
   const fill = async (item: VaultItem, click: Event) => {
-    if (!click.isTrusted || click.timeStamp - openedAt < SETTLE_MS || !item.secret) return
+    // The corner shows up unasked, so it counts from when it had a login to show.
+    const since = OFFER ? shownAt.current : openedAt
+    if (!click.isTrusted || click.timeStamp - since < SETTLE_MS || !item.secret) return
 
     // The page may have navigated, or hidden the menu, since it was drawn.
     const tab = await chrome.tabs.get(page.tabId)
     if (!matchesSite(item.secret.url, tab.url)) return
-    if ((await toPage(page, { type: 'inline:check' })) !== true) return
+    if ((await toPage(page, { type: `${CHANNEL}:check` })) !== true) return
 
     await chrome.scripting.executeScript({
       target: { tabId: page.tabId },
@@ -218,9 +232,10 @@ function Logins({
     })
     // The login is filled either way; an older server has no such route.
     await markItemUsed(item.id).catch(() => undefined)
-    void toPage(page, { type: 'inline:close' })
+    void toPage(page, { type: `${CHANNEL}:close` })
   }
 
+  if (OFFER && !offering) return null
   if (suggesting && matches.length === 0) return null
   if (error) return <p className="inline-note error">{error}</p>
   if (items === null) return <p className="inline-note muted">Decrypting…</p>
@@ -229,26 +244,42 @@ function Logins({
   }
 
   return (
-    <div className="inline-list">
-      {matches.map((item, index) => (
-        <button
-          key={item.id}
-          className="card"
-          ref={index === 0 ? first : undefined}
-          // The label replaces what the button shows, so it says the same.
-          aria-label={[`Fill ${item.secret!.name}`, sharedLabel(item)].filter(Boolean).join(', ')}
-          onClick={(e) => void fill(item, e.nativeEvent)}
-        >
-          <ItemTile item={item} />
-          <span className="item-text">
-            <span className="item-name">{item.secret!.username || item.secret!.name}</span>
-            <span className="muted">
-              {sharedLabel(item) ?? lastUsedLabel(item.last_used_at) ?? hostOf(item.secret!.url)}
+    <>
+      {OFFER && (
+        <header className="inline-head">
+          <span>Sign in to {hostOf(page.url)}</span>
+          <span className="spacer" />
+          <button
+            className="icon-button"
+            aria-label="Close"
+            title="Close"
+            onClick={() => void toPage(page, { type: 'offer:close' })}
+          >
+            <CloseIcon width={18} height={18} />
+          </button>
+        </header>
+      )}
+      <div className="inline-list">
+        {matches.map((item, index) => (
+          <button
+            key={item.id}
+            className="card"
+            ref={index === 0 ? first : undefined}
+            // The label replaces what the button shows, so it says the same.
+            aria-label={[`Fill ${item.secret!.name}`, sharedLabel(item)].filter(Boolean).join(', ')}
+            onClick={(e) => void fill(item, e.nativeEvent)}
+          >
+            <ItemTile item={item} />
+            <span className="item-text">
+              <span className="item-name">{item.secret!.username || item.secret!.name}</span>
+              <span className="muted">
+                {sharedLabel(item) ?? lastUsedLabel(item.last_used_at) ?? hostOf(item.secret!.url)}
+              </span>
             </span>
-          </span>
-        </button>
-      ))}
-    </div>
+          </button>
+        ))}
+      </div>
+    </>
   )
 }
 
@@ -732,11 +763,17 @@ function Inline() {
       // The passkey prompt answers the page itself.
       if (e.key !== 'Escape' || PASSKEY) return
       if (SAVE) void dismiss(page)
+      else if (OFFER) void toPage(page, { type: 'offer:close' })
       else void toPage(page, { type: 'inline:close', refocus: true })
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [page])
+
+  // Locked or signed out, the corner has nothing to say and makes room.
+  useEffect(() => {
+    if (OFFER && page && keys === null) void toPage(page, { type: 'offer:close' })
+  }, [page, keys])
 
   // Locked: Unlock is worth offering to someone who is signed in.
   useEffect(() => {
@@ -766,6 +803,15 @@ function Inline() {
         onUnlock={() => void unlock()}
       />
     )
+  }
+
+  // Locked, the corner has nothing to say: the menu under a field offers Unlock.
+  if (OFFER) {
+    return keys ? (
+      <div className="inline">
+        <Logins page={page} keys={keys} suggesting={false} onLocked={() => setKeys(null)} />
+      </div>
+    ) : null
   }
 
   if (SAVE) {
