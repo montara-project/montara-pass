@@ -1422,6 +1422,12 @@ a.set-row svg {
   max-width: 1040px;
 }
 
+/* A tool has the whole width to itself, and sits in the middle of it: an
+   item is read beside the list, a tool is not beside anything. */
+.tool-col .detail-body {
+  margin-inline: auto;
+}
+
 /* The generator: the password on one side, what shapes it on the other. */
 .gen-grid {
   display: grid;
