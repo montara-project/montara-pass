@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react'
 import EmptyState from '@/components/block/common/empty-state'
 import ReactTable from '@/components/block/common/react-table'
 import SectionCard from '@/components/block/common/section-card'
+import { RowsSkeleton } from '@/components/layout/page-skeleton'
 import { Button } from '@/components/ui/button'
 import { useDebounce } from '@/hooks/use-debounce'
 import { usePaginationQuery } from '@/hooks/use-pagination-query'
@@ -67,7 +68,9 @@ export default function CategoryTable() {
         </div>
       }
     >
-      {!loading && categories.length === 0 ? (
+      {isLoading ? (
+        <RowsSkeleton />
+      ) : !loading && categories.length === 0 ? (
         <EmptyState
           title="No categories found"
           description="Adjust the search, or add the first category."

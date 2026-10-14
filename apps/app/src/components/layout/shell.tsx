@@ -12,7 +12,7 @@ import {
   IconUserCircle,
 } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
-import { Link, useNavigate } from '@tanstack/react-router'
+import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -76,6 +76,8 @@ function NavList({ items, collapsed }: { items: typeof NAV | typeof TOOLS; colla
  */
 export default function Shell({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDE_KEY) === 'collapsed')
+  // The page, not its filters: choosing an item or a folder is not a move.
+  const pathname = useLocation({ select: (location) => location.pathname })
 
   const toggle = () => {
     setCollapsed((was) => {
@@ -123,7 +125,10 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       </nav>
 
       <main className="rounded-tl-sheet bg-panel min-h-0 overflow-y-auto max-[860px]:rounded-t-sheet">
-        {children}
+        {/* A new element for each page, so each one arrives. */}
+        <div key={pathname} className="page-in h-full">
+          {children}
+        </div>
       </main>
     </div>
   )

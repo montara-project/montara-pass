@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import EmptyState from '@/components/block/common/empty-state'
 import ReactTable from '@/components/block/common/react-table'
 import SectionCard from '@/components/block/common/section-card'
+import { RowsSkeleton } from '@/components/layout/page-skeleton'
 import { Button } from '@/components/ui/button'
 import { useFolders } from '@/hooks/use-vault'
 import { toastAxiosError } from '@/lib/api/axios-error'
@@ -35,7 +36,9 @@ export default function FolderTable() {
         </Button>
       }
     >
-      {!loading && folders.length === 0 ? (
+      {isLoading ? (
+        <RowsSkeleton />
+      ) : !loading && folders.length === 0 ? (
         <EmptyState
           title="No folders yet"
           description="Create a folder to group the items in your vault."

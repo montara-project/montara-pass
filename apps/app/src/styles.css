@@ -279,3 +279,30 @@
     }
   }
 }
+
+/* A page arriving on the sheet: it settles into place rather than cutting in.
+   Short, because it happens on every move; the page it replaces just goes. */
+@keyframes page-in {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+
+@utility page-in {
+  animation: page-in 220ms cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Still seen to change, without moving. */
+  @media (prefers-reduced-motion: reduce) {
+    animation: ch-fade 120ms ease-out;
+  }
+}
+
+/* What was waited for taking the place of its skeleton. */
+@utility fade-in {
+  animation: ch-fade 180ms ease-out;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}

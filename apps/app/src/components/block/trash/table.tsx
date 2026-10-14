@@ -3,6 +3,7 @@ import { useEffect, useMemo } from 'react'
 import EmptyState from '@/components/block/common/empty-state'
 import ReactTable from '@/components/block/common/react-table'
 import SectionCard from '@/components/block/common/section-card'
+import { RowsSkeleton } from '@/components/layout/page-skeleton'
 import { usePaginationQuery } from '@/hooks/use-pagination-query'
 import { useItems } from '@/hooks/use-vault'
 import { toastAxiosError } from '@/lib/api/axios-error'
@@ -30,7 +31,9 @@ export default function TrashTable() {
       title="Trash"
       description="Items you own and moved to the trash. They stay here until you restore or delete them."
     >
-      {!loading && items.length === 0 ? (
+      {isLoading ? (
+        <RowsSkeleton />
+      ) : !loading && items.length === 0 ? (
         <EmptyState title="The trash is empty" />
       ) : (
         <ReactTable

@@ -158,7 +158,7 @@ export default function Vault() {
                   : 'Your vault is empty. Add your first login or secure note.'}
               </p>
             ) : (
-              <ul className="m-0 list-none p-0">
+              <ul className="fade-in m-0 list-none p-0">
                 {items.map((item) => (
                   <li key={item.id}>
                     <ItemRow

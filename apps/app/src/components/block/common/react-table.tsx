@@ -136,7 +136,7 @@ export default function ReactTable<T extends RowData>({
         edgeCell: 'px-5',
       }}
     >
-      <div className="w-full space-y-2.5">
+      <div className="fade-in w-full space-y-2.5">
         <DataGridContainer>
           <ScrollArea>
             <DataGridTable />

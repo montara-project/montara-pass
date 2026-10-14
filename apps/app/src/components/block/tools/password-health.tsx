@@ -113,7 +113,7 @@ export default function PasswordHealth() {
         </p>
       ) : (
         <>
-          <dl className="m-0 grid grid-cols-3 gap-3">
+          <dl className="fade-in m-0 grid grid-cols-3 gap-3">
             <Stat label="Logins checked" value={health.checked} />
             <Stat label="Reused" value={reusedCount} alert />
             <Stat label="Weak" value={health.weak.length} alert />
