@@ -3,6 +3,29 @@
 All notable changes to this project are documented in this file. Versions follow the git tags (`v*`); Docker images are published to ghcr.io with the same version.
 
 
+## [1.7.0](https://github.com/montara-project/montara-pass/compare/v1.6.0...v1.7.0) (2026-10-14)
+
+### Features
+
+* **app:** give an empty page a shape ([5781a27](https://github.com/montara-project/montara-pass/commit/5781a271a843e4bff223f0cccf3b4b81f368338b))
+* **app:** let a page arrive, and show a skeleton while it loads ([e42da3e](https://github.com/montara-project/montara-pass/commit/e42da3e55e4f0e607d7bdf5a4fe9f68a32ac6c12))
+* **app:** let a secure note be kept hidden ([b3b449c](https://github.com/montara-project/montara-pass/commit/b3b449c7df30498dca8ac7e1d8d68d493afdabb9))
+* **app:** make a password from the item form ([3ede577](https://github.com/montara-project/montara-pass/commit/3ede577e524b9d49d87890d2a5877398b8b99bf5))
+* **app:** rebuild the web app on the extension's design system ([7782cdf](https://github.com/montara-project/montara-pass/commit/7782cdf64d2f2e0f289e34131844f8bbd2b77c14))
+* **extension:** draw in a regenerated password ([cea7c2c](https://github.com/montara-project/montara-pass/commit/cea7c2c5b310839a560e6d15d2431f8ebe25c766))
+* **extension:** fold the full-tab sidebar down to its icons ([43661ae](https://github.com/montara-project/montara-pass/commit/43661aec2812f091588fa2a03e3e704056370cee))
+* **extension:** give a first-time user a way to an account ([d942b44](https://github.com/montara-project/montara-pass/commit/d942b446f72fbb9adf6337c96ed283080c845a55))
+* **extension:** match the item detail's actions to the web app ([cf3d6bd](https://github.com/montara-project/montara-pass/commit/cf3d6bd2d3158dd856fdcf4a61a8e295d9cd52df))
+
+### Bug Fixes
+
+* **app:** give the parts of the vault list room and a rule ([1adb2a6](https://github.com/montara-project/montara-pass/commit/1adb2a6ebb81cd51a16d5874174e3f998afaa192))
+* **extension:** centre the generator and the health report ([d264b0e](https://github.com/montara-project/montara-pass/commit/d264b0e1336ae8443b3b6f72357e515bc7b33e60))
+* **extension:** finish the password generator's options and slider ([9bd7311](https://github.com/montara-project/montara-pass/commit/9bd73115be24ae306385cb7b32079e38e7d664a2))
+* **extension:** group the password health report into cards ([60c1adf](https://github.com/montara-project/montara-pass/commit/60c1adf9ce1ed0bfdb68b46946158586b9e515cb))
+* **extension:** put the share view in order ([ade6cff](https://github.com/montara-project/montara-pass/commit/ade6cfffb2eab311a37bacdedaaeda3990409643))
+* give the generator and the health report more room ([8f50f1a](https://github.com/montara-project/montara-pass/commit/8f50f1acbf9e225cd352ac8660768f3ba66c3a67))
+
 ## [1.6.0](https://github.com/montara-project/montara-pass/compare/v1.5.0...v1.6.0) (2026-10-13)
 
 ### Features
