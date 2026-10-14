@@ -1457,6 +1457,38 @@ a.set-row svg {
   user-select: all;
 }
 
+/* Each character is a box of its own, so it can be moved. */
+.generated output span span {
+  display: inline-block;
+}
+
+/* Asked for again, the password is set like the pins of a lock: each
+   character drops into place a moment after the one before it. */
+.gen-drawn span {
+  animation: ch-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i) * var(--step));
+}
+
+@keyframes ch-in {
+  from {
+    opacity: 0;
+    translate: 0 -0.35em;
+  }
+}
+
+/* Still seen to change, but all at once and without moving. */
+@media (prefers-reduced-motion: reduce) {
+  .gen-drawn span {
+    animation: ch-fade 120ms ease-out both;
+  }
+}
+
+@keyframes ch-fade {
+  from {
+    opacity: 0;
+  }
+}
+
 /* Digits and symbols are tinted, so 5 and S, or l and |, are told apart. */
 .ch-digit {
   color: var(--focus);
