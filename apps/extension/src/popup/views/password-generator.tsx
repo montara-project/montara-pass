@@ -154,6 +154,12 @@ export default function PasswordGenerator({ onNotice }: PasswordGeneratorProps) 
               min={MIN_PASSWORD_LENGTH}
               max={MAX_PASSWORD_LENGTH}
               value={options.length}
+              // How far along the track is filled, which a browser does not say.
+              style={
+                {
+                  '--fill': `${((options.length - MIN_PASSWORD_LENGTH) / (MAX_PASSWORD_LENGTH - MIN_PASSWORD_LENGTH)) * 100}%`,
+                } as CSSProperties
+              }
               onChange={(e) => change({ ...options, length: Number(e.target.value) })}
             />
             <span className="row muted meta" aria-hidden="true">

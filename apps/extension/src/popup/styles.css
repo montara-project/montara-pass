@@ -1441,12 +1441,26 @@ a.set-row svg {
 }
 
 .generated {
-  justify-content: space-between;
   background: var(--card);
 }
 
+/* Rows in one card, as a setting's are: the length, then a line to each
+   kind of character. No box inside the box. */
+.gen-options {
+  gap: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.gen-options > label {
+  padding: 20px;
+}
+
+/* The password has the middle of whatever room the card is given: the card
+   is as tall as the options beside it. */
 .generated output {
   display: flex;
+  flex: 1;
   align-items: center;
   min-height: 112px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -1545,19 +1559,20 @@ a.set-row svg {
   gap: 8px;
 }
 
+/* Digits of one width, so the line holds still while the slider moves. */
 .gen-length {
   color: var(--fg);
-  font-size: 17px;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
 }
 
 .gen-kinds {
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  border-top: 1px solid var(--border);
 }
 
 .gen-kinds .toggle.option {
   justify-content: space-between;
-  padding: 12px 14px;
+  padding: 14px 20px;
   border: 0;
   border-radius: 0;
 }
@@ -1586,13 +1601,80 @@ a.set-row svg {
   }
 }
 
+/* A slider drawn like the meter beside it: the browser's own keeps a light
+   track on a dark page. */
 input.range {
+  appearance: none;
   height: 24px;
   padding: 0;
   border: 0;
   background: none;
-  accent-color: var(--primary);
   cursor: pointer;
+}
+
+/* Two flat colors that meet at the thumb, not a blend. */
+input.range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--primary) var(--fill, 0%),
+    var(--hover) var(--fill, 0%)
+  );
+}
+
+input.range::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--hover);
+}
+
+input.range::-moz-range-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--primary);
+}
+
+/* The ring is the surface's own color: the thumb stands clear of the track. */
+input.range::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 3px solid var(--panel);
+  border-radius: 50%;
+  background: var(--primary);
+  box-sizing: content-box;
+  margin-top: -9px;
+  transition: scale 120ms ease-out;
+}
+
+input.range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 3px solid var(--panel);
+  border-radius: 50%;
+  background: var(--primary);
+  transition: scale 120ms ease-out;
+}
+
+input.range:active::-webkit-slider-thumb {
+  scale: 1.1;
+}
+
+input.range:active::-moz-range-thumb {
+  scale: 1.1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  input.range::-webkit-slider-thumb,
+  input.range::-moz-range-thumb {
+    transition: none;
+  }
+}
+
+/* The last kind of character cannot be turned off, and does not offer to be. */
+.toggle:has(input:disabled) {
+  cursor: default;
 }
 
 .toggle.option {
