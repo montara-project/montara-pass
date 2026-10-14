@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { useFieldContext } from '@/hooks/form-context'
+import { generatePassword } from '@/lib/password'
 
 import { useFieldErrors } from './field-error'
 
@@ -14,18 +15,18 @@ interface PasswordFieldProps {
   disabled?: boolean
   /** Vault secrets pass "off" so the browser does not offer to save or fill them. */
   autoComplete?: string
-  /** A button beside the field, such as the one that makes a password. */
-  action?: React.ReactNode
+  /** A button beside the field that makes a password, for a secret being chosen. */
+  generate?: boolean
 }
 
-/** A password with a button inside the field that shows what was typed. */
+/** A password with a button that shows it, and on request one that makes it. */
 export default function PasswordField({
   label,
   placeholder,
   asterisk,
   disabled,
   autoComplete,
-  action,
+  generate,
 }: PasswordFieldProps) {
   const field = useFieldContext<string>()
   const [visible, setVisible] = useState(false)
@@ -73,7 +74,20 @@ export default function PasswordField({
             {visible ? <IconEyeOff /> : <IconEye />}
           </Button>
         </div>
-        {action}
+        {/* Nothing to make where nothing may be changed. */}
+        {generate && !disabled && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              field.handleChange(generatePassword())
+              // Shown, so what was made can be read before it is saved.
+              setVisible(true)
+            }}
+          >
+            Generate
+          </Button>
+        )}
       </div>
       {isInvalid && <FieldError id={errorId} errors={errors} />}
     </Field>

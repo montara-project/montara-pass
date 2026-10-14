@@ -6,7 +6,7 @@ import type { ItemSecret } from '@/lib/crypto/vault'
 import type { VaultItem } from '@/types/vault'
 
 import SimpleAlertScrollableDialogForm from '@/components/block/common/simple-alert-scrollable-dialog-form'
-import { useAppForm } from '@/hooks/form'
+import { checked, useAppForm } from '@/hooks/form'
 import { useFolders, useVaultKeys } from '@/hooks/use-vault'
 import { toastAxiosError } from '@/lib/api/axios-error'
 import { parseDto } from '@/lib/api/dtos/parse'
@@ -73,10 +73,10 @@ function ItemFieldsForm({
 
   const form = useAppForm({
     defaultValues,
-    validators: {
-      onSubmit: ItemFormSchema,
-      onChange: ItemFormSchema,
-    },
+    // Checked on saving, and from then on as the fields change: making a
+    // password in an empty form is not the moment to ask for a name.
+    validationLogic: checked,
+    validators: { onDynamic: ItemFormSchema },
     onSubmit: async ({ value }) => {
       try {
         await onSave(parseDto(ItemFormSchema, value))
@@ -160,6 +160,7 @@ function ItemFieldsForm({
                 placeholder="password"
                 autoComplete="off"
                 disabled={readOnly}
+                generate
               />
             )}
           />
