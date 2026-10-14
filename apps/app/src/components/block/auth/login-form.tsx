@@ -6,6 +6,7 @@ import { submitForm } from '@/hooks/submit-form'
 import { SignInSchema } from '@/lib/api/dtos/auth/schema'
 import { signInWithEmail } from '@/lib/auth/email-auth'
 import { HOME_PATH } from '@/lib/constants/auth'
+import { COMMUNITY } from '@/lib/constants/edition'
 
 import AuthShell, { authLinkStrong } from './auth-shell'
 
@@ -75,12 +76,14 @@ export default function LoginForm() {
         </form.AppForm>
       </form>
 
-      <p className="text-muted-foreground text-center text-[13px]">
-        No account yet?{' '}
-        <Link to="/sign-up" className={authLinkStrong}>
-          Create one
-        </Link>
-      </p>
+      {!COMMUNITY && (
+        <p className="text-muted-foreground text-center text-[13px]">
+          No account yet?{' '}
+          <Link to="/sign-up" className={authLinkStrong}>
+            Create one
+          </Link>
+        </p>
+      )}
     </AuthShell>
   )
 }
