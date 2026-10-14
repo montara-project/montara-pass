@@ -1846,11 +1846,16 @@ input.range:active::-moz-range-thumb {
 }
 
 /* Beside the item's name the buttons are a size down: the name leads. */
-.detail-head button {
+.detail-head button.secondary {
   flex-shrink: 0;
   height: 36px;
   padding: 0 14px;
   font-weight: 500;
+}
+
+/* A favorite's star is filled, and so stands out from the icons beside it. */
+.detail-head .icon-button[aria-pressed='true'] {
+  color: var(--fg);
 }
 
 .detail-head .tile {

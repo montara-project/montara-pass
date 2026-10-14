@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import type { VaultKeys } from '@/lib/crypto/vault'
 import type { VaultItem } from '@/types/vault'
 
+import { setItemPlacement, SignedOutError, trashItem } from '../../lib/api'
 import { linkOf } from '../../lib/site'
 import { getSettings } from '../../lib/storage'
 import { lastUsedAgo } from '../../lib/usage'
@@ -17,6 +18,7 @@ import {
   KeyIcon,
   LockIcon,
   LogOutIcon,
+  MoreIcon,
   NoteIcon,
   PencilIcon,
   PlusIcon,
@@ -28,6 +30,7 @@ import {
   SidebarIcon,
   SortIcon,
   StarIcon,
+  TrashIcon,
 } from '../icons'
 import { ItemTile } from '../item-tile'
 import { initials } from '../layout'
@@ -180,6 +183,18 @@ export default function FullVault({
     setRefreshing(true)
     await load()
     setRefreshing(false)
+  }
+
+  /** Runs a choice that changes the vault, then says how it went. */
+  const act = async (change: () => Promise<void>, done: string) => {
+    try {
+      await change()
+      setNotice(done)
+      await load()
+    } catch (err) {
+      if (err instanceof SignedOutError) onSignedOut()
+      else setNotice(err instanceof Error ? err.message : 'That did not work')
+    }
   }
 
   const copy = async (value: string | undefined, label: string) => {
@@ -451,6 +466,22 @@ export default function FullVault({
                 onCopy={(value, label) => void copy(value, label)}
                 onEdit={() => setPane({ mode: 'edit', id: selected.id })}
                 onShare={() => setPane({ mode: 'share', id: selected.id })}
+                onFavorite={() =>
+                  void act(
+                    () =>
+                      setItemPlacement(selected.id, {
+                        folder_id: selected.folder_id,
+                        favorite: !selected.favorite,
+                      }),
+                    selected.favorite ? 'Removed from favorites' : 'Added to favorites'
+                  )
+                }
+                onTrash={() =>
+                  void act(
+                    () => trashItem(selected.id),
+                    'Moved to the trash. The web app can restore it.'
+                  )
+                }
               />
             ) : (
               <div className="detail-empty">
@@ -485,11 +516,33 @@ interface ItemDetailProps {
   onCopy: (value: string | undefined, label: string) => void
   onEdit: () => void
   onShare: () => void
+  onFavorite: () => void
+  onTrash: () => void
 }
 
-function ItemDetail({ item, onCopy, onEdit, onShare }: ItemDetailProps) {
+function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: ItemDetailProps) {
   // Hidden again for every item: this component is remounted per item.
   const [revealed, setRevealed] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  // The menu closes on Escape and on a click anywhere else; opening it puts
+  // focus on its first choice.
+  useEffect(() => {
+    if (!menuOpen) return
+    menuRef.current?.querySelector<HTMLButtonElement>('[role=menuitem]')?.focus()
+
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false)
+    const onClick = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('mousedown', onClick)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('mousedown', onClick)
+    }
+  }, [menuOpen])
 
   const secret = item.secret!
   const isLogin = item.type === 'login'
@@ -511,18 +564,62 @@ function ItemDetail({ item, onCopy, onEdit, onShare }: ItemDetailProps) {
             {item.role !== 'owner' && ` · shared with you (${item.role})`}
           </span>
         </div>
-        {/* Only the owner hands an item on. */}
-        {item.role === 'owner' && (
-          <button className="secondary" onClick={onShare}>
-            <ShareIcon width={18} height={18} />
-            Share
-          </button>
-        )}
+        {/* As the web app has them: the star, the one common action as a
+            button, and the rest behind More. */}
+        <button
+          className="icon-button"
+          aria-label={item.favorite ? 'Remove from favorites' : 'Add to favorites'}
+          aria-pressed={item.favorite}
+          title={item.favorite ? 'Remove from favorites' : 'Add to favorites'}
+          onClick={onFavorite}
+        >
+          <StarIcon fill={item.favorite ? 'currentColor' : 'none'} />
+        </button>
         {canEdit && (
           <button className="secondary" onClick={onEdit}>
             <PencilIcon width={18} height={18} />
             Edit
           </button>
+        )}
+        {/* Only the owner hands an item on, or throws it away. */}
+        {item.role === 'owner' && (
+          <div className="menu-anchor" ref={menuRef}>
+            <button
+              className="icon-button"
+              aria-label="More"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              <MoreIcon />
+            </button>
+            {menuOpen && (
+              <div className="menu" role="menu">
+                <button
+                  role="menuitem"
+                  className="menu-item"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    onShare()
+                  }}
+                >
+                  <ShareIcon />
+                  Share
+                </button>
+                <button
+                  role="menuitem"
+                  className="menu-item menu-danger"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    onTrash()
+                  }}
+                >
+                  <TrashIcon />
+                  Move to trash
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </header>
 
