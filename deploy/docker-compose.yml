@@ -46,6 +46,9 @@ services:
       dockerfile: apps/server/Dockerfile
       args:
         APP_VERSION: ${APP_VERSION:-dev}
+        # ce builds the Community Edition, which needs SEED_ON_BOOT=true and
+        # SUPER_USER: that seeded user is its only account.
+        EDITION: ${EDITION:-ee}
     restart: unless-stopped
     depends_on:
       postgres:

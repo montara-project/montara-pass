@@ -13,8 +13,8 @@ binary, which serves it from `./public`. The build context is the repository
 root. The image also contains the `migrate` binary.
 
 ```sh
-docker build -f apps/server/Dockerfile -t montara-pass-server .
-docker run --rm -p 8080:8080 --env-file apps/server/.env montara-pass-server
+docker build -f apps/server/Dockerfile -t montara-pass-ee .
+docker run --rm -p 8080:8080 --env-file apps/server/.env montara-pass-ee
 ```
 
 `http://localhost:8080` then serves the UI, and `http://localhost:8080/api/v1` the
@@ -33,6 +33,7 @@ user, and listens on `PORT` (8080). Settings are environment variables; see
 | Build argument | Default | Purpose |
 | --- | --- | --- |
 | `APP_VERSION` | `dev` | Baked into the binary and reported by `GET /api/health` |
+| `EDITION` | `ee` | `ee` (Enterprise Edition) or `ce` (Community Edition: one user, no sign-up, no sharing; needs `SEED_ON_BOOT=true` and `SUPER_USER`). Tag the image `montara-pass-ce` |
 | `VITE_API_URL` | empty | The API origin for the web app; empty means its own origin |
 | `VITE_APP_NAME` | `Montara Pass` | Name shown in the UI |
 
@@ -40,7 +41,7 @@ Run a migration with the same image:
 
 ```sh
 docker run --rm --env-file apps/server/.env \
-  --entrypoint /app/migrate montara-pass-server up
+  --entrypoint /app/migrate montara-pass-ee up
 ```
 
 <Callout title="Hosting the web app elsewhere" type="info">
