@@ -25,10 +25,14 @@ export default function TextareaField({
   const isInvalid = !!errors?.length
 
   return (
-    <Field data-invalid={isInvalid}>
+    <Field data-invalid={isInvalid} className="gap-1.5">
       <FieldLabel htmlFor={field.name} className="gap-1">
         {label}
-        {asterisk && <span className="text-destructive">*</span>}
+        {asterisk && (
+          <span className="text-danger" aria-hidden="true">
+            *
+          </span>
+        )}
       </FieldLabel>
       <Textarea
         id={field.name}

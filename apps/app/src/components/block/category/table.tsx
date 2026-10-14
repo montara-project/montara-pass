@@ -7,7 +7,6 @@ import EmptyState from '@/components/block/common/empty-state'
 import ReactTable from '@/components/block/common/react-table'
 import SectionCard from '@/components/block/common/section-card'
 import { Button } from '@/components/ui/button'
-import { Input, InputWrapper } from '@/components/ui/input'
 import { useDebounce } from '@/hooks/use-debounce'
 import { usePaginationQuery } from '@/hooks/use-pagination-query'
 import { toastAxiosError } from '@/lib/api/axios-error'
@@ -49,18 +48,21 @@ export default function CategoryTable() {
       description="Shared labels. Everyone can read them; only a super user can change them."
       toolbar={
         <div className="flex flex-row items-center gap-2">
-          <InputWrapper className="w-72">
-            <IconSearch />
-            <Input
-              placeholder="Search categories..."
+          <label className="field-box rounded-control bg-field text-muted-foreground focus-within:text-foreground flex h-10 w-72 max-w-full cursor-text items-center gap-2.5 px-3">
+            <IconSearch className="size-[18px] shrink-0" />
+            <input
+              type="search"
+              aria-label="Search categories"
+              placeholder="Search categories"
+              className="text-foreground placeholder:text-muted-foreground h-full w-full min-w-0 bg-transparent"
               value={search ?? ''}
               onChange={(e) => void setSearch(e.target.value || null)}
             />
-          </InputWrapper>
+          </label>
 
-          <Button className="h-8.5 rounded-lg" onClick={() => setOpenAdd(true)}>
+          <Button onClick={() => setOpenAdd(true)}>
             <IconPlus />
-            <span>Add Category</span>
+            New category
           </Button>
         </div>
       }
@@ -69,12 +71,6 @@ export default function CategoryTable() {
         <EmptyState
           title="No categories found"
           description="Adjust the search, or add the first category."
-          action={
-            <Button onClick={() => setOpenAdd(true)}>
-              <IconPlus />
-              <span>Add Category</span>
-            </Button>
-          }
         />
       ) : (
         <ReactTable

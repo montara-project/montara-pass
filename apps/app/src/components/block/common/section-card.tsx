@@ -1,13 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardHeading,
-  CardTitle,
-  CardToolbar,
-} from '@/components/ui/card'
-import { cn } from '@/lib/utils'
+import Page from '@/components/layout/page'
 
 interface SectionCardProps {
   title: string
@@ -16,24 +7,11 @@ interface SectionCardProps {
   children: React.ReactNode
 }
 
+/** A page that holds a table: its heading and tools, then the table on the sheet itself. */
 export default function SectionCard({ title, description, toolbar, children }: SectionCardProps) {
   return (
-    <div className="bg-sidebar border border-sidebar-accent p-2 rounded-2xl">
-      <Card className="w-full rounded-lg bg-background">
-        <CardHeader className={cn('flex items-center', description ? 'min-h-22' : 'min-h-15')}>
-          <CardHeading className="min-w-0 flex-1">
-            <CardTitle className="text-xl leading-relaxed tracking-normal">{title}</CardTitle>
-            <CardDescription
-              className={cn('text-sm text-muted-foreground', !description && 'sr-only')}
-            >
-              {description}
-            </CardDescription>
-          </CardHeading>
-
-          {toolbar && <CardToolbar className="shrink-0">{toolbar}</CardToolbar>}
-        </CardHeader>
-        <CardContent className="p-4">{children}</CardContent>
-      </Card>
-    </div>
+    <Page title={title} description={description} actions={toolbar}>
+      {children}
+    </Page>
   )
 }

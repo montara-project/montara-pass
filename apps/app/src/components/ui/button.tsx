@@ -6,7 +6,7 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'cursor-pointer group whitespace-nowrap focus-visible:outline-hidden inline-flex items-center justify-center has-data-[arrow=true]:justify-between whitespace-nowrap text-sm font-medium ring-offset-background transition-[color,box-shadow] disabled:pointer-events-none disabled:opacity-60 [&_svg]:shrink-0',
+  'cursor-pointer group whitespace-nowrap inline-flex items-center justify-center has-data-[arrow=true]:justify-between text-sm font-semibold transition-[background-color,color,opacity] duration-[120ms] ease-out motion-reduce:transition-none disabled:pointer-events-none disabled:opacity-55 [&_svg]:shrink-0',
   {
     variants: {
       variant: {
@@ -18,11 +18,11 @@ const buttonVariants = cva(
         secondary:
           'bg-secondary text-secondary-foreground hover:bg-secondary/90 data-[state=open]:bg-secondary/90',
         outline:
-          'bg-background text-accent-foreground border border-input hover:bg-accent data-[state=open]:bg-accent',
+          'bg-transparent text-foreground border border-border hover:bg-hover data-[state=open]:bg-hover',
         dashed:
           'text-accent-foreground border border-input border-dashed bg-background hover:bg-accent hover:text-accent-foreground data-[state=open]:text-accent-foreground',
         ghost:
-          'text-accent-foreground hover:bg-accent hover:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground',
+          'text-muted-foreground hover:bg-hover hover:text-foreground data-[state=open]:bg-hover data-[state=open]:text-foreground',
         dim: 'text-muted-foreground hover:text-foreground data-[state=open]:text-foreground',
         foreground: '',
         inverse: '',
@@ -40,23 +40,23 @@ const buttonVariants = cva(
         dashed: '',
       },
       size: {
-        lg: 'h-10 px-4 text-sm gap-1.5 [&_svg:not([class*=size-])]:size-4',
-        md: 'h-9 px-3 gap-1.5 text-sm [&_svg:not([class*=size-])]:size-4',
-        sm: 'h-8 px-2.5 gap-1.25 text-xs [&_svg:not([class*=size-])]:size-3.5',
-        xs: 'h-7 px-2 gap-1 text-xs [&_svg:not([class*=size-])]:size-3.5',
-        icon: 'size-9 [&_svg:not([class*=size-])]:size-4 shrink-0',
+        lg: 'h-12 px-5 text-[15px] gap-2 rounded-row [&_svg:not([class*=size-])]:size-[18px]',
+        md: 'h-10 px-4 gap-2 text-sm [&_svg:not([class*=size-])]:size-[18px]',
+        sm: 'h-9 px-3.5 gap-1.5 text-[13px] [&_svg:not([class*=size-])]:size-4',
+        xs: 'h-8 px-3 gap-1.5 text-[13px] [&_svg:not([class*=size-])]:size-4',
+        icon: 'size-9 [&_svg:not([class*=size-])]:size-5 shrink-0',
       },
       autoHeight: {
         true: '',
         false: '',
       },
       radius: {
-        md: 'rounded-md',
+        md: 'rounded-control',
         full: 'rounded-full',
       },
       mode: {
-        default: 'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-        icon: 'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 shrink-0',
+        default: '',
+        icon: 'shrink-0',
         link: 'text-primary h-auto p-0 bg-transparent rounded-none hover:bg-transparent data-[state=open]:bg-transparent',
         input: `
             justify-start font-normal hover:bg-background [&_svg]:transition-colors [&_svg]:hover:text-foreground data-[state=open]:bg-background 
@@ -134,37 +134,37 @@ const buttonVariants = cva(
         variant: 'primary',
         mode: 'default',
         appearance: 'default',
-        className: 'shadow-xs shadow-black/5',
+        className: '',
       },
       {
         variant: 'mono',
         mode: 'default',
         appearance: 'default',
-        className: 'shadow-xs shadow-black/5',
+        className: '',
       },
       {
         variant: 'secondary',
         mode: 'default',
         appearance: 'default',
-        className: 'shadow-xs shadow-black/5',
+        className: '',
       },
       {
         variant: 'outline',
         mode: 'default',
         appearance: 'default',
-        className: 'shadow-xs shadow-black/5',
+        className: '',
       },
       {
         variant: 'dashed',
         mode: 'default',
         appearance: 'default',
-        className: 'shadow-xs shadow-black/5',
+        className: '',
       },
       {
         variant: 'destructive',
         mode: 'default',
         appearance: 'default',
-        className: 'shadow-xs shadow-black/5',
+        className: '',
       },
 
       // Shadow support
@@ -172,37 +172,37 @@ const buttonVariants = cva(
         variant: 'primary',
         mode: 'icon',
         appearance: 'default',
-        className: 'shadow-xs shadow-black/5',
+        className: '',
       },
       {
         variant: 'mono',
         mode: 'icon',
         appearance: 'default',
-        className: 'shadow-xs shadow-black/5',
+        className: '',
       },
       {
         variant: 'secondary',
         mode: 'icon',
         appearance: 'default',
-        className: 'shadow-xs shadow-black/5',
+        className: '',
       },
       {
         variant: 'outline',
         mode: 'icon',
         appearance: 'default',
-        className: 'shadow-xs shadow-black/5',
+        className: '',
       },
       {
         variant: 'dashed',
         mode: 'icon',
         appearance: 'default',
-        className: 'shadow-xs shadow-black/5',
+        className: '',
       },
       {
         variant: 'destructive',
         mode: 'icon',
         appearance: 'default',
-        className: 'shadow-xs shadow-black/5',
+        className: '',
       },
 
       // Link
@@ -316,26 +316,26 @@ const buttonVariants = cva(
       {
         size: 'xs',
         mode: 'icon',
-        className: 'w-7 h-7 p-0 [[&_svg:not([class*=size-])]:size-3.5',
+        className: 'w-8 h-8 p-0 [&_svg:not([class*=size-])]:size-[18px]',
       },
       {
         size: 'sm',
         mode: 'icon',
-        className: 'w-8 h-8 p-0 [[&_svg:not([class*=size-])]:size-3.5',
+        className: 'w-8 h-8 p-0 [&_svg:not([class*=size-])]:size-[18px]',
       },
       {
         size: 'md',
         mode: 'icon',
-        className: 'w-9 h-9 p-0 [&_svg:not([class*=size-])]:size-4',
+        className: 'w-9 h-9 p-0 [&_svg:not([class*=size-])]:size-5',
       },
       {
         size: 'icon',
-        className: 'w-9 h-9 p-0 [&_svg:not([class*=size-])]:size-4',
+        className: 'w-9 h-9 p-0 [&_svg:not([class*=size-])]:size-5',
       },
       {
         size: 'lg',
         mode: 'icon',
-        className: 'w-10 h-10 p-0 [&_svg:not([class*=size-])]:size-4',
+        className: 'w-10 h-10 p-0 [&_svg:not([class*=size-])]:size-5',
       },
 
       // Input mode

@@ -18,7 +18,7 @@ import DecorationProvider from '@/lib/providers/decoration'
 const RootLayout = () => (
   <DecorationProvider>
     <Outlet />
-    <Toaster position="bottom-right" richColors closeButton />
+    <Toaster position="bottom-center" />
   </DecorationProvider>
 )
 

@@ -65,7 +65,10 @@ function ItemFieldsForm({
 
   const folderOptions = [
     { label: 'No folder', value: NO_FOLDER },
-    ...(folders ?? []).map((folder) => ({ label: folder.name, value: folder.id })),
+    ...(folders ?? []).map((folder) => ({
+      label: folder.name,
+      value: folder.id,
+    })),
   ]
 
   const form = useAppForm({
@@ -200,7 +203,7 @@ export function AddItemForm({ open, onOpenChange, folderId }: AddItemFormProps) 
     <ItemFieldsForm
       open={open}
       onOpenChange={onOpenChange}
-      title="Create Item"
+      title="New item"
       confirmText="Save"
       defaultValues={{
         type: 'login',
@@ -218,7 +221,7 @@ export function AddItemForm({ open, onOpenChange, folderId }: AddItemFormProps) 
           folder_id: toFolderId(value),
           ...(await encryptNewItem(keys, toSecret(value))),
         })
-        toast.success('Item created successfully')
+        toast('Item created')
       }}
     />
   )
@@ -242,7 +245,7 @@ export function EditItemForm({ open, onOpenChange, record }: EditItemFormProps) 
     <ItemFieldsForm
       open={open}
       onOpenChange={onOpenChange}
-      title={readOnly ? 'View Item' : 'Edit Item'}
+      title={readOnly ? 'View item' : 'Edit item'}
       // A viewer can still choose their own folder for the item.
       confirmText={readOnly ? 'Save folder' : 'Update'}
       defaultValues={{
@@ -272,9 +275,12 @@ export function EditItemForm({ open, onOpenChange, record }: EditItemFormProps) 
 
         const folderId = toFolderId(value)
         if (folderId !== record.folder_id) {
-          await placementMutation.mutateAsync({ folder_id: folderId, favorite: record.favorite })
+          await placementMutation.mutateAsync({
+            folder_id: folderId,
+            favorite: record.favorite,
+          })
         }
-        toast.success(readOnly ? 'Folder updated successfully' : 'Item updated successfully')
+        toast(readOnly ? 'Folder updated' : 'Item updated')
       }}
     />
   )

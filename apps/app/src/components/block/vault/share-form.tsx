@@ -7,9 +7,7 @@ import type { VaultItem } from '@/types/vault'
 
 import SelectInput from '@/components/block/common/select-input'
 import SimpleAlertScrollableDialogForm from '@/components/block/common/simple-alert-scrollable-dialog-form'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAppForm } from '@/hooks/form'
 import { useVaultKeys } from '@/hooks/use-vault'
@@ -160,28 +158,26 @@ export function ShareItemForm({ open, onOpenChange, record }: ShareItemFormProps
         />
       </div>
 
-      <Separator />
-
-      <div className="space-y-2">
-        <h3 className="text-sm font-medium">People with access</h3>
+      <div className="flex flex-col gap-2 border-t pt-4">
+        <h3 className="text-[15px] font-semibold">People with access</h3>
 
         {isLoading && <Skeleton className="h-10 w-full" />}
 
         {members.map((member) => (
           <div key={member.user_id} className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="truncate text-sm">{member.name || member.email}</p>
-              <p className="text-muted-foreground truncate text-xs">{member.email}</p>
+              <p className="truncate font-medium">{member.name || member.email}</p>
+              <p className="text-muted-foreground truncate text-[13px]">{member.email}</p>
             </div>
 
             {member.role === ITEM_ROLE_OWNER ? (
-              <Badge variant="secondary">Owner</Badge>
+              <span className="text-muted-foreground pr-2 text-[13px]">Owner</span>
             ) : (
               <div className="flex shrink-0 items-center gap-2">
                 <SelectInput
                   // Remount when the role changes elsewhere: the select is uncontrolled.
                   key={member.role}
-                  className="w-28"
+                  className="h-9 w-28"
                   placeholder="Access"
                   options={ShareRoleOptions}
                   defaultValue={member.role}
@@ -189,7 +185,8 @@ export function ShareItemForm({ open, onOpenChange, record }: ShareItemFormProps
                 />
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
+                  mode="icon"
                   size="icon"
                   aria-label={`Remove ${member.email}`}
                   disabled={busy}

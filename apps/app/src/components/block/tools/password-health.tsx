@@ -1,26 +1,24 @@
-import { IconAlertTriangle, IconCopy, IconShieldCheck } from '@tabler/icons-react'
+import { IconChevronRight, IconShieldCheck } from '@tabler/icons-react'
 import { useMemo, useState } from 'react'
 
 import type { VaultItem } from '@/types/vault'
 
-import EmptyState from '@/components/block/common/empty-state'
-import SectionCard from '@/components/block/common/section-card'
 import { EditItemForm } from '@/components/block/vault/form'
-import { Button } from '@/components/ui/button'
+import ItemTile from '@/components/block/vault/item-tile'
+import ToolHead from '@/components/layout/tool-head'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAllItems } from '@/hooks/use-vault'
-import { itemIcon } from '@/lib/crypto/vault'
 import { passwordHealth } from '@/lib/password'
 
 function Stat({ label, value, alert }: { label: string; value: number; alert?: boolean }) {
   return (
-    <div className="rounded-lg border px-4 py-3">
-      <dt className="text-muted-foreground text-xs font-medium tracking-wide uppercase">{label}</dt>
+    <div className="rounded-row bg-card border px-3.5 py-3">
+      <dt className="text-muted-foreground text-xs">{label}</dt>
       <dd
         className={
           alert && value > 0
-            ? 'text-destructive text-2xl font-semibold tabular-nums'
-            : 'text-2xl font-semibold tabular-nums'
+            ? 'text-danger m-0 text-2xl font-semibold tabular-nums'
+            : 'm-0 text-2xl font-semibold tabular-nums'
         }
       >
         {value}
@@ -29,26 +27,58 @@ function Stat({ label, value, alert }: { label: string; value: number; alert?: b
   )
 }
 
-function Row({ item, onOpen }: { item: VaultItem; onOpen: (item: VaultItem) => void }) {
-  const icon = itemIcon(item.secret)
-
+/**
+ * Logins that belong together sit in one card, a line between them: the ones
+ * that share a password are seen to. The whole row opens the item.
+ */
+function Rows({ items, onOpen }: { items: VaultItem[]; onOpen: (item: VaultItem) => void }) {
   return (
-    <li className="flex items-center gap-3 px-4 py-2.5">
-      {icon ? (
-        <img src={icon} alt="" className="size-5 shrink-0 rounded" />
-      ) : (
-        <span className="bg-muted size-5 shrink-0 rounded" aria-hidden />
-      )}
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-sm font-medium">{item.secret!.name}</span>
-        <span className="text-muted-foreground truncate text-xs">
-          {item.secret!.username || 'No username'}
-        </span>
-      </span>
-      <Button variant="outline" size="sm" onClick={() => onOpen(item)}>
-        {item.role === 'viewer' ? 'View' : 'Change'}
-      </Button>
-    </li>
+    <ul className="rounded-card bg-card m-0 list-none divide-y overflow-hidden border p-0">
+      {items.map((item) => (
+        <li key={item.id}>
+          <button
+            type="button"
+            onClick={() => onOpen(item)}
+            className="group hover:bg-hover flex w-full items-center py-2.5 pr-3 pl-3.5 text-left transition-colors duration-[120ms] -outline-offset-2 motion-reduce:transition-none"
+          >
+            <span className="mr-3">
+              <ItemTile item={item} />
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="truncate text-[15px] font-medium tracking-[-0.005em]">
+                {item.secret!.name}
+              </span>
+              <span className="text-muted-foreground truncate text-[13px]">
+                {item.secret!.username || 'No username'}
+              </span>
+            </span>
+            {/* Says the row leads somewhere; lit with the row. */}
+            <IconChevronRight className="text-muted-foreground group-hover:text-foreground ml-2 size-[18px] shrink-0 transition-colors duration-[120ms] motion-reduce:transition-none" />
+          </button>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function Section({
+  title,
+  description,
+  children,
+}: {
+  title: string
+  description: string
+  children: React.ReactNode
+}) {
+  return (
+    // Further from the part above it than its own heading is from what it says.
+    <section className="mt-3 flex flex-col gap-4">
+      <header className="flex flex-col gap-0.5">
+        <h2 className="text-[15px] font-semibold">{title}</h2>
+        <p className="text-muted-foreground text-[13px]">{description}</p>
+      </header>
+      {children}
+    </section>
   )
 }
 
@@ -63,73 +93,70 @@ export default function PasswordHealth() {
   const health = useMemo(() => passwordHealth(items ?? []), [items])
   const reusedCount = health.reused.reduce((sum, group) => sum + group.length, 0)
 
-  if (isLoading) return <Skeleton className="h-64 w-full" />
-
   return (
-    <div className="flex flex-col gap-4">
-      <SectionCard
-        title="Password Health"
-        description="Checked in your browser, on your decrypted vault. No password leaves it."
-      >
-        {isError ? (
-          <EmptyState
-            icon={IconAlertTriangle}
-            title="Could not load your vault"
-            description="Reload the page to try again."
-          />
-        ) : (
-          <dl className="grid gap-3 sm:grid-cols-3">
+    <div className="mx-auto flex max-w-[640px] flex-col gap-4 p-5 sm:p-8">
+      <ToolHead
+        icon={IconShieldCheck}
+        title="Password health"
+        description="Checked in this browser. No password leaves it."
+      />
+
+      {isLoading ? (
+        <div className="grid grid-cols-3 gap-3" aria-hidden="true">
+          <Skeleton className="rounded-row h-[70px]" />
+          <Skeleton className="rounded-row h-[70px]" />
+          <Skeleton className="rounded-row h-[70px]" />
+        </div>
+      ) : isError ? (
+        <p role="alert" className="text-danger text-[13px]">
+          Could not load your vault. Reload the page to try again.
+        </p>
+      ) : (
+        <>
+          <dl className="m-0 grid grid-cols-3 gap-3">
             <Stat label="Logins checked" value={health.checked} />
             <Stat label="Reused" value={reusedCount} alert />
             <Stat label="Weak" value={health.weak.length} alert />
           </dl>
-        )}
-      </SectionCard>
 
-      {!isError && health.checked > 0 && reusedCount === 0 && health.weak.length === 0 && (
-        <SectionCard title="Nothing to fix">
-          <EmptyState
-            icon={IconShieldCheck}
-            title="No weak or reused passwords"
-            description="Every login has its own password, and none of them is short or simple."
-          />
-        </SectionCard>
-      )}
+          {health.checked === 0 && (
+            <p className="text-muted-foreground">
+              No login in the vault has a password to check yet.
+            </p>
+          )}
 
-      {health.reused.length > 0 && (
-        <SectionCard
-          title="Reused passwords"
-          description="If one of these sites leaks the password, the others are open too."
-        >
-          <div className="flex flex-col gap-3">
-            {health.reused.map((group) => (
-              <div key={group[0].id} className="rounded-lg border">
-                <p className="text-muted-foreground flex items-center gap-2 border-b px-4 py-2 text-xs">
-                  <IconCopy className="size-3.5" />
-                  One password, {group.length} logins
-                </p>
-                <ul className="divide-y">
-                  {group.map((item) => (
-                    <Row key={item.id} item={item} onOpen={setOpen} />
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-      )}
+          {health.checked > 0 && reusedCount === 0 && health.weak.length === 0 && (
+            <p className="text-muted-foreground">
+              Nothing to fix: every login has its own password, and none is short or simple.
+            </p>
+          )}
 
-      {health.weak.length > 0 && (
-        <SectionCard
-          title="Weak passwords"
-          description="Short, or made of few kinds of characters, so quick to guess."
-        >
-          <ul className="divide-y rounded-lg border">
-            {health.weak.map((item) => (
-              <Row key={item.id} item={item} onOpen={setOpen} />
-            ))}
-          </ul>
-        </SectionCard>
+          {health.reused.length > 0 && (
+            <Section
+              title="Reused passwords"
+              description="If one of these sites leaks the password, the others are open too."
+            >
+              {health.reused.map((group) => (
+                <div key={group[0].id}>
+                  {/* Names the card under it, in line with what the card holds. */}
+                  <p className="text-muted-foreground mb-2 pl-1 text-[13px] font-medium tabular-nums">
+                    One password, {group.length} logins
+                  </p>
+                  <Rows items={group} onOpen={setOpen} />
+                </div>
+              ))}
+            </Section>
+          )}
+
+          {health.weak.length > 0 && (
+            <Section
+              title="Weak passwords"
+              description="Short, or made of few kinds of characters, so quick to guess."
+            >
+              <Rows items={health.weak} onOpen={setOpen} />
+            </Section>
+          )}
+        </>
       )}
 
       {open && (

@@ -1,5 +1,4 @@
-import { IconEdit, IconEye, IconTrash } from '@tabler/icons-react'
-import { MoreHorizontal } from 'lucide-react'
+import { IconDots, IconEye, IconPencil, IconTrash } from '@tabler/icons-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -18,6 +17,7 @@ interface RowColumnActionProps {
   actions?: React.ReactNode
 }
 
+/** What may be done with a row: the common one as a button, the rest behind More. */
 export default function RowColumnAction({
   onShow,
   onEdit,
@@ -26,11 +26,11 @@ export default function RowColumnAction({
   actions,
 }: RowColumnActionProps) {
   return (
-    <div className="flex flex-row flex-wrap items-start gap-4">
+    <div className="flex flex-row items-center gap-1">
       {onEdit && (
-        <Button mode="link" underline="solid" className="dark:text-neutral-300" onClick={onEdit}>
-          <IconEdit className="text-primary size-4 dark:text-neutral-300" />
-          <span>Edit</span>
+        <Button variant="outline" size="xs" onClick={onEdit}>
+          <IconPencil />
+          Edit
         </Button>
       )}
 
@@ -39,12 +39,11 @@ export default function RowColumnAction({
       {(onShow || onDelete || dropdown) && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button mode="link" underline="solid" className="dark:text-neutral-300">
-              <MoreHorizontal className="text-primary size-4 dark:text-neutral-300" />
-              <span>More</span>
+            <Button variant="ghost" mode="icon" size="sm" aria-label="More">
+              <IconDots />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="min-w-40" align="end">
+          <DropdownMenuContent className="min-w-44" align="end">
             <DropdownMenuGroup>
               {onShow && (
                 <DropdownMenuItem onClick={onShow}>

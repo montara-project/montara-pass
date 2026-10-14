@@ -2,7 +2,6 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
-import SectionCard from '@/components/block/common/section-card'
 import { Button } from '@/components/ui/button'
 import { useAppForm } from '@/hooks/form'
 import { toastAxiosError } from '@/lib/api/axios-error'
@@ -54,17 +53,24 @@ export default function ChangeMasterPasswordForm() {
   })
 
   return (
-    <SectionCard
-      title="Master password"
-      description="Separate from your sign-in password, and never sent to the server. If you forget it, your vault cannot be recovered."
-    >
+    <section aria-labelledby="master-password" className="flex flex-col gap-2">
+      {/* A section's name is a label for its card, quieter than what is in it. */}
+      <h2 id="master-password" className="text-muted-foreground pl-1 text-[13px] font-semibold">
+        Master password
+      </h2>
       <form
-        className="flex max-w-md flex-col gap-4"
+        className="rounded-card flex flex-col gap-4 border p-5"
+        noValidate
         onSubmit={(e) => {
           e.preventDefault()
           form.handleSubmit()
         }}
       >
+        <p className="text-muted-foreground text-[13px]">
+          Separate from your account password, and never sent to the server. If you forget it, your
+          vault cannot be recovered.
+        </p>
+
         <form.AppField
           name="current_password"
           children={(field) => (
@@ -88,10 +94,10 @@ export default function ChangeMasterPasswordForm() {
 
         <div>
           <Button type="submit" disabled={isLoading || !userKeys}>
-            {isLoading ? 'Changing...' : 'Change master password'}
+            {isLoading ? 'Changing…' : 'Change master password'}
           </Button>
         </div>
       </form>
-    </SectionCard>
+    </section>
   )
 }

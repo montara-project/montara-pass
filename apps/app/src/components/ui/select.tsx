@@ -42,19 +42,19 @@ function SelectValue({ ...props }: React.ComponentProps<typeof SelectPrimitive.V
 // Define size variants for SelectTrigger
 const selectTriggerVariants = cva(
   `
-    flex bg-background w-full items-center justify-between outline-none border border-input shadow-xs shadow-black/5 transition-shadow 
-    text-foreground data-placeholder:text-muted-foreground focus-visible:border-ring focus-visible:outline-none focus-visible:ring-[3px] 
-    focus-visible:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1 
-    aria-invalid:border-destructive/60 aria-invalid:ring-destructive/10 dark:aria-invalid:border-destructive dark:aria-invalid:ring-destructive/20
-    [[data-invalid=true]_&]:border-destructive/60 [[data-invalid=true]_&]:ring-destructive/10  dark:[[data-invalid=true]_&]:border-destructive dark:[[data-invalid=true]_&]:ring-destructive/20
+    flex bg-field w-full items-center justify-between outline-none border border-field-border transition-[border-color,box-shadow] duration-[120ms] ease-out motion-reduce:transition-none cursor-pointer
+    text-foreground data-placeholder:text-muted-foreground hover:border-muted-foreground focus-visible:border-focus focus-visible:outline-none focus-visible:ring-1 
+    focus-visible:ring-focus data-[state=open]:border-focus data-[state=open]:ring-1 data-[state=open]:ring-focus disabled:cursor-not-allowed disabled:opacity-60 [&>span]:line-clamp-1 
+    aria-invalid:border-danger
+    [[data-invalid=true]_&]:border-danger
   `,
   {
     variants: {
       size: {
         xs: 'h-7 px-2 text-xs gap-1 rounded-md',
         sm: 'h-8 px-2.5 text-xs gap-1 rounded-md',
-        md: 'h-9 px-3 text-sm gap-1 rounded-md',
-        lg: 'h-10 px-4 text-sm gap-1.5 rounded-md',
+        md: 'h-10 px-3 text-sm gap-1.5 rounded-control',
+        lg: 'h-10 px-3 text-sm gap-1.5 rounded-control',
       },
     },
     defaultVariants: {
@@ -77,7 +77,7 @@ function SelectTrigger({ className, children, size, ...props }: SelectTriggerPro
     >
       {children}
       <SelectPrimitive.Icon asChild>
-        <ChevronDown className="-me-0.5 h-4 w-4 opacity-60" />
+        <ChevronDown className="text-muted-foreground -me-0.5 h-4 w-4" />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   )
@@ -124,7 +124,7 @@ function SelectContent({
       <SelectPrimitive.Content
         data-slot="select-content"
         className={cn(
-          'border-border bg-popover text-secondary-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-md border shadow-md shadow-black/5',
+          'border-border bg-popover text-secondary-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-row border shadow-float',
           position === 'popper' &&
             'data-[side=bottom]:translate-y-1.5 data-[side=left]:-translate-x-1.5 data-[side=right]:translate-x-1.5 data-[side=top]:-translate-y-1.5',
           className
@@ -169,7 +169,7 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot="select-item"
       className={cn(
-        'text-foreground hover:bg-accent focus:bg-accent relative flex w-full cursor-default items-center rounded-sm py-1.5 text-sm outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50',
+        'text-foreground hover:bg-accent focus:bg-accent relative flex min-h-9 w-full cursor-default items-center rounded-control py-1.5 text-sm outline-hidden select-none data-disabled:pointer-events-none data-disabled:opacity-50',
         indicatorPosition === 'left' ? 'ps-8 pe-2' : 'ps-2 pe-8',
         className
       )}

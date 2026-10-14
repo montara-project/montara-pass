@@ -1,4 +1,4 @@
-import { IconFolders, IconPlus } from '@tabler/icons-react'
+import { IconPlus } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
 
 import EmptyState from '@/components/block/common/empty-state'
@@ -29,9 +29,9 @@ export default function FolderTable() {
       title="Folders"
       description="Your own way of grouping items. Folder names are encrypted, and nobody you share an item with sees where you filed it."
       toolbar={
-        <Button className="h-8.5 rounded-lg" onClick={() => setOpenAdd(true)}>
+        <Button onClick={() => setOpenAdd(true)}>
           <IconPlus />
-          <span>Add Folder</span>
+          New folder
         </Button>
       }
     >
@@ -39,13 +39,6 @@ export default function FolderTable() {
         <EmptyState
           title="No folders yet"
           description="Create a folder to group the items in your vault."
-          icon={IconFolders}
-          action={
-            <Button onClick={() => setOpenAdd(true)}>
-              <IconPlus />
-              <span>Add Folder</span>
-            </Button>
-          }
         />
       ) : (
         // The API returns every folder at once, so the table shows one page.

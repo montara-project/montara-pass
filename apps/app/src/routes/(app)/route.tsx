@@ -1,10 +1,13 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router'
 
 import VaultGate from '@/components/block/vault/vault-gate'
-import SidebarLayout from '@/components/layout/sidebar/layout'
+import Shell from '@/components/layout/shell'
 import { requireSession } from '@/lib/auth/handler'
 
-/** Every route under (app) needs a signed-in user and an unlocked vault. */
+/**
+ * Every route under (app) needs a signed-in user and an unlocked vault. The
+ * gate stands outside the shell: locked, there is nowhere in it to go.
+ */
 export const Route = createFileRoute('/(app)')({
   beforeLoad: () => requireSession(),
   component: RouteComponent,
@@ -12,10 +15,10 @@ export const Route = createFileRoute('/(app)')({
 
 function RouteComponent() {
   return (
-    <SidebarLayout>
-      <VaultGate>
+    <VaultGate>
+      <Shell>
         <Outlet />
-      </VaultGate>
-    </SidebarLayout>
+      </Shell>
+    </VaultGate>
   )
 }

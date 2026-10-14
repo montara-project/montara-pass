@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-import ItemTable from '@/components/block/vault/table'
+import Vault from '@/components/block/vault/vault'
 
 export const Route = createFileRoute('/(app)/vault/')({
-  component: ItemTable,
+  component: Vault,
 })

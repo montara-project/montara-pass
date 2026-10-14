@@ -1,84 +1,86 @@
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
-import { toast } from 'sonner'
 
-import { Button } from '@/components/ui/button'
-import { Field, FieldDescription, FieldGroup } from '@/components/ui/field'
-import { env } from '@/config/env'
-import { useAppForm } from '@/hooks/form'
+import { checked, useAppForm } from '@/hooks/form'
+import { submitForm } from '@/hooks/submit-form'
 import { SignInSchema } from '@/lib/api/dtos/auth/schema'
 import { signInWithEmail } from '@/lib/auth/email-auth'
 import { HOME_PATH } from '@/lib/constants/auth'
-import { cn } from '@/lib/utils'
 
-export default function LoginForm({ className, ...props }: React.ComponentProps<'div'>) {
+import AuthShell, { authLinkStrong } from './auth-shell'
+
+export default function LoginForm() {
   const navigate = useNavigate()
-  const [isLoading, setIsLoading] = useState(false)
+  // What the server said, as opposed to what the fields say about themselves.
+  const [error, setError] = useState('')
 
   const form = useAppForm({
-    defaultValues: {
-      email: '',
-      password: '',
-    },
-    validators: {
-      onSubmit: SignInSchema,
-      onChange: SignInSchema,
-    },
+    defaultValues: { email: '', password: '' },
+    validationLogic: checked,
+    validators: { onDynamic: SignInSchema },
     onSubmit: async ({ value }) => {
-      setIsLoading(true)
+      setError('')
 
       try {
-        await signInWithEmail(value)
+        // The password goes as typed: a space is part of it.
+        await signInWithEmail({ ...value, email: value.email.trim() })
         await navigate({ to: HOME_PATH, replace: true })
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : 'An error occurred')
-      } finally {
-        setIsLoading(false)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Sign-in failed')
       }
     },
   })
 
   return (
-    <div className={cn('flex flex-col gap-6', className)} {...props}>
-      <FieldGroup>
-        <div className="flex flex-col items-center gap-2 text-center">
-          <img src="/static/logo-128.png" alt="" width={48} height={48} className="size-12" />
-          <h1 className="text-xl font-bold">{env.VITE_APP_NAME}</h1>
-          <FieldDescription>Sign in to continue</FieldDescription>
-        </div>
+    <AuthShell title="Sign in" note="Sign in with your account password.">
+      <form
+        className="flex flex-col gap-3.5"
+        noValidate
+        onSubmit={(e) => {
+          e.preventDefault()
+          void submitForm(e.currentTarget, form)
+        }}
+      >
+        <form.AppField
+          name="email"
+          children={(field) => (
+            <field.AuthField label="Email" type="email" autoComplete="username" autoFocus />
+          )}
+        />
+        <form.AppField
+          name="password"
+          children={(field) => (
+            <field.AuthField
+              label="Password"
+              type="password"
+              autoComplete="current-password"
+              invalid={!!error}
+            />
+          )}
+        />
 
-        <form
-          className="flex flex-col gap-6"
-          onSubmit={(e) => {
-            e.preventDefault()
-            form.handleSubmit()
-          }}
-        >
-          <form.AppField
-            name="email"
-            children={(field) => (
-              <field.TextField label="Email" placeholder="type your email" asterisk />
-            )}
+        {error && (
+          <p role="alert" className="text-danger px-0.5 text-[13px] whitespace-pre-line">
+            {error}
+          </p>
+        )}
+
+        <form.AppForm>
+          <form.SubmitButton
+            label="Sign in"
+            busyLabel="Signing in…"
+            size="lg"
+            className="mt-1.5 w-full"
           />
+        </form.AppForm>
+      </form>
 
-          <form.AppField
-            name="password"
-            children={(field) => (
-              <field.PasswordField label="Password" placeholder="type your password" asterisk />
-            )}
-          />
-
-          <Field>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Signing in...' : 'Login'}
-            </Button>
-          </Field>
-        </form>
-
-        <FieldDescription className="text-center">
-          No account yet? <Link to="/sign-up">Create one</Link>
-        </FieldDescription>
-      </FieldGroup>
-    </div>
+      <p className="text-muted-foreground text-center text-[13px]">
+        No account yet?{' '}
+        <Link to="/sign-up" className={authLinkStrong}>
+          Create one
+        </Link>
+      </p>
+    </AuthShell>
   )
 }

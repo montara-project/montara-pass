@@ -1,121 +1,185 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap');
-
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
-@custom-variant dark (&:is(.dark *));
+/* The theme is the browser's: there is no switch, and no class to set. */
+@custom-variant dark (@media (prefers-color-scheme: dark));
 
-/* Built from the brand palette: Midnight Navy #101D3A, Electric Blue #145CFF
-   and Arctic Cyan #42C8FF. */
+/* The roles of DESIGN.md, built from the brand palette: Midnight Navy
+   #101D3A, Electric Blue #145CFF and Arctic Cyan #42C8FF. Components name a
+   role, never a color. */
 :root {
-  --background: #ffffff;
-  --foreground: #101d3a;
-  --card: #ffffff;
-  --card-foreground: #101d3a;
-  --popover: #ffffff;
-  --popover-foreground: #101d3a;
-  --primary: #145cff;
-  --primary-foreground: #ffffff;
-  --secondary: #eef2fb;
-  --secondary-foreground: #101d3a;
-  --muted: #f1f5fd;
-  --muted-foreground: #51607f;
-  --accent: #e4ebfa;
-  --accent-foreground: #101d3a;
-  /* Skeleton pulse has its own token: it used to inherit --accent. */
-  --skeleton: #eef2fb;
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
+  color-scheme: light dark;
+  --bg: #eef2fb;
+  --panel: #ffffff;
+  --card: #f1f5fd;
+  --field: #ffffff;
+  --hover: #e4ebfa;
   --border: #d3dcef;
-  --input: #d3dcef;
-  --ring: #145cff;
-  --radius: 0.625rem;
-  --sidebar-background: 223 64% 98%;
-  --sidebar-foreground: 221 57% 15%;
-  --sidebar-primary: 222 100% 54%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 221 69% 94%;
-  --sidebar-accent-foreground: 221 57% 15%;
-  --sidebar-border: 221 47% 88%;
-  --sidebar-ring: 222 100% 54%;
+  /* The edge of something to type in: 3:1 against every surface it sits on. */
+  --field-border: #7483a8;
+  --fg: #101d3a;
+  --muted: #51607f;
+  --primary: #145cff;
+  --primary-fg: #ffffff;
+  --focus: #145cff;
+  --accent: #42c8ff;
+  --accent-fg: #101d3a;
+  --avatar: #101d3a;
+  --avatar-fg: #ffffff;
+  --danger: #b42318;
+  --danger-fg: #ffffff;
+  --warn: #b45309;
+  --good: #15803d;
+  --shadow-float: 0 8px 24px rgb(16 29 58 / 0.16);
+  /* A dialog has the blurred page behind it to stand out from, so its own
+     shadow is the quieter of the two. */
+  --shadow-dialog: 0 4px 16px rgb(16 29 58 / 0.1);
+  /* What is laid over the page while a dialog asks its question. */
+  --veil: rgb(16 29 58 / 0.28);
 }
 
-.dark {
-  --background: #070d1c;
-  --foreground: #f4f7fd;
-  --card: #101d3a;
-  --card-foreground: #f4f7fd;
-  --popover: #14244a;
-  --popover-foreground: #f4f7fd;
-  --primary: #145cff;
-  --primary-foreground: #ffffff;
-  --secondary: #1a2b52;
-  --secondary-foreground: #f4f7fd;
-  --muted: #16254a;
-  --muted-foreground: #a9b6d3;
-  --accent: #1e3160;
-  --accent-foreground: #f4f7fd;
-  --skeleton: #1e3160;
-  --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: oklch(0.985 0 0);
-  --border: rgb(169 182 211 / 16%);
-  --input: rgb(169 182 211 / 22%);
-  --ring: #42c8ff;
-  --sidebar-background: 221 57% 15%;
-  --sidebar-foreground: 220 69% 97%;
-  --sidebar-primary: 222 100% 54%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 222 52% 21%;
-  --sidebar-accent-foreground: 220 69% 97%;
-  --sidebar-border: 222 41% 29%;
-  --sidebar-ring: 197 100% 63%;
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #070d1c;
+    --panel: #101d3a;
+    --card: #1a2b52;
+    --field: #0b152c;
+    --hover: #1e3160;
+    --border: #2b3d68;
+    --field-border: #667aab;
+    --fg: #ffffff;
+    --muted: #a9b6d3;
+    --focus: #42c8ff;
+    --avatar: #145cff;
+    --danger: #ff9a91;
+    --danger-fg: #101d3a;
+    --warn: #fbbf24;
+    --good: #4ade80;
+    --shadow-float: 0 8px 24px rgb(0 0 0 / 0.6);
+    --shadow-dialog: 0 4px 16px rgb(0 0 0 / 0.32);
+    --veil: rgb(7 13 28 / 0.5);
+  }
 }
 
 @theme inline {
-  --font-sans: 'Nunito Sans', sans-serif;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: hsl(var(--sidebar-background));
-  --color-card-foreground: hsl(var(--sidebar-foreground));
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-skeleton: var(--skeleton);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
+  /* The three steps of depth, and what sits on them. */
+  --color-background: var(--bg);
+  --color-panel: var(--panel);
+  --color-card: var(--card);
+  --color-field: var(--field);
+  --color-hover: var(--hover);
+  --color-foreground: var(--fg);
   --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-sidebar: hsl(var(--sidebar-background));
-  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
-  --color-sidebar-primary: hsl(var(--sidebar-primary));
-  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
-  --color-sidebar-accent: hsl(var(--sidebar-accent));
-  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
-  --color-sidebar-border: hsl(var(--sidebar-border));
-  --color-sidebar-ring: hsl(var(--sidebar-ring));
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --color-field-border: var(--field-border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-fg);
+  --color-focus: var(--focus);
+  --color-cyan: var(--accent);
+  --color-cyan-foreground: var(--accent-fg);
+  --color-avatar: var(--avatar);
+  --color-avatar-foreground: var(--avatar-fg);
+  --color-danger: var(--danger);
+  --color-warn: var(--warn);
+  --color-good: var(--good);
+
+  /* The names the ui/ primitives were written against, as the same roles. */
+  --color-card-foreground: var(--fg);
+  --color-popover: var(--card);
+  --color-popover-foreground: var(--fg);
+  --color-secondary: var(--card);
+  --color-secondary-foreground: var(--fg);
+  --color-muted: var(--card);
+  --color-muted-foreground: var(--muted);
+  --color-accent: var(--hover);
+  --color-accent-foreground: var(--fg);
+  --color-skeleton: var(--hover);
+  --color-destructive: var(--danger);
+  --color-destructive-foreground: var(--danger-fg);
+  --color-input: var(--field-border);
+  --color-ring: var(--focus);
+
+  /* Corners grow with the size of the thing. */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-control: 10px;
+  --radius-row: 12px;
+  --radius-card: 14px;
+  --radius-sheet: 16px;
+
+  /* Only what floats over the page and goes away has a shadow. */
+  --shadow-float: var(--shadow-float);
+  --shadow-dialog: var(--shadow-dialog);
+  --color-veil: var(--veil);
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
+    /* Every list that scrolls: a thin bar in the theme's own color. */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
   }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
     margin: 0;
     min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--primary) 40%, transparent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  /* A text field shows focus on its own box, not as a second ring around it. */
+  input:not([type='checkbox'], [type='radio'], [type='range']):focus-visible,
+  textarea:focus-visible {
+    outline: none;
+  }
+
+  input,
+  textarea {
+    caret-color: var(--focus);
+  }
+}
+
+/* A field's box: the edge that holds 3:1, and the focus drawn on it. */
+@utility field-box {
+  border: 1px solid var(--field-border);
+  transition:
+    border-color 120ms ease-out,
+    box-shadow 120ms ease-out;
+
+  &:hover {
+    border-color: var(--muted);
+  }
+
+  &:focus-within,
+  &:focus-visible {
+    border-color: var(--focus);
+    box-shadow: 0 0 0 1px var(--focus);
+  }
+
+  &:has([aria-invalid='true']),
+  &[aria-invalid='true'] {
+    border-color: var(--danger);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
   }
 }
 
@@ -132,4 +196,86 @@
 @utility thin-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
+}
+
+/* A slider drawn like the strength meter beside it: the browser's own keeps a
+   light track on a dark page. */
+@utility range {
+  appearance: none;
+  width: 100%;
+  height: 24px;
+  background: none;
+  cursor: pointer;
+
+  /* Two flat colors that meet at the thumb, not a blend. */
+  &::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 999px;
+    background: linear-gradient(
+      to right,
+      var(--primary) var(--fill, 0%),
+      var(--hover) var(--fill, 0%)
+    );
+  }
+
+  &::-moz-range-track {
+    height: 6px;
+    border-radius: 999px;
+    background: var(--hover);
+  }
+
+  &::-moz-range-progress {
+    height: 6px;
+    border-radius: 999px;
+    background: var(--primary);
+  }
+
+  /* The ring is the surface's own color: the thumb stands clear of the track. */
+  &::-webkit-slider-thumb {
+    appearance: none;
+    box-sizing: content-box;
+    width: 18px;
+    height: 18px;
+    margin-top: -9px;
+    border: 3px solid var(--panel);
+    border-radius: 50%;
+    background: var(--primary);
+  }
+
+  &::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border: 3px solid var(--panel);
+    border-radius: 50%;
+    background: var(--primary);
+  }
+}
+
+/* Asked for again, a generated password is set like the pins of a lock: each
+   character drops into place a moment after the one before it. */
+@keyframes ch-in {
+  from {
+    opacity: 0;
+    translate: 0 -0.35em;
+  }
+}
+
+@keyframes ch-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@utility ch-drawn {
+  & > span {
+    animation: ch-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--i) * var(--step));
+  }
+
+  /* Still seen to change, but all at once and without moving. */
+  @media (prefers-reduced-motion: reduce) {
+    & > span {
+      animation: ch-fade 120ms ease-out both;
+    }
+  }
 }

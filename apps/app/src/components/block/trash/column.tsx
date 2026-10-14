@@ -6,7 +6,6 @@ import { toast } from 'sonner'
 import type { AppColumnDef, BaseColumnProps } from '@/types/column'
 import type { VaultItem } from '@/types/vault'
 
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { toastAxiosError } from '@/lib/api/axios-error'
 import { queries } from '@/lib/api/queries'
@@ -40,7 +39,7 @@ export function TrashColumn({ loading }: BaseColumnProps) {
         header: 'Type',
         cell: (info) => (
           <CellItem loading={loading}>
-            <Badge variant="secondary">{capitalizeFirstLetter(info.getValue() as string)}</Badge>
+            <span>{capitalizeFirstLetter(info.getValue() as string)}</span>
           </CellItem>
         ),
       },
@@ -100,14 +99,13 @@ function ActionCell({ record }: ActionCellProps) {
       <RowColumnAction
         actions={
           <Button
-            mode="link"
-            underline="solid"
-            className="dark:text-neutral-300"
+            variant="outline"
+            size="xs"
             disabled={restoreMutation.isPending}
             onClick={() => void handleRestore()}
           >
-            <IconRestore className="text-primary size-4 dark:text-neutral-300" />
-            <span>Restore</span>
+            <IconRestore />
+            Restore
           </Button>
         }
         onDelete={() => setOpenDelete(true)}
