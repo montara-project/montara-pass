@@ -1,7 +1,12 @@
 import { useSelector } from '@tanstack/react-form'
 import { useEffect, useRef, useState } from 'react'
 
-import { getProfile } from '../../lib/api'
+import type { Models } from '@/lib/api/models'
+
+import { COMMUNITY } from '@/lib/constants/edition'
+import { formatDate } from '@/lib/date'
+
+import { getBilling, getProfile } from '../../lib/api'
 import { ServerFormSchema } from '../../lib/schemas'
 import { AUTO_LOCK_MINUTES } from '../../lib/session'
 import { originOf } from '../../lib/site'
@@ -37,9 +42,23 @@ function originsOf(value: { selfHosted: boolean; apiUrl: string; appUrl: string 
   return { apiOrigin, appOrigin }
 }
 
+/** One line on the user's plan: the subscription, else what they own. */
+function planSummary({ subscription, purchases }: Models.BillingOverview) {
+  if (subscription?.status === 'active') {
+    return `${subscription.plan.name}, until ${formatDate(subscription.current_period_end)}`
+  }
+  if (subscription?.status === 'pending') return `${subscription.plan.name}, waiting for payment`
+  const owned = purchases.filter((purchase) => purchase.status === 'paid')
+  return owned.length
+    ? owned.map((purchase) => purchase.plan.name).join(', ')
+    : 'No plan. See plans'
+}
+
 export default function Settings({ onClose, onLock, onSignOut }: SettingsProps) {
   const [saved, setSaved] = useState(DEFAULT_SETTINGS)
   const [email, setEmail] = useState('')
+  // undefined while loading; null where the server has no billing.
+  const [billing, setBilling] = useState<Models.BillingOverview | null>()
   // What the browser said about reaching the server, as opposed to the fields.
   const [error, setError] = useState('')
 
@@ -94,6 +113,11 @@ export default function Settings({ onClose, onLock, onSignOut }: SettingsProps) 
     void getProfile()
       .then((profile) => setEmail(profile.user.email))
       .catch(() => {})
+    if (!COMMUNITY) {
+      void getBilling()
+        .then(setBilling)
+        .catch(() => setBilling(null))
+    }
   }, [signedIn])
 
   const { selfHosted, apiUrl, appUrl } = useSelector(form.store, (state) => state.values)
@@ -154,6 +178,21 @@ export default function Settings({ onClose, onLock, onSignOut }: SettingsProps) 
               </span>
               <ExternalLinkIcon />
             </a>
+
+            {billing !== null && !COMMUNITY && (
+              <a
+                className="set-row"
+                href={`${saved.appUrl}/billing`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <span className="set-text">
+                  Plan
+                  <span className="muted">{billing ? planSummary(billing) : '…'}</span>
+                </span>
+                <ExternalLinkIcon />
+              </a>
+            )}
           </div>
         </section>
       )}
