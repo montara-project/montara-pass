@@ -1419,7 +1419,7 @@ a.set-row svg {
 
 /* A tool has the list's column too, so its body may run wider than an item. */
 .detail-body.tool-body {
-  max-width: 1040px;
+  max-width: 1200px;
 }
 
 /* A tool has the whole width to itself, and sits in the middle of it: an
@@ -1718,6 +1718,15 @@ input.range:active::-moz-range-thumb {
 .section-title {
   margin: 8px 0 0;
   font-size: 15px;
+}
+
+/* The two lists of the report, side by side where each has room; one alone
+   has the width to itself. */
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  align-items: start;
+  column-gap: 32px;
 }
 
 /* A part of the report: further from the part above it than its own

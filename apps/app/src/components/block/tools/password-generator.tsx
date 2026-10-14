@@ -76,7 +76,7 @@ export default function PasswordGenerator() {
   const chosen = KINDS.filter(({ kind }) => options[kind]).length
 
   return (
-    <div className="mx-auto flex max-w-[1040px] flex-col gap-4 p-5 sm:p-8">
+    <div className="mx-auto flex max-w-[1200px] flex-col gap-4 p-5 sm:p-8">
       <ToolHead
         icon={IconKey}
         title="Password generator"

@@ -327,7 +327,8 @@ Inside the sheet a page is one of three:
 - **A table page** (Folders, Trash, Categories): a heading with the page's
   one filled button, then the table on the sheet itself. No card around it.
 - **A tool or the account** (generator, health, account): one column in the
-  middle of the sheet, 640 to 1040px wide.
+  middle of the sheet: 720px for the account, 1200px for a tool. The health
+  report sets its two lists side by side where each has 420px.
 
 Spacing is a 4px rhythm: 4 and 8 inside a control, 12 around a row, 16 between
 fields, 20 for a page's padding in a narrow window and 32 in a wide one.

@@ -94,7 +94,7 @@ export default function PasswordHealth() {
   const reusedCount = health.reused.reduce((sum, group) => sum + group.length, 0)
 
   return (
-    <div className="mx-auto flex max-w-[640px] flex-col gap-4 p-5 sm:p-8">
+    <div className="mx-auto flex max-w-[1200px] flex-col gap-4 p-5 sm:p-8">
       <ToolHead
         icon={IconShieldCheck}
         title="Password health"
@@ -131,31 +131,35 @@ export default function PasswordHealth() {
             </p>
           )}
 
-          {health.reused.length > 0 && (
-            <Section
-              title="Reused passwords"
-              description="If one of these sites leaks the password, the others are open too."
-            >
-              {health.reused.map((group) => (
-                <div key={group[0].id}>
-                  {/* Names the card under it, in line with what the card holds. */}
-                  <p className="text-muted-foreground mb-2 pl-1 text-[13px] font-medium tabular-nums">
-                    One password, {group.length} logins
-                  </p>
-                  <Rows items={group} onOpen={setOpen} />
-                </div>
-              ))}
-            </Section>
-          )}
+          {/* Side by side where there is room for two lists; one alone has the
+              width to itself. */}
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,420px),1fr))] items-start gap-x-8">
+            {health.reused.length > 0 && (
+              <Section
+                title="Reused passwords"
+                description="If one of these sites leaks the password, the others are open too."
+              >
+                {health.reused.map((group) => (
+                  <div key={group[0].id}>
+                    {/* Names the card under it, in line with what the card holds. */}
+                    <p className="text-muted-foreground mb-2 pl-1 text-[13px] font-medium tabular-nums">
+                      One password, {group.length} logins
+                    </p>
+                    <Rows items={group} onOpen={setOpen} />
+                  </div>
+                ))}
+              </Section>
+            )}
 
-          {health.weak.length > 0 && (
-            <Section
-              title="Weak passwords"
-              description="Short, or made of few kinds of characters, so quick to guess."
-            >
-              <Rows items={health.weak} onOpen={setOpen} />
-            </Section>
-          )}
+            {health.weak.length > 0 && (
+              <Section
+                title="Weak passwords"
+                description="Short, or made of few kinds of characters, so quick to guess."
+              >
+                <Rows items={health.weak} onOpen={setOpen} />
+              </Section>
+            )}
+          </div>
         </>
       )}
 

@@ -43,7 +43,7 @@ export default function PasswordHealth({ items, onOpen }: PasswordHealthProps) {
   const reusedCount = health.reused.reduce((sum, group) => sum + group.length, 0)
 
   return (
-    <div className="stack detail-body">
+    <div className="stack detail-body tool-body">
       <header className="detail-head">
         <span className="tile tile-large">
           <ShieldIcon />
@@ -83,34 +83,36 @@ export default function PasswordHealth({ items, onOpen }: PasswordHealthProps) {
             </p>
           )}
 
-          {health.reused.length > 0 && (
-            <section className="stack health-section">
-              <header>
-                <h3 className="health-title">Reused passwords</h3>
-                <p className="muted">
-                  If one of these sites leaks the password, the others are open too.
-                </p>
-              </header>
-              {health.reused.map((group) => (
-                <div key={group[0].id}>
-                  <p className="health-group">One password, {group.length} logins</p>
-                  <Rows items={group} onOpen={onOpen} />
-                </div>
-              ))}
-            </section>
-          )}
+          <div className="health-grid">
+            {health.reused.length > 0 && (
+              <section className="stack health-section">
+                <header>
+                  <h3 className="health-title">Reused passwords</h3>
+                  <p className="muted">
+                    If one of these sites leaks the password, the others are open too.
+                  </p>
+                </header>
+                {health.reused.map((group) => (
+                  <div key={group[0].id}>
+                    <p className="health-group">One password, {group.length} logins</p>
+                    <Rows items={group} onOpen={onOpen} />
+                  </div>
+                ))}
+              </section>
+            )}
 
-          {health.weak.length > 0 && (
-            <section className="stack health-section">
-              <header>
-                <h3 className="health-title">Weak passwords</h3>
-                <p className="muted">
-                  Short, or made of few kinds of characters, so quick to guess.
-                </p>
-              </header>
-              <Rows items={health.weak} onOpen={onOpen} />
-            </section>
-          )}
+            {health.weak.length > 0 && (
+              <section className="stack health-section">
+                <header>
+                  <h3 className="health-title">Weak passwords</h3>
+                  <p className="muted">
+                    Short, or made of few kinds of characters, so quick to guess.
+                  </p>
+                </header>
+                <Rows items={health.weak} onOpen={onOpen} />
+              </section>
+            )}
+          </div>
         </>
       )}
     </div>
