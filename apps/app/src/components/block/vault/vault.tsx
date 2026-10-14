@@ -93,7 +93,9 @@ export default function Vault() {
             selected && '@max-[760px]/vault:hidden'
           )}
         >
-          <header className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 pt-6 pb-3">
+          {/* Three parts, each with room under it: what the page is, what narrows
+              the list, and the list. One gutter for all of them. */}
+          <header className="flex flex-wrap items-center gap-x-3 gap-y-2 px-6 pt-6 pb-5 sm:pt-8">
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
               <h1 className="text-xl font-semibold tracking-[-0.01em]">Vault</h1>
               <p className="text-muted-foreground text-[13px]">
@@ -106,7 +108,7 @@ export default function Vault() {
             </Button>
           </header>
 
-          <div className="flex flex-wrap items-center gap-2 px-5 pb-3">
+          <div className="flex flex-wrap items-center gap-2 px-6 pb-4">
             <SelectInput
               // Remount once the folders arrive so the stored filter shows its name.
               key={`folder-${folderList.length}`}
@@ -130,13 +132,16 @@ export default function Vault() {
 
           {/* The list as a table: name, folder, updated. The two extra columns
               go when the list is too narrow to hold them. */}
-          <div className="text-muted-foreground grid grid-cols-[minmax(0,1fr)_140px_120px] px-7 pb-1.5 text-xs font-medium @max-[560px]/list:hidden">
-            <span>Name</span>
-            <span className="pl-3">Folder</span>
-            <span className="pl-3">Updated</span>
+          {/* The line under them stays when they go: it is where the list begins. */}
+          <div className="mx-6 border-b">
+            <div className="text-muted-foreground grid grid-cols-[minmax(0,1fr)_140px_120px] pb-2 text-xs font-medium @max-[560px]/list:hidden">
+              <span>Name</span>
+              <span className="pl-3">Folder</span>
+              <span className="pl-3">Updated</span>
+            </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3">
+          <div className="min-h-0 flex-1 overflow-y-auto px-3 pt-2 pb-3">
             {isLoading ? (
               <ul className="m-0 list-none p-0" aria-hidden="true">
                 {Array.from({ length: 8 }, (_, index) => (
@@ -187,7 +192,7 @@ export default function Vault() {
           </div>
 
           {pages > 1 && (
-            <footer className="flex items-center gap-1 border-t px-5 py-2">
+            <footer className="flex items-center gap-1 border-t px-6 py-2">
               <span className="text-muted-foreground flex-1 text-xs tabular-nums">
                 {from}–{to} of {total}
               </span>
@@ -291,7 +296,7 @@ function ItemRow({ item, folders, selected, onSelect }: ItemRowProps) {
         </span>
       </span>
       <span className="text-muted-foreground truncate pl-3 text-[13px] @max-[560px]/list:hidden">
-        {folder?.name ?? ''}
+        {folder?.name ?? '—'}
       </span>
       <span className="text-muted-foreground truncate pl-3 text-[13px] tabular-nums @max-[560px]/list:hidden">
         {formatDate(item.updated_at)}
