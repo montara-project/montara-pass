@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -104,11 +105,20 @@ func TestIntegration(t *testing.T) {
 		}
 	}
 
+	// The Community Edition boots on a database holding only the super user
+	// (matched without regard to case), and refuses one holding anybody else.
+	if others, err := repos.User.HasOtherThan(ctx, strings.ToUpper(superEmail)); err != nil || others {
+		t.Fatalf("others with only the super user: %v err=%v", others, err)
+	}
+
 	// A plain user, created the way a verified sign-up ends up.
 	services := auth.CoreServices()
 	user, err := services.UserService.Create(ctx, "Plain User", userEmail, true, nil, nil)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if others, err := repos.User.HasOtherThan(ctx, superEmail); err != nil || !others {
+		t.Fatalf("others with a plain user: %v err=%v", others, err)
 	}
 	hash, err := services.PasswordService.Hash(userPass)
 	if err != nil {

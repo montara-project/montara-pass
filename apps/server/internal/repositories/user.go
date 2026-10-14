@@ -51,6 +51,14 @@ func (r *UserRepository) EmailVerified(ctx context.Context, id uuid.UUID) (bool,
 	return verified, translateNotFound("users", err)
 }
 
+// HasOtherThan reports whether Authula holds an account under any email but
+// the given one, ignoring case.
+func (r *UserRepository) HasOtherThan(ctx context.Context, email string) (bool, error) {
+	var found bool
+	err := r.queryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM authula.users WHERE lower(email) <> lower($1))`, email).Scan(&found)
+	return found, err
+}
+
 // SetRole changes a mirrored user's role.
 func (r *UserRepository) SetRole(ctx context.Context, id uuid.UUID, role string) error {
 	res, err := r.execContext(ctx, `UPDATE users SET role = $2, updated_at = now() WHERE id = $1`, id, role)
