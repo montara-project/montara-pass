@@ -43,6 +43,14 @@ func routes(r *fiber.App, app *app.Application) {
 	exemptLoopback := app.Config.App.Env == config.EnvDevelopment
 	exemptIPs := splitCSV(app.Config.App.RateLimitExemptIPs)
 
+	// The Community Edition has no sign-up; answered ahead of Authula, which
+	// would otherwise serve it.
+	if config.Community() {
+		r.Post(authBasePath+"/email-password/sign-up", func(c fiber.Ctx) error {
+			return apperr.ErrNotFound
+		})
+	}
+
 	r.Use(authBasePath,
 		middlewares.RateLimit("auth", authRateLimit, exemptLoopback, exemptIPs, store),
 		middlewares.RateLimitEmail("auth-email", authEmailRateLimit, store),
@@ -71,7 +79,6 @@ func routes(r *fiber.App, app *app.Application) {
 	keys.Get("/", h.Key.Get)
 	keys.Post("/", h.Key.Create)
 	keys.Put("/", h.Key.UpdateKDF)
-	keys.Get("/public", middlewares.RateLimit("public-key", publicKeyRateLimit, exemptLoopback, exemptIPs, store), h.Key.PublicKey)
 
 	folders := v1.Group("/folders", m.Authorization, once)
 	folders.Get("/", h.Folder.List)
@@ -89,11 +96,18 @@ func routes(r *fiber.App, app *app.Application) {
 	items.Delete("/:id/force", h.Item.DeletePermanently)
 	items.Put("/:id/placement", h.Item.SetPlacement)
 	items.Put("/:id/used", h.Item.MarkUsed)
-	items.Put("/:id/key", h.Item.RotateKey)
-	items.Get("/:id/members", h.Item.Members)
-	items.Post("/:id/members", h.Item.Share)
-	items.Put("/:id/members/:userId", h.Item.SetMemberRole)
-	items.Delete("/:id/members/:userId", h.Item.RemoveMember)
+
+	// Sharing: looking up a recipient's public key, the item's members, and
+	// rotating its key once a member is gone. The Community Edition has one
+	// user, so nobody to share with.
+	if !config.Community() {
+		keys.Get("/public", middlewares.RateLimit("public-key", publicKeyRateLimit, exemptLoopback, exemptIPs, store), h.Key.PublicKey)
+		items.Put("/:id/key", h.Item.RotateKey)
+		items.Get("/:id/members", h.Item.Members)
+		items.Post("/:id/members", h.Item.Share)
+		items.Put("/:id/members/:userId", h.Item.SetMemberRole)
+		items.Delete("/:id/members/:userId", h.Item.RemoveMember)
+	}
 
 	// An unknown path under apiPrefix answers JSON. Registered last, and before
 	// the web app's catch-all, which would otherwise answer it with index.html.

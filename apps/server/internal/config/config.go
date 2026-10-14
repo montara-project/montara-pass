@@ -11,6 +11,21 @@ const (
 	EnvProduction  = "production"
 )
 
+// Edition is the build's edition: EditionEnterprise (sign-up and sharing) or
+// EditionCommunity (one self-hosted user, neither). The Docker build sets it
+// with -ldflags; the web app inside the image is built for the same one.
+var Edition = EditionEnterprise
+
+const (
+	EditionEnterprise = "ee"
+	EditionCommunity  = "ce"
+)
+
+// Community reports whether this is the Community Edition.
+func Community() bool {
+	return Edition == EditionCommunity
+}
+
 // SessionCookieName is the cookie Authula issues on sign-in; the API's
 // authorization middleware reads the same cookie.
 const SessionCookieName = "authula.session_token"
