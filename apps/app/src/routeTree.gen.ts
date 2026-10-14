@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as appRouteRouteImport } from './routes/(app)/route'
 import { Route as authRouteRouteImport } from './routes/(auth)/route'
+import { Route as appBillingIndexRouteImport } from './routes/(app)/billing/index'
 import { Route as appCategoriesIndexRouteImport } from './routes/(app)/categories/index'
 import { Route as appFoldersIndexRouteImport } from './routes/(app)/folders/index'
 import { Route as appGeneratorIndexRouteImport } from './routes/(app)/generator/index'
@@ -34,6 +35,11 @@ const appRouteRoute = appRouteRouteImport.update({
 const authRouteRoute = authRouteRouteImport.update({
   id: '/(auth)',
   getParentRoute: () => rootRouteImport,
+} as any)
+const appBillingIndexRoute = appBillingIndexRouteImport.update({
+  id: '/billing/',
+  path: '/billing/',
+  getParentRoute: () => appRouteRoute,
 } as any)
 const appCategoriesIndexRoute = appCategoriesIndexRouteImport.update({
   id: '/categories/',
@@ -83,6 +89,7 @@ const authSignUpIndexRoute = authSignUpIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/billing/': typeof appBillingIndexRoute
   '/categories/': typeof appCategoriesIndexRoute
   '/folders/': typeof appFoldersIndexRoute
   '/generator/': typeof appGeneratorIndexRoute
@@ -95,6 +102,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/billing': typeof appBillingIndexRoute
   '/categories': typeof appCategoriesIndexRoute
   '/folders': typeof appFoldersIndexRoute
   '/generator': typeof appGeneratorIndexRoute
@@ -110,6 +118,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/(app)': typeof appRouteRouteWithChildren
   '/(auth)': typeof authRouteRouteWithChildren
+  '/(app)/billing/': typeof appBillingIndexRoute
   '/(app)/categories/': typeof appCategoriesIndexRoute
   '/(app)/folders/': typeof appFoldersIndexRoute
   '/(app)/generator/': typeof appGeneratorIndexRoute
@@ -124,6 +133,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/billing/'
     | '/categories/'
     | '/folders/'
     | '/generator/'
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/billing'
     | '/categories'
     | '/folders'
     | '/generator'
@@ -150,6 +161,7 @@ export interface FileRouteTypes {
     | '/'
     | '/(app)'
     | '/(auth)'
+    | '/(app)/billing/'
     | '/(app)/categories/'
     | '/(app)/folders/'
     | '/(app)/generator/'
@@ -189,6 +201,13 @@ declare module '@tanstack/react-router' {
       fullPath: ''
       preLoaderRoute: typeof authRouteRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/(app)/billing/': {
+      id: '/(app)/billing/'
+      path: '/billing'
+      fullPath: '/billing/'
+      preLoaderRoute: typeof appBillingIndexRouteImport
+      parentRoute: typeof appRouteRoute
     }
     '/(app)/categories/': {
       id: '/(app)/categories/'
@@ -257,6 +276,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface appRouteRouteChildren {
+  appBillingIndexRoute: typeof appBillingIndexRoute
   appCategoriesIndexRoute: typeof appCategoriesIndexRoute
   appFoldersIndexRoute: typeof appFoldersIndexRoute
   appGeneratorIndexRoute: typeof appGeneratorIndexRoute
@@ -267,6 +287,7 @@ interface appRouteRouteChildren {
 }
 
 const appRouteRouteChildren: appRouteRouteChildren = {
+  appBillingIndexRoute: appBillingIndexRoute,
   appCategoriesIndexRoute: appCategoriesIndexRoute,
   appFoldersIndexRoute: appFoldersIndexRoute,
   appGeneratorIndexRoute: appGeneratorIndexRoute,

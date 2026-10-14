@@ -1,5 +1,6 @@
 import {
   IconCategory,
+  IconCreditCard,
   IconChevronRight,
   IconFolders,
   IconKey,
@@ -27,6 +28,7 @@ import { env } from '@/config/env'
 import { useSignOut } from '@/hooks/use-sign-out'
 import { queries } from '@/lib/api/queries'
 import { HOME_PATH } from '@/lib/constants/auth'
+import { COMMUNITY } from '@/lib/constants/edition'
 import { useVaultStore } from '@/lib/stores/vault'
 import { initials } from '@/lib/string'
 import { cn } from '@/lib/utils'
@@ -191,6 +193,13 @@ function Account({ collapsed }: { collapsed: boolean }) {
               Account
               <IconChevronRight className="ml-auto size-4!" />
             </DropdownMenuItem>
+            {!COMMUNITY && (
+              <DropdownMenuItem onClick={() => void navigate({ to: '/billing' })}>
+                <IconCreditCard />
+                Billing
+                <IconChevronRight className="ml-auto size-4!" />
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={lock}>
               <IconLock />
               Lock vault
