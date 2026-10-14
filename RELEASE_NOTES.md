@@ -3,6 +3,64 @@
 What changed for the people who use and run Montara Pass, from 1.2.0 to 1.5.0.
 `CHANGELOG.md` lists every commit; this says what they add up to.
 
+## 1.7.0 (2026-10-14)
+
+A rebuilt web app that looks and works like the extension.
+
+### New
+
+- **A new web app.** It shares the extension's design: the vault is a list
+  with a detail pane beside it, 25 items to a page, and the open item is kept
+  in the URL. The sidebar folds to a rail of icons, and a narrow window turns
+  it into a strip. Sign-in, sign-up, unlock and vault setup are one card in
+  the middle of the page.
+- **Generate a password from the item form.** A Generate button beside the
+  password field of a new or edited item fills it with a random password and
+  shows it.
+- **Hidden secure notes in the web app.** The item form has a Visible switch
+  for a secure note, as the extension does. Off, the note is blurred in its
+  detail until it is shown.
+- **A way to an account from the extension.** The sign-in screen links to the
+  web app's sign-up, and a new install opens sign-in in a tab.
+- **Share and Move to trash from an item's detail** in the extension, under a
+  More menu, next to a favorite star and Edit.
+- **The extension's full-tab sidebar folds to its icons.** The choice is
+  remembered in the browser, and the labels show as tooltips while folded.
+
+### Improved
+
+- An empty list in the web app says what will be there, and a page that does
+  not exist says so.
+- Folders, trash and categories show a skeleton on their first load, and a
+  page settles in when the route changes. With reduced motion it only fades.
+- The generator and the health report are wider, in the web app and in the
+  extension's full tab, and the health report sets its reused and weak lists
+  side by side where there is room.
+- In the extension, logins that share a password sit in one card of the
+  health report and the whole row opens the item. The generator's slider is
+  readable on a dark page, and a regenerated password is drawn in one
+  character after another.
+- The extension's share view puts the address, the access and the Share
+  button in one row, and lists the people who have access in one card.
+- Forms announce field errors and move focus to the first refused field, and
+  text fields have a border that stands out from their surface.
+
+### Fixed
+
+- Generating a password in an empty item form no longer asks for a name. The
+  form is checked on saving, and from then on as its fields change.
+- The inline menu says "Sign in" rather than "locked" when nobody is signed
+  in.
+- The extension uses the full-tab layout on Android, which has no popup.
+- An item in no folder shows a dash in the vault list, and the column heads
+  line up with their rows.
+
+### Good to know
+
+- The web app follows the browser's light or dark scheme and uses the system
+  font. It no longer requests anything from Google Fonts.
+- The server did not change in this version.
+
 ## 1.5.0 (2026-10-13)
 
 Passkeys, and a tidier extension.
