@@ -4,7 +4,7 @@ import type { VaultItem } from '@/types/vault'
 
 import { passwordHealth } from '@/lib/password'
 
-import { ShieldIcon } from '../icons'
+import { ChevronRightIcon, ShieldIcon } from '../icons'
 import { ItemTile } from '../item-tile'
 
 interface PasswordHealthProps {
@@ -19,13 +19,14 @@ function Rows({ items, onOpen }: { items: VaultItem[]; onOpen: (id: string) => v
     <ul className="items health-list">
       {items.map((item) => (
         <li key={item.id}>
-          <ItemTile item={item} />
-          <div className="item-text">
-            <span className="item-name">{item.secret!.name}</span>
-            <span className="muted">{item.secret!.username || 'No username'}</span>
-          </div>
-          <button className="link" onClick={() => onOpen(item.id)}>
-            Open
+          {/* The whole row opens the item, as a row of the vault's list does. */}
+          <button className="health-row" onClick={() => onOpen(item.id)}>
+            <ItemTile item={item} />
+            <span className="item-text">
+              <span className="item-name">{item.secret!.name}</span>
+              <span className="muted">{item.secret!.username || 'No username'}</span>
+            </span>
+            <ChevronRightIcon width={18} height={18} />
           </button>
         </li>
       ))}
@@ -72,6 +73,10 @@ export default function PasswordHealth({ items, onOpen }: PasswordHealthProps) {
             </div>
           </dl>
 
+          {health.checked === 0 && (
+            <p className="muted">No login in the vault has a password to check yet.</p>
+          )}
+
           {health.checked > 0 && reusedCount === 0 && health.weak.length === 0 && (
             <p className="muted">
               Nothing to fix: every login has its own password, and none is short or simple.
@@ -79,14 +84,16 @@ export default function PasswordHealth({ items, onOpen }: PasswordHealthProps) {
           )}
 
           {health.reused.length > 0 && (
-            <section className="stack">
-              <h3 className="section-title">Reused passwords</h3>
-              <p className="muted">
-                If one of these sites leaks the password, the others are open too.
-              </p>
+            <section className="stack health-section">
+              <header>
+                <h3 className="health-title">Reused passwords</h3>
+                <p className="muted">
+                  If one of these sites leaks the password, the others are open too.
+                </p>
+              </header>
               {health.reused.map((group) => (
                 <div key={group[0].id}>
-                  <p className="muted meta">One password, {group.length} logins</p>
+                  <p className="health-group">One password, {group.length} logins</p>
                   <Rows items={group} onOpen={onOpen} />
                 </div>
               ))}
@@ -94,9 +101,13 @@ export default function PasswordHealth({ items, onOpen }: PasswordHealthProps) {
           )}
 
           {health.weak.length > 0 && (
-            <section className="stack">
-              <h3 className="section-title">Weak passwords</h3>
-              <p className="muted">Short, or made of few kinds of characters, so quick to guess.</p>
+            <section className="stack health-section">
+              <header>
+                <h3 className="health-title">Weak passwords</h3>
+                <p className="muted">
+                  Short, or made of few kinds of characters, so quick to guess.
+                </p>
+              </header>
               <Rows items={health.weak} onOpen={onOpen} />
             </section>
           )}

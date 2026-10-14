@@ -1714,8 +1714,92 @@ input.range:active::-moz-range-thumb {
   font-size: 15px;
 }
 
+/* A part of the report: further from the part above it than its own
+   heading is from what it says. */
+.health-section {
+  margin-top: 12px;
+}
+
+.health-section > header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.health-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.health-section > header .muted {
+  font-size: 13px;
+}
+
+/* Names the card under it, in line with what the card holds. */
+.health-group {
+  margin-bottom: 8px;
+  padding-left: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Logins that belong together sit in one card, a line between them: the
+   ones that share a password are seen to. */
 .health-list {
-  margin-top: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+/* The row is the button, so the row itself is not padded or rounded. */
+.health-list li {
+  padding: 0;
+  border-radius: 0;
+}
+
+.health-list li + li {
+  border-top: 1px solid var(--border);
+}
+
+.health-row {
+  width: 100%;
+  height: auto;
+  padding: 10px 12px 10px 14px;
+  justify-content: flex-start;
+  gap: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--fg);
+  font-weight: 400;
+  text-align: left;
+}
+
+/* Says the row leads somewhere; lit with the row. */
+.health-row > svg {
+  flex-shrink: 0;
+  margin-left: 8px;
+  color: var(--muted);
+  transition: color 120ms ease-out;
+}
+
+.health-row:hover > svg,
+.health-row:focus-visible > svg {
+  color: var(--fg);
+}
+
+/* The card cuts off what is outside it, so the ring is drawn inside. */
+.health-row:focus-visible {
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .health-row > svg {
+    transition: none;
+  }
 }
 
 .detail-body {
