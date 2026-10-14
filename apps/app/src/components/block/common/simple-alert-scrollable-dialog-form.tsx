@@ -1,4 +1,3 @@
-import { IconLoader2 } from '@tabler/icons-react'
 import React, { useMemo } from 'react'
 
 import {
@@ -10,7 +9,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 
 interface SimpleAlertScrollableDialogFormProps {
@@ -60,28 +58,24 @@ export default function SimpleAlertScrollableDialogForm({
         className={cn('flex max-h-[90vh] flex-col overflow-hidden p-0', sizeClass)}
       >
         <form className="flex min-h-0 flex-1 flex-col" onSubmit={onSubmit}>
-          <AlertDialogHeader className="px-6 pt-6 pb-4">
+          <AlertDialogHeader className="border-b px-6 pt-6 pb-4">
             <AlertDialogTitle>{title}</AlertDialogTitle>
             <AlertDialogDescription className={cn(!description && 'sr-only')}>
               {description}
             </AlertDialogDescription>
           </AlertDialogHeader>
 
-          <Separator />
-
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 pt-4">
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
             <div className="space-y-4 pr-1">{children}</div>
           </div>
 
-          <Separator />
-
-          <AlertDialogFooter className="p-4">
+          <AlertDialogFooter className="gap-2 border-t p-4 sm:space-x-0">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               {cancelText}
             </Button>
             <Button type="submit" variant="primary" disabled={loading || disabled}>
-              {loading && <IconLoader2 className="animate-spin" />}
-              {loading ? 'Loading...' : confirmText}
+              {/* The label changes while it works: nothing spins. */}
+              {loading ? 'Saving…' : confirmText}
             </Button>
           </AlertDialogFooter>
         </form>

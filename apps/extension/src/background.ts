@@ -32,6 +32,14 @@ void chrome.storage.local
   .setAccessLevel?.({ accessLevel: 'TRUSTED_CONTEXTS' })
   ?.catch(() => undefined)
 
+// A new install: the toolbar button is easy to miss, so the way in opens in a
+// tab, where there is also a way to an account for someone who has none.
+chrome.runtime.onInstalled.addListener(({ reason }) => {
+  if (reason === 'install') {
+    void chrome.tabs.create({ url: chrome.runtime.getURL('popup.html?view=full') })
+  }
+})
+
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === AUTO_LOCK_ALARM) {
     void chrome.storage.session.remove(VAULT_SESSION_KEY)

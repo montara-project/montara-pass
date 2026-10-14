@@ -6,7 +6,7 @@ import { createItem, SignedOutError } from '../../lib/api'
 import { fetchIcon } from '../../lib/icon'
 import { AddLoginFormSchema, type AddLoginFormDto } from '../../lib/schemas'
 import { hostOf } from '../../lib/site'
-import { checked, useAppForm } from '../form'
+import { checked, submit, useAppForm } from '../form'
 import { ArrowLeftIcon } from '../icons'
 
 interface AddItemProps {
@@ -74,7 +74,7 @@ export default function AddItem({ keys, tab, onSaved, onCancel, onSignedOut }: A
         noValidate
         onSubmit={(e) => {
           e.preventDefault()
-          void form.handleSubmit()
+          void submit(e.currentTarget, form)
         }}
       >
         <header>

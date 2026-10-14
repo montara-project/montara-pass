@@ -24,9 +24,15 @@ import { cn } from '@/lib/utils'
 // The web app's rich text editor: a toolbar and a frame around the Markdown
 // editor in hooks/use-markdown-editor.ts.
 
-/** Tailwind resets headings and lists, so the content is styled from here. */
-const CONTENT_CLASS = cn(
-  'thin-scrollbar max-h-80 min-h-32 overflow-y-auto rounded-b-md px-3 py-2 break-words outline-none',
+/** The editing area: what is written in it is styled by PROSE_CLASS. */
+const CONTENT_CLASS = () =>
+  cn(
+    'thin-scrollbar max-h-80 min-h-32 overflow-y-auto rounded-b-md px-3 py-2 break-words outline-none',
+    PROSE_CLASS
+  )
+
+/** Tailwind resets headings and lists, so written text is styled from here. */
+const PROSE_CLASS = cn(
   '[&_p]:mb-2 [&_p:last-child]:mb-0',
   '[&_h1]:mb-2 [&_h1]:text-xl [&_h1]:font-semibold',
   '[&_h2]:mb-2 [&_h2]:text-lg [&_h2]:font-semibold',
@@ -38,7 +44,7 @@ const CONTENT_CLASS = cn(
   '[&_blockquote]:border-border [&_blockquote]:text-muted-foreground [&_blockquote]:mb-2 [&_blockquote]:border-l-2 [&_blockquote]:pl-3',
   '[&_code]:bg-muted [&_code]:rounded [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.9em]',
   '[&_pre]:thin-scrollbar [&_pre]:bg-muted [&_pre]:mb-2 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:p-2 [&_pre_code]:bg-transparent [&_pre_code]:p-0',
-  '[&_a]:text-primary [&_a]:underline',
+  '[&_a]:text-focus [&_a]:underline [&_a]:underline-offset-[3px]',
   '[&_hr]:border-border [&_hr]:my-3',
   '[&_table]:mb-2 [&_td]:border-border [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_th]:border-border [&_th]:border [&_th]:px-2 [&_th]:py-1'
 )
@@ -63,8 +69,8 @@ function Tool({ label, icon: Icon, active, disabled, onClick }: ToolProps) {
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
       className={cn(
-        'text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring/30 inline-flex size-7 items-center justify-center rounded-sm focus-visible:ring-[3px] focus-visible:outline-none disabled:pointer-events-none disabled:opacity-40',
-        active && 'bg-accent text-accent-foreground'
+        'text-muted-foreground hover:bg-hover hover:text-foreground inline-flex size-7 items-center justify-center rounded-sm transition-colors duration-[120ms] motion-reduce:transition-none disabled:pointer-events-none disabled:opacity-40',
+        active && 'bg-hover text-foreground'
       )}
     >
       <Icon className="size-4" />
@@ -112,7 +118,7 @@ function EditorBody({
     onBlur,
     disabled,
     labelledBy,
-    contentClass: CONTENT_CLASS,
+    contentClass: CONTENT_CLASS(),
     imageClass: 'text-muted-foreground',
   })
 
@@ -122,14 +128,14 @@ function EditorBody({
       data-invalid={invalid || undefined}
       aria-disabled={disabled}
       className={cn(
-        'border-input bg-background focus-within:border-ring focus-within:ring-ring/30 data-invalid:border-destructive/60 data-invalid:ring-destructive/10 w-full rounded-md border text-sm shadow-xs transition-[color,box-shadow] focus-within:ring-[3px] aria-disabled:opacity-60',
+        'field-box bg-field rounded-control data-invalid:border-danger w-full text-sm aria-disabled:opacity-60',
         className
       )}
     >
       <div
         role="toolbar"
         aria-label="Formatting"
-        className="border-input flex flex-wrap items-center gap-0.5 border-b p-1"
+        className="flex flex-wrap items-center gap-0.5 border-b p-1"
       >
         <Tool
           label="Bold"
@@ -214,7 +220,7 @@ function EditorBody({
 
       <div className="relative">
         {placeholder && active.empty && (
-          <div className="text-muted-foreground/80 pointer-events-none absolute top-2 left-3">
+          <div className="text-muted-foreground pointer-events-none absolute top-2 left-3">
             {placeholder}
           </div>
         )}
@@ -229,6 +235,27 @@ export default function RichTextEditor(props: RichTextEditorProps) {
   return (
     <MarkdownEditorProvider>
       <EditorBody {...props} />
+    </MarkdownEditorProvider>
+  )
+}
+
+function ViewBody({ value }: { value: string }) {
+  useMarkdownEditor({
+    value,
+    onChange: () => undefined,
+    readOnly: true,
+    contentClass: cn('break-words outline-none', PROSE_CLASS),
+    imageClass: 'text-muted-foreground',
+  })
+
+  return <MarkdownEditorContent />
+}
+
+/** Markdown as it reads, with nothing to edit it by. Give it a new `key` to show something else. */
+export function MarkdownView({ value }: { value: string }) {
+  return (
+    <MarkdownEditorProvider>
+      <ViewBody value={value} />
     </MarkdownEditorProvider>
   )
 }

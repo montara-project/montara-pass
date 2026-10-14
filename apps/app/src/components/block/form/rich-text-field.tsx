@@ -25,10 +25,14 @@ export default function RichTextField({
   const labelId = `${field.name}-label`
 
   return (
-    <Field data-invalid={isInvalid}>
+    <Field data-invalid={isInvalid} className="gap-1.5">
       <FieldLabel id={labelId} className="gap-1">
         {label}
-        {asterisk && <span className="text-destructive">*</span>}
+        {asterisk && (
+          <span className="text-danger" aria-hidden="true">
+            *
+          </span>
+        )}
       </FieldLabel>
       <RichTextEditor
         value={field.state.value}

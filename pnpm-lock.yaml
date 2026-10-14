@@ -80,9 +80,6 @@ importers:
       lucide-react:
         specifier: 1.54.0
         version: 1.54.0(@types/react@19.3.0)(react@19.3.0)
-      next-themes:
-        specifier: 0.4.6
-        version: 0.4.6(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       nuqs:
         specifier: 2.10.2
         version: 2.10.2(@tanstack/react-router@1.170.41(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(next@16.4.0(@babel/core@7.29.7)(@types/node@26.6.4)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(react@19.3.0)

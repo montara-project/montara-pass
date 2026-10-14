@@ -1,25 +1,25 @@
-import { useTheme } from 'next-themes'
 import * as React from 'react'
 import { Toaster as Sonner } from 'sonner'
 
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
+/** Says what just happened: a pill on the card tone, over the page for a moment. */
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = 'system' } = useTheme()
-
   return (
     <Sonner
-      theme={theme as ToasterProps['theme']}
-      className="group toaster [&_[data-type=success]>[data-icon]]:text-success [&_[data-type=success]_[data-title]]:text-success [&_[data-type=info]_[data-title]]:text-info [&_[data-type=error]>[data-icon]]:text-destructive [&_[data-type=error]_[data-title]]:text-destructive"
+      // The browser's theme, as everything else follows.
+      theme="system"
       toastOptions={{
+        unstyled: true,
         classNames: {
           toast:
-            'group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground! group-[.toaster]:border-border group-[.toaster]:shadow-lg has-[[role=alert]]:border-0! has-[[role=alert]]:shadow-none! has-[[role=alert]]:bg-transparent!',
-          description: 'group-[.toast]:text-muted-foreground',
-          actionButton:
-            'group-[.toast]:rounded-md! group-[.toast]:bg-primary group-[.toast]:text-primary-foreground',
-          cancelButton:
-            'group-[.toast]:rounded-md! group-[.toast]:bg-secondary group-[.toast]:text-secondary-foreground!',
+            'flex w-full items-center gap-2.5 rounded-row border border-border bg-card px-4 py-3 text-[13px] font-medium text-foreground shadow-float',
+          description: 'text-muted-foreground font-normal',
+          error: '[&_[data-icon]]:text-danger',
+          success: '[&_[data-icon]]:text-good',
+          actionButton: 'rounded-control bg-primary px-3 py-1.5 text-primary-foreground',
+          cancelButton: 'rounded-control border border-border px-3 py-1.5',
+          closeButton: 'text-muted-foreground hover:text-foreground',
         },
       }}
       {...props}

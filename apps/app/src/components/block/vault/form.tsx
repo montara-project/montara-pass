@@ -6,11 +6,11 @@ import type { ItemSecret } from '@/lib/crypto/vault'
 import type { VaultItem } from '@/types/vault'
 
 import SimpleAlertScrollableDialogForm from '@/components/block/common/simple-alert-scrollable-dialog-form'
-import { useAppForm } from '@/hooks/form'
+import { checked, useAppForm } from '@/hooks/form'
 import { useFolders, useVaultKeys } from '@/hooks/use-vault'
 import { toastAxiosError } from '@/lib/api/axios-error'
 import { parseDto } from '@/lib/api/dtos/parse'
-import { ItemFormSchema, type ItemFormDto } from '@/lib/api/dtos/vault/schema'
+import { ItemEditFormSchema, type ItemEditFormDto } from '@/lib/api/dtos/vault/schema'
 import { queries } from '@/lib/api/queries'
 import { ItemTypeOptions, type ItemType } from '@/lib/constants/vault'
 import { encryptItemUpdate, encryptNewItem, keepUnedited } from '@/lib/crypto/vault'
@@ -18,9 +18,14 @@ import { encryptItemUpdate, encryptNewItem, keepUnedited } from '@/lib/crypto/va
 /** Select value standing for "no folder": a select item cannot be empty. */
 const NO_FOLDER = 'none'
 
-function toSecret(value: ItemFormDto): ItemSecret {
+function toSecret(value: ItemEditFormDto): ItemSecret {
   if (value.type === 'secure_note') {
-    return { name: value.name, notes: value.notes }
+    return {
+      name: value.name,
+      notes: value.notes,
+      // Only "hidden" is written down; a note is visible without it.
+      ...(value.visible ? {} : { visible: false }),
+    }
   }
   return {
     name: value.name,
@@ -31,7 +36,7 @@ function toSecret(value: ItemFormDto): ItemSecret {
   }
 }
 
-function toFolderId(value: ItemFormDto): string | null {
+function toFolderId(value: ItemEditFormDto): string | null {
   return value.folder_id && value.folder_id !== NO_FOLDER ? value.folder_id : null
 }
 
@@ -40,9 +45,9 @@ interface ItemFieldsFormProps {
   onOpenChange: (open: boolean) => void
   title: string
   confirmText: string
-  defaultValues: ItemFormDto
+  defaultValues: ItemEditFormDto
   /** Encrypts and sends the validated form. */
-  onSave: (value: ItemFormDto) => Promise<void>
+  onSave: (value: ItemEditFormDto) => Promise<void>
   loading: boolean
   /** A viewer may read the item but not change its content. */
   readOnly?: boolean
@@ -65,18 +70,21 @@ function ItemFieldsForm({
 
   const folderOptions = [
     { label: 'No folder', value: NO_FOLDER },
-    ...(folders ?? []).map((folder) => ({ label: folder.name, value: folder.id })),
+    ...(folders ?? []).map((folder) => ({
+      label: folder.name,
+      value: folder.id,
+    })),
   ]
 
   const form = useAppForm({
     defaultValues,
-    validators: {
-      onSubmit: ItemFormSchema,
-      onChange: ItemFormSchema,
-    },
+    // Checked on saving, and from then on as the fields change: making a
+    // password in an empty form is not the moment to ask for a name.
+    validationLogic: checked,
+    validators: { onDynamic: ItemEditFormSchema },
     onSubmit: async ({ value }) => {
       try {
-        await onSave(parseDto(ItemFormSchema, value))
+        await onSave(parseDto(ItemEditFormSchema, value))
         onOpenChange(false)
         form.reset()
       } catch (error) {
@@ -157,6 +165,7 @@ function ItemFieldsForm({
                 placeholder="password"
                 autoComplete="off"
                 disabled={readOnly}
+                generate
               />
             )}
           />
@@ -181,6 +190,19 @@ function ItemFieldsForm({
           />
         )}
       />
+
+      {type === 'secure_note' && (
+        <form.AppField
+          name="visible"
+          children={(field) => (
+            <field.SwitchField
+              label="Visible"
+              description="When off, the note is blurred in its detail until you choose to show it."
+              disabled={readOnly}
+            />
+          )}
+        />
+      )}
     </SimpleAlertScrollableDialogForm>
   )
 }
@@ -200,7 +222,7 @@ export function AddItemForm({ open, onOpenChange, folderId }: AddItemFormProps) 
     <ItemFieldsForm
       open={open}
       onOpenChange={onOpenChange}
-      title="Create Item"
+      title="New item"
       confirmText="Save"
       defaultValues={{
         type: 'login',
@@ -210,6 +232,7 @@ export function AddItemForm({ open, onOpenChange, folderId }: AddItemFormProps) 
         url: '',
         notes: '',
         folder_id: folderId ?? NO_FOLDER,
+        visible: true,
       }}
       loading={mutation.isPending}
       onSave={async (value) => {
@@ -218,7 +241,7 @@ export function AddItemForm({ open, onOpenChange, folderId }: AddItemFormProps) 
           folder_id: toFolderId(value),
           ...(await encryptNewItem(keys, toSecret(value))),
         })
-        toast.success('Item created successfully')
+        toast('Item created')
       }}
     />
   )
@@ -242,7 +265,7 @@ export function EditItemForm({ open, onOpenChange, record }: EditItemFormProps) 
     <ItemFieldsForm
       open={open}
       onOpenChange={onOpenChange}
-      title={readOnly ? 'View Item' : 'Edit Item'}
+      title={readOnly ? 'View item' : 'Edit item'}
       // A viewer can still choose their own folder for the item.
       confirmText={readOnly ? 'Save folder' : 'Update'}
       defaultValues={{
@@ -253,6 +276,8 @@ export function EditItemForm({ open, onOpenChange, record }: EditItemFormProps) 
         url: secret?.url ?? '',
         notes: secret?.notes ?? '',
         folder_id: record.folder_id ?? NO_FOLDER,
+        // A secure note may be kept blurred in the item's detail until revealed.
+        visible: secret?.visible !== false,
       }}
       loading={updateMutation.isPending || placementMutation.isPending}
       readOnly={readOnly}
@@ -263,7 +288,8 @@ export function EditItemForm({ open, onOpenChange, record }: EditItemFormProps) 
             encrypted_data: await encryptItemUpdate(
               keys,
               record,
-              keepUnedited(toSecret(value), secret)
+              // What this form sets is not carried over from the old secret.
+              keepUnedited(toSecret(value), secret && { ...secret, visible: undefined })
             ),
             // The API refuses the write if someone else changed the item since.
             revision: record.revision,
@@ -272,9 +298,12 @@ export function EditItemForm({ open, onOpenChange, record }: EditItemFormProps) 
 
         const folderId = toFolderId(value)
         if (folderId !== record.folder_id) {
-          await placementMutation.mutateAsync({ folder_id: folderId, favorite: record.favorite })
+          await placementMutation.mutateAsync({
+            folder_id: folderId,
+            favorite: record.favorite,
+          })
         }
-        toast.success(readOnly ? 'Folder updated successfully' : 'Item updated successfully')
+        toast(readOnly ? 'Folder updated' : 'Item updated')
       }}
     />
   )

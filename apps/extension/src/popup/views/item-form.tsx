@@ -15,7 +15,7 @@ import {
 import { ApiError, createItem, setItemPlacement, SignedOutError, updateItem } from '../../lib/api'
 import { fetchIcon } from '../../lib/icon'
 import { ItemEditFormSchema, type ItemEditFormDto } from '../../lib/schemas'
-import { checked, useAppForm } from '../form'
+import { checked, submit, useAppForm } from '../form'
 
 /** Select value standing for "no folder". */
 const NO_FOLDER = ''
@@ -145,7 +145,7 @@ export default function ItemForm({
       noValidate
       onSubmit={(e) => {
         e.preventDefault()
-        void form.handleSubmit()
+        void submit(e.currentTarget, form)
       }}
     >
       <header>

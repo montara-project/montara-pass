@@ -109,7 +109,7 @@ function Frame({ label, required, children }: FrameProps) {
         ...(error ? { 'aria-describedby': errorId } : {}),
       })}
       {error && (
-        <p className="error field-error" id={errorId}>
+        <p className="error field-error" id={errorId} role="alert">
           {error}
         </p>
       )}
@@ -228,7 +228,11 @@ export function NotesField({ label, placeholder }: { label: string; placeholder?
           labelledBy={id}
         />
       </Suspense>
-      {error && <p className="error field-error">{error}</p>}
+      {error && (
+        <p className="error field-error" role="alert">
+          {error}
+        </p>
+      )}
     </div>
   )
 }
@@ -289,7 +293,7 @@ export function AuthField({
         )}
       </div>
       {error && (
-        <p className="error" id={errorId}>
+        <p className="error" id={errorId} role="alert">
           {error}
         </p>
       )}

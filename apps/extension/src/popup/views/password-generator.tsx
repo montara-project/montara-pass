@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useId, useState, type CSSProperties } from 'react'
 
 import {
   characterKind,
@@ -24,6 +24,11 @@ const KINDS: { kind: Kind; label: string; sample: string }[] = [
 
 const STRENGTH_LABEL = { weak: 'Weak', fair: 'Fair', strong: 'Strong' }
 
+/** However long the password, its characters are all on their way in by now. */
+const DRAW_MS = 280
+/** The longest one character waits for the one before it. */
+const DRAW_STEP_MS = 14
+
 /** The meter is full at this many bits; beyond it a password is only longer. */
 const FULL_BITS = 128
 
@@ -37,6 +42,15 @@ export default function PasswordGenerator({ onNotice }: PasswordGeneratorProps) 
   const lengthId = useId()
   const [options, setOptions] = useState<PasswordOptions>(DEFAULT_PASSWORD_OPTIONS)
   const [password, setPassword] = useState(() => generatePassword(DEFAULT_PASSWORD_OPTIONS))
+
+  // Counts the passwords asked for by name: each one is drawn in, where one
+  // that follows the slider just changes under it.
+  const [drawn, setDrawn] = useState(0)
+
+  const regenerate = () => {
+    setPassword(generatePassword(options))
+    setDrawn((count) => count + 1)
+  }
 
   const change = (next: PasswordOptions) => {
     setOptions(next)
@@ -73,11 +87,24 @@ export default function PasswordGenerator({ onNotice }: PasswordGeneratorProps) 
         <section className="generated" aria-label="Password">
           <output aria-label="Generated password" aria-live="polite">
             {/* One element, so it copies and reads as one word. */}
-            <span>
+            <span
+              // A new element each time, so the characters come in again.
+              key={drawn}
+              className={drawn ? 'gen-drawn' : undefined}
+              style={
+                {
+                  '--step': `${Math.min(DRAW_STEP_MS, DRAW_MS / password.length)}ms`,
+                } as CSSProperties
+              }
+            >
               {[...password].map((char, index) => (
                 // The position is the identity: characters repeat.
                 // eslint-disable-next-line react/no-array-index-key
-                <span key={index} className={`ch-${characterKind(char)}`}>
+                <span
+                  key={index}
+                  className={`ch-${characterKind(char)}`}
+                  style={{ '--i': index } as CSSProperties}
+                >
                   {char}
                 </span>
               ))}
@@ -99,7 +126,7 @@ export default function PasswordGenerator({ onNotice }: PasswordGeneratorProps) 
               />
             </div>
             <div className="gen-actions">
-              <button className="secondary" onClick={() => setPassword(generatePassword(options))}>
+              <button className="secondary" onClick={regenerate}>
                 <RefreshIcon width={18} height={18} />
                 Regenerate
               </button>
@@ -127,6 +154,12 @@ export default function PasswordGenerator({ onNotice }: PasswordGeneratorProps) 
               min={MIN_PASSWORD_LENGTH}
               max={MAX_PASSWORD_LENGTH}
               value={options.length}
+              // How far along the track is filled, which a browser does not say.
+              style={
+                {
+                  '--fill': `${((options.length - MIN_PASSWORD_LENGTH) / (MAX_PASSWORD_LENGTH - MIN_PASSWORD_LENGTH)) * 100}%`,
+                } as CSSProperties
+              }
               onChange={(e) => change({ ...options, length: Number(e.target.value) })}
             />
             <span className="row muted meta" aria-hidden="true">

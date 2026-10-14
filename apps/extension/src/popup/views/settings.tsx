@@ -6,7 +6,7 @@ import { ServerFormSchema } from '../../lib/schemas'
 import { AUTO_LOCK_MINUTES } from '../../lib/session'
 import { originOf } from '../../lib/site'
 import { DEFAULT_SETTINGS, getSettings, saveSettings } from '../../lib/storage'
-import { checked, useAppForm } from '../form'
+import { checked, submit, useAppForm } from '../form'
 import { ArrowLeftIcon, ExternalLinkIcon } from '../icons'
 
 interface SettingsProps {
@@ -179,7 +179,7 @@ export default function Settings({ onClose, onLock, onSignOut }: SettingsProps) 
           onSubmit={(e) => {
             e.preventDefault()
             ask()
-            void form.handleSubmit()
+            void submit(e.currentTarget, form)
           }}
         >
           {DEV ? (

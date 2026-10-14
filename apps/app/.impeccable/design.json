@@ -1,0 +1,493 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-14T01:20:20+00:00",
+  "title": "Design System: Montara Pass Web App",
+  "extensions": {
+    "colorMeta": {
+      "midnight-navy": {
+        "role": "neutral",
+        "displayName": "Midnight Navy",
+        "canonical": "#101d3a",
+        "tonalRamp": [
+          "#111e3c",
+          "#1d3468",
+          "#2a4c98",
+          "#3764c8",
+          "#6789d5",
+          "#97aee2",
+          "#c3d0ee",
+          "#ebeff9"
+        ]
+      },
+      "electric-blue": {
+        "role": "primary",
+        "displayName": "Electric Blue",
+        "canonical": "#145cff",
+        "tonalRamp": [
+          "#00174c",
+          "#002985",
+          "#003bc2",
+          "#004eff",
+          "#3d79ff",
+          "#7aa3ff",
+          "#b2caff",
+          "#e5edff"
+        ]
+      },
+      "arctic-cyan": {
+        "role": "secondary",
+        "displayName": "Arctic Cyan",
+        "canonical": "#42c8ff",
+        "tonalRamp": [
+          "#00364c",
+          "#005e85",
+          "#0089c2",
+          "#00b5ff",
+          "#3dc7ff",
+          "#7ad8ff",
+          "#b2e9ff",
+          "#e5f8ff"
+        ]
+      },
+      "primary": {
+        "role": "primary",
+        "displayName": "Electric Blue",
+        "canonical": "#145cff",
+        "tonalRamp": [
+          "#00174c",
+          "#002985",
+          "#003bc2",
+          "#004eff",
+          "#3d79ff",
+          "#7aa3ff",
+          "#b2caff",
+          "#e5edff"
+        ]
+      },
+      "accent": {
+        "role": "secondary",
+        "displayName": "Arctic Cyan",
+        "canonical": "#42c8ff",
+        "tonalRamp": [
+          "#00364c",
+          "#005e85",
+          "#0089c2",
+          "#00b5ff",
+          "#3dc7ff",
+          "#7ad8ff",
+          "#b2e9ff",
+          "#e5f8ff"
+        ]
+      },
+      "fg": {
+        "role": "neutral",
+        "displayName": "Midnight Navy",
+        "canonical": "#101d3a",
+        "tonalRamp": [
+          "#111e3c",
+          "#1d3468",
+          "#2a4c98",
+          "#3764c8",
+          "#6789d5",
+          "#97aee2",
+          "#c3d0ee",
+          "#ebeff9"
+        ]
+      },
+      "bg": {
+        "role": "neutral",
+        "displayName": "Background",
+        "canonical": "#eef2fb",
+        "tonalRamp": [
+          "#0f1d3e",
+          "#19336b",
+          "#254a9d",
+          "#3161ce",
+          "#6287da",
+          "#94ade6",
+          "#c1d0f0",
+          "#eaeffa"
+        ]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Sheet",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#262626",
+          "#424242",
+          "#616161",
+          "#808080",
+          "#9e9e9e",
+          "#bdbdbd",
+          "#d9d9d9",
+          "#f2f2f2"
+        ]
+      },
+      "card": {
+        "role": "neutral",
+        "displayName": "Card",
+        "canonical": "#f1f5fd",
+        "tonalRamp": [
+          "#0a1d43",
+          "#113274",
+          "#1849aa",
+          "#2060df",
+          "#5586e7",
+          "#8bacee",
+          "#bccff5",
+          "#e9effc"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted",
+        "canonical": "#51607f",
+        "tonalRamp": [
+          "#1e232f",
+          "#343d51",
+          "#4b5976",
+          "#63769c",
+          "#8997b4",
+          "#aeb8cb",
+          "#d0d6e1",
+          "#eff1f5"
+        ]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Divider",
+        "canonical": "#d3dcef",
+        "tonalRamp": [
+          "#142038",
+          "#233761",
+          "#34518e",
+          "#446abb",
+          "#718ecb",
+          "#9eb2dc",
+          "#c7d2eb",
+          "#ecf0f8"
+        ]
+      },
+      "field-border": {
+        "role": "neutral",
+        "displayName": "Field Edge",
+        "canonical": "#7483a8",
+        "tonalRamp": [
+          "#1d232f",
+          "#333c52",
+          "#4b5777",
+          "#62739d",
+          "#8895b4",
+          "#adb6cc",
+          "#d0d5e2",
+          "#eff1f5"
+        ]
+      },
+      "danger": {
+        "role": "tertiary",
+        "displayName": "Danger",
+        "canonical": "#b42318",
+        "tonalRamp": [
+          "#440d09",
+          "#751710",
+          "#ab2117",
+          "#e12c1e",
+          "#e85e54",
+          "#ef918a",
+          "#f6c0bb",
+          "#fceae8"
+        ]
+      },
+      "warn": {
+        "role": "tertiary",
+        "displayName": "Warn",
+        "canonical": "#b45309",
+        "tonalRamp": [
+          "#492204",
+          "#7e3a06",
+          "#b95509",
+          "#f3700c",
+          "#f69246",
+          "#f9b581",
+          "#fbd4b6",
+          "#fef1e7"
+        ]
+      },
+      "good": {
+        "role": "tertiary",
+        "displayName": "Good",
+        "canonical": "#15803d",
+        "tonalRamp": [
+          "#0b421f",
+          "#137236",
+          "#1ba64f",
+          "#24db68",
+          "#59e48d",
+          "#8decb1",
+          "#bdf4d2",
+          "#e9fbf0"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The one heading of sign-in and unlock."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "An item's name in the detail pane."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "A view's h1."
+      },
+      "body-large": {
+        "displayName": "Body large",
+        "purpose": "Item names, detail values, sign-in input text."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Everything not named elsewhere; buttons at 600."
+      },
+      "secondary": {
+        "displayName": "Secondary",
+        "purpose": "Second lines, notes, errors, compact buttons."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Field labels, column heads, counts."
+      },
+      "secret": {
+        "displayName": "Secret",
+        "purpose": "A generated password."
+      }
+    },
+    "shadows": [
+      {
+        "name": "floating",
+        "value": "0 8px 24px rgb(16 29 58 / 0.16)",
+        "purpose": "Menus and the toast, light theme."
+      },
+      {
+        "name": "floating-dark",
+        "value": "0 8px 24px rgb(0 0 0 / 0.6)",
+        "purpose": "Menus and the toast, dark theme."
+      },
+      {
+        "name": "focus-ring",
+        "value": "0 0 0 1px var(--focus)",
+        "purpose": "Added to a focused text field, with a --focus border."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state",
+        "value": "120ms ease-out",
+        "purpose": "Hover, focus and colour changes on every control."
+      },
+      {
+        "name": "switch",
+        "value": "0.15s",
+        "purpose": "A switch turning on or off."
+      },
+      {
+        "name": "menu-in",
+        "value": "140ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "A row's menu growing from its button, from 96% scale."
+      },
+      {
+        "name": "meter",
+        "value": "width 0.2s",
+        "purpose": "The strength meter filling."
+      },
+      {
+        "name": "spin",
+        "value": "800ms linear infinite",
+        "purpose": "The refresh icon while the vault reloads."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "popup",
+        "value": "400px × 600px (fixed)"
+      },
+      {
+        "name": "list-compact (container)",
+        "value": "520px"
+      },
+      {
+        "name": "generator-stack (container)",
+        "value": "620px"
+      },
+      {
+        "name": "full-narrow",
+        "value": "860px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one filled button of a screen: the way through it.",
+      "html": "<button class=\"ds-btn-primary\">Save</button>",
+      "css": ".ds-btn-primary { height: 40px; padding: 0 16px; border: 0; border-radius: 10px; background: var(--primary, #145cff); color: var(--primary-fg, #fff); font: 600 14px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif; cursor: pointer; transition: background-color 120ms ease-out, opacity 120ms ease-out; } .ds-btn-primary:focus-visible { outline: 2px solid var(--focus, #145cff); outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.55; cursor: default; }"
+    },
+    {
+      "name": "Sign-in Button",
+      "kind": "button",
+      "refersTo": "button-primary-auth",
+      "description": "The primary button of sign-in and unlock, a size up.",
+      "html": "<button class=\"ds-btn-auth\">Sign in</button>",
+      "css": ".ds-btn-auth { width: 100%; height: 48px; border: 0; border-radius: 12px; background: var(--primary, #145cff); color: var(--primary-fg, #fff); font: 600 14px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 15px; cursor: pointer; transition: filter 120ms ease-out, scale 120ms ease-out; } .ds-btn-auth:hover { filter: brightness(1.1); } .ds-btn-auth:active { filter: brightness(0.95); scale: 0.99; } .ds-btn-auth:focus-visible { outline: 2px solid var(--focus, #145cff); outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A second action beside the primary one: outlined, never filled.",
+      "html": "<button class=\"ds-btn-secondary\">Cancel</button>",
+      "css": ".ds-btn-secondary { height: 40px; padding: 0 16px; border: 1px solid var(--border, #d3dcef); border-radius: 10px; background: none; color: var(--fg, #101d3a); font: 600 14px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif; cursor: pointer; transition: background-color 120ms ease-out; } .ds-btn-secondary:hover { background: var(--hover, #e4ebfa); } .ds-btn-secondary:focus-visible { outline: 2px solid var(--focus, #145cff); outline-offset: 2px; }"
+    },
+    {
+      "name": "Icon Button",
+      "kind": "button",
+      "refersTo": "icon-button",
+      "description": "A 36px square around a line icon; the label is on the button.",
+      "html": "<button class=\"ds-icon-btn\" aria-label=\"Show password\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg></button>",
+      "css": ".ds-icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 10px; background: none; color: var(--muted, #51607f); cursor: pointer; transition: background-color 120ms ease-out, color 120ms ease-out; } .ds-icon-btn:hover { background: var(--hover, #e4ebfa); color: var(--fg, #101d3a); } .ds-icon-btn:focus-visible { outline: 2px solid var(--focus, #145cff); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "A labelled input; focus is shown on its own edge.",
+      "html": "<label class=\"ds-field\"><span>Name</span><input class=\"ds-input\" value=\"GitHub\" /></label>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 6px; color: var(--fg, #101d3a); font: 500 14px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif; } .ds-input { height: 40px; padding: 0 12px; border: 1px solid var(--field-border, #7483a8); border-radius: 10px; background: var(--field, #fff); color: var(--fg, #101d3a); font: inherit; font-weight: 400; transition: border-color 120ms ease-out, box-shadow 120ms ease-out; } .ds-input:focus-visible { outline: none; border-color: var(--focus, #145cff); box-shadow: 0 0 0 1px var(--focus, #145cff); }"
+    },
+    {
+      "name": "Sign-in Field",
+      "kind": "input",
+      "refersTo": "auth-field",
+      "description": "The field of sign-in and unlock, with its label inside the box.",
+      "html": "<div class=\"ds-auth-field\"><div class=\"ds-auth-text\"><label for=\"ds-auth-pw\">Password</label><input id=\"ds-auth-pw\" type=\"password\" value=\"secret\" /></div><button class=\"ds-auth-eye\" aria-label=\"Show password\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg></button></div>",
+      "css": ".ds-auth-field { display: flex; align-items: center; gap: 4px; min-height: 58px; padding: 0 8px 0 14px; border: 1px solid var(--field-border, #7483a8); border-radius: 12px; background: var(--card, #f1f5fd); font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; transition: border-color 120ms ease-out, box-shadow 120ms ease-out; } .ds-auth-field:hover { border-color: var(--muted, #51607f); } .ds-auth-field:focus-within { border-color: var(--focus, #145cff); box-shadow: 0 0 0 1px var(--focus, #145cff); } .ds-auth-text { display: flex; flex: 1; flex-direction: column; min-width: 0; } .ds-auth-text label { color: var(--muted, #51607f); font-size: 12px; } .ds-auth-text input { height: 26px; padding: 0; border: 0; background: none; color: var(--fg, #101d3a); font: inherit; font-size: 15px; outline: none; caret-color: var(--focus, #145cff); } .ds-auth-eye { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 10px; background: none; color: var(--muted, #51607f); cursor: pointer; } .ds-auth-eye:hover { background: var(--hover, #e4ebfa); color: var(--fg, #101d3a); }"
+    },
+    {
+      "name": "Item Row",
+      "kind": "custom",
+      "refersTo": "item-row",
+      "description": "A vault item in a list: tile, name, and a muted second line.",
+      "html": "<div class=\"ds-item\" tabindex=\"0\"><span class=\"ds-tile\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"10\" r=\"3\"/><path d=\"M12 13v5\"/><rect x=\"4\" y=\"3\" width=\"16\" height=\"18\" rx=\"4\"/></svg></span><span class=\"ds-item-text\"><span class=\"ds-item-name\">GitHub</span><span class=\"ds-item-sub\">octocat@example.com</span></span></div>",
+      "css": ".ds-item { display: flex; align-items: center; padding: 8px 6px 8px 12px; border-radius: 12px; color: var(--fg, #101d3a); font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; } .ds-item:hover, .ds-item:focus-visible { background: var(--hover, #e4ebfa); } .ds-item:focus-visible { outline: 2px solid var(--focus, #145cff); outline-offset: 2px; } .ds-tile { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; margin-right: 8px; border: 1px solid var(--border, #d3dcef); border-radius: 10px; background: var(--bg, #eef2fb); } .ds-item-text { display: flex; flex-direction: column; min-width: 0; } .ds-item-name { font-size: 15px; font-weight: 500; letter-spacing: -0.005em; } .ds-item-sub { color: var(--muted, #51607f); font-size: 13px; }"
+    },
+    {
+      "name": "Settings Row",
+      "kind": "card",
+      "refersTo": "settings-card",
+      "description": "Grouped rows in one card, divided by hairlines; label first, control at the right.",
+      "html": "<div class=\"ds-set-card\"><div class=\"ds-set-row\"><span class=\"ds-set-text\">Auto-lock<span>The vault locks when it has not been used for this long</span></span><span class=\"ds-set-value\">15 minutes</span></div><div class=\"ds-set-row\"><span class=\"ds-set-text\">Self-hosted<span>Use your own Montara Pass server</span></span><input class=\"ds-switch\" type=\"checkbox\" role=\"switch\" aria-label=\"Self-hosted\" /></div></div>",
+      "css": ".ds-set-card { overflow: hidden; border: 1px solid var(--border, #d3dcef); border-radius: 14px; background: var(--panel, #fff); color: var(--fg, #101d3a); font: 500 14px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif; } .ds-set-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 60px; padding: 12px 16px; } .ds-set-row + .ds-set-row { border-top: 1px solid var(--border, #d3dcef); } .ds-set-text { display: flex; flex-direction: column; gap: 2px; } .ds-set-text span, .ds-set-value { color: var(--muted, #51607f); font-size: 13px; font-weight: 400; } .ds-set-value { flex-shrink: 0; font-variant-numeric: tabular-nums; } .ds-switch { appearance: none; flex-shrink: 0; width: 38px; height: 22px; margin: 0; padding: 2px; border: 0; border-radius: 999px; background: color-mix(in srgb, var(--fg, #101d3a) 26%, transparent); cursor: pointer; transition: background 0.15s; } .ds-switch::before { content: ''; display: block; width: 18px; height: 18px; border-radius: 50%; background: var(--primary-fg, #fff); transition: translate 0.15s; } .ds-switch:checked { background: var(--primary, #145cff); } .ds-switch:checked::before { translate: 16px; } .ds-switch:focus-visible { outline: 2px solid var(--focus, #145cff); outline-offset: 2px; }"
+    },
+    {
+      "name": "Menu",
+      "kind": "nav",
+      "refersTo": "menu",
+      "description": "The one floating surface: card tone, the only shadow in the system.",
+      "html": "<div class=\"ds-menu\"><button class=\"ds-menu-item\">Copy password</button><button class=\"ds-menu-item\">Edit</button><hr class=\"ds-menu-rule\" /><button class=\"ds-menu-item ds-menu-danger\">Move to trash</button></div>",
+      "css": ".ds-menu { width: 232px; padding: 6px; border: 1px solid var(--border, #d3dcef); border-radius: 12px; background: var(--card, #f1f5fd); box-shadow: var(--shadow, 0 8px 24px rgb(16 29 58 / 0.16)); } .ds-menu-item { display: flex; align-items: center; width: 100%; height: 36px; padding: 0 10px; border: 0; border-radius: 10px; background: none; color: var(--fg, #101d3a); font: 500 14px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif; cursor: pointer; } .ds-menu-item:hover { background: var(--hover, #e4ebfa); } .ds-menu-item:focus-visible { outline: 2px solid var(--focus, #145cff); outline-offset: -2px; } .ds-menu-rule { margin: 6px 0; border: 0; border-top: 1px solid var(--border, #d3dcef); } .ds-menu-danger { color: var(--danger, #b42318); } .ds-menu-danger:hover { background: color-mix(in srgb, var(--danger, #b42318) 14%, transparent); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Keyholder",
+    "overview": "The extension appears for a moment, hands over the right key and steps aside. Nothing in it competes with the page the user came from: surfaces are plain navy or plain paper, type is the system's own, and one electric-blue button per screen says where the way through is. Everything else is an outline, a row or a line of text.\n\nComponents are calm and certain. Corners are moderately rounded, nothing casts a shadow at rest, and state changes in 120ms. The density is that of a tool that is opened fifty times a day: rows of 36 to 40 pixels, labels at 12 and 13, and room only where a screen has a single thing to ask (sign in, unlock).\n\nIt follows the browser's light or dark scheme and has no theme switch. Both themes are the same system: the same roles, the same steps between surfaces.\n\nRejected, by decision: decorative gradients and glass or blur effects; illustrations, mascots and emoji; any brand colour beyond the three it has.",
+    "keyCharacteristics": [
+      "Three brand colours, used by role: navy grounds, blue acts, cyan points.",
+      "Depth by tone (background, sheet, card), not by shadow.",
+      "One filled button per screen; the rest are outlined or text.",
+      "System fonts only; monospace only for secrets.",
+      "Line icons at one stroke, drawn inline.",
+      "Every motion is short, eased out, and has a reduced-motion rule beside it."
+    ],
+    "rules": [
+      {
+        "name": "The One Blue Rule",
+        "body": "A screen has one filled Electric Blue button: the way through it. A second action is outlined; a way out is text.",
+        "section": "colors"
+      },
+      {
+        "name": "The Token Rule",
+        "body": "A component names a role (`--card`, `--muted`), never a hex. A new surface picks from the existing steps before a step is added.",
+        "section": "colors"
+      },
+      {
+        "name": "The Edge Rule",
+        "body": "Something to type in is outlined with `field-border`, not `border`. Dividers may be faint; a field's edge may not.",
+        "section": "colors"
+      },
+      {
+        "name": "The No Fourth Colour Rule",
+        "body": "Navy, blue and cyan are the brand. Status colours are status only and never decorate.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "Anything that counts or dates (list counts, the version, stats, \"last used\") sets `font-variant-numeric: tabular-nums`.",
+        "section": "typography"
+      },
+      {
+        "name": "The Mono Is For Secrets Rule",
+        "body": "Monospace marks a value that is copied character by character: passwords and code in notes. It is not a style.",
+        "section": "typography"
+      },
+      {
+        "name": "The Balance Rule",
+        "body": "Centred headings and notes use `text-wrap: balance`, so no line ends in an orphan.",
+        "section": "typography"
+      },
+      {
+        "name": "The Room Is Kept Rule",
+        "body": "A control that appears on hover (a row's actions) keeps its space while hidden, so text beside it never jumps.",
+        "section": "layout"
+      },
+      {
+        "name": "The Truncate, Don't Wrap Rule",
+        "body": "Names, addresses and emails in rows are one line with an ellipsis; only notes and errors wrap.",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat At Rest Rule",
+        "body": "A shadow means \"this is over the page and temporary\". Cards, sheets and buttons never have one.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Functional Effect Rule",
+        "body": "The only blur is the veil over a hidden secure note, and the only gradient is the fade under a sticky form footer. Both hide content on purpose; neither is decoration, and no other use is added.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do give each screen exactly one filled Electric Blue button.",
+      "Do build depth from the three tones (background, sheet, card) and a 1px divider.",
+      "Do use the semantic tokens, and check a new pairing in both themes.",
+      "Do outline anything typed into with `field-border` (3:1), and show its focus on the box.",
+      "Do pair every transition and animation with a `prefers-reduced-motion: reduce` rule, and keep state changes at 120ms ease-out.",
+      "Do keep a hidden control's room, and truncate one-line text with an ellipsis.",
+      "Do use `tabular-nums` for counts and dates, and monospace for secrets.",
+      "Do draw new icons inline on the 24 grid with a 2px round stroke."
+    ],
+    "donts": [
+      "Don't add decorative gradients, glass, backdrop blur or glows. Surfaces are plain.",
+      "Don't add illustrations, mascots or emoji. The mark and the line icons are the only pictures.",
+      "Don't introduce a brand colour beyond navy, blue and cyan, or use a status colour as decoration.",
+      "Don't put a shadow on anything that is not floating over the page.",
+      "Don't nest a card in a card, or thicken a border for emphasis.",
+      "Don't load a remote font, icon set, script or stylesheet: extension pages run under a CSP that allows only their own files.",
+      "Don't write a raw hex in a component.",
+      "Don't put a spinner in a button; change its label."
+    ]
+  }
+}

@@ -8,8 +8,9 @@ import { SHARE_ROLES } from '@/lib/constants/vault'
 import { wrapItemKeyFor, type VaultKeys } from '@/lib/crypto/vault'
 
 import { ApiError, getPublicKey, listItemMembers, shareItem, SignedOutError } from '../../lib/api'
-import { checked, useAppForm } from '../form'
+import { checked, submit, useAppForm } from '../form'
 import { ItemTile } from '../item-tile'
+import { initials } from '../layout'
 
 interface ShareItemProps {
   keys: VaultKeys
@@ -97,7 +98,7 @@ export default function ShareItem({ keys, item, onDone, onSignedOut, onNotice }:
       noValidate
       onSubmit={(e) => {
         e.preventDefault()
-        void form.handleSubmit()
+        void submit(e.currentTarget, form)
       }}
     >
       <header className="detail-head">
@@ -133,6 +134,13 @@ export default function ShareItem({ keys, item, onDone, onSignedOut, onNotice }:
             </field.SelectField>
           )}
         />
+
+        {/* In the row it sends: who, with what access, and the way to say so. */}
+        <div className="share-submit">
+          <form.AppForm>
+            <form.SubmitButton label="Share" busyLabel="Sharing…" />
+          </form.AppForm>
+        </div>
       </div>
 
       {error && (
@@ -141,37 +149,40 @@ export default function ShareItem({ keys, item, onDone, onSignedOut, onNotice }:
         </p>
       )}
 
-      <div className="row form-actions">
-        <button type="button" className="secondary" onClick={onDone}>
-          Done
-        </button>
-        <form.AppForm>
-          <form.SubmitButton label="Share" busyLabel="Sharing…" />
-        </form.AppForm>
-      </div>
-
-      <section className="stack">
-        <h3 className="section-title">People with access</h3>
+      <section className="share-people" aria-labelledby="share-people">
+        <h3 id="share-people">People with access</h3>
         {members === null ? (
           <p className="muted">Loading…</p>
         ) : (
-          <ul className="items">
-            {members.map((member) => (
-              <li key={member.user_id}>
-                <div className="item-text">
-                  <span className="item-name">{member.name || member.email}</span>
-                  <span className="muted">{member.email}</span>
-                </div>
-                <span className="muted role">{member.role}</span>
-              </li>
-            ))}
-          </ul>
+          members.length > 0 && (
+            // Rows in one card, a line between them: who, and what they may do.
+            <ul className="share-members">
+              {members.map((member) => (
+                <li key={member.user_id}>
+                  <span className="avatar" aria-hidden="true">
+                    {initials(member.name || member.email)}
+                  </span>
+                  <div className="item-text">
+                    <span className="item-name">{member.name || member.email}</span>
+                    <span className="muted">{member.email}</span>
+                  </div>
+                  <span className="muted role">{member.role}</span>
+                </li>
+              ))}
+            </ul>
+          )
         )}
         <p className="muted meta">
           To change someone's access or take it away, use the web app: it re-encrypts the item for
           the people who are left.
         </p>
       </section>
+
+      <div className="row form-actions">
+        <button type="button" className="secondary" onClick={onDone}>
+          Done
+        </button>
+      </div>
     </form>
   )
 }

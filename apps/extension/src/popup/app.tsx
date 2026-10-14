@@ -123,7 +123,11 @@ export default function App() {
 
   switch (stage.name) {
     case 'loading':
-      return framed(<p className="center muted">Loading…</p>)
+      return framed(
+        <p className="center muted" role="status">
+          Loading…
+        </p>
+      )
 
     case 'error':
       return framed(

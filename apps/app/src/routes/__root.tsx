@@ -18,7 +18,7 @@ import DecorationProvider from '@/lib/providers/decoration'
 const RootLayout = () => (
   <DecorationProvider>
     <Outlet />
-    <Toaster position="bottom-right" richColors closeButton />
+    <Toaster position="bottom-center" />
   </DecorationProvider>
 )
 
@@ -29,6 +29,12 @@ export interface RouterContext {
 export const Route = createRootRouteWithContext<RouterContext>()({
   component: RootLayout,
   notFoundComponent: () => (
-    <EmptyState title="Page not found" description="That route does not exist." />
+    <main className="bg-background flex min-h-svh items-center justify-center p-6">
+      <EmptyState
+        framed={false}
+        title="Page not found"
+        description="Nothing lives at this address. Check it, or go back to where you were."
+      />
+    </main>
   ),
 })

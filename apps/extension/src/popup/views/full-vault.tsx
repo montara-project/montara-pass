@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import type { VaultKeys } from '@/lib/crypto/vault'
 import type { VaultItem } from '@/types/vault'
 
+import { setItemPlacement, SignedOutError, trashItem } from '../../lib/api'
 import { linkOf } from '../../lib/site'
 import { getSettings } from '../../lib/storage'
 import { lastUsedAgo } from '../../lib/usage'
@@ -17,6 +18,7 @@ import {
   KeyIcon,
   LockIcon,
   LogOutIcon,
+  MoreIcon,
   NoteIcon,
   PencilIcon,
   PlusIcon,
@@ -25,8 +27,10 @@ import {
   SettingsIcon,
   ShareIcon,
   ShieldIcon,
+  SidebarIcon,
   SortIcon,
   StarIcon,
+  TrashIcon,
 } from '../icons'
 import { ItemTile } from '../item-tile'
 import { initials } from '../layout'
@@ -53,6 +57,9 @@ type Pane =
   | { mode: 'new' }
   | { mode: 'edit'; id: string }
   | { mode: 'share'; id: string }
+
+/** Where the folded sidebar is remembered, in this browser. */
+const SIDE_KEY = 'side'
 
 const FILTERS: { value: Filter; label: string; icon: typeof GridIcon }[] = [
   { value: 'all', label: 'All items', icon: GridIcon },
@@ -96,6 +103,7 @@ export default function FullVault({
   const [notice, setNotice] = useState('')
   const [refreshing, setRefreshing] = useState(false)
   const [appUrl, setAppUrl] = useState('')
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDE_KEY) === 'collapsed')
   const folders = useFolders(keys)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -164,10 +172,29 @@ export default function FullVault({
   // On a narrow window the pane covers the list, so it needs to know when it is in use.
   const paneOpen = pane.mode !== 'view' || selected !== null
 
+  const toggleSide = () => {
+    setCollapsed((was) => {
+      localStorage.setItem(SIDE_KEY, was ? '' : 'collapsed')
+      return !was
+    })
+  }
+
   const refresh = async () => {
     setRefreshing(true)
     await load()
     setRefreshing(false)
+  }
+
+  /** Runs a choice that changes the vault, then says how it went. */
+  const act = async (change: () => Promise<void>, done: string) => {
+    try {
+      await change()
+      setNotice(done)
+      await load()
+    } catch (err) {
+      if (err instanceof SignedOutError) onSignedOut()
+      else setNotice(err instanceof Error ? err.message : 'That did not work')
+    }
   }
 
   const copy = async (value: string | undefined, label: string) => {
@@ -180,11 +207,23 @@ export default function FullVault({
   }
 
   return (
-    <div className={paneOpen ? 'full pane-open' : 'full'}>
+    <div
+      className={['full', paneOpen && 'pane-open', collapsed && 'side-collapsed']
+        .filter(Boolean)
+        .join(' ')}
+    >
       <nav className="side" aria-label="Vault">
         <div className="brand">
           <img src="/icons/128.png" alt="" width={36} height={36} />
           <strong>Montara Pass</strong>
+          <button
+            className="icon-button side-toggle"
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            onClick={toggleSide}
+          >
+            <SidebarIcon />
+          </button>
         </div>
 
         <ul className="side-list">
@@ -192,6 +231,7 @@ export default function FullVault({
             <li key={value}>
               <button
                 className="side-item"
+                title={collapsed ? label : undefined}
                 aria-current={!tool && filter === value ? 'true' : undefined}
                 onClick={() => {
                   setFilter(value)
@@ -212,6 +252,7 @@ export default function FullVault({
           <li>
             <button
               className="side-item"
+              title={collapsed ? 'Password generator' : undefined}
               aria-current={tool === 'generator' ? 'true' : undefined}
               onClick={() => setTool('generator')}
             >
@@ -222,6 +263,7 @@ export default function FullVault({
           <li>
             <button
               className="side-item"
+              title={collapsed ? 'Password health' : undefined}
               aria-current={tool === 'health' ? 'true' : undefined}
               onClick={() => setTool('health')}
             >
@@ -232,7 +274,13 @@ export default function FullVault({
           {appUrl && (
             <li>
               {/* Folders, the trash and who else has an item live in the web app. */}
-              <a className="side-item" href={appUrl} target="_blank" rel="noreferrer">
+              <a
+                className="side-item"
+                title={collapsed ? 'Open web app' : undefined}
+                href={appUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
                 <ExternalLinkIcon />
                 <span>Open web app</span>
               </a>
@@ -418,6 +466,22 @@ export default function FullVault({
                 onCopy={(value, label) => void copy(value, label)}
                 onEdit={() => setPane({ mode: 'edit', id: selected.id })}
                 onShare={() => setPane({ mode: 'share', id: selected.id })}
+                onFavorite={() =>
+                  void act(
+                    () =>
+                      setItemPlacement(selected.id, {
+                        folder_id: selected.folder_id,
+                        favorite: !selected.favorite,
+                      }),
+                    selected.favorite ? 'Removed from favorites' : 'Added to favorites'
+                  )
+                }
+                onTrash={() =>
+                  void act(
+                    () => trashItem(selected.id),
+                    'Moved to the trash. The web app can restore it.'
+                  )
+                }
               />
             ) : (
               <div className="detail-empty">
@@ -452,11 +516,33 @@ interface ItemDetailProps {
   onCopy: (value: string | undefined, label: string) => void
   onEdit: () => void
   onShare: () => void
+  onFavorite: () => void
+  onTrash: () => void
 }
 
-function ItemDetail({ item, onCopy, onEdit, onShare }: ItemDetailProps) {
+function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: ItemDetailProps) {
   // Hidden again for every item: this component is remounted per item.
   const [revealed, setRevealed] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  // The menu closes on Escape and on a click anywhere else; opening it puts
+  // focus on its first choice.
+  useEffect(() => {
+    if (!menuOpen) return
+    menuRef.current?.querySelector<HTMLButtonElement>('[role=menuitem]')?.focus()
+
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false)
+    const onClick = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('mousedown', onClick)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('mousedown', onClick)
+    }
+  }, [menuOpen])
 
   const secret = item.secret!
   const isLogin = item.type === 'login'
@@ -478,18 +564,62 @@ function ItemDetail({ item, onCopy, onEdit, onShare }: ItemDetailProps) {
             {item.role !== 'owner' && ` · shared with you (${item.role})`}
           </span>
         </div>
-        {/* Only the owner hands an item on. */}
-        {item.role === 'owner' && (
-          <button className="secondary" onClick={onShare}>
-            <ShareIcon width={18} height={18} />
-            Share
-          </button>
-        )}
+        {/* As the web app has them: the star, the one common action as a
+            button, and the rest behind More. */}
+        <button
+          className="icon-button"
+          aria-label={item.favorite ? 'Remove from favorites' : 'Add to favorites'}
+          aria-pressed={item.favorite}
+          title={item.favorite ? 'Remove from favorites' : 'Add to favorites'}
+          onClick={onFavorite}
+        >
+          <StarIcon fill={item.favorite ? 'currentColor' : 'none'} />
+        </button>
         {canEdit && (
           <button className="secondary" onClick={onEdit}>
             <PencilIcon width={18} height={18} />
             Edit
           </button>
+        )}
+        {/* Only the owner hands an item on, or throws it away. */}
+        {item.role === 'owner' && (
+          <div className="menu-anchor" ref={menuRef}>
+            <button
+              className="icon-button"
+              aria-label="More"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              <MoreIcon />
+            </button>
+            {menuOpen && (
+              <div className="menu" role="menu">
+                <button
+                  role="menuitem"
+                  className="menu-item"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    onShare()
+                  }}
+                >
+                  <ShareIcon />
+                  Share
+                </button>
+                <button
+                  role="menuitem"
+                  className="menu-item menu-danger"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    onTrash()
+                  }}
+                >
+                  <TrashIcon />
+                  Move to trash
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </header>
 

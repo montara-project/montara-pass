@@ -13,7 +13,7 @@ import {
 import { getProfile } from '../../lib/api'
 import { AUTO_LOCK_MINUTES, storeVault } from '../../lib/session'
 import { BrandMark } from '../brand-mark'
-import { checked, useAppForm } from '../form'
+import { checked, submit, useAppForm } from '../form'
 import { initials } from '../layout'
 
 interface UnlockProps {
@@ -61,7 +61,7 @@ export default function Unlock({ userKeys, onUnlocked, onSignOut }: UnlockProps)
       noValidate
       onSubmit={(e) => {
         e.preventDefault()
-        void form.handleSubmit()
+        void submit(e.currentTarget, form)
       }}
     >
       <BrandMark />

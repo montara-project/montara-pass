@@ -7,6 +7,8 @@
   --panel: #ffffff;
   --card: #f1f5fd;
   --border: #d3dcef;
+  /* The edge of something to type in: 3:1 against every surface it sits on. */
+  --field-border: #7483a8;
   --fg: #101d3a;
   --muted: #51607f;
   --field: #ffffff;
@@ -30,6 +32,7 @@
     --panel: #101d3a;
     --card: #1a2b52;
     --border: #2b3d68;
+    --field-border: #667aab;
     --fg: #ffffff;
     --muted: #a9b6d3;
     --field: #0b152c;
@@ -142,7 +145,7 @@ p {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--primary-fg);
   transition: translate 0.15s;
 }
 
@@ -194,7 +197,7 @@ input {
   min-width: 0;
   height: 40px;
   padding: 0 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--field-border);
   border-radius: 10px;
   background: var(--field);
   color: var(--fg);
@@ -358,7 +361,7 @@ a.icon-button {
   margin: 0 12px 12px;
   padding: 0 12px;
   height: 40px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--field-border);
   border-radius: 10px;
   background: var(--field);
   color: var(--muted);
@@ -410,15 +413,83 @@ a.icon-button {
   text-wrap: balance;
 }
 
+/* Who, with what access, and the button that says so: one row. */
 .share-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 140px;
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) 140px auto;
+  gap: 12px;
+  /* By the top, so an error under a field does not move the button. */
+  align-items: start;
+}
+
+/* Level with the fields, which have a label over them. */
+.share-submit {
+  margin-top: 26px;
+}
+
+/* The popup has no room for three: the address gets a row to itself. */
+.vault-sub .share-grid {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.vault-sub .share-grid > .form-field:first-child {
+  grid-column: 1 / -1;
+}
+
+/* A part of the view: further from the form above it than its own heading
+   is from the list. */
+.share-people {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.share-people h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* Rows in one card, a line between them, as an item's own values are. */
+.share-members {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.share-members li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px 10px 14px;
+}
+
+.share-members li + li {
+  border-top: 1px solid var(--border);
+}
+
+.share-members .avatar {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+}
+
+/* Under the card, in line with what the card holds. */
+.share-people .meta {
+  padding-left: 4px;
 }
 
 .role {
+  flex-shrink: 0;
+  font-size: 13px;
   text-transform: capitalize;
-  padding-right: 8px;
 }
 
 .section-title {
@@ -841,7 +912,7 @@ a.icon-button {
   gap: 4px;
   min-height: 58px;
   padding: 0 8px 0 14px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--field-border);
   border-radius: 12px;
   background: var(--card);
   transition:
@@ -957,7 +1028,8 @@ a.icon-button {
 }
 
 /* The way out of the screen, kept quieter than the way through it. */
-button.auth-link {
+button.auth-link,
+a.auth-link {
   height: auto;
   padding: 4px 6px;
   background: none;
@@ -969,9 +1041,19 @@ button.auth-link {
   text-underline-offset: 3px;
 }
 
-button.auth-link:hover {
+button.auth-link:hover,
+a.auth-link:hover {
   color: var(--fg);
   text-decoration-color: currentColor;
+}
+
+/* A way in rather than out, and part of a sentence: it reads as the answer
+   to the question before it. */
+a.auth-link {
+  padding: 4px 2px;
+  color: var(--fg);
+  font-weight: 600;
+  text-decoration-color: var(--muted);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1181,6 +1263,7 @@ a.set-row svg {
   /* The list takes what is left; the item beside it keeps a reading width. */
   grid-template-columns: 248px minmax(300px, 1fr) minmax(360px, 640px);
   height: 100%;
+  transition: grid-template-columns 160ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .side {
@@ -1219,7 +1302,14 @@ a.set-row svg {
   display: flex;
   align-items: center;
   text-decoration: none;
+  /* One line also while the sidebar is opening around it. */
+  white-space: nowrap;
   cursor: pointer;
+}
+
+/* Folds the sidebar down to its icons; pushed to the far end of the brand. */
+.side-toggle {
+  margin-left: auto;
 }
 
 .side-item:hover {
@@ -1397,7 +1487,13 @@ a.set-row svg {
 
 /* A tool has the list's column too, so its body may run wider than an item. */
 .detail-body.tool-body {
-  max-width: 1040px;
+  max-width: 1200px;
+}
+
+/* A tool has the whole width to itself, and sits in the middle of it: an
+   item is read beside the list, a tool is not beside anything. */
+.tool-col .detail-body {
+  margin-inline: auto;
 }
 
 /* The generator: the password on one side, what shapes it on the other. */
@@ -1419,12 +1515,26 @@ a.set-row svg {
 }
 
 .generated {
-  justify-content: space-between;
   background: var(--card);
 }
 
+/* Rows in one card, as a setting's are: the length, then a line to each
+   kind of character. No box inside the box. */
+.gen-options {
+  gap: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.gen-options > label {
+  padding: 20px;
+}
+
+/* The password has the middle of whatever room the card is given: the card
+   is as tall as the options beside it. */
 .generated output {
   display: flex;
+  flex: 1;
   align-items: center;
   min-height: 112px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -1433,6 +1543,38 @@ a.set-row svg {
   line-height: 1.5;
   word-break: break-all;
   user-select: all;
+}
+
+/* Each character is a box of its own, so it can be moved. */
+.generated output span span {
+  display: inline-block;
+}
+
+/* Asked for again, the password is set like the pins of a lock: each
+   character drops into place a moment after the one before it. */
+.gen-drawn span {
+  animation: ch-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i) * var(--step));
+}
+
+@keyframes ch-in {
+  from {
+    opacity: 0;
+    translate: 0 -0.35em;
+  }
+}
+
+/* Still seen to change, but all at once and without moving. */
+@media (prefers-reduced-motion: reduce) {
+  .gen-drawn span {
+    animation: ch-fade 120ms ease-out both;
+  }
+}
+
+@keyframes ch-fade {
+  from {
+    opacity: 0;
+  }
 }
 
 /* Digits and symbols are tinted, so 5 and S, or l and |, are told apart. */
@@ -1491,19 +1633,20 @@ a.set-row svg {
   gap: 8px;
 }
 
+/* Digits of one width, so the line holds still while the slider moves. */
 .gen-length {
   color: var(--fg);
-  font-size: 17px;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
 }
 
 .gen-kinds {
-  border: 1px solid var(--border);
-  border-radius: 12px;
+  border-top: 1px solid var(--border);
 }
 
 .gen-kinds .toggle.option {
   justify-content: space-between;
-  padding: 12px 14px;
+  padding: 14px 20px;
   border: 0;
   border-radius: 0;
 }
@@ -1532,13 +1675,80 @@ a.set-row svg {
   }
 }
 
+/* A slider drawn like the meter beside it: the browser's own keeps a light
+   track on a dark page. */
 input.range {
+  appearance: none;
   height: 24px;
   padding: 0;
   border: 0;
   background: none;
-  accent-color: var(--primary);
   cursor: pointer;
+}
+
+/* Two flat colors that meet at the thumb, not a blend. */
+input.range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--primary) var(--fill, 0%),
+    var(--hover) var(--fill, 0%)
+  );
+}
+
+input.range::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--hover);
+}
+
+input.range::-moz-range-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--primary);
+}
+
+/* The ring is the surface's own color: the thumb stands clear of the track. */
+input.range::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 3px solid var(--panel);
+  border-radius: 50%;
+  background: var(--primary);
+  box-sizing: content-box;
+  margin-top: -9px;
+  transition: scale 120ms ease-out;
+}
+
+input.range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 3px solid var(--panel);
+  border-radius: 50%;
+  background: var(--primary);
+  transition: scale 120ms ease-out;
+}
+
+input.range:active::-webkit-slider-thumb {
+  scale: 1.1;
+}
+
+input.range:active::-moz-range-thumb {
+  scale: 1.1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  input.range::-webkit-slider-thumb,
+  input.range::-moz-range-thumb {
+    transition: none;
+  }
+}
+
+/* The last kind of character cannot be turned off, and does not offer to be. */
+.toggle:has(input:disabled) {
+  cursor: default;
 }
 
 .toggle.option {
@@ -1578,8 +1788,101 @@ input.range {
   font-size: 15px;
 }
 
+/* The two lists of the report, side by side where each has room; one alone
+   has the width to itself. */
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  align-items: start;
+  column-gap: 32px;
+}
+
+/* A part of the report: further from the part above it than its own
+   heading is from what it says. */
+.health-section {
+  margin-top: 12px;
+}
+
+.health-section > header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.health-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.health-section > header .muted {
+  font-size: 13px;
+}
+
+/* Names the card under it, in line with what the card holds. */
+.health-group {
+  margin-bottom: 8px;
+  padding-left: 4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Logins that belong together sit in one card, a line between them: the
+   ones that share a password are seen to. */
 .health-list {
-  margin-top: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+/* The row is the button, so the row itself is not padded or rounded. */
+.health-list li {
+  padding: 0;
+  border-radius: 0;
+}
+
+.health-list li + li {
+  border-top: 1px solid var(--border);
+}
+
+.health-row {
+  width: 100%;
+  height: auto;
+  padding: 10px 12px 10px 14px;
+  justify-content: flex-start;
+  gap: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--fg);
+  font-weight: 400;
+  text-align: left;
+}
+
+/* Says the row leads somewhere; lit with the row. */
+.health-row > svg {
+  flex-shrink: 0;
+  margin-left: 8px;
+  color: var(--muted);
+  transition: color 120ms ease-out;
+}
+
+.health-row:hover > svg,
+.health-row:focus-visible > svg {
+  color: var(--fg);
+}
+
+/* The card cuts off what is outside it, so the ring is drawn inside. */
+.health-row:focus-visible {
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .health-row > svg {
+    transition: none;
+  }
 }
 
 .detail-body {
@@ -1611,11 +1914,16 @@ input.range {
 }
 
 /* Beside the item's name the buttons are a size down: the name leads. */
-.detail-head button {
+.detail-head button.secondary {
   flex-shrink: 0;
   height: 36px;
   padding: 0 14px;
   font-weight: 500;
+}
+
+/* A favorite's star is filled, and so stands out from the icons beside it. */
+.detail-head .icon-button[aria-pressed='true'] {
+  color: var(--fg);
 }
 
 .detail-head .tile {
@@ -1802,7 +2110,7 @@ button.secondary:hover {
 textarea {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--field-border);
   border-radius: 10px;
   background: var(--field);
   color: var(--fg);
@@ -1813,7 +2121,7 @@ textarea {
 
 /* The rich text editor of a secure note: a toolbar over the text. */
 .notes-editor {
-  border: 1px solid var(--border);
+  border: 1px solid var(--field-border);
   border-radius: 10px;
   background: var(--field);
 }
@@ -2035,7 +2343,7 @@ select {
   height: 40px;
   /* Same inset as an input; the right side leaves room for the chevron. */
   padding: 0 36px 0 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--field-border);
   border-radius: 10px;
   background: var(--field);
   color: var(--fg);
@@ -2200,6 +2508,56 @@ textarea,
   max-width: calc(100% - 32px);
   font-size: 13px;
   text-align: center;
+}
+
+/* Folded: a rail of icons. Only where the sidebar is a column: the strip of
+   a narrow window has nothing to fold. */
+@media (min-width: 861px) {
+  .full.side-collapsed {
+    grid-template-columns: 64px minmax(300px, 1fr) minmax(360px, 640px);
+  }
+
+  /* The mark, with the way back under it. */
+  .side-collapsed .brand {
+    flex-direction: column;
+    padding: 4px 0 12px;
+  }
+
+  .side-collapsed .brand strong,
+  .side-collapsed .side-user .item-text,
+  .side-collapsed .side-user svg {
+    display: none;
+  }
+
+  .side-collapsed .side-toggle {
+    margin-left: 0;
+  }
+
+  .side-collapsed .side-item {
+    justify-content: center;
+    padding: 0;
+  }
+
+  /* Out of sight but still the name of the button: the icon alone says
+     nothing to a screen reader. */
+  .side-collapsed .side-item span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .side-collapsed .side-user {
+    justify-content: center;
+    padding: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .full {
+    transition: none;
+  }
 }
 
 /* A narrow window: the sidebar becomes a strip of filters, and the list and

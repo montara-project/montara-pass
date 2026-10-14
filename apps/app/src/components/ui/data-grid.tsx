@@ -118,7 +118,7 @@ function DataGrid<TData extends RowData>({ children, table, ...props }: DataGrid
       base: '',
       header: '',
       headerRow: '',
-      headerSticky: 'sticky top-0 z-10 bg-background/90 backdrop-blur-xs',
+      headerSticky: 'sticky top-0 z-10 bg-panel',
       body: '',
       bodyRow: '',
       footer: '',
@@ -163,7 +163,11 @@ function DataGridContainer({
   return (
     <div
       data-slot="data-grid"
-      className={cn('grid w-full', border && 'border-border rounded-lg border', className)}
+      className={cn(
+        'grid w-full',
+        border && 'border-border rounded-card overflow-hidden border',
+        className
+      )}
     >
       {children}
     </div>
