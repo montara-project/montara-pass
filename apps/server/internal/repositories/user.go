@@ -68,6 +68,14 @@ func (r *UserRepository) SetRole(ctx context.Context, id uuid.UUID, role string)
 	return requireAffected(res, "user")
 }
 
+// Get returns a mirrored user.
+func (r *UserRepository) Get(ctx context.Context, id uuid.UUID) (models.User, error) {
+	var u models.User
+	err := r.queryRowContext(ctx, `SELECT id, created_at, updated_at, name, email, image, role FROM users WHERE id = $1`, id).
+		Scan(&u.ID, &u.CreatedAt, &u.UpdatedAt, &u.Name, &u.Email, &u.Image, &u.Role)
+	return u, translateNotFound("users", err)
+}
+
 // Role returns a mirrored user's role.
 func (r *UserRepository) Role(ctx context.Context, id uuid.UUID) (string, error) {
 	var role string

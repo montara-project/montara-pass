@@ -11,6 +11,7 @@ import (
 
 	"montara-pass/server/internal/app"
 	"montara-pass/server/internal/config"
+	"montara-pass/server/internal/lib/midtrans"
 	"montara-pass/server/internal/repositories"
 	"montara-pass/server/internal/seeders"
 
@@ -106,6 +107,15 @@ func run() error {
 		}
 	}
 
+	var payments *midtrans.Client
+	switch {
+	case config.Community():
+	case cfg.Billing.MidtransServerKey == "":
+		logger.Warn("billing checkout disabled: midtrans-server-key is not set")
+	default:
+		payments = midtrans.New(cfg.Billing.MidtransServerKey, cfg.Billing.MidtransProduction)
+	}
+
 	return serve(&app.Application{
 		Config:       cfg,
 		Logger:       logger,
@@ -113,5 +123,6 @@ func run() error {
 		Repositories: repos,
 		Auth:         auth,
 		Redis:        cache,
+		Midtrans:     payments,
 	})
 }

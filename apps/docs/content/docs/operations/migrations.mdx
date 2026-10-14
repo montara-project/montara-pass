@@ -43,6 +43,32 @@ idempotent: the categories, and the `SUPER_USER` account.
 | `000004` | the vault: `user_keys`, `folders`, `items`, `item_members` |
 | `000005` | the `last_used_at` column on `item_members` |
 
+## Enterprise Edition migrations
+
+`apps/server/migrations/ee` holds the tables only the Enterprise Edition has.
+They keep their own version in `schema_migrations_ee`, run after the main ones
+and roll back before them. A Community Edition build never applies them, so
+its database has none of these tables; a database that moves to the
+Enterprise Edition gets them on its next `up` or boot.
+
+`up`, `down`, `refresh` and `version` act on both tracks. `force` and `create`
+act on the main one unless `--ee` is passed:
+
+```sh
+go run ./cmd/migrate --ee create add_x   # new pair in migrations/ee
+go run ./cmd/migrate --ee force 1        # after a failed EE migration
+```
+
+| Version | What it creates |
+| --- | --- |
+| `000001` | billing: `plans`, `subscriptions`, `purchases` |
+
+Only an account with the `user` role holds a subscription or a purchase. The
+database enforces it: both tables reference `users (id, role)` with the role
+fixed to `user`, so a super user cannot subscribe, and a subscriber cannot be
+given another role. Each table also takes only its kind of plan (`recurring`
+or `one_time`), and a user has at most one live subscription.
+
 ## Tests against a real database
 
 `apps/server/cmd/api` has an integration test that drives the API end to end.

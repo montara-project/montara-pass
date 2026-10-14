@@ -109,6 +109,23 @@ func routes(r *fiber.App, app *app.Application) {
 		items.Delete("/:id/members/:userId", h.Item.RemoveMember)
 	}
 
+	// Billing, Enterprise Edition only. The plans are public, for the
+	// website; a super user manages them. Subscribing and buying need a
+	// signed-in user account; Midtrans reports the payment's outcome.
+	if !config.Community() {
+		plans := v1.Group("/plans")
+		plans.Get("/", h.Billing.ListPlans)
+		plans.Get("/all", m.Authorization, m.SuperUser, h.Billing.ListAllPlans)
+		plans.Post("/", m.Authorization, m.SuperUser, once, h.Billing.CreatePlan)
+		plans.Put("/:id", m.Authorization, m.SuperUser, once, h.Billing.UpdatePlan)
+
+		billing := v1.Group("/billing")
+		billing.Get("/", m.Authorization, h.Billing.Overview)
+		billing.Post("/subscriptions", m.Authorization, once, h.Billing.Subscribe)
+		billing.Post("/purchases", m.Authorization, once, h.Billing.Buy)
+		billing.Post("/midtrans/notification", h.Billing.MidtransNotification)
+	}
+
 	// An unknown path under apiPrefix answers JSON. Registered last, and before
 	// the web app's catch-all, which would otherwise answer it with index.html.
 	r.Use(apiPrefix, func(c fiber.Ctx) error {

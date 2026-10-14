@@ -3,6 +3,7 @@ package handlers
 import "montara-pass/server/internal/app"
 
 type Handlers struct {
+	Billing  *billingHandler
 	Health   *healthHandler
 	Category *categoryHandler
 	Folder   *folderHandler
@@ -12,6 +13,7 @@ type Handlers struct {
 
 func New(app *app.Application) *Handlers {
 	return &Handlers{
+		Billing:  &billingHandler{app: app},
 		Health:   &healthHandler{app: app},
 		Category: &categoryHandler{app: app},
 		Folder:   &folderHandler{app: app},

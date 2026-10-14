@@ -110,6 +110,10 @@ func parseFlag(cfg *config.Config) {
 	// Redis
 	flag.StringVar(&cfg.Redis.URL, "redis-url", envString("REDIS_URL", ""), "Redis URL shared by the rate limiter and idempotency keys, e.g. redis://localhost:6379/0 (empty keeps them in memory)")
 
+	// Billing (Enterprise Edition)
+	flag.StringVar(&cfg.Billing.MidtransServerKey, "midtrans-server-key", envString("MIDTRANS_SERVER_KEY", ""), "Midtrans server key for billing (empty disables checkout)")
+	flag.BoolVar(&cfg.Billing.MidtransProduction, "midtrans-production", envBool("MIDTRANS_PRODUCTION", false), "Use Midtrans production instead of the sandbox")
+
 	// Sentry
 	flag.StringVar(&cfg.Sentry.Dsn, "sentry-dsn", envString("SENTRY_DSN", ""), "Sentry DSN")
 

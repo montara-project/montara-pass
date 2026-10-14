@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS purchases;
+DROP TABLE IF EXISTS subscriptions;
+DROP TABLE IF EXISTS plans;
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_id_role_key;

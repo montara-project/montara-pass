@@ -3,6 +3,7 @@ package repositories
 import "database/sql"
 
 type Repositories struct {
+	Billing  BillingRepository
 	Category CategoryRepository
 	Folder   FolderRepository
 	Item     ItemRepository
@@ -15,6 +16,7 @@ func New(db *sql.DB) Repositories {
 	base := BaseRepository{DB: db}
 
 	return Repositories{
+		Billing:  BillingRepository{base},
 		Category: CategoryRepository{base},
 		Folder:   FolderRepository{base},
 		Item:     ItemRepository{base},

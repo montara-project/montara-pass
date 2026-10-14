@@ -31,11 +31,19 @@ func Community() bool {
 const SessionCookieName = "authula.session_token"
 
 type Config struct {
-	App    ConfigApp
-	DB     ConfigDB
-	Auth   ConfigAuth
-	Sentry ConfigSentry
-	Redis  ConfigRedis
+	App     ConfigApp
+	DB      ConfigDB
+	Auth    ConfigAuth
+	Sentry  ConfigSentry
+	Redis   ConfigRedis
+	Billing ConfigBilling
+}
+
+// ConfigBilling configures payments, Enterprise Edition only. Without a
+// Midtrans server key the plans are still listed, but nothing can be bought.
+type ConfigBilling struct {
+	MidtransServerKey  string
+	MidtransProduction bool
 }
 
 // ConfigAuth configures the embedded Authula server.

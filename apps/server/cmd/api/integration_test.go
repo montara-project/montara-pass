@@ -3,7 +3,10 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/sha512"
+	"database/sql"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -16,11 +19,13 @@ import (
 
 	authulamodels "github.com/Authula/authula/models"
 	"github.com/gofiber/fiber/v3"
+	"github.com/golang-migrate/migrate/v4"
 
 	"montara-pass/server/internal/app"
 	"montara-pass/server/internal/config"
 	"montara-pass/server/internal/lib"
 	"montara-pass/server/internal/lib/constant"
+	"montara-pass/server/internal/lib/midtrans"
 	"montara-pass/server/internal/repositories"
 	"montara-pass/server/internal/seeders"
 )
@@ -58,21 +63,24 @@ func TestIntegration(t *testing.T) {
 		},
 	}
 
-	// Start from nothing; this also runs every down migration.
-	migrateDB, err := lib.OpenDB(dsn)
-	if err != nil {
-		t.Fatal(err)
-	}
-	m, err := lib.NewMigrator(migrateDB)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err := m.Version(); err == nil {
-		if err := m.Down(); err != nil {
-			t.Fatalf("down: %v", err)
+	// Start from nothing; this also runs every down migration, the
+	// Enterprise Edition's first, since its tables lean on the main ones.
+	for _, newMigrator := range []func(*sql.DB) (*migrate.Migrate, error){lib.NewEEMigrator, lib.NewMigrator} {
+		migrateDB, err := lib.OpenDB(dsn)
+		if err != nil {
+			t.Fatal(err)
 		}
+		m, err := newMigrator(migrateDB)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, _, err := m.Version(); err == nil {
+			if err := m.Down(); err != nil {
+				t.Fatalf("down: %v", err)
+			}
+		}
+		m.Close()
 	}
-	m.Close()
 
 	if err := migrateUp(&cfg.DB, logger); err != nil {
 		t.Fatalf("migrate up: %v", err)
@@ -165,13 +173,30 @@ func TestIntegration(t *testing.T) {
 		t.Fatalf("plain user after reconcile: %q err=%v", role, err)
 	}
 
+	billing(t, db, user.ID, superEmail)
+
 	// Changing SUPER_USER's password resets the account on the next seed.
 	superUser.Password = superPass
 	if err := superUser.Seed(); err != nil {
 		t.Fatalf("reseed: %v", err)
 	}
 
-	application := &app.Application{Config: cfg, Logger: logger, DB: db, Repositories: repos, Auth: auth}
+	// Midtrans' Snap, as far as billing sees it: every checkout gets a page.
+	snap := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			TransactionDetails struct {
+				OrderID string `json:"order_id"`
+			} `json:"transaction_details"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		w.WriteHeader(http.StatusCreated)
+		_ = json.NewEncoder(w).Encode(map[string]string{"redirect_url": "https://pay.example/" + body.TransactionDetails.OrderID})
+	}))
+	defer snap.Close()
+	payments := midtrans.New(midtransKey, false)
+	payments.SnapURL = snap.URL
+
+	application := &app.Application{Config: cfg, Logger: logger, DB: db, Repositories: repos, Auth: auth, Midtrans: payments}
 	// With TEST_REDIS_URL the rate limiter and the idempotency keys go
 	// through Redis, as they do with REDIS_URL; without it, through memory.
 	if url := os.Getenv("TEST_REDIS_URL"); url != "" {
@@ -290,6 +315,7 @@ func TestIntegration(t *testing.T) {
 	}
 
 	vaultFlow(t, call, superToken, userToken, userEmail, user.ID)
+	billingFlow(t, call, superToken, userToken)
 
 	// An address nobody has verified gets no session from signing up, and a
 	// sign-in with it reaches nothing: no vault of its own, and no public key
@@ -495,4 +521,173 @@ func vaultFlow(
 	want(http.StatusOK, http.MethodDelete, memberPath, otherToken, nil)
 	want(http.StatusOK, http.MethodDelete, itemPath+"/force", ownerToken, nil)
 	want(http.StatusNotFound, http.MethodGet, itemPath, ownerToken, nil)
+}
+
+// billing checks the Enterprise Edition's billing tables against what they
+// promise: only an account with the 'user' role subscribes or buys, each
+// table takes only its kind of plan, and a user has one live subscription.
+func billing(t *testing.T, db *sql.DB, userID, superEmail string) {
+	t.Helper()
+
+	var superID string
+	if err := db.QueryRow(`SELECT id FROM users WHERE email = $1`, superEmail).Scan(&superID); err != nil {
+		t.Fatal(err)
+	}
+
+	var monthly, lifetime string
+	if err := db.QueryRow(`INSERT INTO plans (code, name, billing, billing_interval, amount, currency)
+		VALUES ('pro-monthly', 'Pro', 'recurring', 'month', 500, 'USD') RETURNING id`).Scan(&monthly); err != nil {
+		t.Fatalf("recurring plan: %v", err)
+	}
+	if err := db.QueryRow(`INSERT INTO plans (code, name, billing, amount, currency)
+		VALUES ('pro-lifetime', 'Pro forever', 'one_time', 9900, 'USD') RETURNING id`).Scan(&lifetime); err != nil {
+		t.Fatalf("one-time plan: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO plans (code, name, billing, amount, currency)
+		VALUES ('no-interval', 'Broken', 'recurring', 500, 'USD')`); err == nil {
+		t.Fatal("a recurring plan without an interval was accepted")
+	}
+
+	subscribe := func(user, plan string) error {
+		_, err := db.Exec(`INSERT INTO subscriptions (user_id, plan_id, status, current_period_start, current_period_end, amount, currency)
+			VALUES ($1, $2, 'active', now(), now() + interval '1 month', 500, 'USD')`, user, plan)
+		return err
+	}
+	buy := func(user, plan string) error {
+		_, err := db.Exec(`INSERT INTO purchases (user_id, plan_id, status, amount, currency, paid_at)
+			VALUES ($1, $2, 'paid', 9900, 'USD', now())`, user, plan)
+		return err
+	}
+
+	if err := subscribe(userID, monthly); err != nil {
+		t.Fatalf("user subscribes: %v", err)
+	}
+	if subscribe(userID, monthly) == nil {
+		t.Fatal("a second live subscription was accepted")
+	}
+	if subscribe(superID, monthly) == nil {
+		t.Fatal("the super user subscribed")
+	}
+	if subscribe(userID, lifetime) == nil {
+		t.Fatal("a subscription to a one-time plan was accepted")
+	}
+	if err := buy(userID, lifetime); err != nil {
+		t.Fatalf("user buys: %v", err)
+	}
+	if buy(superID, lifetime) == nil {
+		t.Fatal("the super user bought a plan")
+	}
+	if buy(userID, monthly) == nil {
+		t.Fatal("a purchase of a recurring plan was accepted")
+	}
+	// A subscriber keeps the 'user' role.
+	if _, err := db.Exec(`UPDATE users SET role = $2 WHERE id = $1`, userID, constant.RoleSuperUser); err == nil {
+		t.Fatal("a subscriber was made super user")
+	}
+
+	// billingFlow starts from empty tables.
+	if _, err := db.Exec(`TRUNCATE subscriptions, purchases, plans`); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// midtransKey signs the notifications billingFlow sends.
+const midtransKey = "SB-Mid-server-test"
+
+// billingFlow drives billing over HTTP: plans managed by the super user, a
+// subscription and a purchase paid through Midtrans' notification, which is
+// believed only when signed and for the amount ordered.
+func billingFlow(
+	t *testing.T,
+	call func(method, path, token string, body any, headers ...string) (int, map[string]any),
+	superToken, userToken string,
+) {
+	t.Helper()
+
+	want := func(wantStatus int, method, path, token string, body any) map[string]any {
+		t.Helper()
+		status, out := call(method, path, token, body)
+		if status != wantStatus {
+			t.Fatalf("%s %s: %d %v, want %d", method, path, status, out, wantStatus)
+		}
+		data, _ := out["data"].(map[string]any)
+		return data
+	}
+	notify := func(orderID, status, gross string) (int, map[string]any) {
+		t.Helper()
+		sum := sha512.Sum512([]byte(orderID + "200" + gross + midtransKey))
+		return call(http.MethodPost, "/api/v1/billing/midtrans/notification", "", map[string]string{
+			"order_id": orderID, "status_code": "200", "gross_amount": gross,
+			"transaction_status": status, "currency": "IDR", "signature_key": hex.EncodeToString(sum[:]),
+		})
+	}
+
+	monthly := map[string]any{"code": "pro-monthly", "name": "Pro", "billing": "recurring", "billing_interval": "month", "amount": 50000, "currency": "IDR", "active": true}
+	want(http.StatusForbidden, http.MethodPost, "/api/v1/plans", userToken, monthly)
+	plan := want(http.StatusCreated, http.MethodPost, "/api/v1/plans", superToken, monthly)
+	want(http.StatusConflict, http.MethodPost, "/api/v1/plans", superToken, monthly)
+	want(http.StatusBadRequest, http.MethodPost, "/api/v1/plans", superToken, map[string]any{"code": "x", "name": "X", "billing": "one_time", "billing_interval": "month", "amount": 1, "currency": "IDR", "active": true})
+	lifetime := want(http.StatusCreated, http.MethodPost, "/api/v1/plans", superToken, map[string]any{"code": "pro-lifetime", "name": "Pro forever", "billing": "one_time", "amount": 990000, "currency": "IDR", "active": true})
+	retired := want(http.StatusCreated, http.MethodPost, "/api/v1/plans", superToken, map[string]any{"code": "old", "name": "Old", "billing": "recurring", "billing_interval": "year", "amount": 1, "currency": "IDR", "active": false})
+
+	if status, out := call(http.MethodGet, "/api/v1/plans", "", nil); status != http.StatusOK || len(out["data"].([]any)) != 2 {
+		t.Fatalf("public plans: %d %v", status, out)
+	}
+
+	// Only a user account subscribes, to a plan on offer, of the right kind.
+	want(http.StatusForbidden, http.MethodPost, "/api/v1/billing/subscriptions", superToken, map[string]any{"plan_id": plan["id"]})
+	want(http.StatusNotFound, http.MethodPost, "/api/v1/billing/subscriptions", userToken, map[string]any{"plan_id": retired["id"]})
+	want(http.StatusNotFound, http.MethodPost, "/api/v1/billing/subscriptions", userToken, map[string]any{"plan_id": lifetime["id"]})
+
+	sub := want(http.StatusCreated, http.MethodPost, "/api/v1/billing/subscriptions", userToken, map[string]any{"plan_id": plan["id"]})
+	orderID := "sub-" + sub["id"].(string)
+	if sub["status"] != "pending" || sub["checkout_url"] != "https://pay.example/"+orderID {
+		t.Fatalf("subscription: %v", sub)
+	}
+	// Asked again while pending, the same payment is resumed.
+	if again := want(http.StatusOK, http.MethodPost, "/api/v1/billing/subscriptions", userToken, map[string]any{"plan_id": plan["id"]}); again["id"] != sub["id"] {
+		t.Fatalf("resumed subscription: %v", again)
+	}
+
+	// Notifications: a bad signature or amount is refused, and a valid one
+	// activates the subscription once.
+	if status, _ := call(http.MethodPost, "/api/v1/billing/midtrans/notification", "", map[string]string{"order_id": orderID, "status_code": "200", "gross_amount": "50000.00", "transaction_status": "settlement", "signature_key": "forged"}); status != http.StatusForbidden {
+		t.Fatalf("forged notification: %d", status)
+	}
+	if status, _ := notify(orderID, "settlement", "1.00"); status != http.StatusBadRequest {
+		t.Fatalf("notification for another amount: %d", status)
+	}
+	for range 2 {
+		if status, out := notify(orderID, "settlement", "50000.00"); status != http.StatusOK {
+			t.Fatalf("settlement: %d %v", status, out)
+		}
+	}
+	overview := want(http.StatusOK, http.MethodGet, "/api/v1/billing", userToken, nil)
+	active, _ := overview["subscription"].(map[string]any)
+	if active == nil || active["status"] != "active" || active["checkout_url"] != nil {
+		t.Fatalf("overview after settlement: %v", overview)
+	}
+	want(http.StatusConflict, http.MethodPost, "/api/v1/billing/subscriptions", userToken, map[string]any{"plan_id": plan["id"]})
+
+	// A purchase: paid, bought only once, then refunded.
+	buy := want(http.StatusCreated, http.MethodPost, "/api/v1/billing/purchases", userToken, map[string]any{"plan_id": lifetime["id"]})
+	if status, out := notify("buy-"+buy["id"].(string), "capture", "990000.00"); status != http.StatusOK {
+		t.Fatalf("capture under review: %d %v", status, out)
+	}
+	if status, out := notify("buy-"+buy["id"].(string), "settlement", "990000.00"); status != http.StatusOK {
+		t.Fatalf("purchase settlement: %d %v", status, out)
+	}
+	want(http.StatusConflict, http.MethodPost, "/api/v1/billing/purchases", userToken, map[string]any{"plan_id": lifetime["id"]})
+	if status, out := notify("buy-"+buy["id"].(string), "refund", "990000.00"); status != http.StatusOK {
+		t.Fatalf("refund: %d %v", status, out)
+	}
+	if status, out := call(http.MethodGet, "/api/v1/billing", userToken, nil); status != http.StatusOK ||
+		out["data"].(map[string]any)["purchases"].([]any)[0].(map[string]any)["status"] != "refunded" {
+		t.Fatalf("overview after refund: %d %v", status, out)
+	}
+
+	// The super user sees billing, empty, and retired plans.
+	if status, out := call(http.MethodGet, "/api/v1/plans/all", superToken, nil); status != http.StatusOK || len(out["data"].([]any)) != 3 {
+		t.Fatalf("all plans: %d %v", status, out)
+	}
 }

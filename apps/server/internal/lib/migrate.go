@@ -3,6 +3,7 @@ package lib
 import (
 	"database/sql"
 	"fmt"
+	"io/fs"
 
 	"github.com/golang-migrate/migrate/v4"
 	migratepgx "github.com/golang-migrate/migrate/v4/database/pgx/v5"
@@ -16,12 +17,25 @@ import (
 // Closing the returned migrator also closes db, so callers must pass a
 // connection dedicated to migrations rather than the application pool.
 func NewMigrator(db *sql.DB) (*migrate.Migrate, error) {
-	src, err := iofs.New(migrations.FS, ".")
+	return newMigrator(db, migrations.FS, ".", "")
+}
+
+// NewEEMigrator is NewMigrator over the Enterprise Edition's migrations, which
+// keep their version in their own table. Run it after NewMigrator's, and roll
+// it back before.
+func NewEEMigrator(db *sql.DB) (*migrate.Migrate, error) {
+	return newMigrator(db, migrations.EE, "ee", "schema_migrations_ee")
+}
+
+// newMigrator reads the migrations in dir of fsys. An empty table keeps
+// golang-migrate's default, schema_migrations.
+func newMigrator(db *sql.DB, fsys fs.FS, dir, table string) (*migrate.Migrate, error) {
+	src, err := iofs.New(fsys, dir)
 	if err != nil {
 		return nil, fmt.Errorf("load embedded migrations: %w", err)
 	}
 
-	driver, err := migratepgx.WithInstance(db, &migratepgx.Config{})
+	driver, err := migratepgx.WithInstance(db, &migratepgx.Config{MigrationsTable: table})
 	if err != nil {
 		return nil, fmt.Errorf("build migration driver: %w", err)
 	}

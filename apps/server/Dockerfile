@@ -71,7 +71,8 @@ RUN --mount=type=cache,id=go-mod,target=/go/pkg/mod \
     CGO_ENABLED=0 GOOS=linux go build -trimpath \
     -ldflags="-s -w -X montara-pass/server/internal/app.Version=${APP_VERSION} -X montara-pass/server/internal/config.Edition=${EDITION}" \
     -o /build/out/api ./cmd/api \
- && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+ && CGO_ENABLED=0 GOOS=linux go build -trimpath \
+    -ldflags="-s -w -X montara-pass/server/internal/config.Edition=${EDITION}" \
     -o /build/out/migrate ./cmd/migrate
 
 # ====================================================================================
