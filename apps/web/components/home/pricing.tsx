@@ -1,18 +1,62 @@
 import { ArrowRightIcon } from "@/components/icons";
+import { APP_URL } from "@/components/links";
 import { Dim, Statement, Check, chip, card } from "@/components/shared";
 
-export function Pricing() {
+/** A plan of the hosted service (apps/server internal/models/billing.go). */
+type Plan = {
+  code: string;
+  name: string;
+  billing: "recurring" | "one_time";
+  billing_interval: "month" | "year" | null;
+  amount: number;
+  currency: string;
+};
+
+/**
+ * The plans the hosted service has on offer, read again at most every five
+ * minutes. None when it cannot be reached: the card then says Cloud is not
+ * for sale yet, as it did before there were plans.
+ */
+async function plansOnOffer(): Promise<Plan[]> {
+  try {
+    const res = await fetch(`${APP_URL}/api/v1/plans`, { next: { revalidate: 300 } });
+    if (!res.ok) return [];
+    const body = (await res.json()) as { data?: Plan[] };
+    return body.data ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** Its price, from the minor unit the API counts in: rupiah whole, others in cents. */
+function price(plan: Plan) {
+  const digits = plan.currency === "IDR" ? 0 : 2;
+  const amount = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currencyDisplay: "narrowSymbol",
+    currency: plan.currency,
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(plan.amount / 10 ** digits);
+  return { amount, per: plan.billing_interval ? `per ${plan.billing_interval}` : "once" };
+}
+
+export async function Pricing() {
+  const plans = await plansOnOffer();
+  const cloud = plans.length > 0;
+
   return (
     <section id="pricing" className="border-t border-line pb-20 sm:pb-28">
       <Statement
         title={
           <>
-            Free to run. <Dim>Hosted comes later.</Dim>
+            Free to run. <Dim>{cloud ? "Or let us host it." : "Hosted comes later."}</Dim>
           </>
         }
       >
-        Self-hosting costs you a server and nothing to us. A hosted plan is planned and not for sale
-        yet.
+        {cloud
+          ? "Self-hosting costs you a server and nothing to us. Cloud runs the server for you."
+          : "Self-hosting costs you a server and nothing to us. A hosted plan is planned and not for sale yet."}
       </Statement>
 
       <div className="mx-auto -mt-8 grid max-w-4xl gap-6 px-6 md:grid-cols-2">
@@ -40,44 +84,48 @@ export function Pricing() {
           </a>
         </article>
 
-        <article className={`${card} flex flex-col`}>
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="font-medium">Cloud</h3>
-            <span className={chip}>coming soon</span>
-          </div>
-          <p className="mt-5 flex items-baseline gap-2">
-            <span
-              aria-hidden="true"
-              className="font-heading text-5xl font-medium tracking-tight text-mist/75"
+        {plans.length > 0 ? (
+          <CloudPlans plans={plans} />
+        ) : (
+          <article className={`${card} flex flex-col`}>
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="font-medium">Cloud</h3>
+              <span className={chip}>coming soon</span>
+            </div>
+            <p className="mt-5 flex items-baseline gap-2">
+              <span
+                aria-hidden="true"
+                className="font-heading text-5xl font-medium tracking-tight text-mist/75"
+              >
+                $$
+              </span>
+              <span className="font-mono text-xs lowercase text-mist">not priced yet</span>
+            </p>
+            <ul className="mt-6 flex flex-1 flex-col gap-3">
+              <Check>The same encryption, done in your browser</Check>
+              <Check>We run the server and PostgreSQL</Check>
+              <Check>No Docker, no migrations</Check>
+              <li className="flex items-start gap-2.5 text-[15px] leading-6 text-accent-bright">
+                <span className="mx-[5px] mt-[9px] size-1.5 shrink-0 rounded-full bg-accent-bright" />
+                Self-hosted is available today
+              </li>
+            </ul>
+            <button
+              type="button"
+              disabled
+              className="btn mt-8 cursor-not-allowed border-line bg-line text-mist"
             >
-              $$
-            </span>
-            <span className="font-mono text-xs lowercase text-mist">not priced yet</span>
-          </p>
-          <ul className="mt-6 flex flex-1 flex-col gap-3">
-            <Check>The same encryption, done in your browser</Check>
-            <Check>We run the server and PostgreSQL</Check>
-            <Check>No Docker, no migrations</Check>
-            <li className="flex items-start gap-2.5 text-[15px] leading-6 text-accent-bright">
-              <span className="mx-[5px] mt-[9px] size-1.5 shrink-0 rounded-full bg-accent-bright" />
-              Self-hosted is available today
-            </li>
-          </ul>
-          <button
-            type="button"
-            disabled
-            className="btn mt-8 cursor-not-allowed border-line bg-line text-mist"
-          >
-            Not available yet
-          </button>
-        </article>
+              Not available yet
+            </button>
+          </article>
+        )}
       </div>
 
       <p className="mx-auto mt-10 max-w-xl text-balance px-6 text-center font-mono text-xs leading-5 text-mist">
         Self-hosting needs Docker, PostgreSQL 18, a domain and a Resend API key for sign-in emails.
       </p>
       <p className="mt-3 px-6 text-center text-sm text-mist">
-        Want to know when Cloud opens?{" "}
+        {cloud ? "Need a business plan?" : "Want to know when Cloud opens?"}{" "}
         <a
           href="/contact"
           className="cursor-pointer font-medium text-fg underline-offset-4 hover:underline"
@@ -86,5 +134,48 @@ export function Pricing() {
         </a>
       </p>
     </section>
+  );
+}
+
+/** The hosted service once it has plans: each one leads to billing in the web app. */
+function CloudPlans({ plans }: { plans: Plan[] }) {
+  return (
+    <article className={`${card} flex flex-col`}>
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="font-medium">Cloud</h3>
+        <span className={`${chip} inline-flex items-center gap-1.5`}>
+          <span className="size-1.5 rounded-full bg-accent-bright" />
+          available now
+        </span>
+      </div>
+      <ul className="mt-5 flex flex-1 flex-col divide-y divide-line">
+        {plans.map((plan) => {
+          const { amount, per } = price(plan);
+          return (
+            <li key={plan.code} className="flex items-center justify-between gap-4 py-3 first:pt-0">
+              <div className="flex min-w-0 flex-col">
+                <span className="font-medium">{plan.name}</span>
+                <span className="flex items-baseline gap-2">
+                  <span className="font-heading text-2xl font-medium tracking-tight">{amount}</span>
+                  <span className="font-mono text-xs lowercase text-mist">{per}</span>
+                </span>
+              </div>
+              <a
+                href={`${APP_URL}/billing?plan=${encodeURIComponent(plan.code)}`}
+                className="btn btn-primary shrink-0"
+              >
+                {plan.billing === "recurring" ? "Subscribe" : "Buy"}
+                <ArrowRightIcon className="size-4" />
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+      <ul className="mt-6 flex flex-col gap-3">
+        <Check>The same encryption, done in your browser</Check>
+        <Check>We run the server and PostgreSQL</Check>
+        <Check>Paid through Midtrans</Check>
+      </ul>
+    </article>
   );
 }
