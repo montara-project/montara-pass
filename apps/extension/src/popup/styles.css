@@ -413,15 +413,83 @@ a.icon-button {
   text-wrap: balance;
 }
 
+/* Who, with what access, and the button that says so: one row. */
 .share-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 140px;
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) 140px auto;
+  gap: 12px;
+  /* By the top, so an error under a field does not move the button. */
+  align-items: start;
+}
+
+/* Level with the fields, which have a label over them. */
+.share-submit {
+  margin-top: 26px;
+}
+
+/* The popup has no room for three: the address gets a row to itself. */
+.vault-sub .share-grid {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.vault-sub .share-grid > .form-field:first-child {
+  grid-column: 1 / -1;
+}
+
+/* A part of the view: further from the form above it than its own heading
+   is from the list. */
+.share-people {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.share-people h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* Rows in one card, a line between them, as an item's own values are. */
+.share-members {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.share-members li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px 10px 14px;
+}
+
+.share-members li + li {
+  border-top: 1px solid var(--border);
+}
+
+.share-members .avatar {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+}
+
+/* Under the card, in line with what the card holds. */
+.share-people .meta {
+  padding-left: 4px;
 }
 
 .role {
+  flex-shrink: 0;
+  font-size: 13px;
   text-transform: capitalize;
-  padding-right: 8px;
 }
 
 .section-title {
