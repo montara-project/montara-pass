@@ -5,6 +5,7 @@ import PasswordField from '@/components/block/form/password-field'
 import RichTextField from '@/components/block/form/rich-text-field'
 import SelectField from '@/components/block/form/select-field'
 import SubmitButton from '@/components/block/form/submit'
+import SwitchField from '@/components/block/form/switch-field'
 import TextField from '@/components/block/form/text-field'
 import TextareaField from '@/components/block/form/textarea-field'
 
@@ -18,6 +19,7 @@ export const { useAppForm } = createFormHook({
     SelectField,
     TextareaField,
     RichTextField,
+    SwitchField,
   },
   formComponents: {
     SubmitButton,

@@ -346,7 +346,9 @@ export default function ItemDetail({ item, folders, onClose }: ItemDetailProps) 
 
           {(secret.notes || !isLogin) && (
             // A note is read, not acted on: the row does not light up.
-            <div className="relative px-4 py-3">
+            // Hidden, the row is tall enough for what it says about itself, however
+            // short the note.
+            <div className={cn('relative px-4 py-3', noteHidden && 'min-h-[156px]')}>
               <dt className="text-muted-foreground mb-2 text-xs font-medium">Notes</dt>
               {/* Out of reach while blurred: not selectable, not read aloud. Only
                   the top of the note is there: its length would say something too. */}

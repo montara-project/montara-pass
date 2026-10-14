@@ -62,6 +62,11 @@ export const ItemFormSchema = z.object({
 
 export type ItemFormDto = z.infer<typeof ItemFormSchema>
 
+/** The item form, with the switch that keeps a secure note blurred until shown. */
+export const ItemEditFormSchema = ItemFormSchema.extend({ visible: z.boolean() })
+
+export type ItemEditFormDto = z.infer<typeof ItemEditFormSchema>
+
 export const ShareFormSchema = z.object({
   email: requiredString('email').email('email must be a valid email address'),
   role: requiredEnum(SHARE_ROLES, 'role'),

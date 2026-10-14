@@ -43,10 +43,9 @@ export const AddLoginFormSchema = ItemFormSchema.pick({
 
 export type AddLoginFormDto = z.infer<typeof AddLoginFormSchema>
 
-/** The item form, with the switch that keeps a secure note blurred until shown. */
-export const ItemEditFormSchema = ItemFormSchema.extend({ visible: z.boolean() })
-
-export type ItemEditFormDto = z.infer<typeof ItemEditFormSchema>
+// The item form with its Visible switch is the web app's own, as the other
+// shared schemas are.
+export { ItemEditFormSchema, type ItemEditFormDto } from '@/lib/api/dtos/vault/schema'
 
 /** The save prompt: the password is the page's, only the username can be put right. */
 export const SaveLoginFormSchema = z.object({
