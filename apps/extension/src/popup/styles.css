@@ -7,6 +7,8 @@
   --panel: #ffffff;
   --card: #f1f5fd;
   --border: #d3dcef;
+  /* The edge of something to type in: 3:1 against every surface it sits on. */
+  --field-border: #7483a8;
   --fg: #101d3a;
   --muted: #51607f;
   --field: #ffffff;
@@ -30,6 +32,7 @@
     --panel: #101d3a;
     --card: #1a2b52;
     --border: #2b3d68;
+    --field-border: #667aab;
     --fg: #ffffff;
     --muted: #a9b6d3;
     --field: #0b152c;
@@ -142,7 +145,7 @@ p {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--primary-fg);
   transition: translate 0.15s;
 }
 
@@ -194,7 +197,7 @@ input {
   min-width: 0;
   height: 40px;
   padding: 0 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--field-border);
   border-radius: 10px;
   background: var(--field);
   color: var(--fg);
@@ -358,7 +361,7 @@ a.icon-button {
   margin: 0 12px 12px;
   padding: 0 12px;
   height: 40px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--field-border);
   border-radius: 10px;
   background: var(--field);
   color: var(--muted);
@@ -841,7 +844,7 @@ a.icon-button {
   gap: 4px;
   min-height: 58px;
   padding: 0 8px 0 14px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--field-border);
   border-radius: 12px;
   background: var(--card);
   transition:
@@ -957,7 +960,8 @@ a.icon-button {
 }
 
 /* The way out of the screen, kept quieter than the way through it. */
-button.auth-link {
+button.auth-link,
+a.auth-link {
   height: auto;
   padding: 4px 6px;
   background: none;
@@ -969,9 +973,19 @@ button.auth-link {
   text-underline-offset: 3px;
 }
 
-button.auth-link:hover {
+button.auth-link:hover,
+a.auth-link:hover {
   color: var(--fg);
   text-decoration-color: currentColor;
+}
+
+/* A way in rather than out, and part of a sentence: it reads as the answer
+   to the question before it. */
+a.auth-link {
+  padding: 4px 2px;
+  color: var(--fg);
+  font-weight: 600;
+  text-decoration-color: var(--muted);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1802,7 +1816,7 @@ button.secondary:hover {
 textarea {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--field-border);
   border-radius: 10px;
   background: var(--field);
   color: var(--fg);
@@ -1813,7 +1827,7 @@ textarea {
 
 /* The rich text editor of a secure note: a toolbar over the text. */
 .notes-editor {
-  border: 1px solid var(--border);
+  border: 1px solid var(--field-border);
   border-radius: 10px;
   background: var(--field);
 }
@@ -2035,7 +2049,7 @@ select {
   height: 40px;
   /* Same inset as an input; the right side leaves room for the chevron. */
   padding: 0 36px 0 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--field-border);
   border-radius: 10px;
   background: var(--field);
   color: var(--fg);

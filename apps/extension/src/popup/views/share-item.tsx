@@ -8,7 +8,7 @@ import { SHARE_ROLES } from '@/lib/constants/vault'
 import { wrapItemKeyFor, type VaultKeys } from '@/lib/crypto/vault'
 
 import { ApiError, getPublicKey, listItemMembers, shareItem, SignedOutError } from '../../lib/api'
-import { checked, useAppForm } from '../form'
+import { checked, submit, useAppForm } from '../form'
 import { ItemTile } from '../item-tile'
 
 interface ShareItemProps {
@@ -97,7 +97,7 @@ export default function ShareItem({ keys, item, onDone, onSignedOut, onNotice }:
       noValidate
       onSubmit={(e) => {
         e.preventDefault()
-        void form.handleSubmit()
+        void submit(e.currentTarget, form)
       }}
     >
       <header className="detail-head">

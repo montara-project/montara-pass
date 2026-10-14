@@ -30,7 +30,7 @@ import {
 import { fillsSite, hostOf, matchesSite, originOf } from '../lib/site'
 import { getSettings, getTokens } from '../lib/storage'
 import { lastUsedLabel } from '../lib/usage'
-import { checked, useAppForm } from '../popup/form'
+import { checked, submit, useAppForm } from '../popup/form'
 import { CloseIcon, ExpandIcon, KeyIcon, RefreshIcon } from '../popup/icons'
 import { ItemTile } from '../popup/item-tile'
 import { openFullScreen } from '../popup/layout'
@@ -394,7 +394,7 @@ function SaveLogin({
       noValidate
       onSubmit={(e) => {
         e.preventDefault()
-        if (meant(e.nativeEvent)) void form.handleSubmit()
+        if (meant(e.nativeEvent)) void submit(e.currentTarget, form)
       }}
     >
       <p>
@@ -713,6 +713,8 @@ function Inline() {
   const [page, setPage] = useState<Page | null>(null)
   // undefined while the session is being read.
   const [keys, setKeys] = useState<VaultKeys | null | undefined>(undefined)
+  // Without keys there is either a vault to unlock or nobody signed in.
+  const [signedIn, setSignedIn] = useState(true)
 
   // undefined while the settings are being read.
   const [suggesting, setSuggesting] = useState<boolean | undefined>(NEW ? undefined : false)
@@ -785,6 +787,10 @@ function Inline() {
     )
   }, [page, keys])
 
+  useEffect(() => {
+    if (keys === null) void getTokens().then((tokens) => setSignedIn(!!tokens))
+  }, [keys])
+
   const unlock = async () => {
     try {
       await chrome.action.openPopup()
@@ -852,8 +858,10 @@ function Inline() {
         <Logins page={page} keys={keys} suggesting={suggesting} onLocked={() => setKeys(null)} />
       ) : (
         <div className="inline-note stack">
-          <p className="muted">Montara Pass is locked.</p>
-          <button onClick={() => void unlock()}>Unlock</button>
+          <p className="muted">
+            {signedIn ? 'Montara Pass is locked.' : 'Sign in to Montara Pass to fill logins here.'}
+          </p>
+          <button onClick={() => void unlock()}>{signedIn ? 'Unlock' : 'Sign in'}</button>
         </div>
       )}
     </div>
