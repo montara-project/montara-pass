@@ -25,6 +25,7 @@ import {
   SettingsIcon,
   ShareIcon,
   ShieldIcon,
+  SidebarIcon,
   SortIcon,
   StarIcon,
 } from '../icons'
@@ -53,6 +54,9 @@ type Pane =
   | { mode: 'new' }
   | { mode: 'edit'; id: string }
   | { mode: 'share'; id: string }
+
+/** Where the folded sidebar is remembered, in this browser. */
+const SIDE_KEY = 'side'
 
 const FILTERS: { value: Filter; label: string; icon: typeof GridIcon }[] = [
   { value: 'all', label: 'All items', icon: GridIcon },
@@ -96,6 +100,7 @@ export default function FullVault({
   const [notice, setNotice] = useState('')
   const [refreshing, setRefreshing] = useState(false)
   const [appUrl, setAppUrl] = useState('')
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDE_KEY) === 'collapsed')
   const folders = useFolders(keys)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -164,6 +169,13 @@ export default function FullVault({
   // On a narrow window the pane covers the list, so it needs to know when it is in use.
   const paneOpen = pane.mode !== 'view' || selected !== null
 
+  const toggleSide = () => {
+    setCollapsed((was) => {
+      localStorage.setItem(SIDE_KEY, was ? '' : 'collapsed')
+      return !was
+    })
+  }
+
   const refresh = async () => {
     setRefreshing(true)
     await load()
@@ -180,11 +192,23 @@ export default function FullVault({
   }
 
   return (
-    <div className={paneOpen ? 'full pane-open' : 'full'}>
+    <div
+      className={['full', paneOpen && 'pane-open', collapsed && 'side-collapsed']
+        .filter(Boolean)
+        .join(' ')}
+    >
       <nav className="side" aria-label="Vault">
         <div className="brand">
           <img src="/icons/128.png" alt="" width={36} height={36} />
           <strong>Montara Pass</strong>
+          <button
+            className="icon-button side-toggle"
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            onClick={toggleSide}
+          >
+            <SidebarIcon />
+          </button>
         </div>
 
         <ul className="side-list">
@@ -192,6 +216,7 @@ export default function FullVault({
             <li key={value}>
               <button
                 className="side-item"
+                title={collapsed ? label : undefined}
                 aria-current={!tool && filter === value ? 'true' : undefined}
                 onClick={() => {
                   setFilter(value)
@@ -212,6 +237,7 @@ export default function FullVault({
           <li>
             <button
               className="side-item"
+              title={collapsed ? 'Password generator' : undefined}
               aria-current={tool === 'generator' ? 'true' : undefined}
               onClick={() => setTool('generator')}
             >
@@ -222,6 +248,7 @@ export default function FullVault({
           <li>
             <button
               className="side-item"
+              title={collapsed ? 'Password health' : undefined}
               aria-current={tool === 'health' ? 'true' : undefined}
               onClick={() => setTool('health')}
             >
@@ -232,7 +259,13 @@ export default function FullVault({
           {appUrl && (
             <li>
               {/* Folders, the trash and who else has an item live in the web app. */}
-              <a className="side-item" href={appUrl} target="_blank" rel="noreferrer">
+              <a
+                className="side-item"
+                title={collapsed ? 'Open web app' : undefined}
+                href={appUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
                 <ExternalLinkIcon />
                 <span>Open web app</span>
               </a>
