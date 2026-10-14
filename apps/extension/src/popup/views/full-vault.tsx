@@ -3,6 +3,8 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import type { VaultKeys } from '@/lib/crypto/vault'
 import type { VaultItem } from '@/types/vault'
 
+import { COMMUNITY } from '@/lib/constants/edition'
+
 import { setItemPlacement, SignedOutError, trashItem } from '../../lib/api'
 import { linkOf } from '../../lib/site'
 import { getSettings } from '../../lib/storage'
@@ -595,17 +597,19 @@ function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: Item
             </button>
             {menuOpen && (
               <div className="menu" role="menu">
-                <button
-                  role="menuitem"
-                  className="menu-item"
-                  onClick={() => {
-                    setMenuOpen(false)
-                    onShare()
-                  }}
-                >
-                  <ShareIcon />
-                  Share
-                </button>
+                {!COMMUNITY && (
+                  <button
+                    role="menuitem"
+                    className="menu-item"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      onShare()
+                    }}
+                  >
+                    <ShareIcon />
+                    Share
+                  </button>
+                )}
                 <button
                   role="menuitem"
                   className="menu-item menu-danger"

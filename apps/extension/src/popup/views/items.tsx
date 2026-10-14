@@ -10,6 +10,8 @@ import {
 import type { VaultKeys } from '@/lib/crypto/vault'
 import type { VaultItem } from '@/types/vault'
 
+import { COMMUNITY } from '@/lib/constants/edition'
+
 import { markItemUsed, setItemPlacement, SignedOutError, trashItem } from '../../lib/api'
 import { fillLogin } from '../../lib/autofill'
 import { fillsSite, hostOf, linkOf } from '../../lib/site'
@@ -610,17 +612,19 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
               {/* Only the owner hands an item on, or throws it away. */}
               {menuItem.role === 'owner' && (
                 <>
-                  <button
-                    role="menuitem"
-                    className="menu-item"
-                    onClick={() => {
-                      setRowMenu(null)
-                      setSub({ mode: 'share', id: menuItem.id })
-                    }}
-                  >
-                    <ShareIcon />
-                    Share
-                  </button>
+                  {!COMMUNITY && (
+                    <button
+                      role="menuitem"
+                      className="menu-item"
+                      onClick={() => {
+                        setRowMenu(null)
+                        setSub({ mode: 'share', id: menuItem.id })
+                      }}
+                    >
+                      <ShareIcon />
+                      Share
+                    </button>
+                  )}
                   <hr className="menu-rule" />
                   <button
                     role="menuitem"

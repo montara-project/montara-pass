@@ -8,6 +8,7 @@
     "build": "pnpm run build:chrome && pnpm run build:firefox",
     "build:chrome": "TARGET=chrome vite build",
     "build:firefox": "TARGET=firefox vite build",
+    "build:ce": "VITE_EDITION=ce pnpm run build",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

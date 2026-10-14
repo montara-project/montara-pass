@@ -9,6 +9,12 @@ type Target = 'chrome' | 'firefox'
 
 const ALL_SITES = ['http://*/*', 'https://*/*']
 
+// VITE_EDITION=ce builds the Community Edition (no sign-up, no sharing; see
+// app/src/lib/constants/edition.ts) into its own folder, under its own name
+// and add-on id, so it installs next to the Enterprise Edition.
+const COMMUNITY = process.env.VITE_EDITION === 'ce'
+const NAME = COMMUNITY ? 'Montara Pass CE' : 'Montara Pass'
+
 /**
  * The manifest, which is where the two browsers differ: Chrome runs the
  * background script as a service worker, Firefox as an event page, and
@@ -17,12 +23,12 @@ const ALL_SITES = ['http://*/*', 'https://*/*']
 function manifest(target: Target) {
   return {
     manifest_version: 3,
-    name: 'Montara Pass',
+    name: NAME,
     version: pkg.version,
     description: 'Fill and save logins from your end-to-end encrypted Montara Pass vault.',
     icons: { 16: 'icons/16.png', 32: 'icons/32.png', 48: 'icons/48.png', 128: 'icons/128.png' },
     action: {
-      default_title: 'Montara Pass',
+      default_title: NAME,
       default_popup: 'popup.html',
       default_icon: { 16: 'icons/16.png', 32: 'icons/32.png' },
     },
@@ -52,7 +58,7 @@ function manifest(target: Target) {
       ? {
           browser_specific_settings: {
             gecko: {
-              id: 'montara-pass@montarapass.com',
+              id: COMMUNITY ? 'montara-pass-ce@montarapass.com' : 'montara-pass@montarapass.com',
               // The first releases that read data_collection_permissions:
               // 140 on desktop, 142 on Android.
               strict_min_version: '140.0',
@@ -141,6 +147,8 @@ function dropFlaggedCode(): Plugin {
   }
 }
 
+const outDir = (target: Target) => `dist/${target}${COMMUNITY ? '-ce' : ''}`
+
 function emitManifest(target: Target): Plugin {
   return {
     name: 'montara-pass-manifest',
@@ -154,7 +162,7 @@ function emitManifest(target: Target): Plugin {
     // Finder leaves one in public/, Vite copies it, and the add-on linter
     // flags it.
     closeBundle() {
-      fs.rmSync(path.resolve(import.meta.dirname, `dist/${target}/.DS_Store`), { force: true })
+      fs.rmSync(path.resolve(import.meta.dirname, `${outDir(target)}/.DS_Store`), { force: true })
     },
   }
 }
@@ -183,7 +191,7 @@ export default defineConfig(({ mode }) => {
       ),
     },
     build: {
-      outDir: `dist/${target}`,
+      outDir: outDir(target),
       emptyOutDir: true,
       rollupOptions: {
         input: {
