@@ -1,9 +1,17 @@
-import { IconChevronLeft, IconChevronRight, IconPlus, IconStarFilled } from '@tabler/icons-react'
+import {
+  IconChevronLeft,
+  IconChevronRight,
+  IconFilterOff,
+  IconLock,
+  IconPlus,
+  IconStarFilled,
+} from '@tabler/icons-react'
 import { parseAsInteger, useQueryState } from 'nuqs'
 import { useMemo, useState } from 'react'
 
 import type { VaultFolder, VaultItem } from '@/types/vault'
 
+import EmptyState from '@/components/block/common/empty-state'
 import SelectInput from '@/components/block/common/select-input'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -151,12 +159,17 @@ export default function Vault() {
                 </Button>
               </div>
             ) : items.length === 0 ? (
-              // Nothing to list: said in the middle of where the list would be.
-              <p className="text-muted-foreground px-6 py-14 text-center text-balance">
-                {filtered
-                  ? 'No items match these filters.'
-                  : 'Your vault is empty. Add your first login or secure note.'}
-              </p>
+              // The list has its own edge, so what stands in for it has none.
+              <EmptyState
+                framed={false}
+                icon={filtered ? IconFilterOff : IconLock}
+                title={filtered ? 'No items match these filters' : 'Your vault is empty'}
+                description={
+                  filtered
+                    ? 'Change the folder or the type above to see more.'
+                    : 'Add your first login or secure note with New item.'
+                }
+              />
             ) : (
               <ul className="fade-in m-0 list-none p-0">
                 {items.map((item) => (

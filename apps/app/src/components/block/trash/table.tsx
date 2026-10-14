@@ -1,3 +1,4 @@
+import { IconTrash } from '@tabler/icons-react'
 import { useEffect, useMemo } from 'react'
 
 import EmptyState from '@/components/block/common/empty-state'
@@ -34,7 +35,11 @@ export default function TrashTable() {
       {isLoading ? (
         <RowsSkeleton />
       ) : !loading && items.length === 0 ? (
-        <EmptyState title="The trash is empty" />
+        <EmptyState
+          icon={IconTrash}
+          title="The trash is empty"
+          description="An item you move to the trash from the vault waits here, where you can restore it or delete it for good."
+        />
       ) : (
         <ReactTable
           columns={columns}

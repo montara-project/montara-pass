@@ -445,8 +445,10 @@ Calm and certain: one is filled, the rest stand back.
   the row; the selected row in the full tab takes the card tone.
 - **Row actions:** two icon buttons that fade in (120ms) on hover or focus
   and are always shown where nothing hovers.
-- **Empty:** one balanced, muted sentence in the middle of where the list
-  would be.
+- **Empty:** said where the list would be, in the list's own shape: an
+  outline as tall as a few rows (min 320px), holding the page's line icon in
+  a 48px tile, a 15px title and one muted sentence on what will be here or
+  how to put the first one here. No button: the page's own does that.
 
 ### Navigation
 

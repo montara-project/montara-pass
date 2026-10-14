@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 
 import type { VaultItem } from '@/types/vault'
 
+import EmptyState from '@/components/block/common/empty-state'
 import { EditItemForm } from '@/components/block/vault/form'
 import ItemTile from '@/components/block/vault/item-tile'
 import ToolHead from '@/components/layout/tool-head'
@@ -120,15 +121,19 @@ export default function PasswordHealth() {
           </dl>
 
           {health.checked === 0 && (
-            <p className="text-muted-foreground">
-              No login in the vault has a password to check yet.
-            </p>
+            <EmptyState
+              icon={IconShieldCheck}
+              title="Nothing to check yet"
+              description="No login in the vault has a password. Add one, and its strength shows here."
+            />
           )}
 
           {health.checked > 0 && reusedCount === 0 && health.weak.length === 0 && (
-            <p className="text-muted-foreground">
-              Nothing to fix: every login has its own password, and none is short or simple.
-            </p>
+            <EmptyState
+              icon={IconShieldCheck}
+              title="Nothing to fix"
+              description="Every login has its own password, and none is short or simple."
+            />
           )}
 
           {/* Side by side where there is room for two lists; one alone has the

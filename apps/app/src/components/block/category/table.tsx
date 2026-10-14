@@ -1,4 +1,4 @@
-import { IconPlus, IconSearch } from '@tabler/icons-react'
+import { IconCategory, IconPlus, IconSearch } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useEffect, useMemo, useState } from 'react'
@@ -72,6 +72,7 @@ export default function CategoryTable() {
         <RowsSkeleton />
       ) : !loading && categories.length === 0 ? (
         <EmptyState
+          icon={IconCategory}
           title="No categories found"
           description="Adjust the search, or add the first category."
         />

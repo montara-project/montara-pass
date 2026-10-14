@@ -1,4 +1,4 @@
-import { IconPlus } from '@tabler/icons-react'
+import { IconFolders, IconPlus } from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
 
 import EmptyState from '@/components/block/common/empty-state'
@@ -40,6 +40,7 @@ export default function FolderTable() {
         <RowsSkeleton />
       ) : !loading && folders.length === 0 ? (
         <EmptyState
+          icon={IconFolders}
           title="No folders yet"
           description="Create a folder to group the items in your vault."
         />
