@@ -11,6 +11,7 @@ import (
 
 	"montara-pass/server/internal/app"
 	"montara-pass/server/internal/config"
+	"montara-pass/server/internal/emails"
 	"montara-pass/server/internal/lib/midtrans"
 	"montara-pass/server/internal/repositories"
 	"montara-pass/server/internal/seeders"
@@ -63,6 +64,11 @@ func run() error {
 
 	repos := repositories.New(db)
 	mirror := mirrorUser(&repos.User)
+
+	// Authula reads its email templates when it is built.
+	if err := emails.Install(); err != nil {
+		return fmt.Errorf("install email templates: %w", err)
+	}
 
 	// Creating the instance runs Authula's own migrations.
 	auth := newAuth(cfg, mirror, logger)
