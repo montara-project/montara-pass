@@ -49,6 +49,29 @@ func (dto PlanBody) Validate(v *validator.MapValidator) {
 	v.Field("billing_interval").Regex(planIntervalPattern)
 }
 
+// BillingListQuery pages the super user's lists of subscriptions and
+// purchases. Search matches the customer's name or email and the plan's name
+// or code; status is one of the listed resource's statuses.
+type BillingListQuery struct {
+	Offset int    `query:"offset"`
+	Limit  int    `query:"limit"`
+	Search string `query:"search"`
+	Sorted string `query:"sorted"`
+	Status string `query:"status"`
+}
+
+func (dto BillingListQuery) Validate(v *validator.MapValidator) {
+	ListQuery{}.base(v)
+	v.Field("status").Regex(`^(pending|active|canceled|expired|paid|failed|refunded)$`)
+}
+
+// Clamp applies the shared pagination bounds.
+func (dto *BillingListQuery) Clamp() {
+	q := ListQuery{Offset: dto.Offset, Limit: dto.Limit}
+	q.Clamp()
+	dto.Offset, dto.Limit = q.Offset, q.Limit
+}
+
 // CheckoutBody names the plan to subscribe to or buy.
 type CheckoutBody struct {
 	PlanID uuid.UUID `json:"plan_id"`

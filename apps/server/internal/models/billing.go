@@ -43,6 +43,13 @@ type Plan struct {
 	Active          bool    `db:"active" json:"active"`
 }
 
+// Customer is who a subscription or purchase belongs to. Only the super
+// user's lists carry it.
+type Customer struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
 type Subscription struct {
 	Base
 	UserID             uuid.UUID  `db:"user_id" json:"user_id"`
@@ -54,8 +61,9 @@ type Subscription struct {
 	Amount             int64      `db:"amount" json:"amount"`
 	Currency           string     `db:"currency" json:"currency"`
 	// Only while pending: where the user finishes paying.
-	CheckoutURL *string `db:"checkout_url" json:"checkout_url"`
-	Plan        Plan    `json:"plan"`
+	CheckoutURL *string   `db:"checkout_url" json:"checkout_url"`
+	Plan        Plan      `json:"plan"`
+	User        *Customer `json:"user,omitempty"`
 }
 
 type Purchase struct {
@@ -68,4 +76,5 @@ type Purchase struct {
 	PaidAt      *time.Time `db:"paid_at" json:"paid_at"`
 	CheckoutURL *string    `db:"checkout_url" json:"checkout_url"`
 	Plan        Plan       `json:"plan"`
+	User        *Customer  `json:"user,omitempty"`
 }

@@ -84,12 +84,75 @@ const subscriptionColumns = `
 	s.current_period_start, s.current_period_end, s.canceled_at,
 	s.amount, s.currency, s.checkout_url, ` + planColumns
 
+func subscriptionDest(s *models.Subscription) []any {
+	return append([]any{&s.ID, &s.CreatedAt, &s.UpdatedAt, &s.UserID, &s.PlanID, &s.Status,
+		&s.CurrentPeriodStart, &s.CurrentPeriodEnd, &s.CanceledAt,
+		&s.Amount, &s.Currency, &s.CheckoutURL}, planDest(&s.Plan)...)
+}
+
 func scanSubscription(row rowScanner) (models.Subscription, error) {
 	var s models.Subscription
-	err := row.Scan(append([]any{&s.ID, &s.CreatedAt, &s.UpdatedAt, &s.UserID, &s.PlanID, &s.Status,
-		&s.CurrentPeriodStart, &s.CurrentPeriodEnd, &s.CanceledAt,
-		&s.Amount, &s.Currency, &s.CheckoutURL}, planDest(&s.Plan)...)...)
+	err := row.Scan(subscriptionDest(&s)...)
 	return s, translateNotFound("subscriptions", err)
+}
+
+// The super user's lists: every customer's rows, with who they belong to.
+const (
+	subscriptionsWithUser = `subscriptions s JOIN plans p ON p.id = s.plan_id JOIN users u ON u.id = s.user_id`
+	purchasesWithUser     = `purchases b JOIN plans p ON p.id = b.plan_id JOIN users u ON u.id = b.user_id`
+)
+
+var (
+	subscriptionSortColumns = map[string]string{"created_at": "s.created_at", "amount": "s.amount", "current_period_end": "s.current_period_end"}
+	purchaseSortColumns     = map[string]string{"created_at": "b.created_at", "amount": "b.amount", "paid_at": "b.paid_at"}
+)
+
+// customerFilters narrows a super user's list by status (of the row aliased
+// alias) and by a search over the customer and the plan.
+func customerFilters(alias string, p ListParams, status string) *whereBuilder {
+	w := newWhere(`TRUE`)
+	if status != "" {
+		w.add(alias+".status = $%d", status)
+	}
+	w.search(p.Search, "u.email", "u.name", "p.name", "p.code")
+	return w
+}
+
+func scanSubscriptionWithUser(row rowScanner) (models.Subscription, error) {
+	var s models.Subscription
+	s.User = &models.Customer{}
+	err := row.Scan(append(subscriptionDest(&s), &s.User.Name, &s.User.Email)...)
+	return s, err
+}
+
+// ListSubscriptions returns one page of every customer's subscriptions,
+// newest first unless p.Sorted says otherwise.
+func (r *BillingRepository) ListSubscriptions(ctx context.Context, p ListParams, status string) ([]models.Subscription, error) {
+	where, args, limit, offset := customerFilters("s", p, status).page(p)
+	query := fmt.Sprintf(`
+		SELECT %s, u.name, u.email FROM %s
+		WHERE %s ORDER BY %s LIMIT $%d OFFSET $%d`,
+		subscriptionColumns, subscriptionsWithUser, where,
+		resolveOrder(p.Sorted, subscriptionSortColumns, "s.created_at DESC"), limit, offset)
+	rows, err := r.queryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	return collectRows(rows, scanSubscriptionWithUser)
+}
+
+// CountSubscriptions counts what ListSubscriptions pages through.
+func (r *BillingRepository) CountSubscriptions(ctx context.Context, p ListParams, status string) (int64, error) {
+	return r.countRows(ctx, subscriptionsWithUser, customerFilters("s", p, status))
+}
+
+// ExpireAllEnded is ExpireEnded for every user, so the super user's list
+// shows what has ended.
+func (r *BillingRepository) ExpireAllEnded(ctx context.Context) error {
+	_, err := r.execContext(ctx, `
+		UPDATE subscriptions SET status = 'expired', updated_at = now()
+		WHERE status = 'active' AND current_period_end <= now()`)
+	return err
 }
 
 // ExpireEnded marks a user's active subscription whose period is over as
@@ -190,11 +253,43 @@ const purchaseColumns = `
 	b.id, b.created_at, b.updated_at, b.user_id, b.plan_id, b.status,
 	b.amount, b.currency, b.paid_at, b.checkout_url, ` + planColumns
 
+func purchaseDest(b *models.Purchase) []any {
+	return append([]any{&b.ID, &b.CreatedAt, &b.UpdatedAt, &b.UserID, &b.PlanID, &b.Status,
+		&b.Amount, &b.Currency, &b.PaidAt, &b.CheckoutURL}, planDest(&b.Plan)...)
+}
+
 func scanPurchase(row rowScanner) (models.Purchase, error) {
 	var b models.Purchase
-	err := row.Scan(append([]any{&b.ID, &b.CreatedAt, &b.UpdatedAt, &b.UserID, &b.PlanID, &b.Status,
-		&b.Amount, &b.Currency, &b.PaidAt, &b.CheckoutURL}, planDest(&b.Plan)...)...)
+	err := row.Scan(purchaseDest(&b)...)
 	return b, translateNotFound("purchases", err)
+}
+
+func scanPurchaseWithUser(row rowScanner) (models.Purchase, error) {
+	var b models.Purchase
+	b.User = &models.Customer{}
+	err := row.Scan(append(purchaseDest(&b), &b.User.Name, &b.User.Email)...)
+	return b, err
+}
+
+// ListAllPurchases returns one page of every customer's purchases, newest
+// first unless p.Sorted says otherwise.
+func (r *BillingRepository) ListAllPurchases(ctx context.Context, p ListParams, status string) ([]models.Purchase, error) {
+	where, args, limit, offset := customerFilters("b", p, status).page(p)
+	query := fmt.Sprintf(`
+		SELECT %s, u.name, u.email FROM %s
+		WHERE %s ORDER BY %s LIMIT $%d OFFSET $%d`,
+		purchaseColumns, purchasesWithUser, where,
+		resolveOrder(p.Sorted, purchaseSortColumns, "b.created_at DESC"), limit, offset)
+	rows, err := r.queryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	return collectRows(rows, scanPurchaseWithUser)
+}
+
+// CountAllPurchases counts what ListAllPurchases pages through.
+func (r *BillingRepository) CountAllPurchases(ctx context.Context, p ListParams, status string) (int64, error) {
+	return r.countRows(ctx, purchasesWithUser, customerFilters("b", p, status))
 }
 
 // ListPurchases returns a user's purchases, newest first.

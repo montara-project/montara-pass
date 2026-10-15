@@ -110,7 +110,7 @@ func routes(r *fiber.App, app *app.Application) {
 	}
 
 	// Billing, Enterprise Edition only. The plans are public, for the
-	// website; a super user manages them. Subscribing and buying need a
+	// website; a super user manages them and sees what customers bought. Subscribing and buying need a
 	// signed-in user account; Midtrans reports the payment's outcome.
 	if !config.Community() {
 		plans := v1.Group("/plans")
@@ -118,6 +118,10 @@ func routes(r *fiber.App, app *app.Application) {
 		plans.Get("/all", m.Authorization, m.SuperUser, h.Billing.ListAllPlans)
 		plans.Post("/", m.Authorization, m.SuperUser, once, h.Billing.CreatePlan)
 		plans.Put("/:id", m.Authorization, m.SuperUser, once, h.Billing.UpdatePlan)
+
+		// Every customer's subscriptions and purchases, for a super user.
+		v1.Get("/subscriptions", m.Authorization, m.SuperUser, h.Billing.ListSubscriptions)
+		v1.Get("/purchases", m.Authorization, m.SuperUser, h.Billing.ListPurchases)
 
 		billing := v1.Group("/billing")
 		billing.Get("/", m.Authorization, h.Billing.Overview)

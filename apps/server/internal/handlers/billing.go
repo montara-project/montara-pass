@@ -112,6 +112,55 @@ func (h *billingHandler) UpdatePlan(c fiber.Ctx) error {
 	return dtos.OK(c, plan)
 }
 
+// billingListParams validates and clamps the super user's list query.
+func billingListParams(c fiber.Ctx) (repositories.ListParams, dtos.BillingListQuery, error) {
+	var q dtos.BillingListQuery
+	if err := lib.ValidateRequestQuery(c, &q); err != nil {
+		return repositories.ListParams{}, q, err
+	}
+	q.Clamp()
+	return repositories.ListParams{Offset: q.Offset, Limit: q.Limit, Search: q.Search, Sorted: q.Sorted}, q, nil
+}
+
+// ListSubscriptions answers every customer's subscriptions, for a super user.
+func (h *billingHandler) ListSubscriptions(c fiber.Ctx) error {
+	p, q, err := billingListParams(c)
+	if err != nil {
+		return err
+	}
+	if err := h.repo().ExpireAllEnded(c.Context()); err != nil {
+		return err
+	}
+
+	subscriptions, err := h.repo().ListSubscriptions(c.Context(), p, q.Status)
+	if err != nil {
+		return err
+	}
+	total, err := h.repo().CountSubscriptions(c.Context(), p, q.Status)
+	if err != nil {
+		return err
+	}
+	return dtos.List(c, subscriptions, dtos.ListMeta(int(total), q.Offset, q.Limit))
+}
+
+// ListPurchases answers every customer's purchases, for a super user.
+func (h *billingHandler) ListPurchases(c fiber.Ctx) error {
+	p, q, err := billingListParams(c)
+	if err != nil {
+		return err
+	}
+
+	purchases, err := h.repo().ListAllPurchases(c.Context(), p, q.Status)
+	if err != nil {
+		return err
+	}
+	total, err := h.repo().CountAllPurchases(c.Context(), p, q.Status)
+	if err != nil {
+		return err
+	}
+	return dtos.List(c, purchases, dtos.ListMeta(int(total), q.Offset, q.Limit))
+}
+
 // Overview answers the signed-in user's live subscription, or null, and
 // their purchases.
 func (h *billingHandler) Overview(c fiber.Ctx) error {
