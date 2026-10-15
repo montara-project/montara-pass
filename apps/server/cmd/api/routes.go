@@ -122,6 +122,8 @@ func routes(r *fiber.App, app *app.Application) {
 		// Every customer's subscriptions and purchases, for a super user.
 		v1.Get("/subscriptions", m.Authorization, m.SuperUser, h.Billing.ListSubscriptions)
 		v1.Get("/purchases", m.Authorization, m.SuperUser, h.Billing.ListPurchases)
+		// The counts on the admin's dashboard.
+		v1.Get("/stats", m.Authorization, m.SuperUser, h.Billing.Stats)
 
 		billing := v1.Group("/billing")
 		billing.Get("/", m.Authorization, h.Billing.Overview)

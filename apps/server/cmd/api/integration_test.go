@@ -690,4 +690,20 @@ func billingFlow(
 	if status, out := call(http.MethodGet, "/api/v1/plans/all", superToken, nil); status != http.StatusOK || len(out["data"].([]any)) != 3 {
 		t.Fatalf("all plans: %d %v", status, out)
 	}
+
+	// The overview: one customer in a paid period, three plans, two on offer,
+	// and every customer account made just now.
+	want(http.StatusForbidden, http.MethodGet, "/api/v1/stats", userToken, nil)
+	stats := want(http.StatusOK, http.MethodGet, "/api/v1/stats", superToken, nil)
+	if users, _ := stats["users"].(float64); users < 1 || stats["new_users_30d"] != stats["users"] ||
+		stats["subscribed_users"] != float64(1) || stats["plans"] != float64(3) || stats["plans_on_offer"] != float64(2) {
+		t.Fatalf("stats: %v", stats)
+	}
+	// The one paid period, paid just now, in its currency.
+	if revenue, _ := stats["subscription_revenue"].([]any); len(revenue) != 1 ||
+		revenue[0].(map[string]any)["currency"] != "IDR" ||
+		revenue[0].(map[string]any)["total"] != float64(50000) ||
+		revenue[0].(map[string]any)["last_30d"] != float64(50000) {
+		t.Fatalf("subscription revenue: %v", stats["subscription_revenue"])
+	}
 }

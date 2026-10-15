@@ -60,6 +60,15 @@ func (h *billingHandler) ListAllPlans(c fiber.Ctx) error {
 	return dtos.Get(c, plans)
 }
 
+// Stats answers the counts of a super user's overview.
+func (h *billingHandler) Stats(c fiber.Ctx) error {
+	stats, err := h.repo().Stats(c.Context())
+	if err != nil {
+		return err
+	}
+	return dtos.Get(c, stats)
+}
+
 func (h *billingHandler) CreatePlan(c fiber.Ctx) error {
 	var body dtos.PlanBody
 	if err := lib.ValidateRequestBody(c, &body); err != nil {

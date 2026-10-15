@@ -78,3 +78,24 @@ type Purchase struct {
 	Plan        Plan       `json:"plan"`
 	User        *Customer  `json:"user,omitempty"`
 }
+
+// Stats is a super user's overview: customer accounts (super users left
+// out), the ones made in the last 30 days, the customers in a paid
+// subscription period, and the plans.
+type Stats struct {
+	Users           int64 `json:"users"`
+	NewUsers30d     int64 `json:"new_users_30d"`
+	SubscribedUsers int64 `json:"subscribed_users"`
+	Plans           int64 `json:"plans"`
+	PlansOnOffer    int64 `json:"plans_on_offer"`
+	// One row per currency a subscription was paid in, largest first.
+	SubscriptionRevenue []Revenue `json:"subscription_revenue"`
+}
+
+// Revenue is what subscriptions paid in one currency, in its minor unit: in
+// all, and in the last 30 days by payment date. A refunded period is left out.
+type Revenue struct {
+	Currency string `json:"currency"`
+	Total    int64  `json:"total"`
+	Last30d  int64  `json:"last_30d"`
+}

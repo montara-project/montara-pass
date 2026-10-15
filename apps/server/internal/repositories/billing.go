@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"montara-pass/server/internal/lib/apperr"
+	"montara-pass/server/internal/lib/constant"
 	"montara-pass/server/internal/models"
 
 	"github.com/google/uuid"
@@ -358,4 +359,50 @@ func (r *BillingRepository) SetPurchaseCheckout(ctx context.Context, id uuid.UUI
 func (r *BillingRepository) DeletePurchase(ctx context.Context, id uuid.UUID) error {
 	_, err := r.execContext(ctx, `DELETE FROM purchases WHERE id = $1 AND status = 'pending'`, id)
 	return err
+}
+
+// Stats counts what a super user's overview shows, in one round trip.
+// Accounts are read from Authula, which owns them; a user whose mirror row
+// is missing still counts, and super users do not. A subscription counts
+// while its paid period runs, whether or not it was swept to expired yet.
+func (r *BillingRepository) Stats(ctx context.Context) (models.Stats, error) {
+	var s models.Stats
+	err := r.queryRowContext(ctx, `
+		SELECT u.total, u.recent, s.subscribed, p.total, p.on_offer
+		FROM
+			(SELECT count(*) AS total,
+			        count(*) FILTER (WHERE a.created_at >= now() - interval '30 days') AS recent
+			 FROM authula.users a LEFT JOIN users m ON m.id = a.id
+			 WHERE m.role IS DISTINCT FROM $1) u,
+			(SELECT count(DISTINCT user_id) AS subscribed FROM subscriptions
+			 WHERE status = $2 AND current_period_end > now()) s,
+			(SELECT count(*) AS total, count(*) FILTER (WHERE active) AS on_offer FROM plans) p`,
+		constant.RoleSuperUser, models.SubscriptionActive,
+	).Scan(&s.Users, &s.NewUsers30d, &s.SubscribedUsers, &s.Plans, &s.PlansOnOffer)
+	if err != nil {
+		return s, err
+	}
+
+	// A paid period is one whose start was moved to the payment
+	// (SettleSubscription): unpaid ones keep the start they were created
+	// with. Of those, active and expired ones were kept; a canceled one was
+	// refunded.
+	rows, err := r.queryContext(ctx, `
+		SELECT currency, sum(amount)::bigint,
+		       (coalesce(sum(amount) FILTER (WHERE current_period_start >= now() - interval '30 days'), 0))::bigint
+		FROM subscriptions
+		WHERE status IN ($1, $2) AND current_period_start > created_at
+		GROUP BY currency
+		ORDER BY sum(amount) DESC, currency`,
+		models.SubscriptionActive, models.SubscriptionExpired,
+	)
+	if err != nil {
+		return s, err
+	}
+	s.SubscriptionRevenue, err = collectRows(rows, func(row rowScanner) (models.Revenue, error) {
+		var rev models.Revenue
+		err := row.Scan(&rev.Currency, &rev.Total, &rev.Last30d)
+		return rev, err
+	})
+	return s, err
 }
