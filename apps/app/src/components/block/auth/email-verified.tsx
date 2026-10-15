@@ -1,5 +1,5 @@
 import { IconKey, IconLogin2 } from '@tabler/icons-react'
-import { Link } from '@tanstack/react-router'
+import { Link, useSearch } from '@tanstack/react-router'
 
 import { Button } from '@/components/ui/button'
 import { SIGN_IN_PATH } from '@/lib/constants/auth'
@@ -22,6 +22,24 @@ const NEXT = [
 
 /** Where the link in the verification email lands once the API has accepted it. */
 export default function EmailVerified() {
+  const { verified } = useSearch({ from: '/(auth)/verify-email/' })
+
+  // Reached without the API's redirect: nothing was verified here.
+  if (!verified) {
+    return (
+      <AuthShell
+        title="Verify your email"
+        note="Open the link in the verification email to confirm your address."
+      >
+        <Button asChild size="lg" className="mt-1.5 w-full">
+          <Link to={SIGN_IN_PATH} replace>
+            Sign in
+          </Link>
+        </Button>
+      </AuthShell>
+    )
+  }
+
   return (
     <AuthShell title="Email verified" note="Your email address is confirmed. Two steps are left.">
       <ol className="rounded-card bg-card divide-y border">
