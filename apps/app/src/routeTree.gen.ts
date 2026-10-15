@@ -22,6 +22,7 @@ import { Route as appTrashIndexRouteImport } from './routes/(app)/trash/index'
 import { Route as appVaultIndexRouteImport } from './routes/(app)/vault/index'
 import { Route as authSignInIndexRouteImport } from './routes/(auth)/sign-in/index'
 import { Route as authSignUpIndexRouteImport } from './routes/(auth)/sign-up/index'
+import { Route as authVerifyEmailIndexRouteImport } from './routes/(auth)/verify-email/index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -86,6 +87,11 @@ const authSignUpIndexRoute = authSignUpIndexRouteImport.update({
   path: '/sign-up/',
   getParentRoute: () => authRouteRoute,
 } as any)
+const authVerifyEmailIndexRoute = authVerifyEmailIndexRouteImport.update({
+  id: '/verify-email/',
+  path: '/verify-email/',
+  getParentRoute: () => authRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -99,6 +105,7 @@ export interface FileRoutesByFullPath {
   '/vault/': typeof appVaultIndexRoute
   '/sign-in/': typeof authSignInIndexRoute
   '/sign-up/': typeof authSignUpIndexRoute
+  '/verify-email/': typeof authVerifyEmailIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -112,6 +119,7 @@ export interface FileRoutesByTo {
   '/vault': typeof appVaultIndexRoute
   '/sign-in': typeof authSignInIndexRoute
   '/sign-up': typeof authSignUpIndexRoute
+  '/verify-email': typeof authVerifyEmailIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -128,6 +136,7 @@ export interface FileRoutesById {
   '/(app)/vault/': typeof appVaultIndexRoute
   '/(auth)/sign-in/': typeof authSignInIndexRoute
   '/(auth)/sign-up/': typeof authSignUpIndexRoute
+  '/(auth)/verify-email/': typeof authVerifyEmailIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -143,6 +152,7 @@ export interface FileRouteTypes {
     | '/vault/'
     | '/sign-in/'
     | '/sign-up/'
+    | '/verify-email/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -156,6 +166,7 @@ export interface FileRouteTypes {
     | '/vault'
     | '/sign-in'
     | '/sign-up'
+    | '/verify-email'
   id:
     | '__root__'
     | '/'
@@ -171,6 +182,7 @@ export interface FileRouteTypes {
     | '/(app)/vault/'
     | '/(auth)/sign-in/'
     | '/(auth)/sign-up/'
+    | '/(auth)/verify-email/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -272,6 +284,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authSignUpIndexRouteImport
       parentRoute: typeof authRouteRoute
     }
+    '/(auth)/verify-email/': {
+      id: '/(auth)/verify-email/'
+      path: '/verify-email'
+      fullPath: '/verify-email/'
+      preLoaderRoute: typeof authVerifyEmailIndexRouteImport
+      parentRoute: typeof authRouteRoute
+    }
   }
 }
 
@@ -304,11 +323,13 @@ const appRouteRouteWithChildren = appRouteRoute._addFileChildren(
 interface authRouteRouteChildren {
   authSignInIndexRoute: typeof authSignInIndexRoute
   authSignUpIndexRoute: typeof authSignUpIndexRoute
+  authVerifyEmailIndexRoute: typeof authVerifyEmailIndexRoute
 }
 
 const authRouteRouteChildren: authRouteRouteChildren = {
   authSignInIndexRoute: authSignInIndexRoute,
   authSignUpIndexRoute: authSignUpIndexRoute,
+  authVerifyEmailIndexRoute: authVerifyEmailIndexRoute,
 }
 
 const authRouteRouteWithChildren = authRouteRoute._addFileChildren(
