@@ -34,6 +34,15 @@ export function isNotFound(error: unknown): boolean {
   return isAxiosError(error) && error.response?.status === 404
 }
 
+/**
+ * True when the API answered 403. A refusal the user can act on carries its
+ * reason in `message` (the plan gate on sharing does), so the caller shows
+ * that where the action was taken instead of in a toast that scrolls away.
+ */
+export function isForbidden(error: unknown): boolean {
+  return isAxiosError(error) && error.response?.status === 403
+}
+
 export function throwAxiosError(error: unknown): never {
   throw new Error(axiosErrorMessage(error))
 }

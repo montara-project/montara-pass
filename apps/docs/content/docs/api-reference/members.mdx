@@ -38,8 +38,31 @@ key wrapped with the recipient's public key. Answers `201`.
 
 | Status | When |
 | --- | --- |
+| `403` | The caller holds no paid plan (see [Sharing](#a-paid-plan)) |
 | `404` | The user does not exist or has not set up a vault |
 | `409` | The item is already shared with this user |
+
+### A paid plan
+
+On the hosted service, handing an item out is the one thing a plan pays for,
+so `POST /api/v1/items/:id/members` answers `403` for a caller with no paid
+plan:
+
+```json
+{ "message": "sharing an item needs a paid plan: subscribe in Billing, or run Montara Pass yourself" }
+```
+
+A plan is an `active` subscription whose `current_period_end` is in the
+future, or a `paid` one-time purchase, which never renews. A `pending` one
+does not count.
+
+Only this route is gated. Receiving an item is not, so a user with no plan is
+still added to someone else's item. Neither is changing a role or removing a
+member, so a user who stops paying can still revoke access, and a recipient
+can still leave.
+
+A self-hosted deployment takes no payments and is never gated. A `super_user`
+account is not gated either: plans are kept to accounts with the `user` role.
 
 ## Change a role
 
