@@ -1,3 +1,4 @@
+import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -174,8 +175,11 @@ export default defineConfig(({ mode }) => {
   const dev = mode === 'development'
 
   return {
-    plugins: [react(), dropFlaggedCode(), emitManifest(target)],
+    plugins: [react(), tailwindcss(), dropFlaggedCode(), emitManifest(target)],
     resolve: {
+      // The sidebar comes from the web app, whose packages would otherwise
+      // bring a second React.
+      dedupe: ['react', 'react-dom'],
       alias: {
         // The crypto and the API models are the web app's own: the extension
         // must read and write exactly the same ciphertext.

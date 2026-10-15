@@ -171,14 +171,6 @@ export const PencilIcon = icon(
 
 export const ArrowLeftIcon = icon(<path d="M19 12H5m6-6-6 6 6 6" />)
 
-/** A window with its sidebar marked off: what the button folds away. */
-export const SidebarIcon = icon(
-  <>
-    <rect x="3" y="4" width="18" height="16" rx="3" />
-    <path d="M9 4v16" />
-  </>
-)
-
 export const GridIcon = icon(
   <>
     <rect x="4" y="4" width="7" height="7" rx="1.5" />
