@@ -3,6 +3,28 @@
 All notable changes to this project are documented in this file. Versions follow the git tags (`v*`); Docker images are published to ghcr.io with the same version.
 
 
+## [1.9.0](https://github.com/montara-project/montara-pass/compare/v1.8.0...v1.9.0) (2026-10-15)
+
+### ⚠ BREAKING CHANGES
+
+* EDITION=ee and EDITION=ce are no longer accepted; use
+  EDITION=cloud or EDITION=community. The montara-pass-ee, -ce and -docs
+  images stop receiving releases.
+
+### Features
+
+* **app:** show a page once the verification link is accepted ([6c6c19a](https://github.com/montara-project/montara-pass/commit/6c6c19a239e5ce12b41b0e9a7c7a3ee383dc6573))
+* **server:** send auth emails in the Montara Pass layout ([a137436](https://github.com/montara-project/montara-pass/commit/a13743605f606eab52cd4f0e7a944d6a7b8178b2))
+
+### Bug Fixes
+
+* **app:** confirm the email only after the API accepts the link ([57b2bc2](https://github.com/montara-project/montara-pass/commit/57b2bc2226cc4cffd0cf8b9ec280b75ffe8d8040))
+* **server:** install default email templates over empty overrides ([823270a](https://github.com/montara-project/montara-pass/commit/823270adcc93ce7a11bc9133a5e58bb7cf0ea7cd))
+
+### Code Refactoring
+
+* rename the editions to cloud and community ([078d7b3](https://github.com/montara-project/montara-pass/commit/078d7b350dc3df32fe1acf77cd2f79dfa1f55d6b))
+
 ## [1.8.0](https://github.com/montara-project/montara-pass/compare/v1.7.0...v1.8.0) (2026-10-15)
 
 ### Features
