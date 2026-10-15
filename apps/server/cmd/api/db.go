@@ -30,7 +30,7 @@ func connectDB(cfg *config.ConfigDB) (*sql.DB, error) {
 // migration and the last one that fully applied is one below it; forcing to the
 // failed number itself would skip that migration. Below the first migration
 // nothing has been applied yet, which golang-migrate writes as -1. flag picks
-// the track to force: empty for the main one, "--ee " for the Enterprise
+// the track to force: empty for the main one, "--ee " for the Cloud
 // Edition's.
 func repairHint(failed uint, flag string) string {
 	repair := int(failed) - 1
@@ -44,7 +44,7 @@ func repairHint(failed uint, flag string) string {
 }
 
 // migrateUp applies the pending migrations, then, unless this is the
-// Community Edition, the Enterprise Edition's own.
+// Community Edition, the Cloud Edition's own.
 func migrateUp(cfg *config.ConfigDB, logger *slog.Logger) error {
 	if err := migrateTrack(cfg, logger, lib.NewMigrator, ""); err != nil {
 		return err

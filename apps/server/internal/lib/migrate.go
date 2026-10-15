@@ -20,7 +20,7 @@ func NewMigrator(db *sql.DB) (*migrate.Migrate, error) {
 	return newMigrator(db, migrations.FS, ".", "")
 }
 
-// NewEEMigrator is NewMigrator over the Enterprise Edition's migrations, which
+// NewEEMigrator is NewMigrator over the Cloud Edition's migrations, which
 // keep their version in their own table. Run it after NewMigrator's, and roll
 // it back before.
 func NewEEMigrator(db *sql.DB) (*migrate.Migrate, error) {

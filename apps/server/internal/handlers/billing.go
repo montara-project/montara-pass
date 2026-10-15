@@ -20,7 +20,7 @@ import (
 	"montara-pass/server/internal/repositories"
 )
 
-// Billing, Enterprise Edition only. Every subscription period and purchase is
+// Billing, Cloud Edition only. Every subscription period and purchase is
 // one Midtrans Snap payment; its order id is a prefix and the row's id, so a
 // notification leads back to the row.
 const (

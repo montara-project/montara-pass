@@ -10,10 +10,10 @@ type Target = 'chrome' | 'firefox'
 
 const ALL_SITES = ['http://*/*', 'https://*/*']
 
-// VITE_EDITION=ce builds the Community Edition (no sign-up, no sharing; see
+// VITE_EDITION=community builds the Community Edition (no sign-up, no sharing; see
 // app/src/lib/constants/edition.ts) into its own folder, under its own name
-// and add-on id, so it installs next to the Enterprise Edition.
-const COMMUNITY = process.env.VITE_EDITION === 'ce'
+// and add-on id, so it installs next to the Cloud Edition.
+const COMMUNITY = process.env.VITE_EDITION === 'community'
 const NAME = COMMUNITY ? 'Montara Pass CE' : 'Montara Pass'
 
 /**

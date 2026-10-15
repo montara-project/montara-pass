@@ -33,7 +33,7 @@ func main() {
 	}
 
 	// One migrator per track: the main one, then, unless this is the
-	// Community Edition, the Enterprise Edition's, whose tables lean on the
+	// Community Edition, the Cloud Edition's, whose tables lean on the
 	// main ones. Each owns and closes its own connection.
 	tracks := []func(*sql.DB) (*migrate.Migrate, error){lib.NewMigrator}
 	if !appconfig.Community() {
@@ -60,7 +60,7 @@ func main() {
 		migrateDown(ms...)
 		migrateUp(ms...)
 	case modeForce:
-		// --ee picks the Enterprise Edition's track; validateFlag refuses it
+		// --ee picks the Cloud Edition's track; validateFlag refuses it
 		// in the Community Edition, which has only the main one.
 		target := ms[0]
 		if cfg.ee {

@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// Billing, Enterprise Edition only (see migrations/ee/000001). Amounts are in
+// Billing, Cloud Edition only (see migrations/ee/000001). Amounts are in
 // the currency's minor unit.
 
 // Plan kinds, as stored in plans.billing.

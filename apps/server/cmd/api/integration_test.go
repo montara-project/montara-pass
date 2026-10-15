@@ -64,7 +64,7 @@ func TestIntegration(t *testing.T) {
 	}
 
 	// Start from nothing; this also runs every down migration, the
-	// Enterprise Edition's first, since its tables lean on the main ones.
+	// Cloud Edition's first, since its tables lean on the main ones.
 	for _, newMigrator := range []func(*sql.DB) (*migrate.Migrate, error){lib.NewEEMigrator, lib.NewMigrator} {
 		migrateDB, err := lib.OpenDB(dsn)
 		if err != nil {
@@ -523,7 +523,7 @@ func vaultFlow(
 	want(http.StatusNotFound, http.MethodGet, itemPath, ownerToken, nil)
 }
 
-// billing checks the Enterprise Edition's billing tables against what they
+// billing checks the Cloud Edition's billing tables against what they
 // promise: only an account with the 'user' role subscribes or buys, each
 // table takes only its kind of plan, and a user has one live subscription.
 func billing(t *testing.T, db *sql.DB, userID, superEmail string) {

@@ -1,7 +1,10 @@
+import { env } from '@/config/env'
+
 import type { SignInDto, SignUpDto } from '../api/dtos/auth/schema'
 
 import { throwAxiosError } from '../api/axios-error'
 import { services } from '../api/services'
+import { VERIFY_EMAIL_PATH } from '../constants/auth'
 import { useVaultStore } from '../stores/vault'
 import { clearAuthTokens, setAuthTokens } from './token-storage'
 
@@ -32,7 +35,18 @@ export async function signInWithEmail(body: SignInDto) {
  */
 export async function signUpWithEmail(body: SignUpDto): Promise<{ signedIn: boolean }> {
   try {
-    const res = await services.auth.signUp(body)
+    // The link opens on the API's origin. A relative path needs no trusted
+    // origin there; only a split-origin setup (which lists this app in the
+    // API's CORS_ALLOWED_ORIGINS anyway) needs the absolute address. In dev the
+    // API's origin is the Go server behind Vite's proxy, not this page, so the
+    // address is always absolute. The API redirects only once the link is
+    // accepted, so `verified=1` tells the page the address is confirmed.
+    const callbackPath = `${VERIFY_EMAIL_PATH}?verified=1`
+    const callback_url =
+      !import.meta.env.DEV && env.VITE_API_URL === window.location.origin
+        ? callbackPath
+        : window.location.origin + callbackPath
+    const res = await services.auth.signUp({ ...body, callback_url })
 
     if (!res.data.access_token) {
       return { signedIn: false }

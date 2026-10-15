@@ -183,13 +183,13 @@ pnpm dev:docs       # http://localhost:3001/docs
 ## Docker
 
 ```sh
-docker build -f apps/server/Dockerfile -t montara-pass-ee .
-docker run --rm -p 8080:8080 --env-file apps/server/.env montara-pass-ee
+docker build -f apps/server/Dockerfile -t montara-pass/cloud .
+docker run --rm -p 8080:8080 --env-file apps/server/.env montara-pass/cloud
 ```
 
 One image holds the Go API and the built web app; `http://localhost:8080`
-serves both. The build context is the repository root. `--build-arg EDITION=ce`
-builds the Community Edition (`montara-pass-ce`): one self-hosted user, no
+serves both. The build context is the repository root. `--build-arg EDITION=community`
+builds the Community Edition (`montara-pass/community`): one self-hosted user, no
 sign-up and no sharing, so it needs `SEED_ON_BOOT=true` and `SUPER_USER`.
 
 ### Dokploy
@@ -222,9 +222,9 @@ workflows in `.github/workflows`:
    `package.json`, writes `CHANGELOG.md` and opens a `chore: release vX.Y.Z` PR.
 2. **Release Publish** runs when that PR merges: it tags the commit, creates
    the GitHub release and starts the Release workflow.
-3. **Release** pushes `ghcr.io/montara-project/montara-pass-ee` and
-   `montara-pass-ce` (the API with the web app inside, per edition) and
-   `montara-pass-docs`, and deploys `apps/web` to Cloudflare Workers.
+3. **Release** pushes `ghcr.io/montara-project/montara-pass/cloud` and
+   `montara-pass/community` (the API with the web app inside, per edition) and
+   `montara-pass/docs`, and deploys `apps/web` to Cloudflare Workers.
 
 It needs the repository secrets `CLOUDFLARE_API_TOKEN` and
 `CLOUDFLARE_ACCOUNT_ID`. The repository variable `VITE_API_URL` is optional:

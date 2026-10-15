@@ -109,7 +109,7 @@ func routes(r *fiber.App, app *app.Application) {
 		items.Delete("/:id/members/:userId", h.Item.RemoveMember)
 	}
 
-	// Billing, Enterprise Edition only. The plans are public, for the
+	// Billing, Cloud Edition only. The plans are public, for the
 	// website; a super user manages them and sees what customers bought. Subscribing and buying need a
 	// signed-in user account; Midtrans reports the payment's outcome.
 	if !config.Community() {

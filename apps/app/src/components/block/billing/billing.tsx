@@ -31,7 +31,7 @@ const STATUS: Record<Models.Subscription['status'] | Models.Purchase['status'], 
 }
 
 /**
- * Billing, Enterprise Edition only: the subscription and purchases of the
+ * Billing, Cloud Edition only: the subscription and purchases of the
  * signed-in user, and the plans on offer. Paying happens on Midtrans' page,
  * which sends the browser back here; the payment shows once Midtrans has
  * told the server, so a pending one is polled for.

@@ -6,7 +6,7 @@ import { HOME_PATH } from '@/lib/constants/auth'
 import { COMMUNITY } from '@/lib/constants/edition'
 
 export const Route = createFileRoute('/(app)/billing/')({
-  // Billing is the Enterprise Edition's; its server has the routes.
+  // Billing is the Cloud Edition's; its server has the routes.
   beforeLoad: () => {
     if (COMMUNITY) throw redirect({ to: HOME_PATH, replace: true })
   },
