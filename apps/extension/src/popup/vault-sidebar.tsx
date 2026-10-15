@@ -168,7 +168,7 @@ export function VaultSidebar<F extends string>({
       </Sidebar>
 
       <SidebarInset className="bg-panel min-h-0 overflow-hidden">
-        <header className="flex h-14 shrink-0 items-center gap-2 px-4">
+        <header className="bg-panel border-border sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b px-3 sm:px-6 md:rounded-t-sheet">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
           <Breadcrumb>
@@ -181,7 +181,8 @@ export function VaultSidebar<F extends string>({
             </BreadcrumbList>
           </Breadcrumb>
         </header>
-        {children}
+        {/* Passes the inset's height on: the list scrolls inside it, not past it. */}
+        <div className="flex min-h-0 flex-1 flex-col pt-4">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   )
