@@ -14,6 +14,13 @@ import (
 // Every template renders through Authula's own manager with the context type
 // Authula passes it, so a misspelt field fails here rather than at send time.
 func TestTemplatesRender(t *testing.T) {
+	// Install leaves operator overrides alone, so clear them; t.Setenv puts
+	// each back as it was, set or unset, when the test ends.
+	for _, e := range all {
+		for _, suffix := range []string{"SUBJECT", "TEXT", "HTML"} {
+			t.Setenv("AUTHULA_TEMPLATE_"+strings.ToUpper(e.name)+"_"+suffix, "")
+		}
+	}
 	if err := Install(); err != nil {
 		t.Fatal(err)
 	}

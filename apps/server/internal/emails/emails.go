@@ -1,7 +1,7 @@
 // Package emails gives the emails Authula sends the Montara Pass look and
 // voice. Authula reads each template from AUTHULA_TEMPLATE_<NAME>_{SUBJECT,
 // TEXT,HTML} when its plugin registers it, so Install sets those variables
-// before Authula is built. A variable the operator has set is left alone.
+// before Authula is built. A variable the operator has set to a non-empty value is left alone.
 package emails
 
 import (
@@ -210,7 +210,7 @@ func Install() error {
 			"HTML":    html,
 		} {
 			key := "AUTHULA_TEMPLATE_" + strings.ToUpper(e.name) + "_" + suffix
-			if _, set := os.LookupEnv(key); set {
+			if os.Getenv(key) != "" {
 				continue
 			}
 			if err := os.Setenv(key, value); err != nil {
