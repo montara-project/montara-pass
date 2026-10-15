@@ -62,6 +62,10 @@ func newServer(app *app.Application) (*fiber.App, error) {
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  60 * time.Second,
+		// Also the most a request's headers may hold. Fiber's 4KB is less than
+		// the bearer token and the browser's cookies for the domain can reach
+		// together (431 Request Header Fields Too Large); 16KB is Node's limit.
+		ReadBufferSize: 16 * 1024,
 	})
 
 	// Middleware
