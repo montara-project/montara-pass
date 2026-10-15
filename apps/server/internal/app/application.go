@@ -8,6 +8,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"montara-pass/server/internal/config"
+	"montara-pass/server/internal/lib/midtrans"
 	"montara-pass/server/internal/repositories"
 )
 
@@ -23,4 +24,7 @@ type Application struct {
 	Auth         *authula.Auth
 	// Redis is nil unless REDIS_URL is set; see middlewares.NewStore.
 	Redis redis.UniversalClient
+	// Midtrans is nil unless billing can take payments: the Enterprise
+	// Edition with MIDTRANS_SERVER_KEY set.
+	Midtrans *midtrans.Client
 }

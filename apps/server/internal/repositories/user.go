@@ -51,6 +51,14 @@ func (r *UserRepository) EmailVerified(ctx context.Context, id uuid.UUID) (bool,
 	return verified, translateNotFound("users", err)
 }
 
+// HasOtherThan reports whether Authula holds an account under any email but
+// the given one, ignoring case.
+func (r *UserRepository) HasOtherThan(ctx context.Context, email string) (bool, error) {
+	var found bool
+	err := r.queryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM authula.users WHERE lower(email) <> lower($1))`, email).Scan(&found)
+	return found, err
+}
+
 // SetRole changes a mirrored user's role.
 func (r *UserRepository) SetRole(ctx context.Context, id uuid.UUID, role string) error {
 	res, err := r.execContext(ctx, `UPDATE users SET role = $2, updated_at = now() WHERE id = $1`, id, role)
@@ -58,6 +66,14 @@ func (r *UserRepository) SetRole(ctx context.Context, id uuid.UUID, role string)
 		return err
 	}
 	return requireAffected(res, "user")
+}
+
+// Get returns a mirrored user.
+func (r *UserRepository) Get(ctx context.Context, id uuid.UUID) (models.User, error) {
+	var u models.User
+	err := r.queryRowContext(ctx, `SELECT id, created_at, updated_at, name, email, image, role FROM users WHERE id = $1`, id).
+		Scan(&u.ID, &u.CreatedAt, &u.UpdatedAt, &u.Name, &u.Email, &u.Image, &u.Role)
+	return u, translateNotFound("users", err)
 }
 
 // Role returns a mirrored user's role.

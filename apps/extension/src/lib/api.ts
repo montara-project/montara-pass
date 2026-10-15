@@ -160,6 +160,20 @@ export async function getUserKeys(): Promise<Models.UserKeys | null> {
   }
 }
 
+/**
+ * The user's subscription and purchases, or null where the server has no
+ * billing: a Community Edition one, or one from before billing.
+ */
+export async function getBilling(): Promise<Models.BillingOverview | null> {
+  try {
+    const res = await request<Envelope<Models.BillingOverview>>('/api/v1/billing')
+    return res.data
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null
+    throw error
+  }
+}
+
 /** Every row of a list route. The API pages at 100, so this walks the pages. */
 async function listAll<T>(path: string): Promise<T[]> {
   const rows: T[] = []

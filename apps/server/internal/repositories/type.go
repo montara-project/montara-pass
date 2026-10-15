@@ -26,6 +26,16 @@ func requireAffected(res sql.Result, what string) error {
 	return nil
 }
 
+// affected reports whether a write that may legitimately match nothing, such
+// as a status change that already happened, changed a row.
+func affected(res sql.Result, err error) (bool, error) {
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	return n > 0, err
+}
+
 // ListParams carries the list controls bound from the request query:
 // pagination plus a search term and a "<column>:asc|desc" sort value.
 type ListParams struct {

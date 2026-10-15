@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/golang-migrate/migrate/v4"
 
+	appconfig "montara-pass/server/internal/config"
 	"montara-pass/server/internal/lib"
 	"montara-pass/server/internal/seeders"
 )
@@ -20,36 +22,55 @@ func main() {
 	parseFlag(&cfg)
 
 	if cfg.mode == modeCreate {
-		if err := create("migrations", cfg.name); err != nil {
+		dir := "migrations"
+		if cfg.ee {
+			dir = "migrations/ee"
+		}
+		if err := create(dir, cfg.name); err != nil {
 			log.Fatal(err)
 		}
 		return
 	}
 
-	// The migrator owns and closes this connection.
-	migrateDB, err := lib.OpenDB(cfg.dbDSN)
-	if err != nil {
-		log.Fatal(err)
+	// One migrator per track: the main one, then, unless this is the
+	// Community Edition, the Enterprise Edition's, whose tables lean on the
+	// main ones. Each owns and closes its own connection.
+	tracks := []func(*sql.DB) (*migrate.Migrate, error){lib.NewMigrator}
+	if !appconfig.Community() {
+		tracks = append(tracks, lib.NewEEMigrator)
 	}
-
-	m, err := lib.NewMigrator(migrateDB)
-	if err != nil {
-		log.Fatal(err)
+	ms := make([]*migrate.Migrate, len(tracks))
+	for i, newMigrator := range tracks {
+		migrateDB, err := lib.OpenDB(cfg.dbDSN)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if ms[i], err = newMigrator(migrateDB); err != nil {
+			log.Fatal(err)
+		}
+		defer ms[i].Close()
 	}
-	defer m.Close()
 
 	switch cfg.mode {
 	case modeUp:
-		migrateUp(m)
+		migrateUp(ms...)
 	case modeDown:
-		migrateDown(m)
+		migrateDown(ms...)
 	case modeRefresh:
-		migrateDown(m)
-		migrateUp(m)
+		migrateDown(ms...)
+		migrateUp(ms...)
 	case modeForce:
-		forceVersion(m, cfg.version)
+		// --ee picks the Enterprise Edition's track; validateFlag refuses it
+		// in the Community Edition, which has only the main one.
+		target := ms[0]
+		if cfg.ee {
+			target = ms[1]
+		}
+		forceVersion(target, cfg.version)
 	case modeVersion:
-		printVersion(m)
+		for i, m := range ms {
+			printVersion([]string{"main", "ee"}[i], m)
+		}
 		return
 	}
 
@@ -67,17 +88,23 @@ func main() {
 	fmt.Println("Completed")
 }
 
-func migrateUp(m *migrate.Migrate) {
+// migrateUp applies the tracks in order.
+func migrateUp(ms ...*migrate.Migrate) {
 	fmt.Println("Running up migrations...")
-	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		log.Fatalf("failed to run up migrations: %v", err)
+	for _, m := range ms {
+		if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+			log.Fatalf("failed to run up migrations: %v", err)
+		}
 	}
 }
 
-func migrateDown(m *migrate.Migrate) {
+// migrateDown rolls the tracks back in reverse order.
+func migrateDown(ms ...*migrate.Migrate) {
 	fmt.Println("Running down migrations...")
-	if err := m.Down(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		log.Fatalf("failed to run down migrations: %v", err)
+	for i := len(ms) - 1; i >= 0; i-- {
+		if err := ms[i].Down(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+			log.Fatalf("failed to run down migrations: %v", err)
+		}
 	}
 }
 
@@ -91,16 +118,16 @@ func forceVersion(m *migrate.Migrate, version int) {
 	}
 }
 
-func printVersion(m *migrate.Migrate) {
+func printVersion(track string, m *migrate.Migrate) {
 	version, dirty, err := m.Version()
 	if errors.Is(err, migrate.ErrNilVersion) {
-		fmt.Println("no migrations applied")
+		fmt.Printf("%s: no migrations applied\n", track)
 		return
 	}
 	if err != nil {
-		log.Fatalf("failed to read schema version: %v", err)
+		log.Fatalf("failed to read %s schema version: %v", track, err)
 	}
-	fmt.Printf("version %d (dirty: %t)\n", version, dirty)
+	fmt.Printf("%s: version %d (dirty: %t)\n", track, version, dirty)
 }
 
 var (

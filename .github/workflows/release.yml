@@ -5,9 +5,10 @@
 #   - a semver tag (v1.2.3) publishes 1.2.3, 1.2 and latest
 #   - a manual run publishes the short commit SHA, plus any tag you pass in
 #
-# Images:
-#   ghcr.io/<owner>/<repo>/server  the Go API serving the web app (apps/server + apps/app)
-#   ghcr.io/<owner>/<repo>/docs    apps/docs (this documentation site)
+# Images, named <product>-<edition> like portainer/portainer-ce:
+#   ghcr.io/<owner>/montara-pass-ee    the Go API serving the web app (apps/server + apps/app), Enterprise Edition
+#   ghcr.io/<owner>/montara-pass-ce    the same, Community Edition: no sign-up, no sharing
+#   ghcr.io/<owner>/montara-pass-docs  apps/docs (this documentation site)
 
 name: Release
 
@@ -28,7 +29,7 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_OWNER: ${{ github.repository_owner }}
   PLATFORMS: linux/amd64
 
 jobs:
@@ -44,9 +45,13 @@ jobs:
       matrix:
         include:
           # Both install from the workspace lockfile, so they build from the root.
-          - image: server
+          - image: montara-pass-ee
             file: apps/server/Dockerfile
-          - image: docs
+            edition: ee
+          - image: montara-pass-ce
+            file: apps/server/Dockerfile
+            edition: ce
+          - image: montara-pass-docs
             file: apps/docs/Dockerfile
 
     steps:
@@ -67,7 +72,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.image }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ matrix.image }}
           tags: |
             type=semver,pattern={{raw}}
             type=semver,pattern=v{{major}}.{{minor}}
@@ -84,14 +89,15 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           # Vite bakes the VITE_* values into the web app inside the server
-          # image, and APP_VERSION goes into the Go binary; the docs image
-          # ignores them. VITE_API_URL stays empty for the usual setup, where
+          # image, APP_VERSION goes into the Go binary and EDITION into both;
+          # the docs image ignores them. VITE_API_URL stays empty for the usual setup, where
           # the server serves the app itself: set the repo Variable only when
           # the API lives on another origin than the UI.
           build-args: |
             VITE_APP_NAME=${{ vars.VITE_APP_NAME || 'Montara Pass' }}
             VITE_API_URL=${{ vars.VITE_API_URL || '' }}
             APP_VERSION=${{ github.ref_name }}
+            EDITION=${{ matrix.edition || 'ee' }}
           push: true
           # One cache scope per image, or the builds evict each other.
           cache-from: type=gha,scope=${{ matrix.image }}

@@ -307,12 +307,13 @@ Three shapes share the stylesheet, switched by `data-view` on the root:
 - **Popup** (default): `body` is fixed at 400×600, the tallest a browser
   allows. A view is a column: top bar, the sheet that scrolls, a bottom bar
   that stays put. Side padding is 20px for forms and 12 to 16px around lists.
-- **Full tab** (`data-view="full"`): a grid of `248px` sidebar, a list that
-  takes what is left (min 300px), and a detail pane of 360 to 640px. Forms
-  that are popup-sized (sign-in, unlock) sit in a centred card 400px wide.
-  At 860px and under the sidebar becomes a strip of filters and the list and
-  detail take turns; the list drops its extra columns by container query at
-  520px.
+- **Full tab** (`data-view="full"`): the web app's inset sidebar
+  (`popup/vault-sidebar.tsx`, the only Tailwind in the extension), and on the
+  sheet beside it a list that takes what is left (min 300px) and a detail
+  pane of 360 to 640px. Forms that are popup-sized (sign-in, unlock) sit in a
+  centred card 400px wide. At 860px and under the list and detail take turns;
+  under 768px the sidebar opens over the page. The list drops its extra
+  columns by container query at 520px.
 - **Inline menu** (`data-view="inline"`): no fixed size; the page frames it
   and it reports its own height, capped at 320px.
 
@@ -436,8 +437,8 @@ Calm and certain: one is filled, the rest stand back.
 
 - **Popup:** a top bar (search, tools, the avatar that opens the account menu)
   and a bottom bar divided from the sheet by a hairline.
-- **Full tab sidebar:** 40px items, muted at rest, body colour on hover, card
-  tone when current, a tabular count at the far end.
+- **Full tab sidebar:** the web app's: 32px items, muted at rest, body colour
+  on hover, hover tone when current, a tabular count at the far end.
 - **Menu:** card tone, 12px radius, 6px padding, the floating shadow; 36px
   items with an 18px muted icon; a destructive item is danger-coloured with a
   14% danger wash on hover. A row's menu grows from its button over 140ms

@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/joho/godotenv"
+
+	appconfig "montara-pass/server/internal/config"
 )
 
 const (
@@ -28,6 +30,7 @@ type config struct {
 	allowRemote bool
 	version     int
 	name        string
+	ee          bool
 }
 
 func parseFlag(cfg *config) {
@@ -39,6 +42,7 @@ func parseFlag(cfg *config) {
 	flag.StringVar(&cfg.dbDSN, "db-dsn", os.Getenv("DB_DSN"), "PostgreSQL DSN (default $DB_DSN)")
 	flag.BoolVar(&cfg.seed, "seed", false, "run the seeders after migrating")
 	flag.BoolVar(&cfg.allowRemote, "allow-remote", false, "allow down and refresh on a database that is not on localhost")
+	flag.BoolVar(&cfg.ee, "ee", false, "force and create act on the Enterprise Edition's migrations (migrations/ee)")
 
 	flag.Parse()
 	validateFlag(cfg)
@@ -60,6 +64,14 @@ func validateFlag(cfg *config) {
 
 	if !slices.Contains(availableModes, cfg.mode) {
 		log.Fatalf("command must be provided: %s", strings.Join(availableModes, ", "))
+	}
+
+	// up, down, refresh and version always take every track.
+	if cfg.ee && cfg.mode != modeForce && cfg.mode != modeCreate {
+		log.Fatalf("flag --ee must not be provided when mode is %s", cfg.mode)
+	}
+	if cfg.ee && cfg.mode == modeForce && appconfig.Community() {
+		log.Fatal("flag --ee: the community edition has no enterprise migrations")
 	}
 
 	// create only writes files, so it needs no database.

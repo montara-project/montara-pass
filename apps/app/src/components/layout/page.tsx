@@ -23,7 +23,7 @@ export default function Page({
   className,
 }: PageProps) {
   return (
-    <div className={cn('flex flex-col gap-5 p-5 sm:p-8', WIDTHS[width], className)}>
+    <div className={cn('flex flex-col gap-5 p-5 sm:px-8 sm:pb-8', WIDTHS[width], className)}>
       <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
         <div className="flex min-w-0 flex-col gap-0.5">
           <h1 className="text-xl font-semibold tracking-[-0.01em]">{title}</h1>

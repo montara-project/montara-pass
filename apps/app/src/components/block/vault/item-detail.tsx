@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { toastAxiosError } from '@/lib/api/axios-error'
 import { queries } from '@/lib/api/queries'
+import { COMMUNITY } from '@/lib/constants/edition'
 import { ITEM_ROLE_OWNER } from '@/lib/constants/vault'
 import { cn } from '@/lib/utils'
 
@@ -191,7 +192,7 @@ export default function ItemDetail({ item, folders, onClose }: ItemDetailProps) 
   const Star = item.favorite ? IconStarFilled : IconStar
 
   return (
-    <div className="flex max-w-[640px] flex-col gap-4 p-5 sm:p-8">
+    <div className="flex max-w-[640px] flex-col gap-4 p-5 sm:px-8 sm:pb-8">
       <Button
         variant="ghost"
         mode="icon"
@@ -239,7 +240,7 @@ export default function ItemDetail({ item, folders, onClose }: ItemDetailProps) 
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-52">
               {/* Only the owner hands an item on, or throws it away. */}
-              {isOwner && secret && (
+              {!COMMUNITY && isOwner && secret && (
                 <DropdownMenuItem onClick={() => setOpenShare(true)}>
                   <IconShare />
                   Share

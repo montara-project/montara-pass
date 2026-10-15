@@ -271,6 +271,17 @@ func newAuth(cfg config.Config, mirror func(*authulamodels.User) error, logger *
 	userHooks.RegisterAfterCreate(mirror)
 	userHooks.RegisterAfterUpdate(mirror)
 
+	// Sign-up, magic links and Google all create users through this service,
+	// so in the Community Edition only the seeded super user gets made.
+	if config.Community() {
+		userHooks.RegisterBeforeCreate(func(u *authulamodels.User) error {
+			if !strings.EqualFold(u.Email, cfg.App.SuperUserEmail) {
+				return errors.New("sign-up is not available in the community edition")
+			}
+			return nil
+		})
+	}
+
 	origins := splitCSV(cfg.App.CORSAllowedOrigins)
 
 	logLevel := "info"

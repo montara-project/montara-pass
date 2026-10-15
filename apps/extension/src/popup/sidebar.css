@@ -1,0 +1,70 @@
+/* Tailwind for the full tab's sidebar only: the web app's shadcn sidebar,
+   shared through the `@` alias. No preflight and no layers: the rest of the
+   popup is styles.css, and a reset would undo it. Only the files below are
+   read for classes, so none of the popup's own class names turn into a
+   utility by accident. */
+@import 'tailwindcss/theme.css';
+@import 'tailwindcss/utilities.css' source(none);
+
+@source './vault-sidebar.tsx';
+@source '../../../app/src/components/ui/sidebar.tsx';
+@source '../../../app/src/components/ui/sheet.tsx';
+@source '../../../app/src/components/ui/tooltip.tsx';
+@source '../../../app/src/components/ui/button.tsx';
+@source '../../../app/src/components/ui/separator.tsx';
+@source '../../../app/src/components/ui/breadcrumb.tsx';
+@source '../../../app/src/components/ui/dropdown-menu.tsx';
+
+/* The roles of styles.css under the names the shared components use. */
+@theme inline {
+  --color-background: var(--bg);
+  --color-panel: var(--panel);
+  --color-foreground: var(--fg);
+  --color-border: var(--border);
+  --color-muted: var(--card);
+  --color-muted-foreground: var(--muted);
+  --color-accent: var(--hover);
+  --color-accent-foreground: var(--fg);
+  --color-hover: var(--hover);
+  --color-popover: var(--card);
+  --color-popover-foreground: var(--fg);
+  --color-ring: var(--focus);
+  --color-avatar: var(--avatar);
+  --color-avatar-foreground: var(--avatar-fg);
+
+  --color-sidebar: var(--bg);
+  --color-sidebar-foreground: var(--muted);
+  --color-sidebar-primary: var(--primary);
+  --color-sidebar-primary-foreground: var(--primary-fg);
+  --color-sidebar-accent: var(--hover);
+  --color-sidebar-accent-foreground: var(--fg);
+  --color-sidebar-border: var(--border);
+  --color-sidebar-ring: var(--focus);
+
+  --radius-control: 10px;
+  --radius-row: 12px;
+  --shadow-float: var(--shadow);
+}
+
+/* What preflight would have reset, for the sidebar alone and at no
+   specificity, so every utility still wins. */
+:where([data-slot='sidebar-wrapper'], [data-slot='sidebar']) :where(ul, ol) {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+:where([data-slot='sidebar-wrapper'], [data-slot='sidebar']) :where(a) {
+  color: inherit;
+  text-decoration: none;
+}
+
+:where([data-slot='sidebar-wrapper'], [data-slot='sidebar']) :where(button) {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}

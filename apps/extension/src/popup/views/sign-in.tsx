@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
 import { SignInSchema } from '@/lib/api/dtos/auth/schema'
+import { COMMUNITY } from '@/lib/constants/edition'
 
 import { signIn } from '../../lib/api'
 import { DEFAULT_SETTINGS, getSettings } from '../../lib/storage'
@@ -79,12 +80,14 @@ export default function SignIn({ onSignedIn, onSettings }: SignInProps) {
       <form.AppForm>
         <form.SubmitButton label="Sign in" busyLabel="Signing in…" className="auth-submit" />
       </form.AppForm>
-      <p className="muted auth-note">
-        No account yet?{' '}
-        <a className="auth-link" href={`${appUrl}/sign-up`} target="_blank" rel="noreferrer">
-          Create one
-        </a>
-      </p>
+      {!COMMUNITY && (
+        <p className="muted auth-note">
+          No account yet?{' '}
+          <a className="auth-link" href={`${appUrl}/sign-up`} target="_blank" rel="noreferrer">
+            Create one
+          </a>
+        </p>
+      )}
 
       <div className="auth-foot">
         <button type="button" className="auth-link" onClick={onSettings}>

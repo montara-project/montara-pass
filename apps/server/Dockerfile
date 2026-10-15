@@ -5,7 +5,13 @@
 # API under /api and the UI.
 #
 # Build context: repository root
-#   docker build -f apps/server/Dockerfile -t montara-pass-server .
+#   docker build -f apps/server/Dockerfile -t montara-pass-ee .
+#   docker build -f apps/server/Dockerfile --build-arg EDITION=ce -t montara-pass-ce .
+#
+# EDITION picks the edition for both the web app and the binary: ee
+# (Enterprise Edition, the default) or ce (Community Edition: one self-hosted
+# user, no sign-up and no sharing).
+ARG EDITION=ee
 
 # ====================================================================================
 # Stage 1: web-ui (Vite build -> static dist)
@@ -32,8 +38,10 @@ COPY apps/app apps/app
 # only when the API lives on a different origin.
 ARG VITE_APP_NAME="Montara Pass"
 ARG VITE_API_URL=""
+ARG EDITION
 ENV VITE_APP_NAME=$VITE_APP_NAME \
-    VITE_API_URL=$VITE_API_URL
+    VITE_API_URL=$VITE_API_URL \
+    VITE_EDITION=$EDITION
 
 # `exec` bypasses the package.json lifecycle: image builds only bundle; lint,
 # format and type checks belong to CI and development.
@@ -55,14 +63,16 @@ COPY apps/server ./
 # APP_VERSION is baked into the binary and reported by /api/health; the release
 # workflow passes the git tag (e.g. v1.2.3).
 ARG APP_VERSION=dev
+ARG EDITION
 
 # The migrations are embedded in both binaries, so no SQL files ship separately.
 RUN --mount=type=cache,id=go-mod,target=/go/pkg/mod \
     --mount=type=cache,id=go-build,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=linux go build -trimpath \
-    -ldflags="-s -w -X montara-pass/server/internal/app.Version=${APP_VERSION}" \
+    -ldflags="-s -w -X montara-pass/server/internal/app.Version=${APP_VERSION} -X montara-pass/server/internal/config.Edition=${EDITION}" \
     -o /build/out/api ./cmd/api \
- && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" \
+ && CGO_ENABLED=0 GOOS=linux go build -trimpath \
+    -ldflags="-s -w -X montara-pass/server/internal/config.Edition=${EDITION}" \
     -o /build/out/migrate ./cmd/migrate
 
 # ====================================================================================

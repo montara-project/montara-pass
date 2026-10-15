@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"log/slog"
@@ -10,6 +11,7 @@ import (
 
 	"montara-pass/server/internal/app"
 	"montara-pass/server/internal/config"
+	"montara-pass/server/internal/lib/midtrans"
 	"montara-pass/server/internal/repositories"
 	"montara-pass/server/internal/seeders"
 
@@ -75,6 +77,22 @@ func run() error {
 		return fmt.Errorf("reconcile users mirror: %w", err)
 	}
 
+	// The Community Edition's only account is the super user. A database that
+	// holds others (one the Enterprise Edition ran on) would still let them
+	// sign in and see what was shared with them, so it is refused, and before
+	// seeding, which would otherwise reset that database's super user password.
+	if config.Community() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		others, err := repos.User.HasOtherThan(ctx, cfg.App.SuperUserEmail)
+		cancel()
+		if err != nil {
+			return fmt.Errorf("check community edition accounts: %w", err)
+		}
+		if others {
+			return errors.New("community edition allows only the super user, but the database holds other accounts: run the enterprise edition on it, or start from an empty database")
+		}
+	}
+
 	// Seeding follows Authula because the super user is created through it.
 	if cfg.App.SeedOnBoot {
 		superUser := seeders.SuperUserSeeder{
@@ -89,6 +107,15 @@ func run() error {
 		}
 	}
 
+	var payments *midtrans.Client
+	switch {
+	case config.Community():
+	case cfg.Billing.MidtransServerKey == "":
+		logger.Warn("billing checkout disabled: midtrans-server-key is not set")
+	default:
+		payments = midtrans.New(cfg.Billing.MidtransServerKey, cfg.Billing.MidtransProduction)
+	}
+
 	return serve(&app.Application{
 		Config:       cfg,
 		Logger:       logger,
@@ -96,5 +123,6 @@ func run() error {
 		Repositories: repos,
 		Auth:         auth,
 		Redis:        cache,
+		Midtrans:     payments,
 	})
 }

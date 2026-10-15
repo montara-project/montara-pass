@@ -312,11 +312,11 @@ Two shapes:
   card 400px wide in the middle of the page, on the sheet tone with a 16px
   radius. The vault gate stands outside the shell: locked, there is nowhere in
   it to go.
-- **The shell** (`components/layout/shell.tsx`): a `248px` sidebar on the page
-  itself and the content on a sheet beside it, rounded on its one free corner.
-  The sidebar folds to a 64px rail of icons from a button in its header, and
-  the choice is remembered. At 860px and under it becomes a strip along the
-  top.
+- **The shell** (`components/layout/shell.tsx`): shadcn's inset sidebar
+  (sidebar-08, `components/ui/sidebar.tsx`) on the page itself, and the
+  content on a rounded sheet beside it under a header with the sidebar's
+  trigger and a breadcrumb. The sidebar folds to a rail of icons, and the
+  choice is remembered in a cookie. Under 768px it opens over the page.
 
 Inside the sheet a page is one of three:
 
@@ -452,10 +452,9 @@ Calm and certain: one is filled, the rest stand back.
 
 ### Navigation
 
-- **Sidebar:** 40px items, muted at rest, body colour on hover; the current
-  one takes the sheet tone in the light theme and the card tone in the dark.
-  The account sits at its foot and opens a menu upwards (Account, Lock vault,
-  Sign out).
+- **Sidebar:** 32px items, muted at rest, body colour on hover; the current
+  one takes the hover tone. The account sits at its foot and opens a menu
+  beside it (Account, Billing, Lock vault, Sign out).
 - **Menu:** card tone, 12px radius, 6px padding, the floating shadow; 36px
   items with an 18px muted icon; a destructive item is danger-coloured with a
   14% danger wash on hover. A row's menu grows from its button over 140ms

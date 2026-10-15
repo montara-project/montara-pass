@@ -95,7 +95,7 @@ export default function PasswordHealth() {
   const reusedCount = health.reused.reduce((sum, group) => sum + group.length, 0)
 
   return (
-    <div className="mx-auto flex max-w-[1200px] flex-col gap-4 p-5 sm:p-8">
+    <div className="mx-auto flex max-w-[1200px] flex-col gap-4 p-5 sm:px-8 sm:pb-8">
       <ToolHead
         icon={IconShieldCheck}
         title="Password health"
