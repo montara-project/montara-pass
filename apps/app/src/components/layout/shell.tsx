@@ -136,7 +136,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       </Sidebar>
 
       <SidebarInset className="bg-panel min-h-0 overflow-hidden">
-        <header className="flex h-14 shrink-0 items-center gap-2 px-4">
+        <header className="bg-panel border-border sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b px-3 sm:px-6 md:rounded-t-sheet">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
           {current && (
@@ -151,11 +151,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             </Breadcrumb>
           )}
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {/* A new element for each page, so each one arrives. */}
-          <div key={pathname} className="page-in h-full">
-            {children}
-          </div>
+        {/* A new scroller for each page, so each one arrives at its top. It is
+            what moves as the page arrives, and the inset clips it: the content
+            never overflows, so no scrollbar flashes. */}
+        <div key={pathname} className="page-in min-h-0 flex-1 overflow-y-auto">
+          {children}
         </div>
       </SidebarInset>
     </SidebarProvider>

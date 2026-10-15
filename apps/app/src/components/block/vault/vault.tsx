@@ -95,7 +95,7 @@ export default function Vault() {
         >
           {/* Three parts, each with room under it: what the page is, what narrows
               the list, and the list. One gutter for all of them. */}
-          <header className="flex flex-wrap items-center gap-x-3 gap-y-2 px-6 pt-6 pb-5 sm:pt-8">
+          <header className="flex flex-wrap items-center gap-x-3 gap-y-2 px-6 pt-5 pb-5">
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
               <h1 className="text-xl font-semibold tracking-[-0.01em]">Vault</h1>
               <p className="text-muted-foreground text-[13px]">
@@ -176,7 +176,7 @@ export default function Vault() {
                 }
               />
             ) : (
-              <ul className="fade-in m-0 list-none p-0">
+              <ul className="fade-in m-0 list-none p-0 space-y-1">
                 {items.map((item) => (
                   <li key={item.id}>
                     <ItemRow

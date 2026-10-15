@@ -192,7 +192,7 @@ export default function ItemDetail({ item, folders, onClose }: ItemDetailProps) 
   const Star = item.favorite ? IconStarFilled : IconStar
 
   return (
-    <div className="flex max-w-[640px] flex-col gap-4 p-5 sm:p-8">
+    <div className="flex max-w-[640px] flex-col gap-4 p-5 sm:px-8 sm:pb-8">
       <Button
         variant="ghost"
         mode="icon"
