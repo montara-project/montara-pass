@@ -6,3 +6,10 @@ next-env.d.ts
 .vinext/
 .wrangler/
 .cloudflare/
+
+# Impeccable: the surface briefs and config are committed; a round's question
+# logs, decision mocks, review captures and cache are session artifacts.
+.impeccable/questions/
+.impeccable/mocks/
+.impeccable/review/
+.impeccable/hook.cache.json

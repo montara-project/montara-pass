@@ -1,0 +1,558 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-15T14:27:18Z",
+  "title": "Design System: Montara Pass Marketing Site",
+  "extensions": {
+    "colorMeta": {
+      "electric-blue": {
+        "role": "primary",
+        "displayName": "Electric Blue",
+        "canonical": "#145cff",
+        "tonalRamp": [
+          "#120065",
+          "#04008e",
+          "#001bb8",
+          "#0045e4",
+          "#246cff",
+          "#4a92ff",
+          "#6fb9ff",
+          "#95dfff"
+        ]
+      },
+      "arctic-cyan": {
+        "role": "secondary",
+        "displayName": "Arctic Cyan",
+        "canonical": "#42c8ff",
+        "tonalRamp": [
+          "#000c2e",
+          "#00294e",
+          "#004871",
+          "#006895",
+          "#008aba",
+          "#21ace1",
+          "#4fd0ff",
+          "#7ef5ff"
+        ]
+      },
+      "night-ink": {
+        "role": "neutral",
+        "displayName": "Night Ink",
+        "canonical": "#0b1529",
+        "tonalRamp": [
+          "#030a1d",
+          "#192438",
+          "#344055",
+          "#525e74",
+          "#727e94",
+          "#939fb5",
+          "#b6c1d7",
+          "#d9e5fb"
+        ]
+      },
+      "abyss-navy": {
+        "role": "neutral",
+        "displayName": "Abyss Navy",
+        "canonical": "#070d1c",
+        "tonalRamp": [
+          "#050a19",
+          "#1c2434",
+          "#384051",
+          "#565e6f",
+          "#757d8f",
+          "#969eb0",
+          "#b9c1d2",
+          "#dde5f6"
+        ]
+      },
+      "panel-navy": {
+        "role": "neutral",
+        "displayName": "Panel Navy",
+        "canonical": "#101d3a",
+        "tonalRamp": [
+          "#020923",
+          "#152340",
+          "#313f5e",
+          "#4e5d7c",
+          "#6e7d9d",
+          "#8f9fbe",
+          "#b2c1e0",
+          "#d6e5ff"
+        ]
+      },
+      "paper-white": {
+        "role": "neutral",
+        "displayName": "Paper White",
+        "canonical": "#f4f7fd",
+        "tonalRamp": [
+          "#0a0b0e",
+          "#222427",
+          "#3e4043",
+          "#5c5e62",
+          "#7b7d82",
+          "#9c9ea3",
+          "#bec1c6",
+          "#e2e5ea"
+        ]
+      },
+      "mist-slate": {
+        "role": "neutral",
+        "displayName": "Mist Slate",
+        "canonical": "#a3b1cc",
+        "tonalRamp": [
+          "#050b19",
+          "#1b2435",
+          "#364053",
+          "#535e73",
+          "#717e95",
+          "#919fb9",
+          "#b3c1dc",
+          "#d7e5ff"
+        ]
+      },
+      "hairline-mist": {
+        "role": "neutral",
+        "displayName": "Hairline Mist",
+        "canonical": "rgb(169 182 211 / 0.14)",
+        "tonalRamp": [
+          "#050a1a",
+          "#1c2436",
+          "#363f54",
+          "#535d74",
+          "#727d96",
+          "#929eba",
+          "#b4c1de",
+          "#d8e5ff"
+        ]
+      },
+      "pale-cyan": {
+        "role": "secondary",
+        "displayName": "Pale Cyan",
+        "canonical": "#b9e8ff",
+        "tonalRamp": [
+          "#000e19",
+          "#072835",
+          "#234554",
+          "#3f6374",
+          "#5d8496",
+          "#7ca5b9",
+          "#9cc8de",
+          "#beedff"
+        ]
+      },
+      "accent-white": {
+        "role": "primary",
+        "displayName": "Accent White",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c1c1c1",
+          "#e4e4e4"
+        ]
+      },
+      "night-ink-light": {
+        "role": "neutral",
+        "displayName": "Night Ink (light theme)",
+        "canonical": "#f6f8fd",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#232427",
+          "#3e4043",
+          "#5c5d61",
+          "#7c7d81",
+          "#9d9ea2",
+          "#bfc1c5",
+          "#e2e4e9"
+        ]
+      },
+      "abyss-navy-light": {
+        "role": "neutral",
+        "displayName": "Abyss Navy (light theme)",
+        "canonical": "#eef2fb",
+        "tonalRamp": [
+          "#090b0f",
+          "#222429",
+          "#3d4045",
+          "#5b5e64",
+          "#7a7d84",
+          "#9b9ea6",
+          "#bdc1c9",
+          "#e1e5ed"
+        ]
+      },
+      "panel-navy-light": {
+        "role": "neutral",
+        "displayName": "Panel Navy (light theme)",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c1c1c1",
+          "#e4e4e4"
+        ]
+      },
+      "paper-white-light": {
+        "role": "neutral",
+        "displayName": "Paper White (light theme)",
+        "canonical": "#101d3a",
+        "tonalRamp": [
+          "#020923",
+          "#152340",
+          "#313f5e",
+          "#4e5d7c",
+          "#6e7d9d",
+          "#8f9fbe",
+          "#b2c1e0",
+          "#d6e5ff"
+        ]
+      },
+      "mist-slate-light": {
+        "role": "neutral",
+        "displayName": "Mist Slate (light theme)",
+        "canonical": "#51607f",
+        "tonalRamp": [
+          "#030a1f",
+          "#18233c",
+          "#323f5b",
+          "#4f5d7c",
+          "#6e7d9d",
+          "#8f9fbe",
+          "#b2c1e0",
+          "#d6e5ff"
+        ]
+      },
+      "hairline-mist-light": {
+        "role": "neutral",
+        "displayName": "Hairline Mist (light theme)",
+        "canonical": "rgb(16 29 58 / 0.1)",
+        "tonalRamp": [
+          "#020923",
+          "#152340",
+          "#313f5e",
+          "#4e5d7c",
+          "#6e7d9d",
+          "#8f9fbe",
+          "#b2c1e0",
+          "#d6e5ff"
+        ]
+      },
+      "arctic-cyan-light": {
+        "role": "secondary",
+        "displayName": "Arctic Cyan (light theme, resolves to Electric Blue)",
+        "canonical": "#145cff",
+        "tonalRamp": [
+          "#120065",
+          "#04008e",
+          "#001bb8",
+          "#0045e4",
+          "#246cff",
+          "#4a92ff",
+          "#6fb9ff",
+          "#95dfff"
+        ]
+      },
+      "pale-cyan-light": {
+        "role": "secondary",
+        "displayName": "Pale Cyan (light theme)",
+        "canonical": "#0f3fb5",
+        "tonalRamp": [
+          "#080053",
+          "#000079",
+          "#022ea1",
+          "#2052c6",
+          "#4276e7",
+          "#6499ff",
+          "#88beff",
+          "#ade3ff"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The hero headline and the closing call to action. 3rem to 4.5rem at line-height 1.02, balanced, stepped at 640px and 1024px."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Every section heading, centred by Statement and always two-tone. 2.25rem to 3.5rem."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "A heading inside a block. 1.5rem at 500. The pricing tape's own title is the exception, at clamp(2rem, 4.2vw, 2.75rem) and -0.03em."
+      },
+      "body-large": {
+        "displayName": "Body Large",
+        "purpose": "A section's lede and the legal pages' introduction. 1.125rem over a 2rem line, capped at max-w-xl."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "The workhorse: list items, FAQ answers, card copy, the tape's lede. 0.9375rem over 1.75rem, in mist slate."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Buttons, nav links, tape row names, field labels. 0.875rem at 500."
+      },
+      "body-small": {
+        "displayName": "Body Small",
+        "purpose": "The most-used size in the build: nav links, footer links, contact fields, error messages. 0.875rem at 400."
+      },
+      "meta": {
+        "displayName": "Meta",
+        "purpose": "Chips, captions, terms, the version, the footer's copyright. JetBrains Mono at 0.75rem, lowercase."
+      },
+      "label-mono": {
+        "displayName": "Label Mono",
+        "purpose": "The slug line above a heading and the ledger's column title. JetBrains Mono at 0.6875rem, 0.12em, uppercase. The only uppercase in the system."
+      }
+    },
+    "shadows": [
+      {
+        "name": "card-rest",
+        "value": "0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05)",
+        "purpose": "The shared card class only. Tailwind's shadow-sm with the shadow colour cut to 5% black, which on this ground is barely a lift; it keeps a card from reading as a hole."
+      },
+      {
+        "name": "focus-ring",
+        "value": "outline: 2px solid var(--color-accent-bright); outline-offset: 2px",
+        "purpose": "Not a box-shadow: every control in the system shows focus as an outline. Arctic cyan in the dark theme, Electric Blue in the light one, because --color-accent-bright resolves to it."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state",
+        "value": "200ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "The system's one beat, on opacity, border colour, background colour and colour. The easing is Tailwind's default; no custom curve exists in the build."
+      },
+      {
+        "name": "nudge",
+        "value": "transform 200ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "The icon inside a .btn or a .nudge link translates 2px on the x axis on hover."
+      },
+      {
+        "name": "disclosure-turn",
+        "value": "transform 200ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "The FAQ summary's plus turns 45 degrees when its details opens, and the legal table of contents' chevron turns 180. Both are paired with motion-reduce:transition-none."
+      },
+      {
+        "name": "tape-select",
+        "value": "background-color 200ms",
+        "purpose": "A price line taking the hover wash or the selected tint."
+      },
+      {
+        "name": "tape-mark",
+        "value": "border-color 200ms, background-color 200ms",
+        "purpose": "The 8px radio mark filling arctic cyan when its row is selected."
+      },
+      {
+        "name": "smooth-scroll",
+        "value": "scroll-behavior: smooth",
+        "purpose": "Set on html only inside prefers-reduced-motion: no-preference, for the header's in-page anchors."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "transition: none",
+        "purpose": "Under prefers-reduced-motion: reduce this is applied to .tape-line, .tape-mark, .btn svg and .nudge svg — the four transitions that move something. Colour-only transitions stay, since no motion is involved."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px",
+        "purpose": "Section padding steps to 40px horizontally, grids take two columns, the tape and the ledger take their wider padding."
+      },
+      {
+        "name": "md",
+        "value": "768px",
+        "purpose": "The header's nav and its actions appear, the mobile menu hides, and the three- and four-cell grids lay out."
+      },
+      {
+        "name": "lg",
+        "value": "1024px",
+        "purpose": "The pricing page splits into the tape and a 360px ledger, the legal table of contents becomes a sticky 240px column, and the contact channels go to four columns."
+      },
+      {
+        "name": "frame",
+        "value": "1200px",
+        "purpose": "The maximum width of the one bordered page column. Not a breakpoint: a cap."
+      },
+      {
+        "name": "header",
+        "value": "64px",
+        "purpose": "The sticky header's height, and the reason html carries scroll-padding-top: 5.5rem."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The filled action of a viewport: paper white on night ink, which reads as light on the dark theme and navy on the light one. It dims rather than changing colour on hover, and the icon nudges 2px.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Self-host<svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 12h16\"/><path d=\"M13 5l7 7-7 7\"/></svg></button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; border: 1px solid transparent; border-radius: 10px; padding: 0.625rem 1rem; font-family: var(--font-body, Inter, ui-sans-serif, system-ui, sans-serif); font-size: 0.875rem; font-weight: 500; line-height: 1.25rem; cursor: pointer; transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1), border-color 200ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn svg { transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn:hover svg { transform: translateX(2px); } .ds-btn-primary { background: var(--color-fg, #f4f7fd); color: var(--color-ink, #0b1529); } .ds-btn-primary:hover { opacity: 0.88; } .ds-btn:focus-visible { outline: 2px solid var(--color-accent-bright, #42c8ff); outline-offset: 2px; } @media (prefers-reduced-motion: reduce) { .ds-btn svg { transition: none; } }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "The standing-back action: a panel-navy fill behind a hairline edge, sitting beside a primary. On hover the edge firms to 55% mist and the fill does not change.",
+      "html": "<button class=\"ds-btn ds-btn-secondary\">Or run it yourself</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; border: 1px solid transparent; border-radius: 10px; padding: 0.625rem 1rem; font-family: var(--font-body, Inter, ui-sans-serif, system-ui, sans-serif); font-size: 0.875rem; font-weight: 500; line-height: 1.25rem; cursor: pointer; transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1), border-color 200ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn-secondary { border-color: var(--color-line, rgb(169 182 211 / 0.14)); background: var(--color-card, #101d3a); color: var(--color-fg, #f4f7fd); } .ds-btn-secondary:hover { border-color: color-mix(in srgb, var(--color-mist, #a3b1cc) 55%, transparent); } .ds-btn:focus-visible { outline: 2px solid var(--color-accent-bright, #42c8ff); outline-offset: 2px; }"
+    },
+    {
+      "name": "Header Pill Button",
+      "kind": "button",
+      "refersTo": "button-primary-pill",
+      "description": "The header's \"Log in\" and the mobile menu's: the same ink fill taken to a full pill, so the 64px bar and the stacked menu stay compact. The contact form's submit keeps the 10px control radius instead.",
+      "html": "<a href=\"#\" class=\"ds-btn ds-btn-pill\">Log in</a>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; border: 1px solid transparent; font-family: var(--font-body, Inter, ui-sans-serif, system-ui, sans-serif); font-size: 0.875rem; font-weight: 500; line-height: 1.25rem; cursor: pointer; transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1), border-color 200ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-btn-pill { background: var(--color-fg, #f4f7fd); color: var(--color-ink, #0b1529); border-radius: 999px; padding: 0.375rem 1rem; text-decoration: none; } .ds-btn-pill:hover { opacity: 0.88; } .ds-btn:focus-visible { outline: 2px solid var(--color-accent-bright, #42c8ff); outline-offset: 2px; }"
+    },
+    {
+      "name": "Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "A small mono label naming what a feature runs on or what a tier entitles you to. Panel navy, hairline edge, lowercase. The feature matrix's filter is the same object taken to a pill, and its checked state fills with paper white.",
+      "html": "<span class=\"ds-chip\">extension</span>\n<label class=\"ds-chip ds-chip-pill\"><input type=\"radio\" name=\"surface\" class=\"ds-sr\" checked>all</label>",
+      "css": ".ds-chip { display: inline-block; border: 1px solid var(--color-line, rgb(169 182 211 / 0.14)); border-radius: 6px; background: var(--color-card, #101d3a); padding: 2px 6px; font-family: var(--font-mono, \"JetBrains Mono\", ui-monospace, Menlo, monospace); font-size: 0.75rem; line-height: 1rem; color: var(--color-mist, #a3b1cc); text-transform: lowercase; } .ds-chip-pill { cursor: pointer; border-radius: 999px; padding: 4px 12px; transition: border-color 200ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-chip-pill:hover { border-color: color-mix(in srgb, var(--color-mist, #a3b1cc) 50%, transparent); } .ds-chip-pill:has(input:checked) { border-color: var(--color-fg, #f4f7fd); background: var(--color-fg, #f4f7fd); color: var(--color-ink, #0b1529); } .ds-chip-pill:has(input:focus-visible) { outline: 2px solid var(--color-accent-bright, #42c8ff); outline-offset: 2px; } .ds-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The one raised surface: panel navy, a 14px corner, a hairline edge and the system's single 5% black shadow. It holds two short lists side by side or one panel of terms. A card never sits inside a card.",
+      "html": "<div class=\"ds-card\">\n  <h3 class=\"ds-card-title\">What you end up with</h3>\n  <p class=\"ds-card-body\">One image holds the API and the web app.</p>\n</div>",
+      "css": ".ds-card { border: 1px solid var(--color-line, rgb(169 182 211 / 0.14)); border-radius: 14px; background: var(--color-card, #101d3a); padding: 24px; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05); color: var(--color-fg, #f4f7fd); font-family: var(--font-body, Inter, ui-sans-serif, system-ui, sans-serif); } .ds-card-title { margin: 0; font-size: 0.875rem; font-weight: 400; color: var(--color-mist, #a3b1cc); } .ds-card-body { margin: 16px 0 0; font-size: 0.9375rem; line-height: 1.75rem; } @media (min-width: 640px) { .ds-card { padding: 28px; } }"
+    },
+    {
+      "name": "Tape Row",
+      "kind": "custom",
+      "refersTo": "tape-row",
+      "description": "A price line on the pricing page's receipt tape, and the control that selects it. Rest is transparent over the night-ink ground with an 8px outline mark; hover takes a 3% wash of the text colour; the selected row takes a 7% electric-blue wash, a 2px arctic-cyan rule down its left edge and a filled mark. The source sets data-on from React state; the snippet mirrors it with :has(input:checked) so it responds in the panel.",
+      "html": "<fieldset class=\"ds-tape-lines\">\n  <legend class=\"ds-sr\">Choose a tier</legend>\n  <label class=\"ds-tape-line\">\n    <input type=\"radio\" name=\"tier\" class=\"ds-sr\" checked>\n    <span class=\"ds-tape-mark\" aria-hidden=\"true\"></span>\n    <span class=\"ds-tape-body\">\n      <span class=\"ds-tape-name\">Pro, monthly</span>\n      <span class=\"ds-tape-terms\">renews until cancelled</span>\n    </span>\n    <span class=\"ds-tape-amount\">$3 <small>per month</small></span>\n  </label>\n  <label class=\"ds-tape-line\">\n    <input type=\"radio\" name=\"tier\" class=\"ds-sr\">\n    <span class=\"ds-tape-mark\" aria-hidden=\"true\"></span>\n    <span class=\"ds-tape-body\">\n      <span class=\"ds-tape-name\">Pro, lifetime</span>\n      <span class=\"ds-tape-terms\">one payment</span>\n    </span>\n    <span class=\"ds-tape-amount\">$300 <small>once</small></span>\n  </label>\n</fieldset>",
+      "css": ".ds-tape-lines { margin: 0; padding: 0; border: 0; border-top: 1px solid var(--color-line, rgb(169 182 211 / 0.14)); font-family: var(--font-body, Inter, ui-sans-serif, system-ui, sans-serif); color: var(--color-fg, #f4f7fd); } .ds-tape-line { position: relative; display: grid; grid-template-columns: 1.125rem minmax(0, 1fr) auto; align-items: center; gap: 0.875rem; padding: 0.9375rem 0.5rem 0.9375rem 0.25rem; border-bottom: 1px solid var(--color-line, rgb(169 182 211 / 0.14)); cursor: pointer; transition: background-color 200ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-tape-line:hover { background: color-mix(in srgb, var(--color-fg, #f4f7fd) 3%, transparent); } .ds-tape-line:has(input:checked) { background: color-mix(in srgb, var(--color-accent, #145cff) 7%, transparent); } .ds-tape-line:has(input:checked)::before { content: \"\"; position: absolute; inset-block: -1px; left: 0; width: 2px; background: var(--color-accent-bright, #42c8ff); } .ds-tape-line:has(input:focus-visible) { outline: 2px solid var(--color-accent-bright, #42c8ff); outline-offset: 2px; border-radius: 6px; } .ds-tape-mark { width: 0.5rem; height: 0.5rem; border: 1px solid var(--color-line, rgb(169 182 211 / 0.14)); border-radius: 9999px; background: transparent; transition: border-color 200ms cubic-bezier(0.4, 0, 0.2, 1), background-color 200ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-tape-line:has(input:checked) .ds-tape-mark { border-color: var(--color-accent-bright, #42c8ff); background: var(--color-accent-bright, #42c8ff); } .ds-tape-body { display: flex; min-width: 0; flex-direction: column; gap: 0.125rem; } .ds-tape-name { font-size: 0.875rem; font-weight: 500; } .ds-tape-terms { font-family: var(--font-mono, \"JetBrains Mono\", ui-monospace, Menlo, monospace); font-size: 0.6875rem; line-height: 1.6; text-transform: lowercase; color: var(--color-mist, #a3b1cc); } .ds-tape-amount { font-family: var(--font-mono, \"JetBrains Mono\", ui-monospace, Menlo, monospace); font-size: 1rem; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; } .ds-tape-amount small { font-size: 0.6875rem; font-weight: 400; color: var(--color-mist, #a3b1cc); } .ds-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } @media (prefers-reduced-motion: reduce) { .ds-tape-line, .ds-tape-mark { transition: none; } }"
+    },
+    {
+      "name": "Ledger Row",
+      "kind": "custom",
+      "refersTo": "ledger-row",
+      "description": "The proof column beside the tape: what the server holds and what it cannot read, in three states. Weight carries the distinction as well as hue, so the column still reads as a contrast in greyscale — plain at 400 in mist, cipher at 500 in paper white, never at 500 in arctic cyan. The column sits on abyss navy behind a dashed rule.",
+      "html": "<div class=\"ds-ledger\">\n  <p class=\"ds-ledger-title\">What our server can see</p>\n  <dl class=\"ds-ledger-rows\">\n    <div class=\"ds-ledger-row\" data-state=\"plain\"><dt>account email</dt><dd><span class=\"ds-ledger-dot\"></span>plaintext</dd></div>\n    <div class=\"ds-ledger-row\" data-state=\"cipher\"><dt>login, password, url, notes</dt><dd><span class=\"ds-ledger-dot\"></span>ciphertext</dd></div>\n    <div class=\"ds-ledger-row\" data-state=\"never\"><dt>master password</dt><dd><span class=\"ds-ledger-dot\"></span>never sent</dd></div>\n  </dl>\n</div>",
+      "css": ".ds-ledger { padding: 36px 24px 32px; background: var(--color-abyss, #070d1c); font-family: var(--font-mono, \"JetBrains Mono\", ui-monospace, Menlo, monospace); } .ds-ledger-title { margin: 0; font-size: 0.6875rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-mist, #a3b1cc); } .ds-ledger-rows { margin: 20px 0 0; } .ds-ledger-row { display: flex; align-items: baseline; justify-content: space-between; gap: 0.875rem; padding: 9px 0; border-bottom: 1px dashed color-mix(in srgb, var(--color-mist, #a3b1cc) 18%, transparent); font-size: 0.6875rem; line-height: 1.4; } .ds-ledger-row dt { color: var(--color-mist, #a3b1cc); } .ds-ledger-row dd { display: inline-flex; align-items: center; gap: 0.375rem; margin: 0; white-space: nowrap; } .ds-ledger-dot { width: 0.3125rem; height: 0.3125rem; border-radius: 9999px; } .ds-ledger-row[data-state=\"plain\"] dd { color: var(--color-mist, #a3b1cc); font-weight: 400; } .ds-ledger-row[data-state=\"plain\"] .ds-ledger-dot { background: var(--color-mist, #a3b1cc); } .ds-ledger-row[data-state=\"cipher\"] dd { color: var(--color-fg, #f4f7fd); font-weight: 500; } .ds-ledger-row[data-state=\"cipher\"] .ds-ledger-dot { background: var(--color-fg, #f4f7fd); } .ds-ledger-row[data-state=\"never\"] dd { color: var(--color-accent-bright, #42c8ff); font-weight: 500; } .ds-ledger-row[data-state=\"never\"] .ds-ledger-dot { background: var(--color-accent-bright, #42c8ff); } @media (min-width: 640px) { .ds-ledger { padding: 40px 40px 36px; } }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "The contact form's field: abyss navy at 60% as the fill, a hairline edge, 12px radius. Focus turns the edge arctic cyan and adds a 2px electric-blue ring; invalid goes rose with an alert message below.",
+      "html": "<label class=\"ds-field-label\" for=\"ds-name\">Name</label>\n<input id=\"ds-name\" class=\"ds-field\" type=\"text\" placeholder=\"Ada Lovelace\" value=\"\">",
+      "css": ".ds-field-label { display: block; margin-bottom: 8px; font-family: var(--font-body, Inter, ui-sans-serif, system-ui, sans-serif); font-size: 0.875rem; font-weight: 500; color: var(--color-fg, #f4f7fd); } .ds-field { height: 48px; width: 100%; box-sizing: border-box; border: 1px solid var(--color-line, rgb(169 182 211 / 0.14)); border-radius: 12px; background: color-mix(in srgb, var(--color-abyss, #070d1c) 60%, transparent); padding: 0 16px; font-family: var(--font-body, Inter, ui-sans-serif, system-ui, sans-serif); font-size: 0.875rem; color: var(--color-fg, #f4f7fd); transition: border-color 200ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-field::placeholder { color: color-mix(in srgb, var(--color-mist, #a3b1cc) 50%, transparent); } .ds-field:hover { border-color: color-mix(in srgb, var(--color-mist, #a3b1cc) 30%, transparent); } .ds-field:focus { outline: none; border-color: var(--color-accent-bright, #42c8ff); box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent, #145cff) 30%, transparent); }"
+    },
+    {
+      "name": "Header Nav Link",
+      "kind": "nav",
+      "refersTo": "nav-link",
+      "description": "A header or footer link: 14px in mist slate, moving to paper white over 200ms. The header is sticky on night ink at 80% behind a 12px backdrop blur, with a hairline under it.",
+      "html": "<header class=\"ds-header\">\n  <nav class=\"ds-nav\"><a href=\"#\">Security</a><a href=\"#\">Features</a><a href=\"#\">Pricing</a></nav>\n</header>",
+      "css": ".ds-header { position: sticky; top: 0; display: flex; align-items: center; height: 64px; padding: 0 24px; border-bottom: 1px solid var(--color-line, rgb(169 182 211 / 0.14)); background: color-mix(in srgb, var(--color-ink, #0b1529) 80%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); } .ds-nav { display: flex; align-items: center; gap: 24px; font-family: var(--font-body, Inter, ui-sans-serif, system-ui, sans-serif); } .ds-nav a { font-size: 0.875rem; color: var(--color-mist, #a3b1cc); text-decoration: none; cursor: pointer; transition: color 200ms cubic-bezier(0.4, 0, 0.2, 1); } .ds-nav a:hover { color: var(--color-fg, #f4f7fd); } .ds-nav a:focus-visible { outline: 2px solid var(--color-accent-bright, #42c8ff); outline-offset: 2px; border-radius: 4px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Printed Record",
+    "overview": "The site's job is evidentiary. It has to show what the server holds, what it cannot read, what a tier entitles you to, and who wrote the software. It answers in the form a record takes: ruled rows, hairline rules, slugs, terms, amounts in tabular monospace, a receipt tape and a ledger, printed on one 1200px column that sits on a hatched ground. Nothing here is a brochure panel. A card is the exception, and it is a card because it holds two short lists side by side, not because the section wanted decoration.\n\nThe record is dark. Night ink is the ground inside the frame, abyss navy is the ground outside it and inside every art well, and panel navy is the one step up — a sheet of stock. Text is paper white, annotations are mist slate, and a hairline of mist at 14% does all the dividing. The hatch in the gutters is the only texture in the system, and it is drawn from the text colour at 4%, so it moves with the theme.\n\nTwo colours are allowed to say something. Electric blue selects and tints; arctic cyan marks live state — the focus ring, the selected tape row, the value the server never sees. Everything else is a step of the same navy. Prose is set in Inter; JetBrains Mono is what the record prints.\n\nRejected, by decision, on the pricing surface: the category's three cards side by side with a highlighted middle tier and a monthly/annual toggle. The tiers are one continuous tape of ruled lines instead.",
+    "keyCharacteristics": [
+      "One 1200px bordered column on a hatched abyss ground; the frame is the page.",
+      "Hairlines divide. Grid seams are a 1px gap over the line colour, not a border.",
+      "Electric blue selects, arctic cyan marks; the filled action is paper white.",
+      "Near-shadowless: one 5% black shadow on the card and nothing else.",
+      "Depth is tonal — abyss under ink, ink under panel — never blur or glow.",
+      "Inter for prose, JetBrains Mono for anything the record prints.",
+      "Every section heading's second clause is dimmed to 75% mist, by the `Dim` device.",
+      "One motion beat, 200ms, with a reduced-motion rule beside every transition."
+    ],
+    "rules": [
+      {
+        "name": "The Two Voices Rule",
+        "body": "Electric blue selects and tints; arctic cyan marks live state. Neither fills a button. The filled action in this world is paper white on night ink, and there is one per viewport.",
+        "section": "colors"
+      },
+      {
+        "name": "The Token Rule",
+        "body": "A component names a role, never a hex. A new surface picks from the existing steps before a step is added.",
+        "section": "colors"
+      },
+      {
+        "name": "The Hairline Rule",
+        "body": "A 1px `--color-line` rule does the dividing. A grid seam is `gap-px` over `bg-line`, with each cell carrying `bg-ink` — never a border on each cell.",
+        "section": "colors"
+      },
+      {
+        "name": "The One Family Rule",
+        "body": "Inter for prose and headings, JetBrains Mono for what the record prints. No third face, and no display face.",
+        "section": "typography"
+      },
+      {
+        "name": "The Mono Is Not Decoration Rule",
+        "body": "Monospace marks a value, a term or a mechanical label. It never carries a paragraph, and it never sets a heading except the tape's title, which is a printed slip.",
+        "section": "typography"
+      },
+      {
+        "name": "The Dim Rule",
+        "body": "A section heading is two-tone: the second clause is dimmed to 75% mist (`Dim` in `components/shared.tsx`). It holds 5.2:1 on night ink and 3.5:1 in the light theme, so it is legal for large headings only — never for body copy, and never below heading sizes.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "Anything that counts or prices sets `font-variant-numeric: tabular-nums`. The tape's amounts are the case it exists for.",
+        "section": "typography"
+      },
+      {
+        "name": "The Frame Rule",
+        "body": "Content never escapes the 1200px column, and the hatch is never painted inside it. Full-bleed is not a move this system has.",
+        "section": "layout"
+      },
+      {
+        "name": "The Seam Rule",
+        "body": "A shared edge is one line, not two. Cells in a grid own no border; the gap over the line colour is the seam.",
+        "section": "layout"
+      },
+      {
+        "name": "The Tone Not Shadow Rule",
+        "body": "To raise a surface, take the next tone — abyss, ink, panel. Do not reach for a shadow. The card's 5% black is the system's one concession and it is not a pattern to extend.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Functional Translucency Rule",
+        "body": "Blur is used once, on the sticky header, to separate it from the page it covers. It is not a decoration and no other surface gets one.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do divide with a 1px `--color-line` rule, and draw a grid seam with `gap-px` over `bg-line` while each cell carries `bg-ink`.",
+      "Do keep everything inside the 1200px bordered column; the hatch belongs to the ground outside it.",
+      "Do dim a heading's second clause with `Dim` (75% mist) and keep it to headings — it holds 3:1 for large text, not 4.5:1.",
+      "Do use electric blue to select and tint and arctic cyan to mark live state; the filled action is paper white on night ink, one per viewport.",
+      "Do set amounts, terms, slugs, ledger fields and captions in JetBrains Mono, with `tabular-nums` on anything that counts or prices.",
+      "Do pair every transition with a `prefers-reduced-motion` rule, and keep the beat at 200ms.",
+      "Do check a pairing in both themes: dark is `:root`, and `.light` flips the same role names.",
+      "Do take icons from `components/icons.tsx` at its 2px round stroke, 16px inside controls."
+    ],
+    "donts": [
+      "Don't add a shadow beyond the card's 5% black. Depth is tone and hairline.",
+      "Don't introduce a colour outside the token set. The contact form's rose error text is existing drift, not a precedent.",
+      "Don't thicken a box's border for emphasis. A 2px rule is a mark — the selected tape row, the current TOC entry, a footnote — never an outline.",
+      "Don't set a paragraph in monospace, or uppercase anything but the mono slug and the ledger's column title.",
+      "Don't put the dimmed heading clause into body copy or below heading sizes.",
+      "Don't build pricing as three cards side by side with a highlighted tier or a monthly/annual toggle. The tiers are one tape of ruled lines.",
+      "Don't animate anything but a colour, an opacity or a transform. No keyframe animations, and nothing that animates a layout property.",
+      "Don't nest a card in a card, or paint the hatch inside the frame."
+    ]
+  }
+}

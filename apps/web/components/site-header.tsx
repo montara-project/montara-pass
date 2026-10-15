@@ -9,7 +9,7 @@ const navLinks = [
   { href: "/#security", label: "Security" },
   { href: "/#features", label: "Features" },
   { href: "/#self-host", label: "Self-host" },
-  { href: "/#pricing", label: "Pricing" },
+  { href: "/pricing", label: "Pricing" },
   { href: "/#faq", label: "FAQ" },
   { href: docsUrl(), label: "Docs" },
 ];
