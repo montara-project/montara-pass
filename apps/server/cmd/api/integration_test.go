@@ -26,6 +26,7 @@ import (
 	"montara-pass/server/internal/lib"
 	"montara-pass/server/internal/lib/constant"
 	"montara-pass/server/internal/lib/midtrans"
+	"montara-pass/server/internal/models"
 	"montara-pass/server/internal/repositories"
 	"montara-pass/server/internal/seeders"
 )
@@ -316,6 +317,7 @@ func TestIntegration(t *testing.T) {
 
 	vaultFlow(t, call, superToken, userToken, userEmail, user.ID)
 	billingFlow(t, call, superToken, userToken)
+	shareGate(t, application, call, db, superEmail, superToken, userToken, user.ID)
 
 	// An address nobody has verified gets no session from signing up, and a
 	// sign-in with it reaches nothing: no vault of its own, and no public key
@@ -706,4 +708,163 @@ func billingFlow(
 		revenue[0].(map[string]any)["last_30d"] != float64(50000) {
 		t.Fatalf("subscription revenue: %v", stats["subscription_revenue"])
 	}
+}
+
+// shareGate drives the plan gate on handing an item out: it needs a paid plan
+// where the deployment takes payments, while receiving one, changing a role
+// and leaving again do not. Midtrans is configured for this run, so the gate
+// is on. The super user owns vaultFlow's item and is exempt: billing keeps
+// plans to accounts with the 'user' role (migrations/ee/000001), so a plan is
+// not the operator's to hold, and a gate they could not satisfy would leave
+// them unable to share at all.
+func shareGate(
+	t *testing.T,
+	application *app.Application,
+	call func(method, path, token string, body any, headers ...string) (int, map[string]any),
+	db *sql.DB,
+	superEmail, superToken, userToken, userID string,
+) {
+	t.Helper()
+
+	b64 := func(s string) string { return base64.StdEncoding.EncodeToString([]byte(s)) }
+	want := func(wantStatus int, method, path, token string, body any) map[string]any {
+		t.Helper()
+		status, out := call(method, path, token, body)
+		if status != wantStatus {
+			t.Fatalf("%s %s: %d %v, want %d", method, path, status, out, wantStatus)
+		}
+		data, _ := out["data"].(map[string]any)
+		return data
+	}
+
+	var superID string
+	if err := db.QueryRow(`SELECT id FROM users WHERE email = $1`, superEmail).Scan(&superID); err != nil {
+		t.Fatal(err)
+	}
+	// The plans billingFlow put on offer, reused here.
+	var monthly, lifetime string
+	if err := db.QueryRow(`SELECT id FROM plans WHERE code = 'pro-monthly'`).Scan(&monthly); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.QueryRow(`SELECT id FROM plans WHERE code = 'pro-lifetime'`).Scan(&lifetime); err != nil {
+		t.Fatal(err)
+	}
+
+	// billingFlow leaves the user subscribed; every case below starts from no
+	// plan at all.
+	clearPlans := func() {
+		t.Helper()
+		if _, err := db.Exec(`DELETE FROM subscriptions WHERE user_id = $1`, userID); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := db.Exec(`DELETE FROM purchases WHERE user_id = $1`, userID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	subscribe := func(status, start, end string) {
+		t.Helper()
+		clearPlans()
+		if _, err := db.Exec(`INSERT INTO subscriptions (user_id, plan_id, status, current_period_start, current_period_end, amount, currency)
+			VALUES ($1, $2, $3, now() + $4::interval, now() + $5::interval, 50000, 'IDR')`,
+			userID, monthly, status, start, end); err != nil {
+			t.Fatalf("subscription %s: %v", status, err)
+		}
+	}
+	buy := func() {
+		t.Helper()
+		clearPlans()
+		if _, err := db.Exec(`INSERT INTO purchases (user_id, plan_id, status, amount, currency, paid_at)
+			VALUES ($1, $2, 'paid', 990000, 'IDR', now())`, userID, lifetime); err != nil {
+			t.Fatalf("purchase: %v", err)
+		}
+	}
+	clearPlans()
+
+	// The plain user owns this one; the super user, who has a vault too, is
+	// the recipient throughout.
+	itemID := want(http.StatusCreated, http.MethodPost, "/api/v1/items", userToken, map[string]any{
+		"type": "login", "encrypted_data": b64("gated secret"), "encrypted_item_key": b64("key for the owner"),
+	})["id"].(string)
+	itemPath := "/api/v1/items/" + itemID
+	memberPath := itemPath + "/members/" + superID
+	share := map[string]any{"user_id": superID, "role": "viewer", "encrypted_item_key": b64("key for the super user")}
+	members := func() int {
+		t.Helper()
+		var n int
+		if err := db.QueryRow(`SELECT count(*) FROM item_members WHERE item_id = $1`, itemID).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	if n := members(); n != 1 {
+		t.Fatalf("a new item has %d members, want the owner alone", n)
+	}
+
+	// No plan: refused, in the server's words, and no member is written.
+	status, out := call(http.MethodPost, itemPath+"/members", userToken, share)
+	if status != http.StatusForbidden {
+		t.Fatalf("share without a plan: %d %v, want 403", status, out)
+	}
+	if msg, _ := out["message"].(string); !strings.Contains(msg, "paid plan") || !strings.Contains(msg, "Billing") {
+		t.Fatalf("refusal message: %q", out["message"])
+	}
+	if n := members(); n != 1 {
+		t.Fatalf("a refused share left %d members", n)
+	}
+
+	// An active subscription whose period still runs unlocks it.
+	subscribe(models.SubscriptionActive, "0 seconds", "1 month")
+	want(http.StatusCreated, http.MethodPost, itemPath+"/members", userToken, share)
+	want(http.StatusOK, http.MethodDelete, memberPath, userToken, nil)
+
+	// So does a paid one-time purchase, which never renews. What was shared
+	// while it was paid stays manageable once it lapses: an owner who stops
+	// paying can still change a role and revoke.
+	buy()
+	want(http.StatusCreated, http.MethodPost, itemPath+"/members", userToken, share)
+	clearPlans()
+	want(http.StatusOK, http.MethodPut, memberPath, userToken, map[string]any{"role": "editor"})
+	want(http.StatusOK, http.MethodDelete, memberPath, userToken, nil)
+
+	// An active subscription whose period is over does not: the lazy expiry
+	// sweeps it to expired before the gate reads it.
+	subscribe(models.SubscriptionActive, "-2 months", "-1 month")
+	if status, out := call(http.MethodPost, itemPath+"/members", userToken, share); status != http.StatusForbidden {
+		t.Fatalf("share on an ended period: %d %v, want 403", status, out)
+	}
+	var swept string
+	if err := db.QueryRow(`SELECT status FROM subscriptions WHERE user_id = $1`, userID).Scan(&swept); err != nil || swept != models.SubscriptionExpired {
+		t.Fatalf("subscription after the check: %q err=%v", swept, err)
+	}
+
+	// Nor does a pending one: it is not paid yet.
+	subscribe(models.SubscriptionPending, "0 seconds", "1 month")
+	if status, out := call(http.MethodPost, itemPath+"/members", userToken, share); status != http.StatusForbidden {
+		t.Fatalf("share on a pending subscription: %d %v, want 403", status, out)
+	}
+
+	// Receiving is never gated: with no plan at all the user is added to
+	// someone else's item, and leaves it again.
+	clearPlans()
+	otherID := want(http.StatusCreated, http.MethodPost, "/api/v1/items", superToken, map[string]any{
+		"type": "login", "encrypted_data": b64("someone else's secret"), "encrypted_item_key": b64("key for the super user"),
+	})["id"].(string)
+	otherPath := "/api/v1/items/" + otherID
+	want(http.StatusCreated, http.MethodPost, otherPath+"/members", superToken, map[string]any{
+		"user_id": userID, "role": "viewer", "encrypted_item_key": b64("key for the plain user"),
+	})
+	if got := want(http.StatusOK, http.MethodGet, otherPath, userToken, nil); got["role"] != "viewer" {
+		t.Fatalf("an item shared with an unentitled recipient: %v", got)
+	}
+	want(http.StatusOK, http.MethodDelete, otherPath+"/members/"+userID, userToken, nil)
+
+	// A deployment that takes no payments is never gated, which is the
+	// self-hosted image's promise: every feature, with no plan to buy. The
+	// signal is Midtrans, nil exactly then, so dropping it is that deployment.
+	payments := application.Midtrans
+	application.Midtrans = nil
+	defer func() { application.Midtrans = payments }()
+	clearPlans()
+	want(http.StatusCreated, http.MethodPost, itemPath+"/members", userToken, share)
+	want(http.StatusOK, http.MethodDelete, memberPath, userToken, nil)
 }

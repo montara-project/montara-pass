@@ -168,6 +168,29 @@ func (r *BillingRepository) ExpireEnded(ctx context.Context, userID uuid.UUID) e
 	return err
 }
 
+// HasPaidPlan reports whether the user holds a paid plan: an active
+// subscription whose period still runs, or a paid one-time purchase, which
+// never renews and so unlocks for good. ExpireEnded runs first, so an active
+// subscription whose period is over is swept to expired and does not count;
+// the period is checked here too, so the answer never leans on that sweep.
+func (r *BillingRepository) HasPaidPlan(ctx context.Context, userID uuid.UUID) (bool, error) {
+	if err := r.ExpireEnded(ctx, userID); err != nil {
+		return false, err
+	}
+
+	var paid bool
+	err := r.queryRowContext(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM subscriptions
+			WHERE user_id = $1 AND status = $2 AND current_period_end > now()
+		) OR EXISTS (
+			SELECT 1 FROM purchases WHERE user_id = $1 AND status = $3
+		)`,
+		userID, models.SubscriptionActive, models.PurchasePaid,
+	).Scan(&paid)
+	return paid, err
+}
+
 // LiveSubscription returns the user's pending or active subscription.
 func (r *BillingRepository) LiveSubscription(ctx context.Context, userID uuid.UUID) (models.Subscription, error) {
 	query := fmt.Sprintf(`

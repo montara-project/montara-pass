@@ -279,8 +279,49 @@ func (h *itemHandler) Members(c fiber.Ctx) error {
 	return dtos.List(c, members, dtos.Metadata{"total": len(members)})
 }
 
+// errNoPaidPlan refuses handing an item on, naming the problem and the way
+// out.
+var errNoPaidPlan = apperr.New(apperr.KindForbidden, "sharing an item needs a paid plan: subscribe in Billing, or run Montara Pass yourself")
+
+// requirePaidPlan refuses a share by a caller who holds no plan.
+//
+// It only bites where the deployment takes payments: Midtrans is configured
+// exactly then, so the self-hosted image, whose promise is every feature,
+// is never gated. A super user is skipped too: billing is kept to accounts
+// with the 'user' role (see migrations/ee/000001), so a plan is not theirs
+// to hold, and a gate they could not satisfy would leave the operator of a
+// deployment unable to share at all.
+func (h *itemHandler) requirePaidPlan(c fiber.Ctx, uid uuid.UUID) error {
+	if h.app.Midtrans == nil {
+		return nil
+	}
+
+	role, err := h.app.Repositories.User.Role(c.Context(), uid)
+	if err != nil {
+		return err
+	}
+	if role != constant.RoleUser {
+		return nil
+	}
+
+	paid, err := h.app.Repositories.Billing.HasPaidPlan(c.Context(), uid)
+	if err != nil {
+		return err
+	}
+	if !paid {
+		return errNoPaidPlan
+	}
+	return nil
+}
+
 // Share gives another user access. The body carries the item key wrapped
 // with that user's public key (see keyHandler.PublicKey).
+//
+// Handing an item on is the one thing a plan pays for. Being a recipient of
+// someone else's item is not, so only this route is gated: SetMemberRole and
+// RemoveMember keep working for an owner and a member without one, who could
+// otherwise not leave an item or tidy it. Nothing is gated on a deployment
+// that takes no payments (see h.requirePaidPlan).
 func (h *itemHandler) Share(c fiber.Ctx) error {
 	item, uid, err := h.owner(c)
 	if err != nil {
@@ -289,6 +330,10 @@ func (h *itemHandler) Share(c fiber.Ctx) error {
 
 	var body dtos.ItemShareBody
 	if err := lib.ValidateRequestBody(c, &body); err != nil {
+		return err
+	}
+
+	if err := h.requirePaidPlan(c, uid); err != nil {
 		return err
 	}
 
