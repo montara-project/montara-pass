@@ -101,6 +101,16 @@
   --color-input: var(--field-border);
   --color-ring: var(--focus);
 
+  /* The sidebar sits on the page itself; its items are muted at rest. */
+  --color-sidebar: var(--bg);
+  --color-sidebar-foreground: var(--muted);
+  --color-sidebar-primary: var(--primary);
+  --color-sidebar-primary-foreground: var(--primary-fg);
+  --color-sidebar-accent: var(--hover);
+  --color-sidebar-accent-foreground: var(--fg);
+  --color-sidebar-border: var(--border);
+  --color-sidebar-ring: var(--focus);
+
   /* Corners grow with the size of the thing. */
   --radius-sm: 6px;
   --radius-md: 8px;
