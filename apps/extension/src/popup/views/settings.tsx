@@ -12,7 +12,7 @@ import { AUTO_LOCK_MINUTES } from '../../lib/session'
 import { originOf } from '../../lib/site'
 import { DEFAULT_SETTINGS, getSettings, saveSettings } from '../../lib/storage'
 import { checked, submit, useAppForm } from '../form'
-import { ArrowLeftIcon, ExternalLinkIcon } from '../icons'
+import { ArrowLeftIcon, ExternalLinkIcon, LockIcon } from '../icons'
 
 interface SettingsProps {
   onClose: () => void
@@ -99,7 +99,9 @@ export default function Settings({ onClose, onLock, onSignOut }: SettingsProps) 
   const ask = () => {
     const value = form.state.values
     asked.current = ServerFormSchema.safeParse(value).success
-      ? chrome.permissions.request({ origins: [`${originsOf(value).apiOrigin}/*`] })
+      ? chrome.permissions.request({
+          origins: [`${originsOf(value).apiOrigin}/*`],
+        })
       : Promise.resolve(false)
   }
 
@@ -157,11 +159,12 @@ export default function Settings({ onClose, onLock, onSignOut }: SettingsProps) 
               <span className="set-actions">
                 {onLock && (
                   <button type="button" className="secondary" onClick={onLock}>
-                    Lock
+                    <LockIcon />
+                    <span>Lock</span>
                   </button>
                 )}
                 <button type="button" className="secondary" onClick={onSignOut}>
-                  Sign out
+                  <span>Sign out</span>
                 </button>
               </span>
             </div>
