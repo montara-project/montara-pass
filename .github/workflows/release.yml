@@ -5,10 +5,10 @@
 #   - a semver tag (v1.2.3) publishes 1.2.3, 1.2 and latest
 #   - a manual run publishes the short commit SHA, plus any tag you pass in
 #
-# Images, named <product>-<edition> like portainer/portainer-ce:
-#   ghcr.io/<owner>/montara-pass-ee    the Go API serving the web app (apps/server + apps/app), Enterprise Edition
-#   ghcr.io/<owner>/montara-pass-ce    the same, Community Edition: no sign-up, no sharing
-#   ghcr.io/<owner>/montara-pass-docs  apps/docs (this documentation site)
+# Images, named <product>/<edition>:
+#   ghcr.io/<owner>/montara-pass/cloud      the Go API serving the web app (apps/server + apps/app), Cloud Edition
+#   ghcr.io/<owner>/montara-pass/community  the same, Community Edition: no sign-up, no sharing
+#   ghcr.io/<owner>/montara-pass/docs       apps/docs (this documentation site)
 
 name: Release
 
@@ -45,13 +45,13 @@ jobs:
       matrix:
         include:
           # Both install from the workspace lockfile, so they build from the root.
-          - image: montara-pass-ee
+          - image: montara-pass/cloud
             file: apps/server/Dockerfile
-            edition: ee
-          - image: montara-pass-ce
+            edition: cloud
+          - image: montara-pass/community
             file: apps/server/Dockerfile
-            edition: ce
-          - image: montara-pass-docs
+            edition: community
+          - image: montara-pass/docs
             file: apps/docs/Dockerfile
 
     steps:
@@ -97,7 +97,7 @@ jobs:
             VITE_APP_NAME=${{ vars.VITE_APP_NAME || 'Montara Pass' }}
             VITE_API_URL=${{ vars.VITE_API_URL || '' }}
             APP_VERSION=${{ github.ref_name }}
-            EDITION=${{ matrix.edition || 'ee' }}
+            EDITION=${{ matrix.edition || 'cloud' }}
           push: true
           # One cache scope per image, or the builds evict each other.
           cache-from: type=gha,scope=${{ matrix.image }}

@@ -24,7 +24,7 @@ type Application struct {
 	Auth         *authula.Auth
 	// Redis is nil unless REDIS_URL is set; see middlewares.NewStore.
 	Redis redis.UniversalClient
-	// Midtrans is nil unless billing can take payments: the Enterprise
+	// Midtrans is nil unless billing can take payments: the Cloud
 	// Edition with MIDTRANS_SERVER_KEY set.
 	Midtrans *midtrans.Client
 }

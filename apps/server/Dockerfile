@@ -5,13 +5,13 @@
 # API under /api and the UI.
 #
 # Build context: repository root
-#   docker build -f apps/server/Dockerfile -t montara-pass-ee .
-#   docker build -f apps/server/Dockerfile --build-arg EDITION=ce -t montara-pass-ce .
+#   docker build -f apps/server/Dockerfile -t montara-pass/cloud .
+#   docker build -f apps/server/Dockerfile --build-arg EDITION=community -t montara-pass/community .
 #
-# EDITION picks the edition for both the web app and the binary: ee
-# (Enterprise Edition, the default) or ce (Community Edition: one self-hosted
+# EDITION picks the edition for both the web app and the binary: cloud
+# (Cloud Edition, the default) or community (Community Edition: one self-hosted
 # user, no sign-up and no sharing).
-ARG EDITION=ee
+ARG EDITION=cloud
 
 # ====================================================================================
 # Stage 1: web-ui (Vite build -> static dist)

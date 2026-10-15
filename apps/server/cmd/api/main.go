@@ -84,7 +84,7 @@ func run() error {
 	}
 
 	// The Community Edition's only account is the super user. A database that
-	// holds others (one the Enterprise Edition ran on) would still let them
+	// holds others (one the Cloud Edition ran on) would still let them
 	// sign in and see what was shared with them, so it is refused, and before
 	// seeding, which would otherwise reset that database's super user password.
 	if config.Community() {
@@ -95,7 +95,7 @@ func run() error {
 			return fmt.Errorf("check community edition accounts: %w", err)
 		}
 		if others {
-			return errors.New("community edition allows only the super user, but the database holds other accounts: run the enterprise edition on it, or start from an empty database")
+			return errors.New("community edition allows only the super user, but the database holds other accounts: run the cloud edition on it, or start from an empty database")
 		}
 	}
 

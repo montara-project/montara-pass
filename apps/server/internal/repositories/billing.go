@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// BillingRepository manages the Enterprise Edition's plans, subscriptions and
+// BillingRepository manages the Cloud Edition's plans, subscriptions and
 // purchases (see migrations/ee/000001). The database holds the rules: only an
 // account with the 'user' role subscribes or buys, each table takes only its
 // kind of plan, and a user has one live subscription.

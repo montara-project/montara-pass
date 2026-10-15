@@ -28,9 +28,9 @@ format this depends on.
 
 | Image | Built from |
 | --- | --- |
-| `ghcr.io/montara-project/montara-pass-ee` | `apps/server/Dockerfile`: the API with the web app inside, Enterprise Edition |
-| `ghcr.io/montara-project/montara-pass-ce` | the same with `EDITION=ce`: Community Edition, no sign-up and no sharing |
-| `ghcr.io/montara-project/montara-pass-docs` | `apps/docs/Dockerfile` |
+| `ghcr.io/montara-project/montara-pass/cloud` | `apps/server/Dockerfile`: the API with the web app inside, Cloud Edition |
+| `ghcr.io/montara-project/montara-pass/community` | the same with `EDITION=community`: Community Edition, no sign-up and no sharing |
+| `ghcr.io/montara-project/montara-pass/docs` | `apps/docs/Dockerfile` |
 
 A tag `v1.2.3` publishes the tags `v1.2.3`, `v1.2` and `latest`. Every run
 also publishes `sha-<short commit>`. Images are built for `linux/amd64`.

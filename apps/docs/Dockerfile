@@ -1,5 +1,5 @@
 # Build context: repository root
-#   docker build -f apps/docs/Dockerfile -t montara-pass-docs .
+#   docker build -f apps/docs/Dockerfile -t montara-pass/docs .
 
 FROM node:24-alpine AS base
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH

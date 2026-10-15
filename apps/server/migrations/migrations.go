@@ -7,9 +7,9 @@ import "embed"
 //go:embed *.sql
 var FS embed.FS
 
-// EE holds the Enterprise Edition's own tables (billing). They run after FS
+// EE holds the Cloud Edition's own tables (billing). They run after FS
 // and keep their version apart, in schema_migrations_ee, so a Community
-// Edition database never gets them and one that moves to the Enterprise
+// Edition database never gets them and one that moves to the Cloud
 // Edition gets them on its next migration.
 //
 //go:embed ee/*.sql

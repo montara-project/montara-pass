@@ -42,7 +42,7 @@ func parseFlag(cfg *config) {
 	flag.StringVar(&cfg.dbDSN, "db-dsn", os.Getenv("DB_DSN"), "PostgreSQL DSN (default $DB_DSN)")
 	flag.BoolVar(&cfg.seed, "seed", false, "run the seeders after migrating")
 	flag.BoolVar(&cfg.allowRemote, "allow-remote", false, "allow down and refresh on a database that is not on localhost")
-	flag.BoolVar(&cfg.ee, "ee", false, "force and create act on the Enterprise Edition's migrations (migrations/ee)")
+	flag.BoolVar(&cfg.ee, "ee", false, "force and create act on the Cloud Edition's migrations (migrations/ee)")
 
 	flag.Parse()
 	validateFlag(cfg)
@@ -71,7 +71,7 @@ func validateFlag(cfg *config) {
 		log.Fatalf("flag --ee must not be provided when mode is %s", cfg.mode)
 	}
 	if cfg.ee && cfg.mode == modeForce && appconfig.Community() {
-		log.Fatal("flag --ee: the community edition has no enterprise migrations")
+		log.Fatal("flag --ee: the community edition has no cloud migrations")
 	}
 
 	// create only writes files, so it needs no database.
