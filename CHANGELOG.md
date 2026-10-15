@@ -3,6 +3,31 @@
 All notable changes to this project are documented in this file. Versions follow the git tags (`v*`); Docker images are published to ghcr.io with the same version.
 
 
+## [1.8.0](https://github.com/montara-project/montara-pass/compare/v1.7.0...v1.8.0) (2026-10-15)
+
+### Features
+
+* **app:** add a billing page to the enterprise edition ([a2a898b](https://github.com/montara-project/montara-pass/commit/a2a898bf64fecd356576cb4fe3aee75d9fcd7582))
+* **app:** drop sign-up and sharing from the community edition ([e862628](https://github.com/montara-project/montara-pass/commit/e8626282b71c9828a529b015e6905d86b711a6f6))
+* **app:** replace the sidebar with shadcn's inset sidebar ([eeb1ae3](https://github.com/montara-project/montara-pass/commit/eeb1ae34043e8c4aee6597465062d5f97a9b2450))
+* **extension:** build a community edition without sign-up or sharing ([00221a1](https://github.com/montara-project/montara-pass/commit/00221a1cfc279149b054c0244dc8f1813d85c348))
+* **extension:** show a lock icon on the settings' lock button ([0d7f6b0](https://github.com/montara-project/montara-pass/commit/0d7f6b0a98d3f386a8d4db0d03b52e5e3223a3ba))
+* **extension:** show the user's plan in the settings ([3850390](https://github.com/montara-project/montara-pass/commit/385039090a87ad48b5b6bfd305851af1a74bca83))
+* **extension:** use the web app's sidebar in the full tab ([85fd1e1](https://github.com/montara-project/montara-pass/commit/85fd1e16489d667b329cd121ca24d4ee9f6a0b2a))
+* **server:** add a community edition without sign-up or sharing ([5fa517f](https://github.com/montara-project/montara-pass/commit/5fa517f2bc8606e00bd0782293b89f65313c4e34))
+* **server:** add an overview of counts and revenue for a super user ([6971694](https://github.com/montara-project/montara-pass/commit/697169433bffbcc6efc974e5dcd4710d035f978a))
+* **server:** add billing with Midtrans to the enterprise edition ([3b5b519](https://github.com/montara-project/montara-pass/commit/3b5b51988723ca257dbe1af2397259f65f4a562a))
+* **server:** list every customer's subscriptions and purchases for a super user ([93300c4](https://github.com/montara-project/montara-pass/commit/93300c4ce01b95b65fda7c619a6cc4948b905767))
+* **web:** show the hosted service's plans in the pricing section ([e36acd5](https://github.com/montara-project/montara-pass/commit/e36acd56fb62c264ee32e0b512949912107154fb))
+
+### Bug Fixes
+
+* **app:** stop the page transition from flashing a scrollbar ([610568b](https://github.com/montara-project/montara-pass/commit/610568b23ddd450ad6b3ea82c99c0b006111fadd))
+* **extension:** keep the full tab's item list scrollable ([14b8206](https://github.com/montara-project/montara-pass/commit/14b8206e3f07964d99649ceffbf44a4682237cc9))
+* **server:** accept request headers up to 16KB ([600028a](https://github.com/montara-project/montara-pass/commit/600028a5872cda27d9838ec8577b279a96207e14))
+* **server:** match application errors by kind in errors.Is ([88f8642](https://github.com/montara-project/montara-pass/commit/88f86427247a9484846b398cf858fe7f93e10541))
+* **server:** refuse a community edition boot on a database with other accounts ([98684a0](https://github.com/montara-project/montara-pass/commit/98684a0d53d54bc53c78f41a6ca0b91ffe137f50))
+
 ## [1.7.0](https://github.com/montara-project/montara-pass/compare/v1.6.0...v1.7.0) (2026-10-14)
 
 ### Features
