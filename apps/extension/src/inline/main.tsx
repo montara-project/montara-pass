@@ -10,6 +10,7 @@ import { generatePassword } from '@/lib/password'
 
 import { createItem, markItemUsed, SignedOutError } from '../lib/api'
 import { fillLogin, fillNewPassword } from '../lib/autofill'
+import { maskEmail } from '../lib/email'
 import { fetchIcon } from '../lib/icon'
 import {
   assertPasskey,
@@ -265,7 +266,9 @@ function Logins({
           >
             <ItemTile item={item} />
             <span className="item-text">
-              <span className="item-name">{item.secret!.username || item.secret!.name}</span>
+              <span className="item-name">
+                {item.secret!.username ? maskEmail(item.secret!.username) : item.secret!.name}
+              </span>
               <span className="muted">
                 {sharedLabel(item) ?? lastUsedLabel(item.last_used_at) ?? hostOf(item.secret!.url)}
               </span>
@@ -577,7 +580,9 @@ function PasskeyChoice({
             >
               <ItemTile item={item} />
               <span className="item-text">
-                <span className="item-name">{item.secret!.username || item.secret!.name}</span>
+                <span className="item-name">
+                  {item.secret!.username ? maskEmail(item.secret!.username) : item.secret!.name}
+                </span>
                 <span className="muted">
                   {sharedLabel(item) ?? lastUsedLabel(item.last_used_at) ?? rpId}
                 </span>

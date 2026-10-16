@@ -14,6 +14,7 @@ import { COMMUNITY } from '@/lib/constants/edition'
 
 import { markItemUsed, setItemPlacement, SignedOutError, trashItem } from '../../lib/api'
 import { fillLogin } from '../../lib/autofill'
+import { maskEmail } from '../../lib/email'
 import { fillsSite, hostOf, linkOf } from '../../lib/site'
 import { lastUsedLabel } from '../../lib/usage'
 import {
@@ -413,7 +414,10 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
                   <span className="item-text">
                     <span className="item-name">Fill {item.secret!.name}</span>
                     <span className="muted">
-                      {[item.secret!.username || 'No username', lastUsedLabel(item.last_used_at)]
+                      {[
+                        item.secret!.username ? maskEmail(item.secret!.username) : 'No username',
+                        lastUsedLabel(item.last_used_at),
+                      ]
                         .filter(Boolean)
                         .join(' · ')}
                     </span>
@@ -460,7 +464,11 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
                 <div className="item-text">
                   <span className="item-name">{name}</span>
                   <span className="muted">
-                    {isLogin ? item.secret!.username || 'No username' : 'Secure note'}
+                    {isLogin
+                      ? item.secret!.username
+                        ? maskEmail(item.secret!.username)
+                        : 'No username'
+                      : 'Secure note'}
                   </span>
                 </div>
 

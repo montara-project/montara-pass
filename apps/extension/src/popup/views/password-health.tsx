@@ -4,6 +4,7 @@ import type { VaultItem } from '@/types/vault'
 
 import { passwordHealth } from '@/lib/password'
 
+import { maskEmail } from '../../lib/email'
 import { ChevronRightIcon, ShieldIcon } from '../icons'
 import { ItemTile } from '../item-tile'
 
@@ -24,7 +25,9 @@ function Rows({ items, onOpen }: { items: VaultItem[]; onOpen: (id: string) => v
             <ItemTile item={item} />
             <span className="item-text">
               <span className="item-name">{item.secret!.name}</span>
-              <span className="muted">{item.secret!.username || 'No username'}</span>
+              <span className="muted">
+                {item.secret!.username ? maskEmail(item.secret!.username) : 'No username'}
+              </span>
             </span>
             <ChevronRightIcon width={18} height={18} />
           </button>
