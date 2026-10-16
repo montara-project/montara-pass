@@ -257,39 +257,43 @@ export default function FullVault({
                 </p>
               )}
 
-              {visible.length > 0 && (
-                <div className="list-head" aria-hidden="true">
-                  <span>Name</span>
-                  <span className="col">Folder</span>
-                  <span className="col">Last used</span>
-                </div>
-              )}
+              {/* The headings scroll with the rows, so their columns line up
+                  with the rows' whatever the scrollbar takes, and stay on top. */}
+              <div className="list-scroll">
+                {visible.length > 0 && (
+                  <div className="list-head" aria-hidden="true">
+                    <span>Name</span>
+                    <span className="col">Folder</span>
+                    <span className="col">Last used</span>
+                  </div>
+                )}
 
-              <ul className="items">
-                {visible.map((item) => (
-                  <li key={item.id}>
-                    <button
-                      className="item-row"
-                      aria-current={item.id === selectedId ? 'true' : undefined}
-                      onClick={() => setPane({ mode: 'view', id: item.id })}
-                    >
-                      <ItemTile item={item} />
-                      <span className="item-text">
-                        <span className="item-name">{item.secret!.name}</span>
-                        <span className="muted">
-                          {item.type === 'login'
-                            ? item.secret!.username || 'No username'
-                            : 'Secure note'}
+                <ul className="items">
+                  {visible.map((item) => (
+                    <li key={item.id}>
+                      <button
+                        className="item-row"
+                        aria-current={item.id === selectedId ? 'true' : undefined}
+                        onClick={() => setPane({ mode: 'view', id: item.id })}
+                      >
+                        <ItemTile item={item} />
+                        <span className="item-text">
+                          <span className="item-name">{item.secret!.name}</span>
+                          <span className="muted">
+                            {item.type === 'login'
+                              ? item.secret!.username || 'No username'
+                              : 'Secure note'}
+                          </span>
                         </span>
-                      </span>
-                      <span className="col muted">
-                        {folderNames.get(item.folder_id ?? '') ?? '—'}
-                      </span>
-                      <span className="col muted">{lastUsedAgo(item.last_used_at) ?? '—'}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+                        <span className="col muted">
+                          {folderNames.get(item.folder_id ?? '') ?? '—'}
+                        </span>
+                        <span className="col muted">{lastUsedAgo(item.last_used_at) ?? '—'}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </section>
 
             <section className="detail-col" aria-label="Item details">

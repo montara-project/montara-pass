@@ -181,8 +181,10 @@ export function VaultSidebar<F extends string>({
             </BreadcrumbList>
           </Breadcrumb>
         </header>
-        {/* Passes the inset's height on: the list scrolls inside it, not past it. */}
-        <div className="flex min-h-0 flex-1 flex-col pt-4">{children}</div>
+        {/* Passes the inset's height on: the list scrolls inside it, not past it.
+            No padding of its own: the columns pad themselves, so the line
+            between them runs up to the header's. */}
+        <div className="flex min-h-0 flex-1 flex-col">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   )
