@@ -23,7 +23,7 @@ func RateLimit(name string, max int, exemptLoopback bool, exemptIPs []string, st
 			return "ratelimit:" + name + ":" + c.IP()
 		},
 		Next: func(c fiber.Ctx) bool {
-			return slices.Contains(exemptIPs, c.IP()) || (exemptLoopback && c.IP() == "127.0.0.1")
+			return slices.Contains(exemptIPs, c.IP()) || (exemptLoopback && (c.IP() == "127.0.0.1" || c.IP() == "::1"))
 		},
 		Max:        max,
 		Expiration: time.Minute,
