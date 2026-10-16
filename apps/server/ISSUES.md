@@ -1,4 +1,102 @@
-# ISSUES — audit `apps/server` (Cloud vs Community)
+# ISSUES — audit `apps/server`
+
+## Audit 2 — 2026-10-16, setelah migrasi Lemon Squeezy (`dev` @ `14aa8e7`)
+
+Scope: over-engineering saja (ponytail-audit). Bug, keamanan, dan performa
+tidak termasuk. Shortcut yang sengaja diambil di billing (urutan webhook,
+statistik perpanjangan) sudah ditandai `ponytail:` di kode dan tidak diulang
+di sini. Diurutkan dari potongan terbesar.
+
+**Status (2026-10-16):** #1–#7 sudah dikerjakan (belum di-commit). #8
+ternyata keliru dan tidak diubah. Hasilnya: server −442 baris bersih
+(+69/−511), app −451, docs −32. `go test ./...` dan integration test lolos;
+typecheck app dan extension lolos.
+
+Format: `<tag> <yang dipotong>. <penggantinya>. [path]`
+
+1. `delete:` Fitur **categories**: CRUD admin untuk tabel yang tidak dirujuk
+   tabel, item, atau fitur lain mana pun. Isinya hanya dua baris seed
+   (`Public`, `Private`), dan fitur ini datang dari template awal
+   (`75c4efd`, "adopt gofi structure"). Penggantinya tidak ada; buat migrasi
+   `DROP TABLE categories` dan hapus halaman `/categories` di app. Sekitar
+   −320 baris server dan −420 baris app. Karena fitur ini ada di UI, pastikan
+   dulu memang tidak direncanakan. [internal/handlers/category.go,
+   internal/repositories/category.go, internal/dtos/category.go,
+   internal/models/category.go, internal/seeders/category.go,
+   internal/lib/constant/category.go, cmd/api/routes.go:62-69;
+   apps/app/src/components/block/category, routes/(app)/categories,
+   lib/api/{models,dtos,queries,services}/category*]
+   ✅ **Fixed:** semua dihapus dari server, app, dan docs. Migrasi main `000006_drop_categories` membuang tabelnya (down membuat ulang tabel kosong). Cek super user dan CSRF di integration test sekarang memakai `GET /plans/all` dan `POST /folders`.
+
+2. `yagni:` Kerangka seeder (`Seeder` interface, `seeders.All`, `runSeed`
+   untuk banyak seeder, flag `--seed` di cmd/migrate dan `execSeeders`, loop
+   `seedAll`) melayani dua seeder, dan salah satunya categories. Kalau #1
+   dihapus, yang tersisa hanya `SuperUserSeeder`. Panggil `Seed()` langsung
+   di boot dan buang interface, `All`, `--seed`, dan `execSeeders`. Sekitar
+   −50 baris. [internal/seeders/type.go, internal/seeders/run.go:10-17,
+   cmd/migrate/main.go:82-91,186-193, cmd/migrate/flag.go:29,43,90-92,
+   cmd/api/db.go:94-104]
+   ✅ **Fixed:** interface `Seeder`, `seeders.All`, `Name()`, `seedAll`, flag `--seed`, `execSeeders`, dan script `migrate:up:seed` dihapus. Boot memanggil `SuperUserSeeder.Seed()` langsung.
+
+3. `delete:` Helper yang hanya dipakai categories: `mutateByID`,
+   `listParams`, dan `translateForeignKey`. Setelah #1 tidak ada pemanggil
+   lain, jadi ikut dihapus. Sekitar −25 baris. [internal/handlers/common.go:25-41,
+   internal/repositories/helpers.go:36-44]
+   ✅ **Fixed:** ikut dihapus. `dtos.ListQuery` diganti fungsi `listRules`, yang hanya dipakai `BillingListQuery`.
+
+4. `delete:` `lib.ContextParamUUID` hanya membungkus `uuid.Parse(c.Params(key))`
+   dan punya dua pemanggil, yang keduanya sudah mengganti error-nya sendiri.
+   Ganti dengan `uuid.Parse(c.Params("id"))` di `pathID` dan `memberParam`.
+   Sekitar −5 baris. [internal/lib/context.go:22-25]
+   ✅ **Fixed:** diganti `uuid.Parse(c.Params(...))`.
+
+5. `shrink:` `AddMember` menulis ulang `affected()` dengan cabang `err`
+   ganda. Ganti dengan:
+   ```go
+   ok, err := affected(res, err)
+   if err != nil {
+       return err
+   }
+   if !ok {
+       return apperr.New(apperr.KindNotFound, "user not found or has not set up a vault")
+   }
+   ```
+   Sekitar −4 baris. [internal/repositories/item.go:307-316]
+   ✅ **Fixed:** memakai `affected()`.
+
+6. `shrink:` `requireChanged` adalah `requireAffected` dengan error lain.
+   Bentuk pendeknya: `if ok, err := affected(res, nil); err != nil || ok {
+   return err }; return errStaleItem`. Sekitar −4 baris.
+   [internal/repositories/item.go:208-219]
+   ✅ **Fixed:** memakai `affected()`.
+
+7. `delete:` Konstanta `models.SubscriptionCanceled` tidak pernah ditulis
+   kode sejak Lemon Squeezy. Pembatalan sekarang tercatat sebagai `active`
+   dengan `canceled_at`, dan refund tidak lagi membatalkan subscription.
+   Nilai `canceled` di CHECK DB dan label di UI tetap dibiarkan untuk baris
+   lama dari masa Midtrans. −1 baris. [internal/models/billing.go:23]
+   ✅ **Fixed:** dihapus.
+
+8. `yagni:` `config.EnvStaging` diterima sebagai nilai `ENV`, tapi tidak ada
+   kode yang membedakannya dari `production`. Pilihannya: buang nilai itu,
+   atau biarkan sebagai alias yang didokumentasikan. Membuangnya akan
+   mematahkan deployment yang memakai `ENV=staging`, jadi cek dulu. −2 baris.
+   [internal/config/config.go:13, cmd/api/flag.go:135]
+   ❌ **Tidak diubah, temuan keliru:** `ENV` diteruskan ke Sentry sebagai
+   `Environment` (`cmd/api/server.go`), jadi `staging` memisahkan event
+   staging dari produksi. Nilai ini juga terdokumentasi.
+
+Yang sengaja dibiarkan: validator berbasis map (memeriksa field yang absen
+sebelum binding, yang tidak bisa dilakukan `go-playground/validator` di
+sini), client Lemon Squeezy buatan sendiri (tidak ada SDK Go resmi, dan
+bagian yang dipakai kecil), pola `Handlers`/`Middlewares` per struct (konsisten
+di semua handler), dan template email (isi, bukan abstraksi).
+
+**net: −410 lines server (−830 dengan app), −0 deps possible.**
+
+---
+
+## Audit 1 — Cloud vs Community
 
 Audit 2026-10-16 di `dev` @ `7e4ce1c`. `go build ./... && go vet ./...` bersih.
 
@@ -21,7 +119,7 @@ dan perlu ditindaklanjuti di pass review biasa.
 
 ---
 
-## A. Over-engineering (ponytail-audit)
+### A. Over-engineering (ponytail-audit)
 
 Format: `<tag> <yang dipotong>. <penggantinya>. [path]`
 
@@ -76,7 +174,7 @@ Yang sengaja dibiarkan karena sudah ramping atau memang dibutuhkan:
 
 ---
 
-## B. Correctness / konfigurasi (di luar lingkup ponytail, untuk review biasa)
+### B. Correctness / konfigurasi (di luar lingkup ponytail, untuk review biasa)
 
 1. **`cmd/migrate` tidak memvalidasi `config.Edition`.** Cek `cloud|community` hanya ada di `cmd/api/flag.go:162`. Kalau ldflag salah ketik (mis. `comunity`), binary migrate menganggapnya Cloud dan menjalankan track EE, sementara API menolak boot. Perbaikan: pindahkan cek ke `internal/config` (mis. `func init()` yang panic) supaya kedua binary memakainya.
    ✅ **Fixed:** `config.init()`. Binary dengan edisi typo langsung gagal.
