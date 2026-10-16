@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"math"
@@ -137,7 +138,7 @@ func (h *billingHandler) ListSubscriptions(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	if err := h.repo().ExpireAllEnded(c.Context()); err != nil {
+	if err := h.repo().ExpireEnded(c.Context(), nil); err != nil {
 		return err
 	}
 
@@ -178,7 +179,7 @@ func (h *billingHandler) Overview(c fiber.Ctx) error {
 		return err
 	}
 
-	if err := h.repo().ExpireEnded(c.Context(), uid); err != nil {
+	if err := h.repo().ExpireEnded(c.Context(), &uid); err != nil {
 		return err
 	}
 	var subscription *models.Subscription
@@ -234,9 +235,26 @@ func (h *billingHandler) customer(c fiber.Ctx, kind string) (models.User, models
 	return user, plan, nil
 }
 
-// checkout creates the Snap payment for a row already stored as pending.
-// Snap brings the user back to the web app's billing page.
-func (h *billingHandler) checkout(c fiber.Ctx, user models.User, plan models.Plan, orderID string) (string, error) {
+// startCheckout stores a pending row for plan with insert, in table
+// ("subscriptions" or "purchases"), creates its Snap payment and answers the
+// row, re-read with get. Snap brings the user back to the web app's billing
+// page. A row whose payment could not be created is dropped, so the user is
+// free to try again.
+func startCheckout[T any](
+	h *billingHandler, c fiber.Ctx, user models.User, plan models.Plan, order, table string,
+	insert func(context.Context, uuid.UUID, uuid.UUID, models.Plan, string) error,
+	get func(context.Context, uuid.UUID) (T, error),
+	message string,
+) error {
+	id, err := uuid.NewV7()
+	if err != nil {
+		return err
+	}
+	orderID := order + "-" + id.String()
+	if err := insert(c.Context(), id, user.ID, plan, orderID); err != nil {
+		return err
+	}
+
 	url, err := h.app.Midtrans.Checkout(c.Context(), midtrans.Checkout{
 		OrderID:   orderID,
 		Amount:    plan.Amount,
@@ -248,9 +266,20 @@ func (h *billingHandler) checkout(c fiber.Ctx, user models.User, plan models.Pla
 	})
 	if err != nil {
 		h.app.Logger.Error("midtrans checkout failed", "order_id", orderID, "error", err)
-		return "", errCheckout
+		if derr := h.repo().DeletePending(c.Context(), table, id); derr != nil {
+			h.app.Logger.Error("drop order without checkout", "order_id", orderID, "error", derr)
+		}
+		return errCheckout
 	}
-	return url, nil
+	if err := h.repo().SetCheckout(c.Context(), table, id, url); err != nil {
+		return err
+	}
+
+	row, err := get(c.Context(), id)
+	if err != nil {
+		return err
+	}
+	return dtos.Created(c, row, message)
 }
 
 // Subscribe starts a subscription to a recurring plan and answers it with the
@@ -262,7 +291,7 @@ func (h *billingHandler) Subscribe(c fiber.Ctx) error {
 		return err
 	}
 
-	if err := h.repo().ExpireEnded(c.Context(), user.ID); err != nil {
+	if err := h.repo().ExpireEnded(c.Context(), &user.ID); err != nil {
 		return err
 	}
 	live, err := h.repo().LiveSubscription(c.Context(), user.ID)
@@ -277,30 +306,8 @@ func (h *billingHandler) Subscribe(c fiber.Ctx) error {
 		return err
 	}
 
-	id, err := uuid.NewV7()
-	if err != nil {
-		return err
-	}
-	orderID := orderSubscription + "-" + id.String()
-	if err := h.repo().InsertSubscription(c.Context(), id, user.ID, plan, orderID); err != nil {
-		return err
-	}
-	url, err := h.checkout(c, user, plan, orderID)
-	if err != nil {
-		if derr := h.repo().DeleteSubscription(c.Context(), id); derr != nil {
-			h.app.Logger.Error("drop subscription without checkout", "id", id, "error", derr)
-		}
-		return err
-	}
-	if err := h.repo().SetSubscriptionCheckout(c.Context(), id, url); err != nil {
-		return err
-	}
-
-	s, err := h.repo().GetSubscription(c.Context(), id)
-	if err != nil {
-		return err
-	}
-	return dtos.Created(c, s, "subscription started: complete the payment")
+	return startCheckout(h, c, user, plan, orderSubscription, "subscriptions",
+		h.repo().InsertSubscription, h.repo().GetSubscription, "subscription started: complete the payment")
 }
 
 // Buy starts the purchase of a one-time plan, like Subscribe.
@@ -320,30 +327,8 @@ func (h *billingHandler) Buy(c fiber.Ctx) error {
 		return err
 	}
 
-	id, err := uuid.NewV7()
-	if err != nil {
-		return err
-	}
-	orderID := orderPurchase + "-" + id.String()
-	if err := h.repo().InsertPurchase(c.Context(), id, user.ID, plan, orderID); err != nil {
-		return err
-	}
-	url, err := h.checkout(c, user, plan, orderID)
-	if err != nil {
-		if derr := h.repo().DeletePurchase(c.Context(), id); derr != nil {
-			h.app.Logger.Error("drop purchase without checkout", "id", id, "error", derr)
-		}
-		return err
-	}
-	if err := h.repo().SetPurchaseCheckout(c.Context(), id, url); err != nil {
-		return err
-	}
-
-	b, err := h.repo().GetPurchase(c.Context(), id)
-	if err != nil {
-		return err
-	}
-	return dtos.Created(c, b, "purchase started: complete the payment")
+	return startCheckout(h, c, user, plan, orderPurchase, "purchases",
+		h.repo().InsertPurchase, h.repo().GetPurchase, "purchase started: complete the payment")
 }
 
 // sameAmount reports whether Midtrans' gross_amount ("50000.00") is the

@@ -147,22 +147,14 @@ func (r *BillingRepository) CountSubscriptions(ctx context.Context, p ListParams
 	return r.countRows(ctx, subscriptionsWithUser, customerFilters("s", p, status))
 }
 
-// ExpireAllEnded is ExpireEnded for every user, so the super user's list
-// shows what has ended.
-func (r *BillingRepository) ExpireAllEnded(ctx context.Context) error {
+// ExpireEnded marks the active subscriptions whose period is over as
+// expired: the user's, or with a nil userID everyone's, for the super user's
+// list. Run before reading or starting one, it stands in for a job.
+// ponytail: lazy, on read; a periodic job if expiry must show elsewhere.
+func (r *BillingRepository) ExpireEnded(ctx context.Context, userID *uuid.UUID) error {
 	_, err := r.execContext(ctx, `
 		UPDATE subscriptions SET status = 'expired', updated_at = now()
-		WHERE status = 'active' AND current_period_end <= now()`)
-	return err
-}
-
-// ExpireEnded marks a user's active subscription whose period is over as
-// expired. Run before reading or starting one, it stands in for a job.
-// ponytail: lazy, per user; a periodic job if expiry must show elsewhere.
-func (r *BillingRepository) ExpireEnded(ctx context.Context, userID uuid.UUID) error {
-	_, err := r.execContext(ctx, `
-		UPDATE subscriptions SET status = 'expired', updated_at = now()
-		WHERE user_id = $1 AND status = 'active' AND current_period_end <= now()`,
+		WHERE ($1::uuid IS NULL OR user_id = $1) AND status = 'active' AND current_period_end <= now()`,
 		userID,
 	)
 	return err
@@ -170,14 +162,9 @@ func (r *BillingRepository) ExpireEnded(ctx context.Context, userID uuid.UUID) e
 
 // HasPaidPlan reports whether the user holds a paid plan: an active
 // subscription whose period still runs, or a paid one-time purchase, which
-// never renews and so unlocks for good. ExpireEnded runs first, so an active
-// subscription whose period is over is swept to expired and does not count;
-// the period is checked here too, so the answer never leans on that sweep.
+// never renews and so unlocks for good. The period is checked here, so an
+// active subscription that ExpireEnded has not swept yet does not count.
 func (r *BillingRepository) HasPaidPlan(ctx context.Context, userID uuid.UUID) (bool, error) {
-	if err := r.ExpireEnded(ctx, userID); err != nil {
-		return false, err
-	}
-
 	var paid bool
 	err := r.queryRowContext(ctx, `
 		SELECT EXISTS (
@@ -258,19 +245,6 @@ func (r *BillingRepository) EndSubscription(ctx context.Context, id uuid.UUID, f
 		id, from, to,
 	)
 	return affected(res, err)
-}
-
-// SetSubscriptionCheckout stores where the user pays for a pending subscription.
-func (r *BillingRepository) SetSubscriptionCheckout(ctx context.Context, id uuid.UUID, url string) error {
-	_, err := r.execContext(ctx, `UPDATE subscriptions SET checkout_url = $2, updated_at = now() WHERE id = $1`, id, url)
-	return err
-}
-
-// DeleteSubscription removes a pending subscription whose checkout could not
-// be created, so the user is free to try again.
-func (r *BillingRepository) DeleteSubscription(ctx context.Context, id uuid.UUID) error {
-	_, err := r.execContext(ctx, `DELETE FROM subscriptions WHERE id = $1 AND status = 'pending'`, id)
-	return err
 }
 
 const purchaseColumns = `
@@ -371,16 +345,19 @@ func (r *BillingRepository) MovePurchase(ctx context.Context, id uuid.UUID, from
 	return affected(res, err)
 }
 
-// SetPurchaseCheckout stores where the user pays for a pending purchase.
-func (r *BillingRepository) SetPurchaseCheckout(ctx context.Context, id uuid.UUID, url string) error {
-	_, err := r.execContext(ctx, `UPDATE purchases SET checkout_url = $2, updated_at = now() WHERE id = $1`, id, url)
+// SetCheckout stores where the user pays for a pending subscription or
+// purchase. table is "subscriptions" or "purchases", a caller-supplied
+// literal, never request input.
+func (r *BillingRepository) SetCheckout(ctx context.Context, table string, id uuid.UUID, url string) error {
+	_, err := r.execContext(ctx, fmt.Sprintf(`UPDATE %s SET checkout_url = $2, updated_at = now() WHERE id = $1`, table), id, url)
 	return err
 }
 
-// DeletePurchase removes a pending purchase whose checkout could not be
-// created.
-func (r *BillingRepository) DeletePurchase(ctx context.Context, id uuid.UUID) error {
-	_, err := r.execContext(ctx, `DELETE FROM purchases WHERE id = $1 AND status = 'pending'`, id)
+// DeletePending removes a pending subscription or purchase (table as for
+// SetCheckout) whose checkout could not be created, so the user is free to
+// try again.
+func (r *BillingRepository) DeletePending(ctx context.Context, table string, id uuid.UUID) error {
+	_, err := r.execContext(ctx, fmt.Sprintf(`DELETE FROM %s WHERE id = $1 AND status = 'pending'`, table), id)
 	return err
 }
 

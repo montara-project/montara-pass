@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -118,27 +117,6 @@ func mirrorUser(repo *repositories.UserRepository) func(*authulamodels.User) err
 	}
 }
 
-// tokenLifetime reads the issued-at and expiry times (Unix seconds) from a
-// JWT's payload. The token was minted by this process, so it is not verified.
-func tokenLifetime(token string) (iat, exp int64, err error) {
-	parts := strings.Split(token, ".")
-	if len(parts) != 3 {
-		return 0, 0, errors.New("malformed access token")
-	}
-	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
-	if err != nil {
-		return 0, 0, err
-	}
-	var claims struct {
-		Iat int64 `json:"iat"`
-		Exp int64 `json:"exp"`
-	}
-	if err := json.Unmarshal(payload, &claims); err != nil {
-		return 0, 0, err
-	}
-	return claims.Iat, claims.Exp, nil
-}
-
 // addTokensToResponse adds the token pair the jwt plugin minted for a
 // successful sign-in to the JSON body the sign-in handler already wrote,
 // with the access token's expiry. A sign-in that answers with a redirect
@@ -154,16 +132,14 @@ func addTokensToResponse(reqCtx *authulamodels.RequestContext) error {
 		return nil
 	}
 
-	iat, exp, err := tokenLifetime(access)
-	if err != nil {
-		return err
-	}
-
+	// The token was minted just now, so it expires accessTokenTTL from now,
+	// give or take the second it took.
+	var err error
 	for key, value := range map[string]any{
 		"access_token":  access,
 		"refresh_token": reqCtx.Values[jwtplugintypes.JWTTokenTypeRefresh.String()],
-		"expires_at":    time.Unix(exp, 0).UTC(),
-		"expires_in":    exp - iat,
+		"expires_at":    time.Now().Add(accessTokenTTL).UTC().Truncate(time.Second),
+		"expires_in":    int64(accessTokenTTL.Seconds()),
 	} {
 		if body[key], err = json.Marshal(value); err != nil {
 			return err
@@ -193,6 +169,9 @@ func promoteSuperUser(repo *repositories.UserRepository, mirror func(*authulamod
 		return repo.SetRole(ctx, id, constant.RoleSuperUser)
 	}
 }
+
+// accessTokenTTL is how long an access token lasts.
+const accessTokenTTL = 15 * time.Minute
 
 // refreshTokenTTL is short because the refresh token is returned in a JSON
 // body, where a script on the client's page can read it; the session itself
@@ -345,7 +324,7 @@ func newAuth(cfg config.Config, mirror func(*authulamodels.User) error, logger *
 			// serves POST /token/refresh.
 			jwtplugin.New(jwtplugintypes.JWTPluginConfig{
 				Enabled:          true,
-				ExpiresIn:        15 * time.Minute,
+				ExpiresIn:        accessTokenTTL,
 				RefreshExpiresIn: refreshTokenTTL,
 			}),
 			// Accepts that access token as "Authorization: Bearer". Registered

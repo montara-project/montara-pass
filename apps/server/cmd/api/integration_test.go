@@ -826,15 +826,11 @@ func shareGate(
 	want(http.StatusOK, http.MethodPut, memberPath, userToken, map[string]any{"role": "editor"})
 	want(http.StatusOK, http.MethodDelete, memberPath, userToken, nil)
 
-	// An active subscription whose period is over does not: the lazy expiry
-	// sweeps it to expired before the gate reads it.
+	// An active subscription whose period is over does not, even before the
+	// lazy expiry has swept it to expired: the gate reads the period itself.
 	subscribe(models.SubscriptionActive, "-2 months", "-1 month")
 	if status, out := call(http.MethodPost, itemPath+"/members", userToken, share); status != http.StatusForbidden {
 		t.Fatalf("share on an ended period: %d %v, want 403", status, out)
-	}
-	var swept string
-	if err := db.QueryRow(`SELECT status FROM subscriptions WHERE user_id = $1`, userID).Scan(&swept); err != nil || swept != models.SubscriptionExpired {
-		t.Fatalf("subscription after the check: %q err=%v", swept, err)
 	}
 
 	// Nor does a pending one: it is not paid yet.

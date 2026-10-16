@@ -67,9 +67,7 @@ func (dto BillingListQuery) Validate(v *validator.MapValidator) {
 
 // Clamp applies the shared pagination bounds.
 func (dto *BillingListQuery) Clamp() {
-	q := ListQuery{Offset: dto.Offset, Limit: dto.Limit}
-	q.Clamp()
-	dto.Offset, dto.Limit = q.Offset, q.Limit
+	dto.Offset, dto.Limit = clampPage(dto.Offset, dto.Limit)
 }
 
 // CheckoutBody names the plan to subscribe to or buy.

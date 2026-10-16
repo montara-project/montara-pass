@@ -116,9 +116,7 @@ func (dto ItemListQuery) Validate(v *validator.MapValidator) {
 
 // Clamp applies the shared pagination bounds.
 func (dto *ItemListQuery) Clamp() {
-	q := ListQuery{Offset: dto.Offset, Limit: dto.Limit}
-	q.Clamp()
-	dto.Offset, dto.Limit = q.Offset, q.Limit
+	dto.Offset, dto.Limit = clampPage(dto.Offset, dto.Limit)
 }
 
 // ItemCreateBody creates an item; encrypted_item_key is the item key wrapped

@@ -35,16 +35,16 @@ const (
 	maxSearchLen = 100
 )
 
-// Clamp normalizes pagination values: a missing or zero limit falls back to
-// 10 and the limit never exceeds 100.
+// Clamp normalizes pagination values (see clampPage).
 func (dto *ListQuery) Clamp() {
-	if dto.Limit <= 0 {
-		dto.Limit = defaultListLimit
+	dto.Offset, dto.Limit = clampPage(dto.Offset, dto.Limit)
+}
+
+// clampPage is the shared pagination bounds: a missing or zero limit falls
+// back to 10, the limit never exceeds 100 and the offset is never negative.
+func clampPage(offset, limit int) (int, int) {
+	if limit <= 0 {
+		limit = defaultListLimit
 	}
-	if dto.Limit > maxListLimit {
-		dto.Limit = maxListLimit
-	}
-	if dto.Offset < 0 {
-		dto.Offset = 0
-	}
+	return max(offset, 0), min(limit, maxListLimit)
 }

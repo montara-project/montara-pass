@@ -97,22 +97,22 @@ func routes(r *fiber.App, app *app.Application) {
 	items.Put("/:id/placement", h.Item.SetPlacement)
 	items.Put("/:id/used", h.Item.MarkUsed)
 
-	// Sharing: looking up a recipient's public key, the item's members, and
-	// rotating its key once a member is gone. The Community Edition has one
-	// user, so nobody to share with.
+	// Cloud Edition only. The Community Edition has one user, so nobody to
+	// share with, and takes no payments.
 	if !config.Community() {
+		// Sharing: looking up a recipient's public key, the item's members,
+		// and rotating its key once a member is gone.
 		keys.Get("/public", middlewares.RateLimit("public-key", publicKeyRateLimit, exemptLoopback, exemptIPs, store), h.Key.PublicKey)
 		items.Put("/:id/key", h.Item.RotateKey)
 		items.Get("/:id/members", h.Item.Members)
 		items.Post("/:id/members", h.Item.Share)
 		items.Put("/:id/members/:userId", h.Item.SetMemberRole)
 		items.Delete("/:id/members/:userId", h.Item.RemoveMember)
-	}
 
-	// Billing, Cloud Edition only. The plans are public, for the
-	// website; a super user manages them and sees what customers bought. Subscribing and buying need a
-	// signed-in user account; Midtrans reports the payment's outcome.
-	if !config.Community() {
+		// Billing. The plans are public, for the website; a super user
+		// manages them and sees what customers bought. Subscribing and
+		// buying need a signed-in user account; Midtrans reports the
+		// payment's outcome.
 		plans := v1.Group("/plans")
 		plans.Get("/", h.Billing.ListPlans)
 		plans.Get("/all", m.Authorization, m.SuperUser, h.Billing.ListAllPlans)
