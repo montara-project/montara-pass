@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "go run ./cmd/api",
+    "dev:community": "go run -ldflags '-X montara-pass/server/internal/config.Edition=community' ./cmd/api",
     "build": "go build -o bin/api ./cmd/api && go build -o bin/migrate ./cmd/migrate",
     "test": "go test ./...",
     "migrate:up": "go run ./cmd/migrate up",
