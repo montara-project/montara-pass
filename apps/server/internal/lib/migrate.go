@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"io/fs"
@@ -9,6 +10,7 @@ import (
 	migratepgx "github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 
+	"montara-pass/server/internal/config"
 	"montara-pass/server/migrations"
 )
 
@@ -24,7 +26,44 @@ func NewMigrator(db *sql.DB) (*migrate.Migrate, error) {
 // keep their version in their own table. Run it after NewMigrator's, and roll
 // it back before.
 func NewEEMigrator(db *sql.DB) (*migrate.Migrate, error) {
-	return newMigrator(db, migrations.EE, "ee", "schema_migrations_ee")
+	return newMigrator(db, migrations.EE, "ee", eeTable)
+}
+
+const eeTable = "schema_migrations_ee"
+
+// Track is one sequence of migrations with its own version table.
+type Track struct {
+	// Name is "main" or "ee"; cmd/migrate takes --ee for the latter.
+	Name string
+	New  func(*sql.DB) (*migrate.Migrate, error)
+}
+
+var (
+	mainTrack = Track{"main", NewMigrator}
+	eeTrack   = Track{"ee", NewEEMigrator}
+)
+
+// Tracks lists the edition's tracks in the order they apply: the main one,
+// then, unless this is the Community Edition, the Cloud Edition's, whose
+// tables lean on the main ones.
+func Tracks() []Track {
+	if config.Community() {
+		return []Track{mainTrack}
+	}
+	return []Track{mainTrack, eeTrack}
+}
+
+// CloudLeftover reports the Cloud Edition's track when a Community Edition
+// runs on a database the Cloud Edition migrated: its tables lean on the main
+// ones, so rolling the main track back has to roll it back first. ok is false
+// otherwise. Its version table is looked for rather than opened, since opening
+// a migrator creates the table.
+func CloudLeftover(ctx context.Context, db *sql.DB) (track Track, ok bool, err error) {
+	if !config.Community() {
+		return Track{}, false, nil
+	}
+	err = db.QueryRowContext(ctx, `SELECT to_regclass($1) IS NOT NULL`, eeTable).Scan(&ok)
+	return eeTrack, ok, err
 }
 
 // newMigrator reads the migrations in dir of fsys. An empty table keeps

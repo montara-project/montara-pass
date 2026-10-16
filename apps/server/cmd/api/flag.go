@@ -159,10 +159,6 @@ func validateFlag(cfg *config.Config) {
 		log.Fatal("flag db-dsn must be provided")
 	}
 
-	if config.Edition != config.EditionCloud && config.Edition != config.EditionCommunity {
-		log.Fatalf("edition must be %s or %s, got %q", config.EditionCloud, config.EditionCommunity, config.Edition)
-	}
-
 	// The Community Edition has no sign-up: its only account is the super
 	// user, which the seeder creates.
 	if config.Community() && !cfg.App.SeedOnBoot {

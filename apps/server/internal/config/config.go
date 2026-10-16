@@ -1,6 +1,9 @@
 package config
 
-import "time"
+import (
+	"log"
+	"time"
+)
 
 // Accepted App.Env values. Only EnvDevelopment enables development-only
 // behaviour: the loopback rate-limit exemption and session cookies without
@@ -20,6 +23,14 @@ const (
 	EditionCloud     = "cloud"
 	EditionCommunity = "community"
 )
+
+// A mistyped -ldflags value stops every binary, cmd/migrate included, before
+// it acts as the wrong edition.
+func init() {
+	if Edition != EditionCloud && Edition != EditionCommunity {
+		log.Fatalf("edition must be %s or %s, got %q", EditionCloud, EditionCommunity, Edition)
+	}
+}
 
 // Community reports whether this is the Community Edition.
 func Community() bool {
