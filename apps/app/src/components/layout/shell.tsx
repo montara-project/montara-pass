@@ -1,5 +1,4 @@
 import {
-  IconCategory,
   IconChevronRight,
   IconCreditCard,
   IconFolders,
@@ -59,7 +58,6 @@ const NAV = [
   { title: 'Vault', url: '/vault', icon: IconLock },
   { title: 'Folders', url: '/folders', icon: IconFolders },
   { title: 'Trash', url: '/trash', icon: IconTrash },
-  { title: 'Categories', url: '/categories', icon: IconCategory },
 ] as const
 
 /** Shown at the foot of the sidebar, above the account. */
