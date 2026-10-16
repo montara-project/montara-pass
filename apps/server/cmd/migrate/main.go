@@ -1,7 +1,7 @@
 package main
 
 import (
-	"database/sql"
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -9,12 +9,11 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"time"
 
 	"github.com/golang-migrate/migrate/v4"
 
-	appconfig "montara-pass/server/internal/config"
 	"montara-pass/server/internal/lib"
-	"montara-pass/server/internal/seeders"
 )
 
 func main() {
@@ -23,8 +22,8 @@ func main() {
 
 	if cfg.mode == modeCreate {
 		dir := "migrations"
-		if cfg.ee {
-			dir = "migrations/ee"
+		if cfg.cloud {
+			dir = "migrations/cloud"
 		}
 		if err := create(dir, cfg.name); err != nil {
 			log.Fatal(err)
@@ -32,57 +31,51 @@ func main() {
 		return
 	}
 
-	// One migrator per track: the main one, then, unless this is the
-	// Community Edition, the Cloud Edition's, whose tables lean on the
-	// main ones. Each owns and closes its own connection.
-	tracks := []func(*sql.DB) (*migrate.Migrate, error){lib.NewMigrator}
-	if !appconfig.Community() {
-		tracks = append(tracks, lib.NewEEMigrator)
+	// One migrator per track, each on its own connection, which closing it
+	// closes too.
+	tracks := lib.Tracks()
+	if cfg.mode == modeDown || cfg.mode == modeRefresh {
+		// A Community Edition database the Cloud Edition once migrated still
+		// holds the Cloud tables, which would stop the main track's down
+		// midway: roll them back too. refresh brings back only the main one.
+		if leftover, ok := cloudLeftover(cfg.dbDSN); ok {
+			tracks = append(tracks, leftover)
+		}
 	}
 	ms := make([]*migrate.Migrate, len(tracks))
-	for i, newMigrator := range tracks {
+	for i, track := range tracks {
 		migrateDB, err := lib.OpenDB(cfg.dbDSN)
 		if err != nil {
 			log.Fatal(err)
 		}
-		if ms[i], err = newMigrator(migrateDB); err != nil {
+		if ms[i], err = track.New(migrateDB); err != nil {
 			log.Fatal(err)
 		}
 		defer ms[i].Close()
 	}
+	up := ms[:len(lib.Tracks())]
 
 	switch cfg.mode {
 	case modeUp:
-		migrateUp(ms...)
+		migrateUp(up...)
 	case modeDown:
 		migrateDown(ms...)
 	case modeRefresh:
 		migrateDown(ms...)
-		migrateUp(ms...)
+		migrateUp(up...)
 	case modeForce:
-		// --ee picks the Cloud Edition's track; validateFlag refuses it
-		// in the Community Edition, which has only the main one.
+		// validateFlag refuses --cloud in the Community Edition, which has only
+		// the main track.
 		target := ms[0]
-		if cfg.ee {
+		if cfg.cloud {
 			target = ms[1]
 		}
 		forceVersion(target, cfg.version)
 	case modeVersion:
 		for i, m := range ms {
-			printVersion([]string{"main", "ee"}[i], m)
+			printVersion(tracks[i].Name, m)
 		}
 		return
-	}
-
-	if cfg.seed {
-		seedDB, err := lib.OpenDB(cfg.dbDSN)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer seedDB.Close()
-
-		// The super user is seeded by the API on boot: it needs Authula.
-		execSeeders(seeders.All(seedDB)...)
 	}
 
 	fmt.Println("Completed")
@@ -161,11 +154,19 @@ func create(dir, name string) error {
 	return nil
 }
 
-func execSeeders(seeders ...seeders.Seeder) {
-	for _, seeder := range seeders {
-		fmt.Printf("Running %s seeder...\n", seeder.Name())
-		if err := seeder.Seed(); err != nil {
-			log.Fatalf("%s seeder failed: %v", seeder.Name(), err)
-		}
+// cloudLeftover is lib.CloudLeftover on its own connection.
+func cloudLeftover(dsn string) (lib.Track, bool) {
+	db, err := lib.OpenDB(dsn)
+	if err != nil {
+		log.Fatal(err)
 	}
+	defer db.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	track, ok, err := lib.CloudLeftover(ctx, db)
+	if err != nil {
+		log.Fatalf("look for cloud edition migrations: %v", err)
+	}
+	return track, ok
 }

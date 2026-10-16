@@ -1,5 +1,8 @@
 package validator
 
+// MessageRecord maps a field to its failure messages.
+type MessageRecord map[string][]string
+
 type MapValidator struct {
 	fvs map[string]*FieldValidator
 }
@@ -12,9 +15,11 @@ func NewMapValidator() *MapValidator {
 func (v *MapValidator) Validate(dict map[string]interface{}) (MessageRecord, bool) {
 	mr := make(MessageRecord)
 	for key, fv := range v.fvs {
-		mr = mr.Append(fv.Validate(dict[key]))
+		if msg := fv.Validate(dict[key]); msg != "" {
+			mr[key] = []string{msg}
+		}
 	}
-	return mr, mr.Empty()
+	return mr, len(mr) == 0
 }
 
 func (v *MapValidator) Field(key string) *FieldValidator {
@@ -28,13 +33,14 @@ type FieldValidator struct {
 	rules []rule
 }
 
-func (v *FieldValidator) Validate(data interface{}) MessageRecord {
+// Validate returns the first failing rule's message, or "" when all pass.
+func (v *FieldValidator) Validate(data interface{}) string {
 	for _, rule := range v.rules {
 		if msg, ok := rule(v.key, data); !ok {
-			return MessageRecord{v.key: []string{msg}}
+			return msg
 		}
 	}
-	return nil
+	return ""
 }
 
 func (v *FieldValidator) registerRule(rule rule) {

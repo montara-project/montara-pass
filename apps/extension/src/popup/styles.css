@@ -556,7 +556,12 @@ a.icon-button {
   color: var(--fg);
 }
 
+/* Rows stand 4px apart, as the web app's do, so a lit row never runs into
+   the selected one beside it. */
 .items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1273,6 +1278,7 @@ a.set-row svg {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  padding-top: 16px;
   background: var(--panel);
   border-right: 1px solid var(--border);
 }
@@ -1293,11 +1299,16 @@ a.set-row svg {
   padding: 8px 20px;
 }
 
-.list-col .items {
+/* The rows' scroller keeps its scrollbar 4px off the line beside it, where a
+   thumb of the same colour would read as a second line. The gutter is kept
+   when nothing scrolls, so the rows end in the same place either way. */
+.list-scroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 0 8px 8px;
+  scrollbar-gutter: stable;
+  margin-right: 4px;
+  padding: 0 4px 8px 8px;
 }
 
 /* Here the whole row is the control, so the row itself is not padded. */
@@ -1336,11 +1347,27 @@ a.set-row svg {
   grid-template-columns: auto minmax(0, 1fr) 140px 120px;
 }
 
+/* The headings stay on top of the rows that scroll under them, and a
+   hairline under them, inset to the text as the web app's is, says where the
+   list begins. */
 .list-head {
-  padding: 4px 20px 6px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin-bottom: 4px;
+  padding: 4px 12px 8px;
+  background: var(--panel);
   color: var(--muted);
   font-size: 12px;
   font-weight: 500;
+}
+
+.list-head::after {
+  content: '';
+  position: absolute;
+  inset: auto 12px 0;
+  height: 1px;
+  background: var(--border);
 }
 
 .col {
@@ -1352,7 +1379,14 @@ a.set-row svg {
 }
 
 @container (max-width: 520px) {
+  /* The headings go; the line under them stays: it is where the list begins.
+     The pixel of padding gives the line a box to sit in, inside the scroller
+     rather than clipped above it. */
   .list-head {
+    padding: 0 0 1px;
+  }
+
+  .list-head > span {
     display: none;
   }
 
@@ -1372,6 +1406,7 @@ a.set-row svg {
 .detail-col {
   min-height: 0;
   overflow-y: auto;
+  padding-top: 16px;
   background: var(--panel);
 }
 
@@ -1727,7 +1762,117 @@ input.range:active::-moz-range-thumb {
 
 /* Logins that belong together sit in one card, a line between them: the
    ones that share a password are seen to. */
+/* Billing, Cloud Edition only: the subscription, the plans on offer, and what
+   was bought, each on the card tone. */
+.billing-section {
+  gap: 8px;
+}
+
+/* A section's heading sits on the cards' edge, as the health report's do. */
+.billing-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.billing-section > p.muted {
+  margin: 0;
+  font-size: 13px;
+}
+
+.billing-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 12px 12px 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.billing-row .item-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.billing-row button.secondary,
+.plan-card button.secondary {
+  flex-shrink: 0;
+  justify-content: center;
+  height: 36px;
+  padding: 0 14px;
+  font-weight: 500;
+}
+
+.plan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plan-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.plan-price {
+  margin-bottom: 8px;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-card p {
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+
+/* The action sits at the foot of every card, however long its description. */
+.plan-card > :last-child {
+  margin-top: auto;
+}
+
+.billing-list {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+  list-style: none;
+}
+
+.billing-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 12px 16px;
+}
+
+.billing-list li + li {
+  border-top: 1px solid var(--border);
+}
+
+.billing-list .muted {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Grouped rows: one card, divided by hairlines rather than gaps. */
 .health-list {
+  gap: 0;
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 14px;

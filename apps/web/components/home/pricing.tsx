@@ -28,9 +28,9 @@ async function plansOnOffer(): Promise<Plan[]> {
   }
 }
 
-/** Its price, from the minor unit the API counts in: rupiah whole, others in cents. */
+/** Its price, from cents, which the API counts every currency in. */
 function price(plan: Plan) {
-  const digits = plan.currency === "IDR" ? 0 : 2;
+  const digits = 2;
   const amount = new Intl.NumberFormat("en-US", {
     style: "currency",
     currencyDisplay: "narrowSymbol",
@@ -43,20 +43,18 @@ function price(plan: Plan) {
 
 export async function Pricing() {
   const plans = await plansOnOffer();
-  const cloud = plans.length > 0;
 
   return (
-    <section id="pricing" className="border-t border-line pb-20 sm:pb-28">
+    <section className="border-t border-line pb-20 sm:pb-28">
       <Statement
         title={
           <>
-            Free to run. <Dim>{cloud ? "Or let us host it." : "Hosted comes later."}</Dim>
+            Free to run. <Dim>Or let us host it.</Dim>
           </>
         }
       >
-        {cloud
-          ? "Self-hosting costs you a server and nothing to us. Cloud runs the server for you."
-          : "Self-hosting costs you a server and nothing to us. A hosted plan is planned and not for sale yet."}
+        Self-hosting costs you a server and nothing to us. Cloud runs the server for you, from $3 a
+        month.
       </Statement>
 
       <div className="mx-auto -mt-8 grid max-w-4xl gap-6 px-6 md:grid-cols-2">
@@ -90,33 +88,21 @@ export async function Pricing() {
           <article className={`${card} flex flex-col`}>
             <div className="flex items-center justify-between gap-3">
               <h3 className="font-medium">Cloud</h3>
-              <span className={chip}>coming soon</span>
+              <span className={chip}>priced</span>
             </div>
-            <p className="mt-5 flex items-baseline gap-2">
-              <span
-                aria-hidden="true"
-                className="font-heading text-5xl font-medium tracking-tight text-mist/75"
-              >
-                $$
-              </span>
-              <span className="font-mono text-xs lowercase text-mist">not priced yet</span>
+            <p className="mt-5 text-[15px] leading-7 text-mist">
+              We run the server and PostgreSQL for you. The same encryption, done in your browser —
+              and a free account if you are not ready to pay for it.
             </p>
             <ul className="mt-6 flex flex-1 flex-col gap-3">
+              <Check>Free account, or Pro from $3 a month</Check>
               <Check>The same encryption, done in your browser</Check>
-              <Check>We run the server and PostgreSQL</Check>
               <Check>No Docker, no migrations</Check>
-              <li className="flex items-start gap-2.5 text-[15px] leading-6 text-accent-bright">
-                <span className="mx-[5px] mt-[9px] size-1.5 shrink-0 rounded-full bg-accent-bright" />
-                Self-hosted is available today
-              </li>
             </ul>
-            <button
-              type="button"
-              disabled
-              className="btn mt-8 cursor-not-allowed border-line bg-line text-mist"
-            >
-              Not available yet
-            </button>
+            <a href="/pricing" className="btn btn-primary mt-8">
+              See the prices
+              <ArrowRightIcon className="size-4" />
+            </a>
           </article>
         )}
       </div>
@@ -125,7 +111,7 @@ export async function Pricing() {
         Self-hosting needs Docker, PostgreSQL 18, a domain and a Resend API key for sign-in emails.
       </p>
       <p className="mt-3 px-6 text-center text-sm text-mist">
-        {cloud ? "Need a business plan?" : "Want to know when Cloud opens?"}{" "}
+        Need a business plan?{" "}
         <a
           href="/contact"
           className="cursor-pointer font-medium text-fg underline-offset-4 hover:underline"
@@ -174,7 +160,7 @@ function CloudPlans({ plans }: { plans: Plan[] }) {
       <ul className="mt-6 flex flex-col gap-3">
         <Check>The same encryption, done in your browser</Check>
         <Check>We run the server and PostgreSQL</Check>
-        <Check>Paid through Midtrans</Check>
+        <Check>Paid through Lemon Squeezy</Check>
       </ul>
     </article>
   );

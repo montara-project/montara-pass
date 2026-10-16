@@ -9,6 +9,7 @@ import { setItemPlacement, SignedOutError, trashItem } from '../../lib/api'
 import { linkOf } from '../../lib/site'
 import { getSettings } from '../../lib/storage'
 import { lastUsedAgo } from '../../lib/usage'
+import { maskUsername } from '../../lib/username'
 import {
   ArrowLeftIcon,
   CopyIcon,
@@ -32,6 +33,7 @@ import {
 import { ItemTile } from '../item-tile'
 import { useFolders, useVaultItems } from '../use-vault-items'
 import { VaultSidebar, type Tool } from '../vault-sidebar'
+import Billing from './billing'
 import ItemForm from './item-form'
 import PasswordGenerator from './password-generator'
 import PasswordHealth from './password-health'
@@ -194,6 +196,8 @@ export default function FullVault({
           <section className="detail-col tool-col" aria-label="Tools">
             {tool === 'generator' ? (
               <PasswordGenerator onNotice={setNotice} />
+            ) : tool === 'billing' ? (
+              <Billing onSignedOut={onSignedOut} />
             ) : (
               <PasswordHealth
                 items={items}
@@ -257,39 +261,45 @@ export default function FullVault({
                 </p>
               )}
 
-              {visible.length > 0 && (
-                <div className="list-head" aria-hidden="true">
-                  <span>Name</span>
-                  <span className="col">Folder</span>
-                  <span className="col">Last used</span>
-                </div>
-              )}
+              {/* The headings scroll with the rows, so their columns line up
+                  with the rows' whatever the scrollbar takes, and stay on top. */}
+              <div className="list-scroll">
+                {visible.length > 0 && (
+                  <div className="list-head" aria-hidden="true">
+                    <span>Name</span>
+                    <span className="col">Folder</span>
+                    <span className="col">Last used</span>
+                  </div>
+                )}
 
-              <ul className="items">
-                {visible.map((item) => (
-                  <li key={item.id}>
-                    <button
-                      className="item-row"
-                      aria-current={item.id === selectedId ? 'true' : undefined}
-                      onClick={() => setPane({ mode: 'view', id: item.id })}
-                    >
-                      <ItemTile item={item} />
-                      <span className="item-text">
-                        <span className="item-name">{item.secret!.name}</span>
-                        <span className="muted">
-                          {item.type === 'login'
-                            ? item.secret!.username || 'No username'
-                            : 'Secure note'}
+                <ul className="items">
+                  {visible.map((item) => (
+                    <li key={item.id}>
+                      <button
+                        className="item-row"
+                        aria-current={item.id === selectedId ? 'true' : undefined}
+                        onClick={() => setPane({ mode: 'view', id: item.id })}
+                      >
+                        <ItemTile item={item} />
+                        <span className="item-text">
+                          <span className="item-name">{item.secret!.name}</span>
+                          <span className="muted">
+                            {item.type === 'login'
+                              ? item.secret!.username
+                                ? maskUsername(item.secret!.username)
+                                : 'No username'
+                              : 'Secure note'}
+                          </span>
                         </span>
-                      </span>
-                      <span className="col muted">
-                        {folderNames.get(item.folder_id ?? '') ?? '—'}
-                      </span>
-                      <span className="col muted">{lastUsedAgo(item.last_used_at) ?? '—'}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+                        <span className="col muted">
+                          {folderNames.get(item.folder_id ?? '') ?? '—'}
+                        </span>
+                        <span className="col muted">{lastUsedAgo(item.last_used_at) ?? '—'}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </section>
 
             <section className="detail-col" aria-label="Item details">
@@ -389,6 +399,8 @@ interface ItemDetailProps {
 function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: ItemDetailProps) {
   // Hidden again for every item: this component is remounted per item.
   const [revealed, setRevealed] = useState(false)
+  // The username is masked as the list shows it, until asked for.
+  const [showUsername, setShowUsername] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -496,7 +508,28 @@ function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: Item
           <>
             <div className="field">
               <dt>Username</dt>
-              <dd>{secret.username || <span className="muted">None</span>}</dd>
+              <dd>
+                {secret.username ? (
+                  showUsername ? (
+                    secret.username
+                  ) : (
+                    maskUsername(secret.username)
+                  )
+                ) : (
+                  <span className="muted">None</span>
+                )}
+              </dd>
+              {secret.username && (
+                <button
+                  className="icon-button"
+                  aria-label={showUsername ? 'Hide username' : 'Show username'}
+                  aria-pressed={showUsername}
+                  title={showUsername ? 'Hide username' : 'Show username'}
+                  onClick={() => setShowUsername((value) => !value)}
+                >
+                  {showUsername ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+              )}
               <button
                 className="icon-button"
                 aria-label="Copy username"

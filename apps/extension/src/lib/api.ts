@@ -174,6 +174,44 @@ export async function getBilling(): Promise<Models.BillingOverview | null> {
   }
 }
 
+/**
+ * The plans on offer, cheapest first within each kind; none where the server
+ * has no billing.
+ */
+export async function listPlans(): Promise<Models.Plan[]> {
+  try {
+    const res = await request<Envelope<Models.Plan[]>>('/api/v1/plans')
+    return res.data
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return []
+    throw error
+  }
+}
+
+/** Starts a subscription to a recurring plan; it answers with where to pay. */
+export async function subscribe(planId: string): Promise<Models.Subscription> {
+  const res = await request<Envelope<Models.Subscription>>('/api/v1/billing/subscriptions', {
+    method: 'POST',
+    body: JSON.stringify({ plan_id: planId }),
+  })
+  return res.data
+}
+
+/** Starts the purchase of a one-time plan; it answers with where to pay. */
+export async function buy(planId: string): Promise<Models.Purchase> {
+  const res = await request<Envelope<Models.Purchase>>('/api/v1/billing/purchases', {
+    method: 'POST',
+    body: JSON.stringify({ plan_id: planId }),
+  })
+  return res.data
+}
+
+/** A freshly signed link to the customer portal, where a subscription is cancelled. */
+export async function getBillingPortal(): Promise<Models.BillingPortal> {
+  const res = await request<Envelope<Models.BillingPortal>>('/api/v1/billing/portal')
+  return res.data
+}
+
 /** Every row of a list route. The API pages at 100, so this walks the pages. */
 async function listAll<T>(path: string): Promise<T[]> {
   const rows: T[] = []

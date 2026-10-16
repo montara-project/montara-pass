@@ -30,6 +30,7 @@ import {
 import { fillsSite, hostOf, matchesSite, originOf } from '../lib/site'
 import { getSettings, getTokens } from '../lib/storage'
 import { lastUsedLabel } from '../lib/usage'
+import { maskUsername } from '../lib/username'
 import { checked, submit, useAppForm } from '../popup/form'
 import { CloseIcon, ExpandIcon, KeyIcon, RefreshIcon } from '../popup/icons'
 import { ItemTile } from '../popup/item-tile'
@@ -265,7 +266,9 @@ function Logins({
           >
             <ItemTile item={item} />
             <span className="item-text">
-              <span className="item-name">{item.secret!.username || item.secret!.name}</span>
+              <span className="item-name">
+                {item.secret!.username ? maskUsername(item.secret!.username) : item.secret!.name}
+              </span>
               <span className="muted">
                 {sharedLabel(item) ?? lastUsedLabel(item.last_used_at) ?? hostOf(item.secret!.url)}
               </span>
@@ -577,7 +580,9 @@ function PasskeyChoice({
             >
               <ItemTile item={item} />
               <span className="item-text">
-                <span className="item-name">{item.secret!.username || item.secret!.name}</span>
+                <span className="item-name">
+                  {item.secret!.username ? maskUsername(item.secret!.username) : item.secret!.name}
+                </span>
                 <span className="muted">
                   {sharedLabel(item) ?? lastUsedLabel(item.last_used_at) ?? rpId}
                 </span>

@@ -9,3 +9,9 @@ dist/
 
 graft/
 .omc
+
+# Impeccable session artifacts; see apps/web/.gitignore for the same rule.
+.impeccable/questions/
+.impeccable/mocks/
+.impeccable/review/
+.impeccable/hook.cache.json

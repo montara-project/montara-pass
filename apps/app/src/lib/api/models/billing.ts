@@ -13,11 +13,16 @@ export interface Plan {
   amount: number
   currency: string
   active: boolean
+  /** The Lemon Squeezy variant it is synced from; null for a plan from before the sync. */
+  variant_id: string | null
   created_at: ISO8601DateString
   updated_at: ISO8601DateString
 }
 
-/** One paid period of a recurring plan; it does not renew by itself. */
+/**
+ * A recurring plan, renewed by Lemon Squeezy. Active to current_period_end:
+ * the next renewal, or the end once canceled_at says it will not renew.
+ */
 export interface Subscription {
   id: string
   plan_id: string
@@ -43,6 +48,11 @@ export interface Purchase {
   checkout_url: string | null
   plan: Plan
   created_at: ISO8601DateString
+}
+
+/** Body of GET /api/v1/billing/portal: a signed link that expires soon. */
+export interface BillingPortal {
+  url: string
 }
 
 /** Body of GET /api/v1/billing. */

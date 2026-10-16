@@ -1,5 +1,6 @@
 import { IconTrash } from '@tabler/icons-react'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { toast } from 'sonner'
 
 import type { Models } from '@/lib/api/models'
@@ -11,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAppForm } from '@/hooks/form'
 import { useVaultKeys } from '@/hooks/use-vault'
-import { isNotFound, toastAxiosError } from '@/lib/api/axios-error'
+import { axiosErrorMessage, isForbidden, isNotFound, toastAxiosError } from '@/lib/api/axios-error'
 import { parseDto } from '@/lib/api/dtos/parse'
 import { ShareFormSchema, type ShareFormDto } from '@/lib/api/dtos/vault/schema'
 import { queries } from '@/lib/api/queries'
@@ -47,6 +48,10 @@ type ShareItemFormProps = {
 export function ShareItemForm({ open, onOpenChange, record }: ShareItemFormProps) {
   const keys = useVaultKeys()
 
+  // A refusal the user can act on, such as the plan gate on sharing, in the
+  // server's own words and kept where the action was taken.
+  const [refusal, setRefusal] = useState('')
+
   const { data, isLoading } = useQuery({ ...queries.items.members(record.id), enabled: open })
   const members = data?.data ?? []
 
@@ -63,6 +68,7 @@ export function ShareItemForm({ open, onOpenChange, record }: ShareItemFormProps
       onSubmit: ShareFormSchema,
     },
     onSubmit: async ({ value }) => {
+      setRefusal('')
       try {
         const { email, role } = parseDto(ShareFormSchema, value)
         const recipient = await lookupPublicKey(email)
@@ -75,6 +81,10 @@ export function ShareItemForm({ open, onOpenChange, record }: ShareItemFormProps
         toast.success(`Shared with ${recipient.name || recipient.email}`)
         form.reset()
       } catch (error) {
+        if (isForbidden(error)) {
+          setRefusal(axiosErrorMessage(error))
+          return
+        }
         toastAxiosError(error)
       }
     },
@@ -157,6 +167,14 @@ export function ShareItemForm({ open, onOpenChange, record }: ShareItemFormProps
           )}
         />
       </div>
+
+      {/* What the server refused, in its own words: the plan gate on sharing
+          says what to do about it, and the sidebar's Billing page is where. */}
+      {refusal && (
+        <p role="alert" className="text-danger text-[13px] whitespace-pre-line">
+          {refusal}
+        </p>
+      )}
 
       <div className="flex flex-col gap-2 border-t pt-4">
         <h3 className="text-[15px] font-semibold">People with access</h3>

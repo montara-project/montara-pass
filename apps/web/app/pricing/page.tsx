@@ -1,0 +1,14 @@
+import type { Metadata } from "next";
+
+import { tiersOnOffer } from "@/components/pricing/offer";
+import { PricingPage } from "@/components/pricing/pricing-page";
+
+export const metadata: Metadata = {
+  title: "Pricing — Montara Pass",
+  description:
+    "Self-host Montara Pass for nothing, keep a free Cloud account, or pay for Pro at $3 a month, $25 a year or $300 once. The encryption is the same on every tier.",
+};
+
+export default async function Page() {
+  return <PricingPage tiers={await tiersOnOffer()} />;
+}

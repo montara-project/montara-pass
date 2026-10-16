@@ -66,19 +66,19 @@ func runQuery(t *testing.T, target string, obj Validatable) error {
 }
 
 func TestValidateRequestQuery_OptionalDefaultsPass(t *testing.T) {
-	q := &dtos.ListQuery{}
+	q := &dtos.BillingListQuery{}
 	if err := runQuery(t, "/t", q); err != nil {
 		t.Fatalf("empty query should pass, got %v", err)
 	}
 }
 
 func TestValidateRequestQuery_InvalidOffsetFails(t *testing.T) {
-	err := runQuery(t, "/t?offset=sideways", &dtos.ListQuery{})
+	err := runQuery(t, "/t?offset=sideways", &dtos.BillingListQuery{})
 	validationErr(t, err)
 }
 
 func TestValidateRequestQuery_ValidParamsPass(t *testing.T) {
-	q := &dtos.ListQuery{}
+	q := &dtos.BillingListQuery{}
 	if err := runQuery(t, "/t?offset=20&limit=10", q); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -88,7 +88,7 @@ func TestValidateRequestQuery_ValidParamsPass(t *testing.T) {
 }
 
 func TestValidateRequestQuery_EmptyParamTreatedAsAbsent(t *testing.T) {
-	q := &dtos.ListQuery{}
+	q := &dtos.BillingListQuery{}
 	if err := runQuery(t, "/t?offset=", q); err != nil {
 		t.Fatalf("empty offset should pass like an absent param, got %v", err)
 	}

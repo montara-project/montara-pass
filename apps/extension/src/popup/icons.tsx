@@ -116,6 +116,13 @@ export const ShareIcon = icon(
   </>
 )
 
+export const CreditCardIcon = icon(
+  <>
+    <rect x="3" y="5" width="18" height="14" rx="3" />
+    <path d="M3 10h18M7 15h3" />
+  </>
+)
+
 export const ShieldIcon = icon(
   <>
     <path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6l-7-3Z" />

@@ -2,8 +2,12 @@ package repositories
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
+	"time"
 
+	"montara-pass/server/internal/lib"
 	"montara-pass/server/internal/lib/apperr"
 	"montara-pass/server/internal/lib/constant"
 	"montara-pass/server/internal/models"
@@ -12,7 +16,7 @@ import (
 )
 
 // BillingRepository manages the Cloud Edition's plans, subscriptions and
-// purchases (see migrations/ee/000001). The database holds the rules: only an
+// purchases (see migrations/cloud). The database holds the rules: only an
 // account with the 'user' role subscribes or buys, each table takes only its
 // kind of plan, and a user has one live subscription.
 type BillingRepository struct {
@@ -21,11 +25,11 @@ type BillingRepository struct {
 
 const planColumns = `
 	p.id, p.created_at, p.updated_at, p.code, p.name, p.description,
-	p.billing, p.billing_interval, p.amount, p.currency, p.active`
+	p.billing, p.billing_interval, p.amount, p.currency, p.active, p.variant_id`
 
 func planDest(p *models.Plan) []any {
 	return []any{&p.ID, &p.CreatedAt, &p.UpdatedAt, &p.Code, &p.Name, &p.Description,
-		&p.Billing, &p.BillingInterval, &p.Amount, &p.Currency, &p.Active}
+		&p.Billing, &p.BillingInterval, &p.Amount, &p.Currency, &p.Active, &p.VariantID}
 }
 
 func scanPlan(row rowScanner) (models.Plan, error) {
@@ -51,33 +55,43 @@ func (r *BillingRepository) GetPlan(ctx context.Context, id uuid.UUID) (models.P
 	return scanPlan(r.queryRowContext(ctx, query, id))
 }
 
-// InsertPlan persists a new plan. A taken code is a conflict.
-func (r *BillingRepository) InsertPlan(ctx context.Context, p models.Plan) error {
-	_, err := r.execContext(ctx, `
-		INSERT INTO plans (id, code, name, description, billing, billing_interval, amount, currency, active)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-		p.ID, p.Code, p.Name, p.Description, p.Billing, p.BillingInterval, p.Amount, p.Currency, p.Active,
-	)
-	if hasPgCode(err, pgUniqueViolation) {
-		return apperr.New(apperr.KindConflict, "a plan with code %q already exists", p.Code)
-	}
-	return err
-}
+// SyncPlans makes the plans what the Lemon Squeezy catalog sells: each of
+// plans, found by its variant, is added or brought up to date, and every
+// other plan is taken off sale. A plan keeps its kind, which subscriptions
+// and purchases name: one whose variant changed kind is taken off sale too.
+// It returns the codes of those that did.
+func (r *BillingRepository) SyncPlans(ctx context.Context, plans []models.Plan) (changedKind []string, err error) {
+	err = lib.WithTransaction(ctx, r.DB, func(tx *sql.Tx) error {
+		kept := []string{}
+		for _, p := range plans {
+			var id uuid.UUID
+			err := tx.QueryRowContext(ctx, `
+				INSERT INTO plans (code, name, description, billing, billing_interval, amount, currency, active, variant_id)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+				ON CONFLICT (variant_id) DO UPDATE
+				SET name = EXCLUDED.name, description = EXCLUDED.description,
+				    billing_interval = EXCLUDED.billing_interval, amount = EXCLUDED.amount,
+				    currency = EXCLUDED.currency, active = EXCLUDED.active, updated_at = now()
+				WHERE plans.billing = EXCLUDED.billing
+				RETURNING id`,
+				p.Code, p.Name, p.Description, p.Billing, p.BillingInterval, p.Amount, p.Currency, p.Active, p.VariantID,
+			).Scan(&id)
+			switch {
+			case errors.Is(err, sql.ErrNoRows):
+				changedKind = append(changedKind, p.Code)
+			case err != nil:
+				return fmt.Errorf("sync plan %s: %w", p.Code, err)
+			default:
+				kept = append(kept, *p.VariantID)
+			}
+		}
 
-// UpdatePlan rewrites what may change about a plan: its kind and code stay,
-// since subscriptions and purchases name them. A new price applies to what is
-// bought next; what was bought keeps the amount it was charged.
-func (r *BillingRepository) UpdatePlan(ctx context.Context, p models.Plan) error {
-	res, err := r.execContext(ctx, `
-		UPDATE plans
-		SET name = $2, description = $3, amount = $4, currency = $5, active = $6, updated_at = now()
-		WHERE id = $1`,
-		p.ID, p.Name, p.Description, p.Amount, p.Currency, p.Active,
-	)
-	if err != nil {
+		_, err := tx.ExecContext(ctx, `
+			UPDATE plans SET active = false, updated_at = now()
+			WHERE active AND (variant_id IS NULL OR NOT (variant_id = ANY($1)))`, kept)
 		return err
-	}
-	return requireAffected(res, "plan")
+	})
+	return changedKind, err
 }
 
 const subscriptionColumns = `
@@ -147,25 +161,50 @@ func (r *BillingRepository) CountSubscriptions(ctx context.Context, p ListParams
 	return r.countRows(ctx, subscriptionsWithUser, customerFilters("s", p, status))
 }
 
-// ExpireAllEnded is ExpireEnded for every user, so the super user's list
-// shows what has ended.
-func (r *BillingRepository) ExpireAllEnded(ctx context.Context) error {
+// ExpireEnded marks the active subscriptions whose period is over as
+// expired, and drops the pending payments whose checkout can no longer be
+// paid: the user's, or with a nil userID everyone's, for the super user's
+// lists. Lemon Squeezy sends nothing when a checkout lapses, so a pending
+// row is let go a little after lemonsqueezy.CheckoutLifetime (an hour), once
+// a payment made at its last minute has had time to be reported. Run before
+// reading or starting one, it stands in for a job.
+// ponytail: lazy, on read; a periodic job if expiry must show elsewhere.
+func (r *BillingRepository) ExpireEnded(ctx context.Context, userID *uuid.UUID) error {
 	_, err := r.execContext(ctx, `
-		UPDATE subscriptions SET status = 'expired', updated_at = now()
-		WHERE status = 'active' AND current_period_end <= now()`)
-	return err
-}
-
-// ExpireEnded marks a user's active subscription whose period is over as
-// expired. Run before reading or starting one, it stands in for a job.
-// ponytail: lazy, per user; a periodic job if expiry must show elsewhere.
-func (r *BillingRepository) ExpireEnded(ctx context.Context, userID uuid.UUID) error {
-	_, err := r.execContext(ctx, `
-		UPDATE subscriptions SET status = 'expired', updated_at = now()
-		WHERE user_id = $1 AND status = 'active' AND current_period_end <= now()`,
+		UPDATE subscriptions SET status = 'expired', checkout_url = NULL, updated_at = now()
+		WHERE ($1::uuid IS NULL OR user_id = $1)
+		  AND ((status = 'active' AND current_period_end <= now())
+		    OR (status = 'pending' AND created_at <= now() - interval '65 minutes'))`,
+		userID,
+	)
+	if err != nil {
+		return err
+	}
+	_, err = r.execContext(ctx, `
+		UPDATE purchases SET status = 'failed', checkout_url = NULL, updated_at = now()
+		WHERE ($1::uuid IS NULL OR user_id = $1)
+		  AND status = 'pending' AND created_at <= now() - interval '65 minutes'`,
 		userID,
 	)
 	return err
+}
+
+// HasPaidPlan reports whether the user holds a paid plan: an active
+// subscription whose period still runs, or a paid one-time purchase, which
+// never renews and so unlocks for good. The period is checked here, so an
+// active subscription that ExpireEnded has not swept yet does not count.
+func (r *BillingRepository) HasPaidPlan(ctx context.Context, userID uuid.UUID) (bool, error) {
+	var paid bool
+	err := r.queryRowContext(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM subscriptions
+			WHERE user_id = $1 AND status = $2 AND current_period_end > now()
+		) OR EXISTS (
+			SELECT 1 FROM purchases WHERE user_id = $1 AND status = $3
+		)`,
+		userID, models.SubscriptionActive, models.PurchasePaid,
+	).Scan(&paid)
+	return paid, err
 }
 
 // LiveSubscription returns the user's pending or active subscription.
@@ -208,46 +247,47 @@ func translateRole(err error) error {
 	return err
 }
 
-// SettleSubscription activates a pending subscription for one billing
-// interval from now. It reports whether it changed anything: a repeated
-// notification finds it active already.
-func (r *BillingRepository) SettleSubscription(ctx context.Context, id uuid.UUID) (bool, error) {
+// ApplySubscription brings a subscription to what Lemon Squeezy reports for
+// it: active to periodEnd while it grants its plan, expired otherwise, with
+// canceled_at set once it will not renew. The first report (a pending row)
+// starts its period now and ties it to providerID. An active one moves on;
+// an expired one comes back only for its own Lemon Squeezy subscription, as
+// a renewal that was retried and then went through. A canceled (refunded)
+// one stays. It reports whether it changed anything.
+//
+// ponytail: webhooks are applied as they come, so a late retry of an older
+// one can win over a newer one; compare Lemon Squeezy's updated_at if that
+// ever shows.
+func (r *BillingRepository) ApplySubscription(ctx context.Context, id uuid.UUID, providerID, status string, periodEnd time.Time, cancelled bool) (bool, error) {
 	res, err := r.execContext(ctx, `
-		UPDATE subscriptions s
-		SET status = 'active', current_period_start = now(),
-		    current_period_end = now() + ('1 ' || p.billing_interval)::interval,
-		    checkout_url = NULL, updated_at = now()
-		FROM plans p
-		WHERE s.id = $1 AND p.id = s.plan_id AND s.status = 'pending'`,
-		id,
+		UPDATE subscriptions SET
+		    status = $3,
+		    current_period_start = CASE WHEN status = 'pending' THEN now() ELSE current_period_start END,
+		    current_period_end = GREATEST($4,
+		        (CASE WHEN status = 'pending' THEN now() ELSE current_period_start END) + interval '1 second'),
+		    canceled_at = CASE WHEN $5 THEN coalesce(canceled_at, now()) END,
+		    provider_subscription_id = $2, checkout_url = NULL, updated_at = now()
+		WHERE id = $1
+		  AND (status IN ('pending', 'active') OR (status = 'expired' AND provider_subscription_id = $2))
+		  AND (status, current_period_end, canceled_at IS NOT NULL, provider_subscription_id)
+		      IS DISTINCT FROM ($3, $4, $5, $2)`,
+		id, providerID, status, periodEnd, cancelled,
 	)
+	if hasPgCode(err, pgUniqueViolation) {
+		return false, apperr.New(apperr.KindConflict, "the user already has another live subscription")
+	}
 	return affected(res, err)
 }
 
-// EndSubscription moves a subscription in status from to status to: a
-// pending one whose payment failed or expired, or an active one refunded.
-func (r *BillingRepository) EndSubscription(ctx context.Context, id uuid.UUID, from, to string) (bool, error) {
-	res, err := r.execContext(ctx, `
-		UPDATE subscriptions
-		SET status = $3, checkout_url = NULL, updated_at = now(),
-		    canceled_at = CASE WHEN $3 = 'canceled' THEN now() END
-		WHERE id = $1 AND status = $2`,
-		id, from, to,
-	)
-	return affected(res, err)
-}
-
-// SetSubscriptionCheckout stores where the user pays for a pending subscription.
-func (r *BillingRepository) SetSubscriptionCheckout(ctx context.Context, id uuid.UUID, url string) error {
-	_, err := r.execContext(ctx, `UPDATE subscriptions SET checkout_url = $2, updated_at = now() WHERE id = $1`, id, url)
-	return err
-}
-
-// DeleteSubscription removes a pending subscription whose checkout could not
-// be created, so the user is free to try again.
-func (r *BillingRepository) DeleteSubscription(ctx context.Context, id uuid.UUID) error {
-	_, err := r.execContext(ctx, `DELETE FROM subscriptions WHERE id = $1 AND status = 'pending'`, id)
-	return err
+// ProviderSubscriptionID returns the Lemon Squeezy subscription of the user's
+// latest subscription that became one.
+func (r *BillingRepository) ProviderSubscriptionID(ctx context.Context, userID uuid.UUID) (string, error) {
+	var id string
+	err := r.queryRowContext(ctx, `
+		SELECT provider_subscription_id FROM subscriptions
+		WHERE user_id = $1 AND provider_subscription_id IS NOT NULL
+		ORDER BY created_at DESC LIMIT 1`, userID).Scan(&id)
+	return id, translateNotFound("subscriptions", err)
 }
 
 const purchaseColumns = `
@@ -348,16 +388,41 @@ func (r *BillingRepository) MovePurchase(ctx context.Context, id uuid.UUID, from
 	return affected(res, err)
 }
 
-// SetPurchaseCheckout stores where the user pays for a pending purchase.
-func (r *BillingRepository) SetPurchaseCheckout(ctx context.Context, id uuid.UUID, url string) error {
-	_, err := r.execContext(ctx, `UPDATE purchases SET checkout_url = $2, updated_at = now() WHERE id = $1`, id, url)
+// CustomerID returns the Lemon Squeezy customer a user is saved as.
+func (r *BillingRepository) CustomerID(ctx context.Context, userID uuid.UUID) (string, error) {
+	var id *string
+	err := r.queryRowContext(ctx, `SELECT provider_customer_id FROM users WHERE id = $1`, userID).Scan(&id)
+	if err == nil && id == nil {
+		err = sql.ErrNoRows
+	}
+	if err != nil {
+		return "", translateNotFound("customers", err)
+	}
+	return *id, nil
+}
+
+// SetCustomerID records the Lemon Squeezy customer a user is saved as, unless
+// one already is.
+func (r *BillingRepository) SetCustomerID(ctx context.Context, userID uuid.UUID, customerID string) error {
+	_, err := r.execContext(ctx, `
+		UPDATE users SET provider_customer_id = $2
+		WHERE id = $1 AND provider_customer_id IS NULL`, userID, customerID)
 	return err
 }
 
-// DeletePurchase removes a pending purchase whose checkout could not be
-// created.
-func (r *BillingRepository) DeletePurchase(ctx context.Context, id uuid.UUID) error {
-	_, err := r.execContext(ctx, `DELETE FROM purchases WHERE id = $1 AND status = 'pending'`, id)
+// SetCheckout stores where the user pays for a pending subscription or
+// purchase. table is "subscriptions" or "purchases", a caller-supplied
+// literal, never request input.
+func (r *BillingRepository) SetCheckout(ctx context.Context, table string, id uuid.UUID, url string) error {
+	_, err := r.execContext(ctx, fmt.Sprintf(`UPDATE %s SET checkout_url = $2, updated_at = now() WHERE id = $1`, table), id, url)
+	return err
+}
+
+// DeletePending removes a pending subscription or purchase (table as for
+// SetCheckout) whose checkout could not be created, so the user is free to
+// try again.
+func (r *BillingRepository) DeletePending(ctx context.Context, table string, id uuid.UUID) error {
+	_, err := r.execContext(ctx, fmt.Sprintf(`DELETE FROM %s WHERE id = $1 AND status = 'pending'`, table), id)
 	return err
 }
 
@@ -384,9 +449,12 @@ func (r *BillingRepository) Stats(ctx context.Context) (models.Stats, error) {
 	}
 
 	// A paid period is one whose start was moved to the payment
-	// (SettleSubscription): unpaid ones keep the start they were created
+	// (ApplySubscription): unpaid ones keep the start they were created
 	// with. Of those, active and expired ones were kept; a canceled one was
 	// refunded.
+	// ponytail: one period per subscription; renewals Lemon Squeezy charges
+	// are not counted here. Record subscription_payment_success if the
+	// overview must match its dashboard.
 	rows, err := r.queryContext(ctx, `
 		SELECT currency, sum(amount)::bigint,
 		       (coalesce(sum(amount) FILTER (WHERE current_period_start >= now() - interval '30 days'), 0))::bigint

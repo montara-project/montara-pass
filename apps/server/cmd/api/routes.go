@@ -43,14 +43,6 @@ func routes(r *fiber.App, app *app.Application) {
 	exemptLoopback := app.Config.App.Env == config.EnvDevelopment
 	exemptIPs := splitCSV(app.Config.App.RateLimitExemptIPs)
 
-	// The Community Edition has no sign-up; answered ahead of Authula, which
-	// would otherwise serve it.
-	if config.Community() {
-		r.Post(authBasePath+"/email-password/sign-up", func(c fiber.Ctx) error {
-			return apperr.ErrNotFound
-		})
-	}
-
 	r.Use(authBasePath,
 		middlewares.RateLimit("auth", authRateLimit, exemptLoopback, exemptIPs, store),
 		middlewares.RateLimitEmail("auth-email", authEmailRateLimit, store),
@@ -62,16 +54,6 @@ func routes(r *fiber.App, app *app.Application) {
 	// A write that carries an Idempotency-Key is run once, however often it
 	// is sent. It needs the user, so it goes after Authorization.
 	once := middlewares.Idempotency(store)
-
-	// Reads are public; writes need a signed-in super user.
-	categories := v1.Group("/categories")
-	categories.Get("/", h.Category.List)
-	categories.Get("/:id", h.Category.Get)
-	categories.Post("/", m.Authorization, m.SuperUser, once, h.Category.Create)
-	categories.Put("/:id", m.Authorization, m.SuperUser, once, h.Category.Update)
-	categories.Delete("/:id", m.Authorization, m.SuperUser, once, h.Category.Delete)
-	categories.Put("/:id/restore", m.Authorization, m.SuperUser, once, h.Category.Restore)
-	categories.Delete("/:id/force", m.Authorization, m.SuperUser, once, h.Category.DeletePermanently)
 
 	// The end-to-end encrypted vault: everything below needs a signed-in
 	// user, and every payload is ciphertext the server cannot read.
@@ -97,27 +79,28 @@ func routes(r *fiber.App, app *app.Application) {
 	items.Put("/:id/placement", h.Item.SetPlacement)
 	items.Put("/:id/used", h.Item.MarkUsed)
 
-	// Sharing: looking up a recipient's public key, the item's members, and
-	// rotating its key once a member is gone. The Community Edition has one
-	// user, so nobody to share with.
+	// Cloud Edition only. The Community Edition has one user, so nobody to
+	// share with, and takes no payments.
 	if !config.Community() {
+		// Sharing: looking up a recipient's public key, the item's members,
+		// and rotating its key once a member is gone.
 		keys.Get("/public", middlewares.RateLimit("public-key", publicKeyRateLimit, exemptLoopback, exemptIPs, store), h.Key.PublicKey)
 		items.Put("/:id/key", h.Item.RotateKey)
 		items.Get("/:id/members", h.Item.Members)
 		items.Post("/:id/members", h.Item.Share)
 		items.Put("/:id/members/:userId", h.Item.SetMemberRole)
 		items.Delete("/:id/members/:userId", h.Item.RemoveMember)
-	}
 
-	// Billing, Cloud Edition only. The plans are public, for the
-	// website; a super user manages them and sees what customers bought. Subscribing and buying need a
-	// signed-in user account; Midtrans reports the payment's outcome.
-	if !config.Community() {
+		// Billing. The plans are public, for the website; they are the Lemon
+		// Squeezy store's catalog, which a super user syncs at once after
+		// changing it, and a super user sees what customers bought. Subscribing and
+		// buying need a signed-in user account; Lemon Squeezy reports what
+		// was paid, and its customer portal is where a subscription is
+		// cancelled.
 		plans := v1.Group("/plans")
 		plans.Get("/", h.Billing.ListPlans)
 		plans.Get("/all", m.Authorization, m.SuperUser, h.Billing.ListAllPlans)
-		plans.Post("/", m.Authorization, m.SuperUser, once, h.Billing.CreatePlan)
-		plans.Put("/:id", m.Authorization, m.SuperUser, once, h.Billing.UpdatePlan)
+		plans.Post("/sync", m.Authorization, m.SuperUser, h.Billing.SyncPlans)
 
 		// Every customer's subscriptions and purchases, for a super user.
 		v1.Get("/subscriptions", m.Authorization, m.SuperUser, h.Billing.ListSubscriptions)
@@ -129,7 +112,8 @@ func routes(r *fiber.App, app *app.Application) {
 		billing.Get("/", m.Authorization, h.Billing.Overview)
 		billing.Post("/subscriptions", m.Authorization, once, h.Billing.Subscribe)
 		billing.Post("/purchases", m.Authorization, once, h.Billing.Buy)
-		billing.Post("/midtrans/notification", h.Billing.MidtransNotification)
+		billing.Get("/portal", m.Authorization, h.Billing.Portal)
+		billing.Post("/lemonsqueezy/webhook", h.Billing.LemonSqueezyWebhook)
 	}
 
 	// An unknown path under apiPrefix answers JSON. Registered last, and before

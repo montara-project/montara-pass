@@ -208,14 +208,10 @@ var errMemberKeys = apperr.New(apperr.KindConflict, "member_keys must name every
 // requireChanged turns a revision-checked write that touched no row into the
 // stale-item conflict.
 func requireChanged(res sql.Result) error {
-	n, err := res.RowsAffected()
-	if err != nil {
+	if ok, err := affected(res, nil); err != nil || ok {
 		return err
 	}
-	if n == 0 {
-		return errStaleItem
-	}
-	return nil
+	return errStaleItem
 }
 
 // Trash soft-deletes an item for every member. Owner only.
@@ -304,13 +300,11 @@ func (r *ItemRepository) AddMember(ctx context.Context, id, userID, sharedBy uui
 	if hasPgCode(err, pgUniqueViolation) {
 		return apperr.New(apperr.KindConflict, "item is already shared with this user")
 	}
+	ok, err := affected(res, err)
 	if err != nil {
 		return err
 	}
-	if n, err := res.RowsAffected(); err != nil || n == 0 {
-		if err != nil {
-			return err
-		}
+	if !ok {
 		return apperr.New(apperr.KindNotFound, "user not found or has not set up a vault")
 	}
 	return nil

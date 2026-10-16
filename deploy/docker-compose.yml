@@ -68,8 +68,10 @@ services:
       SUPER_USER: ${SUPER_USER:-}
       # The public https URL of this deployment; auth emails link to it.
       AUTH_BASE_URL: ${AUTH_BASE_URL:?set AUTH_BASE_URL to the public URL}
-      FROM_ADDRESS: ${FROM_ADDRESS:?set FROM_ADDRESS}
-      RESEND_API_KEY: ${RESEND_API_KEY:?set RESEND_API_KEY}
+      # Required by the Cloud Edition, which refuses to start without them;
+      # the Community Edition may leave both empty.
+      FROM_ADDRESS: ${FROM_ADDRESS:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       # The web app is served from this same origin, so CORS stays off.
@@ -78,9 +80,12 @@ services:
       # shares the proxy's address and therefore one rate limit.
       TRUSTED_PROXIES: ${TRUSTED_PROXIES:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
       SENTRY_DSN: ${SENTRY_DSN:-}
-      # Cloud Edition billing; empty leaves checkout off.
-      MIDTRANS_SERVER_KEY: ${MIDTRANS_SERVER_KEY:-}
-      MIDTRANS_PRODUCTION: ${MIDTRANS_PRODUCTION:-false}
+      # Cloud Edition billing through Lemon Squeezy; empty leaves checkout off.
+      LEMONSQUEEZY_API_KEY: ${LEMONSQUEEZY_API_KEY:-}
+      LEMONSQUEEZY_STORE_ID: ${LEMONSQUEEZY_STORE_ID:-}
+      LEMONSQUEEZY_WEBHOOK_SECRET: ${LEMONSQUEEZY_WEBHOOK_SECRET:-}
+      # Sharing an item needs a paid plan; needs LEMONSQUEEZY_API_KEY.
+      REQUIRE_PAID_SHARING: ${REQUIRE_PAID_SHARING:-false}
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:8080/api/health']
       interval: 30s

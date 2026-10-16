@@ -22,6 +22,7 @@ Fill in `apps/server/.env` before the first start:
 - `APP_SECRET`: at least 32 characters, for example `openssl rand -base64 32`
 - `DB_DSN`: the connection string of your PostgreSQL 18 database
 - `RESEND_API_KEY` and `FROM_ADDRESS`: the sender of the sign-in emails
+  (optional in the Community Edition)
 
 [Configuration](/docs/getting-started/configuration) lists every setting.
 
@@ -62,4 +63,4 @@ nobody, the server included, can reset it.
 
 To get an administrator instead, set `SUPER_USER=email:password` and
 `SEED_ON_BOOT=true`. The API then creates that account with the `super_user`
-role on boot, which is the only role allowed to write categories.
+role on boot, the only role that sees every customer's billing.

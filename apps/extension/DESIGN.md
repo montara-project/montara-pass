@@ -426,7 +426,8 @@ Calm and certain: one is filled, the rest stand back.
 ### Lists
 
 - **Item row:** tile, then name (15px, 500) over a muted line (13px), in a
-  12px-radius row with no divider between rows. Hover or focus-within fills
+  12px-radius row with no divider between rows, the rows 4px apart (grouped
+  rows in a card keep their hairlines instead). Hover or focus-within fills
   the row; the selected row in the full tab takes the card tone.
 - **Row actions:** two icon buttons that fade in (120ms) on hover or focus
   and are always shown where nothing hovers.

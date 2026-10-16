@@ -4,7 +4,6 @@ export namespace Models {
   export type Profile = import('./user').Profile
   export type SignInData = import('./user').SignInData
   export type TokenPair = import('./user').TokenPair
-  export type Category = import('./category').Category
   export type UserKeys = import('./vault').UserKeys
   export type PublicKey = import('./vault').PublicKey
   export type Folder = import('./vault').Folder
@@ -15,4 +14,5 @@ export namespace Models {
   export type Subscription = import('./billing').Subscription
   export type Purchase = import('./billing').Purchase
   export type BillingOverview = import('./billing').BillingOverview
+  export type BillingPortal = import('./billing').BillingPortal
 }

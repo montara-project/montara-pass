@@ -1,6 +1,9 @@
 package config
 
-import "time"
+import (
+	"log"
+	"time"
+)
 
 // Accepted App.Env values. Only EnvDevelopment enables development-only
 // behaviour: the loopback rate-limit exemption and session cookies without
@@ -21,6 +24,14 @@ const (
 	EditionCommunity = "community"
 )
 
+// A mistyped -ldflags value stops every binary, cmd/migrate included, before
+// it acts as the wrong edition.
+func init() {
+	if Edition != EditionCloud && Edition != EditionCommunity {
+		log.Fatalf("edition must be %s or %s, got %q", EditionCloud, EditionCommunity, Edition)
+	}
+}
+
 // Community reports whether this is the Community Edition.
 func Community() bool {
 	return Edition == EditionCommunity
@@ -39,14 +50,22 @@ type Config struct {
 	Billing ConfigBilling
 }
 
-// ConfigBilling configures payments, Cloud Edition only. Without a
-// Midtrans server key the plans are still listed, but nothing can be bought.
+// ConfigBilling configures payments through Lemon Squeezy, Cloud Edition
+// only. Without an API key the plans are still listed, but nothing can be
+// bought.
 type ConfigBilling struct {
-	MidtransServerKey  string
-	MidtransProduction bool
+	LemonSqueezyAPIKey string
+	// The store that sells the plans, by its numeric id.
+	LemonSqueezyStoreID string
+	// Signs the webhooks; set the same one on the store's webhook.
+	LemonSqueezyWebhookSecret string
+	// RequirePaidSharing gates sharing an item on a paid plan. It needs
+	// payments, so that the plan can be bought.
+	RequirePaidSharing bool
 }
 
-// ConfigAuth configures the embedded Authula server.
+// ConfigAuth configures the embedded Authula server. Without a Resend key,
+// which only the Community Edition allows, no auth email is sent.
 type ConfigAuth struct {
 	BaseURL            string
 	EmailFrom          string

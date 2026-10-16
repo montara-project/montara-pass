@@ -45,7 +45,8 @@ function originsOf(value: { selfHosted: boolean; apiUrl: string; appUrl: string 
 /** One line on the user's plan: the subscription, else what they own. */
 function planSummary({ subscription, purchases }: Models.BillingOverview) {
   if (subscription?.status === 'active') {
-    return `${subscription.plan.name}, until ${formatDate(subscription.current_period_end)}`
+    const when = subscription.canceled_at ? 'ends' : 'renews'
+    return `${subscription.plan.name}, ${when} ${formatDate(subscription.current_period_end)}`
   }
   if (subscription?.status === 'pending') return `${subscription.plan.name}, waiting for payment`
   const owned = purchases.filter((purchase) => purchase.status === 'paid')

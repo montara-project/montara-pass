@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
 
 const INTERVAL = { month: 'month', year: 'year' } as const
 
-/** The price with its period, if it has one: "Rp50,000 / month". */
+/** The price with its period, if it has one: "$3.00 / month". */
 function price(plan: Models.Plan) {
   const amount = formatPrice(plan.amount, plan.currency)
   return plan.billing_interval ? `${amount} / ${INTERVAL[plan.billing_interval]}` : amount
@@ -32,15 +32,16 @@ const STATUS: Record<Models.Subscription['status'] | Models.Purchase['status'], 
 
 /**
  * Billing, Cloud Edition only: the subscription and purchases of the
- * signed-in user, and the plans on offer. Paying happens on Midtrans' page,
- * which sends the browser back here; the payment shows once Midtrans has
- * told the server, so a pending one is polled for.
+ * signed-in user, and the plans on offer. Paying happens on Lemon Squeezy's
+ * checkout, which sends the browser back here; the payment shows once Lemon
+ * Squeezy has told the server, so a pending one is polled for. A subscription
+ * renews by itself and is cancelled in Lemon Squeezy's customer portal.
  */
 export default function BillingBlock() {
   // ?plan= names the plan the website sent the user here for.
   const [chosen] = useQueryState('plan')
-  // Midtrans adds ?transaction_status= when it brings the browser back.
-  const [returned] = useQueryState('transaction_status')
+  // The checkout sends the browser back with ?checkout=done.
+  const [returned] = useQueryState('checkout')
 
   const plans = useQuery(queries.billing.plans())
   const overview = useQuery({
@@ -55,6 +56,7 @@ export default function BillingBlock() {
   })
   const subscribe = useMutation({ ...queries.billing.subscribe(), onError: toastAxiosError })
   const buy = useMutation({ ...queries.billing.buy(), onError: toastAxiosError })
+  const portal = useMutation({ ...queries.billing.portal(), onError: toastAxiosError })
   const busy = subscribe.isPending || buy.isPending
 
   const subscription = overview.data?.subscription ?? null
@@ -88,13 +90,26 @@ export default function BillingBlock() {
                 <span className="text-muted-foreground text-[13px]">
                   {STATUS[subscription.status]}
                   {subscription.status === 'active' &&
-                    ` until ${formatDate(subscription.current_period_end)}`}
+                    (subscription.canceled_at
+                      ? `, ends ${formatDate(subscription.current_period_end)}`
+                      : `, renews ${formatDate(subscription.current_period_end)}`)}
                 </span>
               </div>
-              {subscription.checkout_url && (
+              {subscription.checkout_url ? (
                 <Button asChild size="sm">
                   <a href={subscription.checkout_url}>Continue payment</a>
                 </Button>
+              ) : (
+                subscription.status === 'active' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={portal.isPending}
+                    onClick={() => portal.mutate()}
+                  >
+                    Manage subscription
+                  </Button>
+                )
               )}
             </>
           ) : (
@@ -115,7 +130,7 @@ export default function BillingBlock() {
           <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2 lg:grid-cols-3">
             {plans.data.map((plan) => {
               const purchase = plan.billing === 'one_time' ? owned(plan) : undefined
-              // One subscription at a time; a new period once this one ends.
+              // One subscription at a time; another once this one has ended.
               const subscribed = plan.billing === 'recurring' && subscription !== null
               return (
                 <li

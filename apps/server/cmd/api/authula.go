@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -31,7 +30,9 @@ import (
 	oauth2plugintypes "github.com/Authula/authula/plugins/oauth2/types"
 	sessionplugin "github.com/Authula/authula/plugins/session"
 
+	"montara-pass/server/internal/app"
 	"montara-pass/server/internal/config"
+	"montara-pass/server/internal/handlers"
 	"montara-pass/server/internal/lib/constant"
 	"montara-pass/server/internal/models"
 	"montara-pass/server/internal/repositories"
@@ -118,27 +119,6 @@ func mirrorUser(repo *repositories.UserRepository) func(*authulamodels.User) err
 	}
 }
 
-// tokenLifetime reads the issued-at and expiry times (Unix seconds) from a
-// JWT's payload. The token was minted by this process, so it is not verified.
-func tokenLifetime(token string) (iat, exp int64, err error) {
-	parts := strings.Split(token, ".")
-	if len(parts) != 3 {
-		return 0, 0, errors.New("malformed access token")
-	}
-	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
-	if err != nil {
-		return 0, 0, err
-	}
-	var claims struct {
-		Iat int64 `json:"iat"`
-		Exp int64 `json:"exp"`
-	}
-	if err := json.Unmarshal(payload, &claims); err != nil {
-		return 0, 0, err
-	}
-	return claims.Iat, claims.Exp, nil
-}
-
 // addTokensToResponse adds the token pair the jwt plugin minted for a
 // successful sign-in to the JSON body the sign-in handler already wrote,
 // with the access token's expiry. A sign-in that answers with a redirect
@@ -154,16 +134,14 @@ func addTokensToResponse(reqCtx *authulamodels.RequestContext) error {
 		return nil
 	}
 
-	iat, exp, err := tokenLifetime(access)
-	if err != nil {
-		return err
-	}
-
+	// The token was minted just now, so it expires accessTokenTTL from now,
+	// give or take the second it took.
+	var err error
 	for key, value := range map[string]any{
 		"access_token":  access,
 		"refresh_token": reqCtx.Values[jwtplugintypes.JWTTokenTypeRefresh.String()],
-		"expires_at":    time.Unix(exp, 0).UTC(),
-		"expires_in":    exp - iat,
+		"expires_at":    time.Now().Add(accessTokenTTL).UTC().Truncate(time.Second),
+		"expires_in":    int64(accessTokenTTL.Seconds()),
 	} {
 		if body[key], err = json.Marshal(value); err != nil {
 			return err
@@ -172,6 +150,35 @@ func addTokensToResponse(reqCtx *authulamodels.RequestContext) error {
 
 	reqCtx.ResponseBody, err = json.Marshal(body)
 	return err
+}
+
+// saveCustomer returns the hook that saves a new account as a Lemon Squeezy
+// customer, or nil where billing takes no payments. It works in the
+// background, so a sign-up does not wait on Lemon Squeezy; an account it
+// misses is saved at its first checkout. The seeded super user, who buys
+// nothing, is left out.
+func saveCustomer(application *app.Application) func(*authulamodels.User) error {
+	if application.Payments == nil {
+		return nil
+	}
+	return func(u *authulamodels.User) error {
+		if strings.EqualFold(u.Email, application.Config.App.SuperUserEmail) {
+			return nil
+		}
+		id, err := uuid.Parse(u.ID)
+		if err != nil {
+			return err
+		}
+		user := models.User{Base: models.Base{ID: id}, Name: u.Name, Email: u.Email}
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			if err := handlers.EnsureCustomer(ctx, application, user); err != nil {
+				application.Logger.Warn("save lemon squeezy customer on sign-up", "user", u.ID, "error", err)
+			}
+		}()
+		return nil
+	}
 }
 
 // promoteSuperUser returns the seeder's callback: mirror the user here too,
@@ -193,6 +200,9 @@ func promoteSuperUser(repo *repositories.UserRepository, mirror func(*authulamod
 		return repo.SetRole(ctx, id, constant.RoleSuperUser)
 	}
 }
+
+// accessTokenTTL is how long an access token lasts.
+const accessTokenTTL = 15 * time.Minute
 
 // refreshTokenTTL is short because the refresh token is returned in a JSON
 // body, where a script on the client's page can read it; the session itself
@@ -265,14 +275,20 @@ func (i tokenIssuer) route() authulamodels.Route {
 // OAuth2 and email magic links on top of cookie sessions, with emails sent
 // through Resend. Authula migrates its own tables (users, accounts, sessions,
 // verifications) into authSchema of the app database when it starts, and
-// mirror runs after every user it creates or updates.
-func newAuth(cfg config.Config, mirror func(*authulamodels.User) error, logger *slog.Logger) *authula.Auth {
+// mirror runs after every user it creates or updates. customer, when set,
+// runs after mirror on every user it creates.
+func newAuth(cfg config.Config, mirror, customer func(*authulamodels.User) error, logger *slog.Logger) *authula.Auth {
 	userHooks := &authulamodels.ServiceHooks[authulamodels.User]{}
 	userHooks.RegisterAfterCreate(mirror)
 	userHooks.RegisterAfterUpdate(mirror)
+	if customer != nil {
+		userHooks.RegisterAfterCreate(customer)
+	}
 
 	// Sign-up, magic links and Google all create users through this service,
-	// so in the Community Edition only the seeded super user gets made.
+	// so in the Community Edition only the seeded super user gets made. The
+	// email-password plugin also turns sign-up off there (DisableSignUp), so
+	// it answers every address alike, before looking it up.
 	if config.Community() {
 		userHooks.RegisterBeforeCreate(func(u *authulamodels.User) error {
 			if !strings.EqualFold(u.Email, cfg.App.SuperUserEmail) {
@@ -331,21 +347,31 @@ func newAuth(cfg config.Config, mirror func(*authulamodels.User) error, logger *
 		logger.Warn("google sign-in disabled: google-client-id is not set")
 	}
 
+	// Only the Community Edition may run without (see validateFlag). The
+	// email-password plugin then sends nothing, and a magic link could not
+	// be delivered, so that plugin is off.
+	emailEnabled := cfg.Auth.ResendAPIKey != ""
+	var plugins []authulamodels.Plugin
+	if emailEnabled {
+		// Registered first: the email-based plugins look up its mailer.
+		plugins = append(plugins, emailplugin.New(emailplugintypes.EmailPluginConfig{
+			Enabled:     true,
+			Provider:    emailplugintypes.ProviderResend,
+			FromAddress: cfg.Auth.EmailFrom,
+			Resend:      &emailplugintypes.ResendConfig{ApiKey: cfg.Auth.ResendAPIKey},
+		}))
+	} else {
+		logger.Warn("auth emails disabled: resend-api-key is not set; no password reset or magic-link sign-in, change SUPER_USER to reset the password")
+	}
+
 	auth := authula.New(&authula.AuthConfig{
 		Config: authConfig,
-		Plugins: []authulamodels.Plugin{
-			// Registered first: the email-based plugins look up its mailer.
-			emailplugin.New(emailplugintypes.EmailPluginConfig{
-				Enabled:     true,
-				Provider:    emailplugintypes.ProviderResend,
-				FromAddress: cfg.Auth.EmailFrom,
-				Resend:      &emailplugintypes.ResendConfig{ApiKey: cfg.Auth.ResendAPIKey},
-			}),
+		Plugins: append(plugins,
 			// Mints an access and refresh token on every successful sign-in and
 			// serves POST /token/refresh.
 			jwtplugin.New(jwtplugintypes.JWTPluginConfig{
 				Enabled:          true,
-				ExpiresIn:        15 * time.Minute,
+				ExpiresIn:        accessTokenTTL,
 				RefreshExpiresIn: refreshTokenTTL,
 			}),
 			// Accepts that access token as "Authorization: Bearer". Registered
@@ -355,6 +381,7 @@ func newAuth(cfg config.Config, mirror func(*authulamodels.User) error, logger *
 			sessionplugin.New(sessionplugin.SessionPluginConfig{Enabled: true}),
 			emailpasswordplugin.New(emailpasswordplugintypes.EmailPasswordPluginConfig{
 				Enabled:                  true,
+				DisableSignUp:            config.Community(),
 				MinPasswordLength:        8,
 				MaxPasswordLength:        128,
 				RequireEmailVerification: true,
@@ -364,7 +391,7 @@ func newAuth(cfg config.Config, mirror func(*authulamodels.User) error, logger *
 				PasswordResetExpiresIn: time.Hour,
 			}),
 			magiclinkplugin.New(magiclinkplugintypes.MagicLinkPluginConfig{
-				Enabled:   true,
+				Enabled:   emailEnabled,
 				ExpiresIn: 15 * time.Minute,
 			}),
 			oauth2plugin.New(oauth2plugintypes.OAuth2PluginConfig{
@@ -378,7 +405,7 @@ func newAuth(cfg config.Config, mirror func(*authulamodels.User) error, logger *
 					},
 				},
 			}),
-		},
+		),
 	})
 
 	issuer, err := newTokenIssuer(auth)
