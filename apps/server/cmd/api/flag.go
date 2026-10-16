@@ -187,13 +187,15 @@ func validateFlag(cfg *config.Config) {
 	}
 	cfg.Auth.BaseURL = strings.TrimSuffix(cfg.Auth.BaseURL, "/")
 
-	// The email plugin refuses to start without a sender and a Resend key;
-	// verification, password reset and magic-link sign-in all depend on it.
-	if cfg.Auth.EmailFrom == "" {
-		log.Fatal("flag email-from must be provided")
+	// Verification, password reset and magic-link sign-in all send email, so
+	// the Cloud Edition needs a sender and a Resend key. The Community
+	// Edition's one account is seeded verified and SUPER_USER resets its
+	// password, so there both may be left out, but not just one.
+	if (cfg.Auth.EmailFrom == "") != (cfg.Auth.ResendAPIKey == "") {
+		log.Fatal("flags email-from and resend-api-key must be provided together")
 	}
-	if cfg.Auth.ResendAPIKey == "" {
-		log.Fatal("flag resend-api-key must be provided")
+	if cfg.Auth.ResendAPIKey == "" && !config.Community() {
+		log.Fatal("flags email-from and resend-api-key must be provided")
 	}
 
 	if (cfg.Auth.GoogleClientID == "") != (cfg.Auth.GoogleClientSecret == "") {

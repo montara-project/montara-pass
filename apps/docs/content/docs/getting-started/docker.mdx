@@ -61,7 +61,8 @@ repository.
    to `./deploy/docker-compose.yml`.
 2. Paste `deploy/.env.example` into the **Environment** tab and fill in
    `POSTGRES_PASSWORD`, `APP_SECRET`, `AUTH_BASE_URL`, `FROM_ADDRESS` and
-   `RESEND_API_KEY`. The stack refuses to start while one of them is empty.
+   `RESEND_API_KEY`. The stack refuses to start while one of them is empty;
+   the Community Edition may leave the last two out.
 3. Add a **domain** for the `server` service on port `8080`. Dokploy connects
    the service to its Traefik network; the compose file publishes no ports.
 4. Deploy. The server waits for PostgreSQL to be healthy, applies its

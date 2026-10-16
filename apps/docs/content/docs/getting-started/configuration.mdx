@@ -26,8 +26,8 @@ flag of the same name in kebab-case (`go run ./cmd/api -h`).
 | `RATE_LIMIT_EXEMPT_IPS` | none | Comma-separated client IPs the rate limiter skips. |
 | `TRUSTED_PROXIES` | none | IPs or CIDRs trusted to supply `X-Forwarded-For`. Set it behind a reverse proxy, or the rate limit counts the proxy instead of the visitor. |
 | `AUTH_BASE_URL` | `http://localhost:$PORT` | Public URL of the API, used in email links and the Google callback. |
-| `FROM_ADDRESS` | none | Sender of auth emails. Must be a domain verified in Resend. |
-| `RESEND_API_KEY` | none | Resend API key. |
+| `FROM_ADDRESS` | none | Sender of auth emails. Must be a domain verified in Resend. Required in the Cloud Edition; the Community Edition may leave it and `RESEND_API_KEY` empty, which turns off password reset and magic-link sign-in (change `SUPER_USER` to reset the password). |
+| `RESEND_API_KEY` | none | Resend API key. Required with `FROM_ADDRESS`. |
 | `GOOGLE_CLIENT_ID` | none | Google OAuth client. Empty disables Google sign-in. |
 | `GOOGLE_CLIENT_SECRET` | none | Google OAuth secret. |
 | `REDIS_URL` | none | Redis for what replicas must share: rate limit counts and [idempotent answers](/docs/api-reference#idempotency), e.g. `redis://redis:6379/0` (`rediss://` for TLS). Empty keeps them in the process's memory, which is enough for one instance. The API refuses to start when it is set and Redis does not answer. |

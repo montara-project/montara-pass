@@ -57,7 +57,8 @@ type ConfigBilling struct {
 	MidtransProduction bool
 }
 
-// ConfigAuth configures the embedded Authula server.
+// ConfigAuth configures the embedded Authula server. Without a Resend key,
+// which only the Community Edition allows, no auth email is sent.
 type ConfigAuth struct {
 	BaseURL            string
 	EmailFrom          string

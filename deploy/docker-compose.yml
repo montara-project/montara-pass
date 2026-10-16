@@ -68,8 +68,10 @@ services:
       SUPER_USER: ${SUPER_USER:-}
       # The public https URL of this deployment; auth emails link to it.
       AUTH_BASE_URL: ${AUTH_BASE_URL:?set AUTH_BASE_URL to the public URL}
-      FROM_ADDRESS: ${FROM_ADDRESS:?set FROM_ADDRESS}
-      RESEND_API_KEY: ${RESEND_API_KEY:?set RESEND_API_KEY}
+      # Required by the Cloud Edition, which refuses to start without them;
+      # the Community Edition may leave both empty.
+      FROM_ADDRESS: ${FROM_ADDRESS:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       # The web app is served from this same origin, so CORS stays off.
