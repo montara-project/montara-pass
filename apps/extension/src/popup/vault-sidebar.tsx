@@ -35,8 +35,10 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar'
+import { COMMUNITY } from '@/lib/constants/edition'
 
 import {
+  CreditCardIcon,
   ExternalLinkIcon,
   KeyIcon,
   LockIcon,
@@ -48,11 +50,16 @@ import {
 import { initials } from './layout'
 
 type Icon = typeof KeyIcon
-export type Tool = 'generator' | 'health'
+export type Tool = 'generator' | 'health' | 'billing'
 
-const TOOLS: { value: Tool; label: string; icon: Icon }[] = [
-  { value: 'generator', label: 'Password generator', icon: KeyIcon },
-  { value: 'health', label: 'Password health', icon: ShieldIcon },
+// group is what the breadcrumb names above the page. Billing is the Cloud
+// Edition's only: the Community Edition takes no payments.
+const TOOLS: { value: Tool; label: string; group: string; icon: Icon }[] = [
+  { value: 'generator', label: 'Password generator', group: 'Tools', icon: KeyIcon },
+  { value: 'health', label: 'Password health', group: 'Tools', icon: ShieldIcon },
+  ...(COMMUNITY
+    ? []
+    : [{ value: 'billing' as const, label: 'Billing', group: 'Account', icon: CreditCardIcon }]),
 ]
 
 interface VaultSidebarProps<F extends string> {
@@ -88,8 +95,9 @@ export function VaultSidebar<F extends string>({
   onSignOut,
   children,
 }: VaultSidebarProps<F>) {
-  const current = tool
-    ? { group: 'Tools', title: TOOLS.find((t) => t.value === tool)!.label }
+  const active = TOOLS.find((t) => t.value === tool)
+  const current = active
+    ? { group: active.group, title: active.label }
     : { group: 'Vault', title: filters.find((f) => f.value === filter)?.label }
 
   return (

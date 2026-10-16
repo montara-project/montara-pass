@@ -1762,6 +1762,114 @@ input.range:active::-moz-range-thumb {
 
 /* Logins that belong together sit in one card, a line between them: the
    ones that share a password are seen to. */
+/* Billing, Cloud Edition only: the subscription, the plans on offer, and what
+   was bought, each on the card tone. */
+.billing-section {
+  gap: 8px;
+}
+
+/* A section's heading sits on the cards' edge, as the health report's do. */
+.billing-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.billing-section > p.muted {
+  margin: 0;
+  font-size: 13px;
+}
+
+.billing-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 12px 12px 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.billing-row .item-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.billing-row button.secondary,
+.plan-card button.secondary {
+  flex-shrink: 0;
+  justify-content: center;
+  height: 36px;
+  padding: 0 14px;
+  font-weight: 500;
+}
+
+.plan-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plan-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.plan-price {
+  margin-bottom: 8px;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-card p {
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+
+/* The action sits at the foot of every card, however long its description. */
+.plan-card > :last-child {
+  margin-top: auto;
+}
+
+.billing-list {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+  list-style: none;
+}
+
+.billing-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 12px 16px;
+}
+
+.billing-list li + li {
+  border-top: 1px solid var(--border);
+}
+
+.billing-list .muted {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Grouped rows: one card, divided by hairlines rather than gaps. */
 .health-list {
   gap: 0;

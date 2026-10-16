@@ -32,6 +32,7 @@ import {
 import { ItemTile } from '../item-tile'
 import { useFolders, useVaultItems } from '../use-vault-items'
 import { VaultSidebar, type Tool } from '../vault-sidebar'
+import Billing from './billing'
 import ItemForm from './item-form'
 import PasswordGenerator from './password-generator'
 import PasswordHealth from './password-health'
@@ -194,6 +195,8 @@ export default function FullVault({
           <section className="detail-col tool-col" aria-label="Tools">
             {tool === 'generator' ? (
               <PasswordGenerator onNotice={setNotice} />
+            ) : tool === 'billing' ? (
+              <Billing onSignedOut={onSignedOut} />
             ) : (
               <PasswordHealth
                 items={items}
