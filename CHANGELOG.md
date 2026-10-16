@@ -3,6 +3,53 @@
 All notable changes to this project are documented in this file. Versions follow the git tags (`v*`); Docker images are published to ghcr.io with the same version.
 
 
+## [2.0.0](https://github.com/montara-project/montara-pass/compare/v1.9.0...v2.0.0) (2026-10-16)
+
+### ⚠ BREAKING CHANGES
+
+* **server:** /api/v1/categories is removed and its table dropped.
+  cmd/migrate no longer takes --seed, and the migrate:up:seed script is gone;
+  SEED_ON_BOOT now only creates the SUPER_USER account.
+* **server:** cmd/migrate takes --cloud instead of --ee to force or
+  create a Cloud Edition migration.
+* **server:** MIDTRANS_SERVER_KEY and MIDTRANS_PRODUCTION are gone; set
+  LEMONSQUEEZY_API_KEY, LEMONSQUEEZY_STORE_ID and LEMONSQUEEZY_WEBHOOK_SECRET
+  instead, all three or none. The webhook moves to
+  /api/v1/billing/lemonsqueezy/webhook, and
+  /api/v1/billing/midtrans/notification is removed. A plan is sold only once
+  it names its Lemon Squeezy variant_id, and amounts are cents in every
+  currency, so a plan stored in whole rupiah must be repriced.
+* **server:** POST /api/v1/plans and PUT /api/v1/plans/:id are removed;
+  plans are changed in the Lemon Squeezy store, then synced. Checkouts no
+  longer send custom_price, so a plan costs what its variant costs there.
+
+### Features
+
+* **app:** manage the subscription in Lemon Squeezy's customer portal ([5bd73a6](https://github.com/montara-project/montara-pass/commit/5bd73a641bf9cc4f2fb84d53b91fde7f2cd337d2))
+* **app:** show the plan refusal where sharing was attempted ([7e4ce1c](https://github.com/montara-project/montara-pass/commit/7e4ce1c4f31861b38a780b3f117f8b8aec4593a1))
+* **extension:** mask email usernames in lists, with a reveal in the detail ([7bff3ad](https://github.com/montara-project/montara-pass/commit/7bff3adc16b2b338567a14aa6a654c61d72302cc))
+* **extension:** mask every username in lists, not only email addresses ([986c8b2](https://github.com/montara-project/montara-pass/commit/986c8b2cdce4de3916383548cdf35a37ae192799))
+* **extension:** show plans and the subscription in the full tab ([0742738](https://github.com/montara-project/montara-pass/commit/0742738ede83311f9ce2146563c6881883501f11))
+* **server:** gate paid sharing on REQUIRE_PAID_SHARING ([df6ce30](https://github.com/montara-project/montara-pass/commit/df6ce308cb4c27a40db001dc41ad5d6953b502bc))
+* **server:** gate sharing out on a paid plan ([53356b5](https://github.com/montara-project/montara-pass/commit/53356b5fd04525bb2518f32717a9beca20cc57b8))
+* **server:** let the community edition run without email ([a159052](https://github.com/montara-project/montara-pass/commit/a159052f687e46690e0157a38dbd403b475081dd))
+* **server:** sync the plans from the Lemon Squeezy catalog and save customers ([14aa8e7](https://github.com/montara-project/montara-pass/commit/14aa8e7d93a48e73a26d5afb472f55d07e8aa4e8))
+* **server:** take payments through Lemon Squeezy instead of Midtrans ([b5a0105](https://github.com/montara-project/montara-pass/commit/b5a0105317943b1bff6ead41cf0e4073e6d87d33))
+* **web:** add a pricing page and the site's design system ([5c9bca4](https://github.com/montara-project/montara-pass/commit/5c9bca4cc83b52e26956c5b87390feb85b62cfe4))
+* **web:** name Lemon Squeezy as the merchant on the pricing pages ([b9f56bf](https://github.com/montara-project/montara-pass/commit/b9f56bfa9e64211bcd72472f297d197481529a61))
+
+### Bug Fixes
+
+* **extension:** join the list's edge to the header and rule off its headings ([50fbfae](https://github.com/montara-project/montara-pass/commit/50fbfae11973ff078fca5048f2576e63f46fb89d))
+* **server:** exempt IPv6 loopback from the development rate limit ([fc5a59d](https://github.com/montara-project/montara-pass/commit/fc5a59da36f7e3903989a1bf8457fb9a54fe3a5b))
+* **server:** refuse community sign-up alike for every address ([bf9212c](https://github.com/montara-project/montara-pass/commit/bf9212c8731cf366d4cea54861f45423d07e5dba))
+* **server:** validate the edition in every binary and roll back cloud leftovers ([309f8f9](https://github.com/montara-project/montara-pass/commit/309f8f9281b65178db1fb4566840174969b58f42))
+
+### Code Refactoring
+
+* **server:** drop categories and seed the super user directly ([8471082](https://github.com/montara-project/montara-pass/commit/84710829d817e2b5feb27b4ed24f1afb4744bd2d))
+* **server:** move the Cloud Edition migrations to migrations/cloud ([bd89554](https://github.com/montara-project/montara-pass/commit/bd8955417635ff5024c49c090605ad4f7b75b29a))
+
 ## [1.9.0](https://github.com/montara-project/montara-pass/compare/v1.8.0...v1.9.0) (2026-10-15)
 
 ### ⚠ BREAKING CHANGES
