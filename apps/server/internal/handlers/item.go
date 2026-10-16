@@ -285,14 +285,14 @@ var errNoPaidPlan = apperr.New(apperr.KindForbidden, "sharing an item needs a pa
 
 // requirePaidPlan refuses a share by a caller who holds no plan.
 //
-// It only bites where the deployment takes payments: Midtrans is configured
-// exactly then, so the self-hosted image, whose promise is every feature,
-// is never gated. A super user is skipped too: billing is kept to accounts
-// with the 'user' role (see migrations/ee/000001), so a plan is not theirs
-// to hold, and a gate they could not satisfy would leave the operator of a
-// deployment unable to share at all.
+// It only bites where the operator asked for it (REQUIRE_PAID_SHARING), which
+// boot allows only alongside Midtrans, so a missing payment key never turns
+// the gate off unnoticed. A super user is skipped too: billing is kept to
+// accounts with the 'user' role (see migrations/ee/000001), so a plan is not
+// theirs to hold, and a gate they could not satisfy would leave the operator
+// of a deployment unable to share at all.
 func (h *itemHandler) requirePaidPlan(c fiber.Ctx, uid uuid.UUID) error {
-	if h.app.Midtrans == nil {
+	if !h.app.Config.Billing.RequirePaidSharing {
 		return nil
 	}
 
@@ -320,8 +320,8 @@ func (h *itemHandler) requirePaidPlan(c fiber.Ctx, uid uuid.UUID) error {
 // Handing an item on is the one thing a plan pays for. Being a recipient of
 // someone else's item is not, so only this route is gated: SetMemberRole and
 // RemoveMember keep working for an owner and a member without one, who could
-// otherwise not leave an item or tidy it. Nothing is gated on a deployment
-// that takes no payments (see h.requirePaidPlan).
+// otherwise not leave an item or tidy it. Nothing is gated unless the
+// deployment asks for it (see h.requirePaidPlan).
 func (h *itemHandler) Share(c fiber.Ctx) error {
 	item, uid, err := h.owner(c)
 	if err != nil {

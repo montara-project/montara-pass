@@ -45,8 +45,8 @@ key wrapped with the recipient's public key. Answers `201`.
 ### A paid plan
 
 On the hosted service, handing an item out is the one thing a plan pays for,
-so `POST /api/v1/items/:id/members` answers `403` for a caller with no paid
-plan:
+so with `REQUIRE_PAID_SHARING=true` `POST /api/v1/items/:id/members` answers
+`403` for a caller with no paid plan:
 
 ```json
 { "message": "sharing an item needs a paid plan: subscribe in Billing, or run Montara Pass yourself" }
@@ -61,7 +61,7 @@ still added to someone else's item. Neither is changing a role or removing a
 member, so a user who stops paying can still revoke access, and a recipient
 can still leave.
 
-A self-hosted deployment takes no payments and is never gated. A `super_user`
+A deployment without `REQUIRE_PAID_SHARING`, the default, is never gated. A `super_user`
 account is not gated either: plans are kept to accounts with the `user` role.
 
 ## Change a role

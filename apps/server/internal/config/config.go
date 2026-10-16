@@ -55,6 +55,9 @@ type Config struct {
 type ConfigBilling struct {
 	MidtransServerKey  string
 	MidtransProduction bool
+	// RequirePaidSharing gates sharing an item on a paid plan. It needs a
+	// Midtrans server key, so that the plan can be bought.
+	RequirePaidSharing bool
 }
 
 // ConfigAuth configures the embedded Authula server. Without a Resend key,

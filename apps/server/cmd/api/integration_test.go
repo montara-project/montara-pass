@@ -62,6 +62,7 @@ func TestIntegration(t *testing.T) {
 			EmailFrom:    "noreply@example.com",
 			ResendAPIKey: "re_test",
 		},
+		Billing: config.ConfigBilling{RequirePaidSharing: true},
 	}
 
 	// Start from nothing; this also runs every down migration, the
@@ -712,8 +713,8 @@ func billingFlow(
 
 // shareGate drives the plan gate on handing an item out: it needs a paid plan
 // where the deployment takes payments, while receiving one, changing a role
-// and leaving again do not. Midtrans is configured for this run, so the gate
-// is on. The super user owns vaultFlow's item and is exempt: billing keeps
+// and leaving again do not. The run sets RequirePaidSharing, so the gate is
+// on. The super user owns vaultFlow's item and is exempt: billing keeps
 // plans to accounts with the 'user' role (migrations/ee/000001), so a plan is
 // not the operator's to hold, and a gate they could not satisfy would leave
 // them unable to share at all.
@@ -854,12 +855,10 @@ func shareGate(
 	}
 	want(http.StatusOK, http.MethodDelete, otherPath+"/members/"+userID, userToken, nil)
 
-	// A deployment that takes no payments is never gated, which is the
-	// self-hosted image's promise: every feature, with no plan to buy. The
-	// signal is Midtrans, nil exactly then, so dropping it is that deployment.
-	payments := application.Midtrans
-	application.Midtrans = nil
-	defer func() { application.Midtrans = payments }()
+	// A deployment that does not ask for the gate is never gated: every
+	// feature, with no plan to buy.
+	application.Config.Billing.RequirePaidSharing = false
+	defer func() { application.Config.Billing.RequirePaidSharing = true }()
 	clearPlans()
 	want(http.StatusCreated, http.MethodPost, itemPath+"/members", userToken, share)
 	want(http.StatusOK, http.MethodDelete, memberPath, userToken, nil)

@@ -113,6 +113,7 @@ func parseFlag(cfg *config.Config) {
 	// Billing (Cloud Edition)
 	flag.StringVar(&cfg.Billing.MidtransServerKey, "midtrans-server-key", envString("MIDTRANS_SERVER_KEY", ""), "Midtrans server key for billing (empty disables checkout)")
 	flag.BoolVar(&cfg.Billing.MidtransProduction, "midtrans-production", envBool("MIDTRANS_PRODUCTION", false), "Use Midtrans production instead of the sandbox")
+	flag.BoolVar(&cfg.Billing.RequirePaidSharing, "require-paid-sharing", envBool("REQUIRE_PAID_SHARING", false), "Sharing an item needs a paid plan (needs midtrans-server-key)")
 
 	// Sentry
 	flag.StringVar(&cfg.Sentry.Dsn, "sentry-dsn", envString("SENTRY_DSN", ""), "Sentry DSN")
@@ -196,6 +197,14 @@ func validateFlag(cfg *config.Config) {
 	}
 	if cfg.Auth.ResendAPIKey == "" && !config.Community() {
 		log.Fatal("flags email-from and resend-api-key must be provided")
+	}
+
+	// A gate without payments would be one nobody could get through.
+	if cfg.Billing.RequirePaidSharing && config.Community() {
+		log.Fatal("flag require-paid-sharing: the community edition has no sharing")
+	}
+	if cfg.Billing.RequirePaidSharing && cfg.Billing.MidtransServerKey == "" {
+		log.Fatal("flag require-paid-sharing needs midtrans-server-key, so the plan can be bought")
 	}
 
 	if (cfg.Auth.GoogleClientID == "") != (cfg.Auth.GoogleClientSecret == "") {
