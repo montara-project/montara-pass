@@ -10,7 +10,6 @@ import { generatePassword } from '@/lib/password'
 
 import { createItem, markItemUsed, SignedOutError } from '../lib/api'
 import { fillLogin, fillNewPassword } from '../lib/autofill'
-import { maskEmail } from '../lib/email'
 import { fetchIcon } from '../lib/icon'
 import {
   assertPasskey,
@@ -31,6 +30,7 @@ import {
 import { fillsSite, hostOf, matchesSite, originOf } from '../lib/site'
 import { getSettings, getTokens } from '../lib/storage'
 import { lastUsedLabel } from '../lib/usage'
+import { maskUsername } from '../lib/username'
 import { checked, submit, useAppForm } from '../popup/form'
 import { CloseIcon, ExpandIcon, KeyIcon, RefreshIcon } from '../popup/icons'
 import { ItemTile } from '../popup/item-tile'
@@ -267,7 +267,7 @@ function Logins({
             <ItemTile item={item} />
             <span className="item-text">
               <span className="item-name">
-                {item.secret!.username ? maskEmail(item.secret!.username) : item.secret!.name}
+                {item.secret!.username ? maskUsername(item.secret!.username) : item.secret!.name}
               </span>
               <span className="muted">
                 {sharedLabel(item) ?? lastUsedLabel(item.last_used_at) ?? hostOf(item.secret!.url)}
@@ -581,7 +581,7 @@ function PasskeyChoice({
               <ItemTile item={item} />
               <span className="item-text">
                 <span className="item-name">
-                  {item.secret!.username ? maskEmail(item.secret!.username) : item.secret!.name}
+                  {item.secret!.username ? maskUsername(item.secret!.username) : item.secret!.name}
                 </span>
                 <span className="muted">
                   {sharedLabel(item) ?? lastUsedLabel(item.last_used_at) ?? rpId}

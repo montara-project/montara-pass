@@ -6,10 +6,10 @@ import type { VaultItem } from '@/types/vault'
 import { COMMUNITY } from '@/lib/constants/edition'
 
 import { setItemPlacement, SignedOutError, trashItem } from '../../lib/api'
-import { maskEmail } from '../../lib/email'
 import { linkOf } from '../../lib/site'
 import { getSettings } from '../../lib/storage'
 import { lastUsedAgo } from '../../lib/usage'
+import { maskUsername } from '../../lib/username'
 import {
   ArrowLeftIcon,
   CopyIcon,
@@ -286,7 +286,7 @@ export default function FullVault({
                           <span className="muted">
                             {item.type === 'login'
                               ? item.secret!.username
-                                ? maskEmail(item.secret!.username)
+                                ? maskUsername(item.secret!.username)
                                 : 'No username'
                               : 'Secure note'}
                           </span>
@@ -399,7 +399,7 @@ interface ItemDetailProps {
 function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: ItemDetailProps) {
   // Hidden again for every item: this component is remounted per item.
   const [revealed, setRevealed] = useState(false)
-  // An email address as a username is masked as the list shows it, until asked for.
+  // The username is masked as the list shows it, until asked for.
   const [showUsername, setShowUsername] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -513,14 +513,13 @@ function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: Item
                   showUsername ? (
                     secret.username
                   ) : (
-                    maskEmail(secret.username)
+                    maskUsername(secret.username)
                   )
                 ) : (
                   <span className="muted">None</span>
                 )}
               </dd>
-              {/* Only an email address is masked, so only it has something to show. */}
-              {secret.username && maskEmail(secret.username) !== secret.username && (
+              {secret.username && (
                 <button
                   className="icon-button"
                   aria-label={showUsername ? 'Hide username' : 'Show username'}
