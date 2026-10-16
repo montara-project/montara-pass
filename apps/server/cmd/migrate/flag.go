@@ -26,7 +26,6 @@ const (
 type config struct {
 	mode        string
 	dbDSN       string
-	seed        bool
 	allowRemote bool
 	version     int
 	name        string
@@ -40,7 +39,6 @@ func parseFlag(cfg *config) {
 	// Defaults to the environment so the DSN, which carries the database
 	// password, stays out of the process arguments.
 	flag.StringVar(&cfg.dbDSN, "db-dsn", os.Getenv("DB_DSN"), "PostgreSQL DSN (default $DB_DSN)")
-	flag.BoolVar(&cfg.seed, "seed", false, "run the seeders after migrating")
 	flag.BoolVar(&cfg.allowRemote, "allow-remote", false, "allow down and refresh on a database that is not on localhost")
 	flag.BoolVar(&cfg.ee, "ee", false, "force and create act on the Cloud Edition's migrations (migrations/ee)")
 
@@ -85,10 +83,6 @@ func validateFlag(cfg *config) {
 
 	if cfg.dbDSN == "" {
 		log.Fatal("flag --db-dsn or env DB_DSN must be provided")
-	}
-
-	if cfg.seed && cfg.mode != modeUp && cfg.mode != modeRefresh {
-		log.Fatalf("flag --seed must not be provided when mode is %s", cfg.mode)
 	}
 
 	// down rolls back every migration, dropping the authula schema with all

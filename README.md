@@ -55,7 +55,6 @@ SQL files live in `apps/server/migrations` and are embedded in the binary.
 pnpm --filter @montara-pass/server run migrate:create add_something
 pnpm migrate:up
 pnpm migrate:down                                          # rolls back everything (localhost only)
-pnpm --filter @montara-pass/server run migrate:up:seed     # up, then seed the categories
 pnpm --filter @montara-pass/server run migrate:refresh     # down + up
 pnpm --filter @montara-pass/server run migrate:force 2     # after a failed migration
 pnpm --filter @montara-pass/server run migrate:version
@@ -77,7 +76,7 @@ Every setting is an environment variable, or the flag of the same name
 - Authula keeps its tables in the `authula` schema and creates them on boot.
   `public.users` mirrors `authula.users` and adds the application `role`.
 - `SEED_ON_BOOT=true` creates the `SUPER_USER` account with the `super_user`
-  role. Only that role may write `/api/v1/categories`; everyone can read them.
+  role, the only one that sees every customer's billing and syncs the plans.
 ### Vault
 
 The password vault is end-to-end encrypted: clients encrypt everything and the
@@ -122,7 +121,7 @@ only needed when the app is hosted somewhere else (`VITE_API_URL`).
 - The unlocked keys live in memory only (`lib/stores/vault.ts`): a reload
   locks the vault and asks for the master password again.
 - Routes: `/sign-in`, `/sign-up`, `/vault`, `/folders`, `/trash`,
-  `/categories`, `/profile`.
+  `/billing`, `/profile`.
 
 ## Browser extension
 

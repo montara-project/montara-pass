@@ -18,7 +18,7 @@ type BillingListQuery struct {
 }
 
 func (dto BillingListQuery) Validate(v *validator.MapValidator) {
-	ListQuery{}.base(v)
+	listRules(v)
 	v.Field("status").Regex(`^(pending|active|canceled|expired|paid|failed|refunded)$`)
 }
 

@@ -7,15 +7,6 @@ import (
 	"time"
 )
 
-// All returns every seeder that needs only the database, referenced rows
-// first. The super user needs a
-// running Authula instance, so the API appends SuperUserSeeder itself.
-func All(db *sql.DB) []Seeder {
-	return []Seeder{
-		CategorySeeder{DB: db},
-	}
-}
-
 // runSeed executes fn in one transaction, so a seeder either applies
 // completely or not at all.
 func runSeed(db *sql.DB, fn func(ctx context.Context, tx *sql.Tx) error) error {

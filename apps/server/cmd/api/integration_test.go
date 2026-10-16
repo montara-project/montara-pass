@@ -119,7 +119,7 @@ func TestIntegration(t *testing.T) {
 	}
 	// Twice: seeding must be repeatable.
 	for range 2 {
-		if err := seedAll(db, superUser, logger); err != nil {
+		if err := superUser.Seed(); err != nil {
 			t.Fatalf("seed: %v", err)
 		}
 	}
@@ -302,19 +302,15 @@ func TestIntegration(t *testing.T) {
 		t.Fatalf("refresh: %d %v", status, out)
 	}
 
-	// Category writes: super user only.
-	category := map[string]string{"name": "Integration"}
-	if status, _ := call(http.MethodPost, "/api/v1/categories", "", category); status != http.StatusUnauthorized {
-		t.Fatalf("create without auth: %d, want 401", status)
+	// The super user's routes: signed in, and a super user.
+	if status, _ := call(http.MethodGet, "/api/v1/plans/all", "", nil); status != http.StatusUnauthorized {
+		t.Fatalf("super user route without auth: %d, want 401", status)
 	}
-	if status, _ := call(http.MethodPost, "/api/v1/categories", userToken, category); status != http.StatusForbidden {
-		t.Fatalf("create as plain user: %d, want 403", status)
+	if status, _ := call(http.MethodGet, "/api/v1/plans/all", userToken, nil); status != http.StatusForbidden {
+		t.Fatalf("super user route as plain user: %d, want 403", status)
 	}
-	if status, out := call(http.MethodPost, "/api/v1/categories", superToken, category); status != http.StatusCreated {
-		t.Fatalf("create as super user: %d %v", status, out)
-	}
-	if status, out := call(http.MethodGet, "/api/v1/categories?search=Integration", "", nil); status != http.StatusOK || len(out["data"].([]any)) != 1 {
-		t.Fatalf("list: %d %v", status, out)
+	if status, out := call(http.MethodGet, "/api/v1/plans/all", superToken, nil); status != http.StatusOK {
+		t.Fatalf("super user route as super user: %d %v", status, out)
 	}
 
 	vaultFlow(t, call, superToken, userToken, userEmail, user.ID)
@@ -368,7 +364,8 @@ func TestIntegration(t *testing.T) {
 	}
 
 	// A browser request from another site is refused before it is authenticated.
-	if status, _ := call(http.MethodPost, "/api/v1/categories", superToken, category, "Sec-Fetch-Site", "cross-site", "Origin", "https://evil.example"); status != http.StatusForbidden {
+	folder := map[string]string{"encrypted_name": base64.StdEncoding.EncodeToString([]byte("folder"))}
+	if status, _ := call(http.MethodPost, "/api/v1/folders", superToken, folder, "Sec-Fetch-Site", "cross-site", "Origin", "https://evil.example"); status != http.StatusForbidden {
 		t.Fatalf("cross-site create: %d, want 403", status)
 	}
 
@@ -376,7 +373,7 @@ func TestIntegration(t *testing.T) {
 	if status, out := call(http.MethodPost, "/api/v1/auth/sign-out", superToken, map[string]any{}); status != http.StatusOK {
 		t.Fatalf("sign out: %d %v", status, out)
 	}
-	if status, _ := call(http.MethodPost, "/api/v1/categories", superToken, category); status != http.StatusUnauthorized {
+	if status, _ := call(http.MethodPost, "/api/v1/folders", superToken, folder); status != http.StatusUnauthorized {
 		t.Fatalf("create after sign out: %d, want 401", status)
 	}
 }

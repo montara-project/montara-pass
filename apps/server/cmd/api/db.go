@@ -10,7 +10,6 @@ import (
 
 	"montara-pass/server/internal/config"
 	"montara-pass/server/internal/lib"
-	"montara-pass/server/internal/seeders"
 )
 
 func connectDB(cfg *config.ConfigDB) (*sql.DB, error) {
@@ -88,17 +87,5 @@ func migrateTrack(cfg *config.ConfigDB, logger *slog.Logger, track lib.Track) er
 	}
 
 	logger.Info("database schema up to date", "track", track.Name, "version", version)
-	return nil
-}
-
-// seedAll runs every seeder on the application pool, the super user last.
-// Seeders are idempotent.
-func seedAll(db *sql.DB, superUser seeders.SuperUserSeeder, logger *slog.Logger) error {
-	for _, s := range append(seeders.All(db), superUser) {
-		logger.Info("running seeder", "name", s.Name())
-		if err := s.Seed(); err != nil {
-			return fmt.Errorf("%s seeder: %w", s.Name(), err)
-		}
-	}
 	return nil
 }

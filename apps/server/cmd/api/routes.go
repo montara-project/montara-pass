@@ -55,16 +55,6 @@ func routes(r *fiber.App, app *app.Application) {
 	// is sent. It needs the user, so it goes after Authorization.
 	once := middlewares.Idempotency(store)
 
-	// Reads are public; writes need a signed-in super user.
-	categories := v1.Group("/categories")
-	categories.Get("/", h.Category.List)
-	categories.Get("/:id", h.Category.Get)
-	categories.Post("/", m.Authorization, m.SuperUser, once, h.Category.Create)
-	categories.Put("/:id", m.Authorization, m.SuperUser, once, h.Category.Update)
-	categories.Delete("/:id", m.Authorization, m.SuperUser, once, h.Category.Delete)
-	categories.Put("/:id/restore", m.Authorization, m.SuperUser, once, h.Category.Restore)
-	categories.Delete("/:id/force", m.Authorization, m.SuperUser, once, h.Category.DeletePermanently)
-
 	// The end-to-end encrypted vault: everything below needs a signed-in
 	// user, and every payload is ciphertext the server cannot read.
 	keys := v1.Group("/keys", m.Authorization, once)

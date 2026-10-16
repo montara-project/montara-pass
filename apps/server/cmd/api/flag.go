@@ -97,7 +97,7 @@ func parseFlag(cfg *config.Config) {
 
 	// Boot
 	flag.BoolVar(&cfg.App.MigrateOnBoot, "migrate-on-boot", envBool("MIGRATE_ON_BOOT", false), "Apply embedded migrations before serving")
-	flag.BoolVar(&cfg.App.SeedOnBoot, "seed-on-boot", envBool("SEED_ON_BOOT", false), "Run the idempotent seeders before serving")
+	flag.BoolVar(&cfg.App.SeedOnBoot, "seed-on-boot", envBool("SEED_ON_BOOT", false), "Create or update the super user before serving (needs super-user)")
 	superUser := flag.String("super-user", envString("SUPER_USER", ""), "Super user seeded on boot, as email:password (required with seed-on-boot)")
 
 	// Auth (Authula). The env names match the ones Authula itself reads.

@@ -42,10 +42,6 @@ type SuperUserSeeder struct {
 	Password string
 }
 
-func (s SuperUserSeeder) Name() string {
-	return "super user"
-}
-
 // Seed creates whatever is missing: the user, its email-password account and
 // the mirror row. SUPER_USER is the source of truth for the password: an
 // existing account whose password differs is reset to it, so changing

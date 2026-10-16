@@ -137,8 +137,9 @@ func run() error {
 			Email:    cfg.App.SuperUserEmail,
 			Password: cfg.App.SuperUserPassword,
 		}
-		if err := seedAll(db, superUser, logger); err != nil {
-			return err
+		logger.Info("seeding the super user")
+		if err := superUser.Seed(); err != nil {
+			return fmt.Errorf("seed super user: %w", err)
 		}
 	}
 

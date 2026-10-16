@@ -14,7 +14,6 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 
 	"montara-pass/server/internal/lib"
-	"montara-pass/server/internal/seeders"
 )
 
 func main() {
@@ -77,17 +76,6 @@ func main() {
 			printVersion(tracks[i].Name, m)
 		}
 		return
-	}
-
-	if cfg.seed {
-		seedDB, err := lib.OpenDB(cfg.dbDSN)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer seedDB.Close()
-
-		// The super user is seeded by the API on boot: it needs Authula.
-		execSeeders(seeders.All(seedDB)...)
 	}
 
 	fmt.Println("Completed")
@@ -181,13 +169,4 @@ func cloudLeftover(dsn string) (lib.Track, bool) {
 		log.Fatalf("look for cloud edition migrations: %v", err)
 	}
 	return track, ok
-}
-
-func execSeeders(seeders ...seeders.Seeder) {
-	for _, seeder := range seeders {
-		fmt.Printf("Running %s seeder...\n", seeder.Name())
-		if err := seeder.Seed(); err != nil {
-			log.Fatalf("%s seeder failed: %v", seeder.Name(), err)
-		}
-	}
 }

@@ -11,7 +11,6 @@ schema.
 
 ```sh
 pnpm migrate:up                                              # apply what is pending
-pnpm --filter @montara-pass/server run migrate:up:seed       # up, then run the seeders
 pnpm --filter @montara-pass/server run migrate:create add_x  # new up/down pair
 pnpm --filter @montara-pass/server run migrate:version       # current version
 pnpm --filter @montara-pass/server run migrate:force 2       # after a failed migration
@@ -30,8 +29,8 @@ The CLI reads `DB_DSN` from the environment or `apps/server/.env`, or takes
 ## On boot
 
 With `MIGRATE_ON_BOOT=true` the API applies pending migrations before it
-starts serving. With `SEED_ON_BOOT=true` it also runs the seeders, which are
-idempotent: the categories, and the `SUPER_USER` account.
+starts serving. With `SEED_ON_BOOT=true` it also creates the `SUPER_USER`
+account, or brings it back to that password; running it again is harmless.
 
 ## Existing migrations
 
@@ -42,6 +41,7 @@ idempotent: the categories, and the `SUPER_USER` account.
 | `000003` | the `role` column on `users` |
 | `000004` | the vault: `user_keys`, `folders`, `items`, `item_members` |
 | `000005` | the `last_used_at` column on `item_members` |
+| `000006` | drops `categories`, which nothing used |
 
 ## Cloud Edition migrations
 
