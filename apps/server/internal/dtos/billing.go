@@ -6,12 +6,13 @@ import (
 	"montara-pass/server/internal/lib/validator"
 )
 
-// Bounds matching the CHECK constraints of migrations/ee/000001.
+// Bounds matching the CHECK constraints of migrations/ee.
 const (
 	planCodePattern     = `^[a-z0-9][a-z0-9_-]{0,63}$`
 	planBillingPattern  = `^(recurring|one_time)$`
 	planIntervalPattern = `^(month|year)$`
 	currencyPattern     = `^[A-Z]{3}$`
+	variantIDPattern    = `^[0-9]{1,20}$`
 	maxPlanDescLen      = 2000
 	// A sane ceiling, well inside the float64 range JSON numbers decode to.
 	maxAmount = 1_000_000_000_000
@@ -24,6 +25,8 @@ type PlanUpdateBody struct {
 	Amount      int64   `json:"amount"`
 	Currency    string  `json:"currency"`
 	Active      bool    `json:"active"`
+	// The Lemon Squeezy variant the plan is sold as; null takes it off sale.
+	VariantID *string `json:"variant_id"`
 }
 
 func (dto PlanUpdateBody) Validate(v *validator.MapValidator) {
@@ -32,6 +35,7 @@ func (dto PlanUpdateBody) Validate(v *validator.MapValidator) {
 	v.Field("amount").Required().Int(0, maxAmount)
 	v.Field("currency").Required().Regex(currencyPattern)
 	v.Field("active").Required().Bool()
+	v.Field("variant_id").Regex(variantIDPattern)
 }
 
 // PlanBody creates a plan. Its code, kind and interval never change.

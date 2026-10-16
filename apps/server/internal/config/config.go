@@ -50,13 +50,17 @@ type Config struct {
 	Billing ConfigBilling
 }
 
-// ConfigBilling configures payments, Cloud Edition only. Without a
-// Midtrans server key the plans are still listed, but nothing can be bought.
+// ConfigBilling configures payments through Lemon Squeezy, Cloud Edition
+// only. Without an API key the plans are still listed, but nothing can be
+// bought.
 type ConfigBilling struct {
-	MidtransServerKey  string
-	MidtransProduction bool
-	// RequirePaidSharing gates sharing an item on a paid plan. It needs a
-	// Midtrans server key, so that the plan can be bought.
+	LemonSqueezyAPIKey string
+	// The store that sells the plans, by its numeric id.
+	LemonSqueezyStoreID string
+	// Signs the webhooks; set the same one on the store's webhook.
+	LemonSqueezyWebhookSecret string
+	// RequirePaidSharing gates sharing an item on a paid plan. It needs
+	// payments, so that the plan can be bought.
 	RequirePaidSharing bool
 }
 

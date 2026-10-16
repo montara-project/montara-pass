@@ -12,7 +12,7 @@ import (
 	"montara-pass/server/internal/app"
 	"montara-pass/server/internal/config"
 	"montara-pass/server/internal/emails"
-	"montara-pass/server/internal/lib/midtrans"
+	"montara-pass/server/internal/lib/lemonsqueezy"
 	"montara-pass/server/internal/repositories"
 	"montara-pass/server/internal/seeders"
 
@@ -113,13 +113,22 @@ func run() error {
 		}
 	}
 
-	var payments *midtrans.Client
+	var payments *lemonsqueezy.Client
 	switch {
 	case config.Community():
-	case cfg.Billing.MidtransServerKey == "":
-		logger.Warn("billing checkout disabled: midtrans-server-key is not set")
+	case cfg.Billing.LemonSqueezyAPIKey == "":
+		logger.Warn("billing checkout disabled: lemonsqueezy-api-key is not set")
 	default:
-		payments = midtrans.New(cfg.Billing.MidtransServerKey, cfg.Billing.MidtransProduction)
+		// Reading the store checks the key and the store id now, and gives
+		// the currency every plan must be priced in.
+		payments = lemonsqueezy.New(cfg.Billing.LemonSqueezyAPIKey, cfg.Billing.LemonSqueezyStoreID, cfg.Billing.LemonSqueezyWebhookSecret)
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		err := payments.Load(ctx)
+		cancel()
+		if err != nil {
+			return fmt.Errorf("load lemon squeezy store: %w", err)
+		}
+		logger.Info("billing through lemon squeezy", "store", cfg.Billing.LemonSqueezyStoreID, "currency", payments.Currency)
 	}
 
 	return serve(&app.Application{
@@ -129,6 +138,6 @@ func run() error {
 		Repositories: repos,
 		Auth:         auth,
 		Redis:        cache,
-		Midtrans:     payments,
+		Payments:     payments,
 	})
 }

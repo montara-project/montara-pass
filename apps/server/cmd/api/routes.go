@@ -103,8 +103,9 @@ func routes(r *fiber.App, app *app.Application) {
 
 		// Billing. The plans are public, for the website; a super user
 		// manages them and sees what customers bought. Subscribing and
-		// buying need a signed-in user account; Midtrans reports the
-		// payment's outcome.
+		// buying need a signed-in user account; Lemon Squeezy reports what
+		// was paid, and its customer portal is where a subscription is
+		// cancelled.
 		plans := v1.Group("/plans")
 		plans.Get("/", h.Billing.ListPlans)
 		plans.Get("/all", m.Authorization, m.SuperUser, h.Billing.ListAllPlans)
@@ -121,7 +122,8 @@ func routes(r *fiber.App, app *app.Application) {
 		billing.Get("/", m.Authorization, h.Billing.Overview)
 		billing.Post("/subscriptions", m.Authorization, once, h.Billing.Subscribe)
 		billing.Post("/purchases", m.Authorization, once, h.Billing.Buy)
-		billing.Post("/midtrans/notification", h.Billing.MidtransNotification)
+		billing.Get("/portal", m.Authorization, h.Billing.Portal)
+		billing.Post("/lemonsqueezy/webhook", h.Billing.LemonSqueezyWebhook)
 	}
 
 	// An unknown path under apiPrefix answers JSON. Registered last, and before

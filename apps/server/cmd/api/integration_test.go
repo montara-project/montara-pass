@@ -3,7 +3,8 @@ package main
 import (
 	"bytes"
 	"context"
-	"crypto/sha512"
+	"crypto/hmac"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
 	"encoding/hex"
@@ -25,7 +26,7 @@ import (
 	"montara-pass/server/internal/config"
 	"montara-pass/server/internal/lib"
 	"montara-pass/server/internal/lib/constant"
-	"montara-pass/server/internal/lib/midtrans"
+	"montara-pass/server/internal/lib/lemonsqueezy"
 	"montara-pass/server/internal/models"
 	"montara-pass/server/internal/repositories"
 	"montara-pass/server/internal/seeders"
@@ -55,6 +56,9 @@ func TestIntegration(t *testing.T) {
 			Port:   8080,
 			Name:   "montara-pass-test",
 			Secret: "0123456789abcdef0123456789abcdef",
+			// fiber.App.Test's client address: the run makes more requests a minute
+			// than the API's limit allows one client.
+			RateLimitExemptIPs: "0.0.0.0",
 		},
 		DB: config.ConfigDB{DSN: dsn, MaxOpenConns: 5, MaxIdleConns: 5},
 		Auth: config.ConfigAuth{
@@ -183,22 +187,38 @@ func TestIntegration(t *testing.T) {
 		t.Fatalf("reseed: %v", err)
 	}
 
-	// Midtrans' Snap, as far as billing sees it: every checkout gets a page.
-	snap := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// Lemon Squeezy, as far as billing sees it: every checkout gets a page,
+	// and every subscription a customer portal.
+	lemon := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/subscriptions/") {
+			_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"attributes": map[string]any{
+				"urls": map[string]string{"customer_portal": "https://portal.example" + r.URL.Path},
+			}}})
+			return
+		}
 		var body struct {
-			TransactionDetails struct {
-				OrderID string `json:"order_id"`
-			} `json:"transaction_details"`
+			Data struct {
+				Attributes struct {
+					CheckoutData struct {
+						Custom struct {
+							OrderID string `json:"order_id"`
+						} `json:"custom"`
+					} `json:"checkout_data"`
+				} `json:"attributes"`
+			} `json:"data"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&body)
 		w.WriteHeader(http.StatusCreated)
-		_ = json.NewEncoder(w).Encode(map[string]string{"redirect_url": "https://pay.example/" + body.TransactionDetails.OrderID})
+		_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"attributes": map[string]string{
+			"url": "https://pay.example/" + body.Data.Attributes.CheckoutData.Custom.OrderID,
+		}}})
 	}))
-	defer snap.Close()
-	payments := midtrans.New(midtransKey, false)
-	payments.SnapURL = snap.URL
+	defer lemon.Close()
+	payments := lemonsqueezy.New("ls-test-key", "1", lemonSecret)
+	payments.BaseURL = lemon.URL
+	payments.Currency = "USD"
 
-	application := &app.Application{Config: cfg, Logger: logger, DB: db, Repositories: repos, Auth: auth, Midtrans: payments}
+	application := &app.Application{Config: cfg, Logger: logger, DB: db, Repositories: repos, Auth: auth, Payments: payments}
 	// With TEST_REDIS_URL the rate limiter and the idempotency keys go
 	// through Redis, as they do with REDIS_URL; without it, through memory.
 	if url := os.Getenv("TEST_REDIS_URL"); url != "" {
@@ -317,7 +337,7 @@ func TestIntegration(t *testing.T) {
 	}
 
 	vaultFlow(t, call, superToken, userToken, userEmail, user.ID)
-	billingFlow(t, call, superToken, userToken)
+	billingFlow(t, call, db, superToken, userToken)
 	shareGate(t, application, call, db, superEmail, superToken, userToken, user.ID)
 
 	// An address nobody has verified gets no session from signing up, and a
@@ -594,15 +614,16 @@ func billing(t *testing.T, db *sql.DB, userID, superEmail string) {
 	}
 }
 
-// midtransKey signs the notifications billingFlow sends.
-const midtransKey = "SB-Mid-server-test"
+// lemonSecret signs the webhooks billingFlow sends.
+const lemonSecret = "whsec-test"
 
-// billingFlow drives billing over HTTP: plans managed by the super user, a
-// subscription and a purchase paid through Midtrans' notification, which is
-// believed only when signed and for the amount ordered.
+// billingFlow drives billing over HTTP: plans managed by the super user, and
+// a subscription and a purchase paid through Lemon Squeezy's webhook, which
+// is believed only when signed and for the variant the plan is sold as.
 func billingFlow(
 	t *testing.T,
 	call func(method, path, token string, body any, headers ...string) (int, map[string]any),
+	db *sql.DB,
 	superToken, userToken string,
 ) {
 	t.Helper()
@@ -616,31 +637,52 @@ func billingFlow(
 		data, _ := out["data"].(map[string]any)
 		return data
 	}
-	notify := func(orderID, status, gross string) (int, map[string]any) {
+	webhook := func(event, orderID, dataID string, attributes map[string]any) (int, map[string]any) {
 		t.Helper()
-		sum := sha512.Sum512([]byte(orderID + "200" + gross + midtransKey))
-		return call(http.MethodPost, "/api/v1/billing/midtrans/notification", "", map[string]string{
-			"order_id": orderID, "status_code": "200", "gross_amount": gross,
-			"transaction_status": status, "currency": "IDR", "signature_key": hex.EncodeToString(sum[:]),
+		body, _ := json.Marshal(map[string]any{
+			"meta": map[string]any{"event_name": event, "custom_data": map[string]string{"order_id": orderID}},
+			"data": map[string]any{"type": "x", "id": dataID, "attributes": attributes},
 		})
+		mac := hmac.New(sha256.New, []byte(lemonSecret))
+		mac.Write(body)
+		return call(http.MethodPost, "/api/v1/billing/lemonsqueezy/webhook", "", json.RawMessage(body), "X-Signature", hex.EncodeToString(mac.Sum(nil)))
+	}
+	wantWebhook := func(event, orderID, dataID string, attributes map[string]any) {
+		t.Helper()
+		if status, out := webhook(event, orderID, dataID, attributes); status != http.StatusOK {
+			t.Fatalf("%s %s: %d %v", event, orderID, status, out)
+		}
+	}
+	overview := func() (map[string]any, []any) {
+		t.Helper()
+		data := want(http.StatusOK, http.MethodGet, "/api/v1/billing", userToken, nil)
+		subscription, _ := data["subscription"].(map[string]any)
+		return subscription, data["purchases"].([]any)
 	}
 
-	monthly := map[string]any{"code": "pro-monthly", "name": "Pro", "billing": "recurring", "billing_interval": "month", "amount": 50000, "currency": "IDR", "active": true}
+	monthly := map[string]any{"code": "pro-monthly", "name": "Pro", "billing": "recurring", "billing_interval": "month", "amount": 300, "currency": "USD", "active": true, "variant_id": "101"}
 	want(http.StatusForbidden, http.MethodPost, "/api/v1/plans", userToken, monthly)
 	plan := want(http.StatusCreated, http.MethodPost, "/api/v1/plans", superToken, monthly)
 	want(http.StatusConflict, http.MethodPost, "/api/v1/plans", superToken, monthly)
-	want(http.StatusBadRequest, http.MethodPost, "/api/v1/plans", superToken, map[string]any{"code": "x", "name": "X", "billing": "one_time", "billing_interval": "month", "amount": 1, "currency": "IDR", "active": true})
-	lifetime := want(http.StatusCreated, http.MethodPost, "/api/v1/plans", superToken, map[string]any{"code": "pro-lifetime", "name": "Pro forever", "billing": "one_time", "amount": 990000, "currency": "IDR", "active": true})
-	retired := want(http.StatusCreated, http.MethodPost, "/api/v1/plans", superToken, map[string]any{"code": "old", "name": "Old", "billing": "recurring", "billing_interval": "year", "amount": 1, "currency": "IDR", "active": false})
+	want(http.StatusBadRequest, http.MethodPost, "/api/v1/plans", superToken, map[string]any{"code": "x", "name": "X", "billing": "one_time", "billing_interval": "month", "amount": 1, "currency": "USD", "active": true})
+	want(http.StatusUnprocessableEntity, http.MethodPost, "/api/v1/plans", superToken, map[string]any{"code": "x", "name": "X", "billing": "one_time", "amount": 1, "currency": "USD", "active": true, "variant_id": "v1"})
+	lifetime := want(http.StatusCreated, http.MethodPost, "/api/v1/plans", superToken, map[string]any{"code": "pro-lifetime", "name": "Pro forever", "billing": "one_time", "amount": 30000, "currency": "USD", "active": true, "variant_id": "102"})
+	retired := want(http.StatusCreated, http.MethodPost, "/api/v1/plans", superToken, map[string]any{"code": "old", "name": "Old", "billing": "recurring", "billing_interval": "year", "amount": 1, "currency": "USD", "active": false})
+	unsold := want(http.StatusCreated, http.MethodPost, "/api/v1/plans", superToken, map[string]any{"code": "pro-yearly", "name": "Pro yearly", "billing": "recurring", "billing_interval": "year", "amount": 2500, "currency": "USD", "active": true})
+	euro := want(http.StatusCreated, http.MethodPost, "/api/v1/plans", superToken, map[string]any{"code": "pro-eur", "name": "Pro EUR", "billing": "one_time", "amount": 300, "currency": "EUR", "active": true, "variant_id": "103"})
 
-	if status, out := call(http.MethodGet, "/api/v1/plans", "", nil); status != http.StatusOK || len(out["data"].([]any)) != 2 {
+	if status, out := call(http.MethodGet, "/api/v1/plans", "", nil); status != http.StatusOK || len(out["data"].([]any)) != 4 {
 		t.Fatalf("public plans: %d %v", status, out)
 	}
 
-	// Only a user account subscribes, to a plan on offer, of the right kind.
+	// Only a user account subscribes, to a plan on offer, of the right kind,
+	// sold through Lemon Squeezy and priced in the store's currency.
 	want(http.StatusForbidden, http.MethodPost, "/api/v1/billing/subscriptions", superToken, map[string]any{"plan_id": plan["id"]})
 	want(http.StatusNotFound, http.MethodPost, "/api/v1/billing/subscriptions", userToken, map[string]any{"plan_id": retired["id"]})
 	want(http.StatusNotFound, http.MethodPost, "/api/v1/billing/subscriptions", userToken, map[string]any{"plan_id": lifetime["id"]})
+	want(http.StatusConflict, http.MethodPost, "/api/v1/billing/subscriptions", userToken, map[string]any{"plan_id": unsold["id"]})
+	want(http.StatusConflict, http.MethodPost, "/api/v1/billing/purchases", userToken, map[string]any{"plan_id": euro["id"]})
+	want(http.StatusNotFound, http.MethodGet, "/api/v1/billing/portal", userToken, nil)
 
 	sub := want(http.StatusCreated, http.MethodPost, "/api/v1/billing/subscriptions", userToken, map[string]any{"plan_id": plan["id"]})
 	orderID := "sub-" + sub["id"].(string)
@@ -652,61 +694,98 @@ func billingFlow(
 		t.Fatalf("resumed subscription: %v", again)
 	}
 
-	// Notifications: a bad signature or amount is refused, and a valid one
-	// activates the subscription once.
-	if status, _ := call(http.MethodPost, "/api/v1/billing/midtrans/notification", "", map[string]string{"order_id": orderID, "status_code": "200", "gross_amount": "50000.00", "transaction_status": "settlement", "signature_key": "forged"}); status != http.StatusForbidden {
-		t.Fatalf("forged notification: %d", status)
+	// Webhooks: a bad signature or another variant is refused, a sale billing
+	// did not start is let be, and a valid one activates the subscription.
+	renews := time.Now().Add(30 * 24 * time.Hour).UTC().Truncate(time.Second)
+	active := map[string]any{"status": "active", "variant_id": 101, "cancelled": false, "renews_at": renews, "ends_at": nil}
+	if status, _ := call(http.MethodPost, "/api/v1/billing/lemonsqueezy/webhook", "", map[string]any{"meta": map[string]any{"event_name": "subscription_created"}}, "X-Signature", "forged"); status != http.StatusForbidden {
+		t.Fatalf("forged webhook: %d", status)
 	}
-	if status, _ := notify(orderID, "settlement", "1.00"); status != http.StatusBadRequest {
-		t.Fatalf("notification for another amount: %d", status)
+	if status, _ := webhook("subscription_created", orderID, "7001", map[string]any{"status": "active", "variant_id": 999, "renews_at": renews}); status != http.StatusBadRequest {
+		t.Fatalf("webhook for another variant: %d", status)
 	}
+	wantWebhook("order_created", "", "1", map[string]any{"status": "paid"})
+	wantWebhook("order_created", orderID, "1", map[string]any{"status": "paid", "first_order_item": map[string]any{"variant_id": 101}})
 	for range 2 {
-		if status, out := notify(orderID, "settlement", "50000.00"); status != http.StatusOK {
-			t.Fatalf("settlement: %d %v", status, out)
-		}
+		wantWebhook("subscription_created", orderID, "7001", active)
 	}
-	overview := want(http.StatusOK, http.MethodGet, "/api/v1/billing", userToken, nil)
-	active, _ := overview["subscription"].(map[string]any)
-	if active == nil || active["status"] != "active" || active["checkout_url"] != nil {
-		t.Fatalf("overview after settlement: %v", overview)
+	subscription, _ := overview()
+	if subscription == nil || subscription["status"] != "active" || subscription["checkout_url"] != nil || subscription["canceled_at"] != nil {
+		t.Fatalf("overview after payment: %v", subscription)
+	}
+	if end, _ := time.Parse(time.RFC3339, subscription["current_period_end"].(string)); !end.Equal(renews) {
+		t.Fatalf("period end %v, want the renewal %v", end, renews)
 	}
 	want(http.StatusConflict, http.MethodPost, "/api/v1/billing/subscriptions", userToken, map[string]any{"plan_id": plan["id"]})
+	if portal := want(http.StatusOK, http.MethodGet, "/api/v1/billing/portal", userToken, nil); portal["url"] != "https://portal.example/subscriptions/7001" {
+		t.Fatalf("portal: %v", portal)
+	}
+
+	// Cancelled in the portal, it runs out its period; then it expires.
+	ends := renews.Add(-24 * time.Hour)
+	wantWebhook("subscription_updated", orderID, "7001", map[string]any{"status": "cancelled", "variant_id": 101, "cancelled": true, "renews_at": renews, "ends_at": ends})
+	if subscription, _ = overview(); subscription["status"] != "active" || subscription["canceled_at"] == nil {
+		t.Fatalf("overview after cancelling: %v", subscription)
+	}
+	wantWebhook("subscription_updated", orderID, "7001", map[string]any{"status": "expired", "variant_id": 101, "cancelled": true, "renews_at": renews, "ends_at": ends})
+	if subscription, _ = overview(); subscription != nil {
+		t.Fatalf("overview after expiry: %v", subscription)
+	}
+	// A renewal retried until it went through brings it back.
+	wantWebhook("subscription_updated", orderID, "7001", active)
+	if subscription, _ = overview(); subscription == nil || subscription["status"] != "active" || subscription["canceled_at"] != nil {
+		t.Fatalf("overview after a recovered renewal: %v", subscription)
+	}
 
 	// A purchase: paid, bought only once, then refunded.
 	buy := want(http.StatusCreated, http.MethodPost, "/api/v1/billing/purchases", userToken, map[string]any{"plan_id": lifetime["id"]})
-	if status, out := notify("buy-"+buy["id"].(string), "capture", "990000.00"); status != http.StatusOK {
-		t.Fatalf("capture under review: %d %v", status, out)
+	buyID := "buy-" + buy["id"].(string)
+	item := map[string]any{"variant_id": 102}
+	wantWebhook("order_created", buyID, "2", map[string]any{"status": "pending", "first_order_item": item})
+	if _, purchases := overview(); purchases[0].(map[string]any)["status"] != "pending" {
+		t.Fatalf("a pending order settled the purchase: %v", purchases)
 	}
-	if status, out := notify("buy-"+buy["id"].(string), "settlement", "990000.00"); status != http.StatusOK {
-		t.Fatalf("purchase settlement: %d %v", status, out)
+	for range 2 {
+		wantWebhook("order_created", buyID, "2", map[string]any{"status": "paid", "first_order_item": item})
 	}
 	want(http.StatusConflict, http.MethodPost, "/api/v1/billing/purchases", userToken, map[string]any{"plan_id": lifetime["id"]})
-	if status, out := notify("buy-"+buy["id"].(string), "refund", "990000.00"); status != http.StatusOK {
-		t.Fatalf("refund: %d %v", status, out)
+	wantWebhook("order_refunded", buyID, "2", map[string]any{"status": "partial_refund", "refunded": false, "first_order_item": item})
+	if _, purchases := overview(); purchases[0].(map[string]any)["status"] != "paid" {
+		t.Fatalf("a partial refund ended the purchase: %v", purchases)
 	}
-	if status, out := call(http.MethodGet, "/api/v1/billing", userToken, nil); status != http.StatusOK ||
-		out["data"].(map[string]any)["purchases"].([]any)[0].(map[string]any)["status"] != "refunded" {
-		t.Fatalf("overview after refund: %d %v", status, out)
+	wantWebhook("order_refunded", buyID, "2", map[string]any{"status": "refunded", "refunded": true, "first_order_item": item})
+	if _, purchases := overview(); purchases[0].(map[string]any)["status"] != "refunded" {
+		t.Fatalf("overview after refund: %v", purchases)
+	}
+
+	// Lemon Squeezy reports no lapsed checkout: a pending one is let go once
+	// it can no longer be paid, and the plan can be bought again.
+	retry := want(http.StatusCreated, http.MethodPost, "/api/v1/billing/purchases", userToken, map[string]any{"plan_id": lifetime["id"]})
+	if _, err := db.Exec(`UPDATE purchases SET created_at = now() - interval '2 hours' WHERE id = $1`, retry["id"]); err != nil {
+		t.Fatal(err)
+	}
+	if again := want(http.StatusCreated, http.MethodPost, "/api/v1/billing/purchases", userToken, map[string]any{"plan_id": lifetime["id"]}); again["id"] == retry["id"] {
+		t.Fatal("a lapsed checkout was resumed")
 	}
 
 	// The super user sees billing, empty, and retired plans.
-	if status, out := call(http.MethodGet, "/api/v1/plans/all", superToken, nil); status != http.StatusOK || len(out["data"].([]any)) != 3 {
+	if status, out := call(http.MethodGet, "/api/v1/plans/all", superToken, nil); status != http.StatusOK || len(out["data"].([]any)) != 5 {
 		t.Fatalf("all plans: %d %v", status, out)
 	}
 
-	// The overview: one customer in a paid period, three plans, two on offer,
+	// The overview: one customer in a paid period, five plans, four on offer,
 	// and every customer account made just now.
 	want(http.StatusForbidden, http.MethodGet, "/api/v1/stats", userToken, nil)
 	stats := want(http.StatusOK, http.MethodGet, "/api/v1/stats", superToken, nil)
 	if users, _ := stats["users"].(float64); users < 1 || stats["new_users_30d"] != stats["users"] ||
-		stats["subscribed_users"] != float64(1) || stats["plans"] != float64(3) || stats["plans_on_offer"] != float64(2) {
+		stats["subscribed_users"] != float64(1) || stats["plans"] != float64(5) || stats["plans_on_offer"] != float64(4) {
 		t.Fatalf("stats: %v", stats)
 	}
 	// The one paid period, paid just now, in its currency.
 	if revenue, _ := stats["subscription_revenue"].([]any); len(revenue) != 1 ||
-		revenue[0].(map[string]any)["currency"] != "IDR" ||
-		revenue[0].(map[string]any)["total"] != float64(50000) ||
-		revenue[0].(map[string]any)["last_30d"] != float64(50000) {
+		revenue[0].(map[string]any)["currency"] != "USD" ||
+		revenue[0].(map[string]any)["total"] != float64(300) ||
+		revenue[0].(map[string]any)["last_30d"] != float64(300) {
 		t.Fatalf("subscription revenue: %v", stats["subscription_revenue"])
 	}
 }
@@ -766,7 +845,7 @@ func shareGate(
 		t.Helper()
 		clearPlans()
 		if _, err := db.Exec(`INSERT INTO subscriptions (user_id, plan_id, status, current_period_start, current_period_end, amount, currency)
-			VALUES ($1, $2, $3, now() + $4::interval, now() + $5::interval, 50000, 'IDR')`,
+			VALUES ($1, $2, $3, now() + $4::interval, now() + $5::interval, 300, 'USD')`,
 			userID, monthly, status, start, end); err != nil {
 			t.Fatalf("subscription %s: %v", status, err)
 		}
@@ -775,7 +854,7 @@ func shareGate(
 		t.Helper()
 		clearPlans()
 		if _, err := db.Exec(`INSERT INTO purchases (user_id, plan_id, status, amount, currency, paid_at)
-			VALUES ($1, $2, 'paid', 990000, 'IDR', now())`, userID, lifetime); err != nil {
+			VALUES ($1, $2, 'paid', 30000, 'USD', now())`, userID, lifetime); err != nil {
 			t.Fatalf("purchase: %v", err)
 		}
 	}

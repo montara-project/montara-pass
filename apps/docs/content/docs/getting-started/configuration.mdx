@@ -30,7 +30,10 @@ flag of the same name in kebab-case (`go run ./cmd/api -h`).
 | `RESEND_API_KEY` | none | Resend API key. Required with `FROM_ADDRESS`. |
 | `GOOGLE_CLIENT_ID` | none | Google OAuth client. Empty disables Google sign-in. |
 | `GOOGLE_CLIENT_SECRET` | none | Google OAuth secret. |
-| `REQUIRE_PAID_SHARING` | `false` | Cloud Edition: sharing an item needs a [paid plan](/docs/api-reference/members#a-paid-plan). Needs `MIDTRANS_SERVER_KEY`; the API refuses to start without it, so a missing key never makes sharing free unnoticed. |
+| `LEMONSQUEEZY_API_KEY` | none | Cloud Edition: the Lemon Squeezy API key that takes payments for plans (a test-mode key for the store's test mode). Empty leaves checkout off. The API reads the store when it starts and refuses to start if it cannot. |
+| `LEMONSQUEEZY_STORE_ID` | none | The numeric id of the store that sells the plans. Every plan must be priced in its currency. Required with `LEMONSQUEEZY_API_KEY`. |
+| `LEMONSQUEEZY_WEBHOOK_SECRET` | none | The signing secret of the store's webhook, pointed at `$AUTH_BASE_URL/api/v1/billing/lemonsqueezy/webhook` with `order_created`, `order_refunded`, `subscription_created` and `subscription_updated`. Required with `LEMONSQUEEZY_API_KEY`. |
+| `REQUIRE_PAID_SHARING` | `false` | Cloud Edition: sharing an item needs a [paid plan](/docs/api-reference/members#a-paid-plan). Needs `LEMONSQUEEZY_API_KEY`; the API refuses to start without it, so a missing key never makes sharing free unnoticed. |
 | `REDIS_URL` | none | Redis for what replicas must share: rate limit counts and [idempotent answers](/docs/api-reference#idempotency), e.g. `redis://redis:6379/0` (`rediss://` for TLS). Empty keeps them in the process's memory, which is enough for one instance. The API refuses to start when it is set and Redis does not answer. |
 | `SENTRY_DSN` | none | Sentry DSN for error reports. |
 

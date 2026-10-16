@@ -111,9 +111,10 @@ func parseFlag(cfg *config.Config) {
 	flag.StringVar(&cfg.Redis.URL, "redis-url", envString("REDIS_URL", ""), "Redis URL shared by the rate limiter and idempotency keys, e.g. redis://localhost:6379/0 (empty keeps them in memory)")
 
 	// Billing (Cloud Edition)
-	flag.StringVar(&cfg.Billing.MidtransServerKey, "midtrans-server-key", envString("MIDTRANS_SERVER_KEY", ""), "Midtrans server key for billing (empty disables checkout)")
-	flag.BoolVar(&cfg.Billing.MidtransProduction, "midtrans-production", envBool("MIDTRANS_PRODUCTION", false), "Use Midtrans production instead of the sandbox")
-	flag.BoolVar(&cfg.Billing.RequirePaidSharing, "require-paid-sharing", envBool("REQUIRE_PAID_SHARING", false), "Sharing an item needs a paid plan (needs midtrans-server-key)")
+	flag.StringVar(&cfg.Billing.LemonSqueezyAPIKey, "lemonsqueezy-api-key", envString("LEMONSQUEEZY_API_KEY", ""), "Lemon Squeezy API key for billing (empty disables checkout)")
+	flag.StringVar(&cfg.Billing.LemonSqueezyStoreID, "lemonsqueezy-store-id", envString("LEMONSQUEEZY_STORE_ID", ""), "Lemon Squeezy store id that sells the plans")
+	flag.StringVar(&cfg.Billing.LemonSqueezyWebhookSecret, "lemonsqueezy-webhook-secret", envString("LEMONSQUEEZY_WEBHOOK_SECRET", ""), "Signing secret of the store's Lemon Squeezy webhook")
+	flag.BoolVar(&cfg.Billing.RequirePaidSharing, "require-paid-sharing", envBool("REQUIRE_PAID_SHARING", false), "Sharing an item needs a paid plan (needs lemonsqueezy-api-key)")
 
 	// Sentry
 	flag.StringVar(&cfg.Sentry.Dsn, "sentry-dsn", envString("SENTRY_DSN", ""), "Sentry DSN")
@@ -199,12 +200,22 @@ func validateFlag(cfg *config.Config) {
 		log.Fatal("flags email-from and resend-api-key must be provided")
 	}
 
+	// Payments need all three: the key sells, the store is what it sells
+	// from, and the secret is how a webhook is believed.
+	b := cfg.Billing
+	if (b.LemonSqueezyAPIKey == "") != (b.LemonSqueezyStoreID == "") || (b.LemonSqueezyAPIKey == "") != (b.LemonSqueezyWebhookSecret == "") {
+		log.Fatal("flags lemonsqueezy-api-key, lemonsqueezy-store-id and lemonsqueezy-webhook-secret must be provided together")
+	}
+	if _, err := strconv.ParseUint(b.LemonSqueezyStoreID, 10, 64); b.LemonSqueezyStoreID != "" && err != nil {
+		log.Fatalf("flag lemonsqueezy-store-id: %q is not a store id", b.LemonSqueezyStoreID)
+	}
+
 	// A gate without payments would be one nobody could get through.
-	if cfg.Billing.RequirePaidSharing && config.Community() {
+	if b.RequirePaidSharing && config.Community() {
 		log.Fatal("flag require-paid-sharing: the community edition has no sharing")
 	}
-	if cfg.Billing.RequirePaidSharing && cfg.Billing.MidtransServerKey == "" {
-		log.Fatal("flag require-paid-sharing needs midtrans-server-key, so the plan can be bought")
+	if b.RequirePaidSharing && b.LemonSqueezyAPIKey == "" {
+		log.Fatal("flag require-paid-sharing needs lemonsqueezy-api-key, so the plan can be bought")
 	}
 
 	if (cfg.Auth.GoogleClientID == "") != (cfg.Auth.GoogleClientSecret == "") {

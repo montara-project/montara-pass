@@ -286,8 +286,8 @@ var errNoPaidPlan = apperr.New(apperr.KindForbidden, "sharing an item needs a pa
 // requirePaidPlan refuses a share by a caller who holds no plan.
 //
 // It only bites where the operator asked for it (REQUIRE_PAID_SHARING), which
-// boot allows only alongside Midtrans, so a missing payment key never turns
-// the gate off unnoticed. A super user is skipped too: billing is kept to
+// boot allows only alongside Lemon Squeezy, so a missing payment key never
+// turns the gate off unnoticed. A super user is skipped too: billing is kept to
 // accounts with the 'user' role (see migrations/ee/000001), so a plan is not
 // theirs to hold, and a gate they could not satisfy would leave the operator
 // of a deployment unable to share at all.

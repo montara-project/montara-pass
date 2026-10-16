@@ -6,8 +6,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// Billing, Cloud Edition only (see migrations/ee/000001). Amounts are in
-// the currency's minor unit.
+// Billing, Cloud Edition only (see migrations/ee). Amounts are in the
+// currency's minor unit, cents as Lemon Squeezy counts them.
 
 // Plan kinds, as stored in plans.billing.
 const (
@@ -15,7 +15,8 @@ const (
 	PlanOneTime   = "one_time"
 )
 
-// Subscription statuses. A recurring plan is paid one period at a time.
+// Subscription statuses. Lemon Squeezy renews a subscription by itself; it
+// is active while it grants its plan, to current_period_end.
 const (
 	SubscriptionPending  = "pending"
 	SubscriptionActive   = "active"
@@ -41,6 +42,8 @@ type Plan struct {
 	Amount          int64   `db:"amount" json:"amount"`
 	Currency        string  `db:"currency" json:"currency"`
 	Active          bool    `db:"active" json:"active"`
+	// The Lemon Squeezy variant it is sold as; without one it cannot be bought.
+	VariantID *string `db:"variant_id" json:"variant_id"`
 }
 
 // Customer is who a subscription or purchase belongs to. Only the super

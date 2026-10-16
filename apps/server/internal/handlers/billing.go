@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"math"
-	"strconv"
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
@@ -16,14 +14,14 @@ import (
 	"montara-pass/server/internal/lib"
 	"montara-pass/server/internal/lib/apperr"
 	"montara-pass/server/internal/lib/constant"
-	"montara-pass/server/internal/lib/midtrans"
+	"montara-pass/server/internal/lib/lemonsqueezy"
 	"montara-pass/server/internal/models"
 	"montara-pass/server/internal/repositories"
 )
 
-// Billing, Cloud Edition only. Every subscription period and purchase is
-// one Midtrans Snap payment; its order id is a prefix and the row's id, so a
-// notification leads back to the row.
+// Billing, Cloud Edition only. Every subscription and purchase starts as one
+// Lemon Squeezy checkout; its order id is a prefix and the row's id, handed
+// back in every webhook about it, so the webhook leads back to the row.
 const (
 	orderSubscription = "sub"
 	orderPurchase     = "buy"
@@ -33,6 +31,7 @@ var (
 	errPaymentsOff = apperr.New(apperr.KindServiceUnavailable, "payments are not available on this server")
 	errCheckout    = apperr.New(apperr.KindBadGateway, "the payment could not be started, try again")
 	errOnlyUsers   = apperr.New(apperr.KindForbidden, "only user accounts can subscribe or buy a plan")
+	errPortal      = apperr.New(apperr.KindBadGateway, "the subscription could not be opened, try again")
 )
 
 type billingHandler struct {
@@ -82,7 +81,7 @@ func (h *billingHandler) CreatePlan(c fiber.Ctx) error {
 	plan := models.Plan{
 		Code: body.Code, Name: body.Name, Description: body.Description,
 		Billing: body.Billing, BillingInterval: body.BillingInterval,
-		Amount: body.Amount, Currency: body.Currency, Active: body.Active,
+		Amount: body.Amount, Currency: body.Currency, Active: body.Active, VariantID: body.VariantID,
 	}
 	var err error
 	if plan.ID, err = uuid.NewV7(); err != nil {
@@ -109,7 +108,7 @@ func (h *billingHandler) UpdatePlan(c fiber.Ctx) error {
 		return err
 	}
 
-	plan := models.Plan{Name: body.Name, Description: body.Description, Amount: body.Amount, Currency: body.Currency, Active: body.Active}
+	plan := models.Plan{Name: body.Name, Description: body.Description, Amount: body.Amount, Currency: body.Currency, Active: body.Active, VariantID: body.VariantID}
 	plan.ID = id
 	if err := h.repo().UpdatePlan(c.Context(), plan); err != nil {
 		return err
@@ -160,6 +159,10 @@ func (h *billingHandler) ListPurchases(c fiber.Ctx) error {
 		return err
 	}
 
+	if err := h.repo().ExpireEnded(c.Context(), nil); err != nil {
+		return err
+	}
+
 	purchases, err := h.repo().ListAllPurchases(c.Context(), p, q.Status)
 	if err != nil {
 		return err
@@ -202,7 +205,7 @@ func (h *billingHandler) Overview(c fiber.Ctx) error {
 // anyone but a user account (the database refuses them too) and a plan that
 // is retired or of another kind.
 func (h *billingHandler) customer(c fiber.Ctx, kind string) (models.User, models.Plan, error) {
-	if h.app.Midtrans == nil {
+	if h.app.Payments == nil {
 		return models.User{}, models.Plan{}, errPaymentsOff
 	}
 	uid, err := currentUser(c)
@@ -229,16 +232,19 @@ func (h *billingHandler) customer(c fiber.Ctx, kind string) (models.User, models
 	if err != nil {
 		return models.User{}, models.Plan{}, err
 	}
-	if plan.Currency != midtrans.Currency {
-		return models.User{}, models.Plan{}, apperr.New(apperr.KindConflict, "this plan is priced in %s; payments are taken in %s", plan.Currency, midtrans.Currency)
+	if plan.VariantID == nil {
+		return models.User{}, models.Plan{}, apperr.New(apperr.KindConflict, "this plan cannot be bought yet: it is not sold through Lemon Squeezy")
+	}
+	if plan.Currency != h.app.Payments.Currency {
+		return models.User{}, models.Plan{}, apperr.New(apperr.KindConflict, "this plan is priced in %s; payments are taken in %s", plan.Currency, h.app.Payments.Currency)
 	}
 	return user, plan, nil
 }
 
 // startCheckout stores a pending row for plan with insert, in table
-// ("subscriptions" or "purchases"), creates its Snap payment and answers the
-// row, re-read with get. Snap brings the user back to the web app's billing
-// page. A row whose payment could not be created is dropped, so the user is
+// ("subscriptions" or "purchases"), creates its Lemon Squeezy checkout and
+// answers the row, re-read with get. The checkout brings the user back to the
+// web app's billing page. A row whose payment could not be created is dropped, so the user is
 // free to try again.
 func startCheckout[T any](
 	h *billingHandler, c fiber.Ctx, user models.User, plan models.Plan, order, table string,
@@ -255,17 +261,16 @@ func startCheckout[T any](
 		return err
 	}
 
-	url, err := h.app.Midtrans.Checkout(c.Context(), midtrans.Checkout{
-		OrderID:   orderID,
-		Amount:    plan.Amount,
-		ItemID:    plan.Code,
-		ItemName:  plan.Name,
-		Email:     user.Email,
-		Name:      user.Name,
-		FinishURL: h.app.Config.Auth.BaseURL + "/billing",
+	url, err := h.app.Payments.Checkout(c.Context(), lemonsqueezy.Checkout{
+		VariantID:   *plan.VariantID,
+		Amount:      plan.Amount,
+		Email:       user.Email,
+		Name:        user.Name,
+		OrderID:     orderID,
+		RedirectURL: h.app.Config.Auth.BaseURL + "/billing?checkout=done",
 	})
 	if err != nil {
-		h.app.Logger.Error("midtrans checkout failed", "order_id", orderID, "error", err)
+		h.app.Logger.Error("lemon squeezy checkout failed", "order_id", orderID, "error", err)
 		if derr := h.repo().DeletePending(c.Context(), table, id); derr != nil {
 			h.app.Logger.Error("drop order without checkout", "order_id", orderID, "error", derr)
 		}
@@ -317,6 +322,9 @@ func (h *billingHandler) Buy(c fiber.Ctx) error {
 		return err
 	}
 
+	if err := h.repo().ExpireEnded(c.Context(), &user.ID); err != nil {
+		return err
+	}
 	live, err := h.repo().LivePurchase(c.Context(), user.ID, plan.ID)
 	switch {
 	case err == nil && live.Status == models.PurchasePending && live.CheckoutURL != nil:
@@ -331,89 +339,119 @@ func (h *billingHandler) Buy(c fiber.Ctx) error {
 		h.repo().InsertPurchase, h.repo().GetPurchase, "purchase started: complete the payment")
 }
 
-// sameAmount reports whether Midtrans' gross_amount ("50000.00") is the
-// amount stored for the row.
-func sameAmount(gross string, amount int64) bool {
-	f, err := strconv.ParseFloat(gross, 64)
-	return err == nil && f == math.Trunc(f) && int64(f) == amount
-}
-
-// MidtransNotification is Midtrans' HTTP notification. It is public, so only
-// a correctly signed one for a known order, at the amount stored for it, is
-// read. Midtrans repeats notifications: a change already made is a no-op.
-func (h *billingHandler) MidtransNotification(c fiber.Ctx) error {
-	if h.app.Midtrans == nil {
+// Portal answers a freshly signed link to the Lemon Squeezy customer portal
+// of the user's subscription, where it is cancelled or its card changed.
+func (h *billingHandler) Portal(c fiber.Ctx) error {
+	if h.app.Payments == nil {
 		return errPaymentsOff
 	}
-	var n midtrans.Notification
-	if err := json.Unmarshal(c.Body(), &n); err != nil {
-		return apperr.New(apperr.KindBadRequest, "invalid JSON body")
+	uid, err := currentUser(c)
+	if err != nil {
+		return err
 	}
-	if !h.app.Midtrans.Verify(n) {
+
+	providerID, err := h.repo().ProviderSubscriptionID(c.Context(), uid)
+	if errors.Is(err, apperr.ErrNotFound) {
+		return apperr.New(apperr.KindNotFound, "you have no subscription to manage")
+	}
+	if err != nil {
+		return err
+	}
+	url, err := h.app.Payments.PortalURL(c.Context(), providerID)
+	if err != nil {
+		h.app.Logger.Error("lemon squeezy customer portal failed", "subscription", providerID, "error", err)
+		return errPortal
+	}
+	return dtos.OK(c, fiber.Map{"url": url})
+}
+
+// Lemon Squeezy outcomes of an order.
+const (
+	orderPaid       = "paid"
+	orderFailed     = "failed"
+	orderFraudulent = "fraudulent"
+)
+
+// LemonSqueezyWebhook is Lemon Squeezy's webhook. It is public, so only a
+// correctly signed one is read, and only for a known order of the variant
+// its plan is sold as: the store's public links carry custom data too, so
+// a payment for another product does not settle an order of ours. Lemon
+// Squeezy repeats webhooks it gets no 200 for: a change already made is a
+// no-op. Events it sends that billing does not use are answered 200, so they
+// are not repeated.
+//
+// The webhook needs order_created, order_refunded, subscription_created and
+// subscription_updated, which follows every other change to a subscription.
+func (h *billingHandler) LemonSqueezyWebhook(c fiber.Ctx) error {
+	if h.app.Payments == nil {
+		return errPaymentsOff
+	}
+	if !h.app.Payments.Verify(c.Body(), c.Get("X-Signature")) {
 		return apperr.New(apperr.KindForbidden, "invalid signature")
 	}
+	var e lemonsqueezy.Event
+	if err := json.Unmarshal(c.Body(), &e); err != nil {
+		return apperr.New(apperr.KindBadRequest, "invalid JSON body")
+	}
 
-	kind, rawID, _ := strings.Cut(n.OrderID, "-")
+	event, orderID, a := e.Meta.EventName, e.Meta.CustomData.OrderID, e.Data.Attributes
+	kind, rawID, _ := strings.Cut(orderID, "-")
 	id, err := uuid.Parse(rawID)
 	if err != nil {
-		return apperr.New(apperr.KindNotFound, "unknown order")
-	}
-	if n.Currency != "" && n.Currency != midtrans.Currency {
-		return apperr.New(apperr.KindBadRequest, "unexpected currency")
+		// Something sold without billing, from the store's own links.
+		h.app.Logger.Info("lemon squeezy webhook ignored: not a billing order", "event", event, "order_id", orderID)
+		return dtos.Message(c, fiber.StatusOK, "webhook ignored")
 	}
 
-	outcome := n.Outcome()
 	var changed bool
-	switch kind {
-	case orderSubscription:
+	switch {
+	case kind == orderSubscription && (event == "subscription_created" || event == "subscription_updated"):
 		s, err := h.repo().GetSubscription(c.Context(), id)
 		if err != nil {
 			return err
 		}
-		if !sameAmount(n.GrossAmount, s.Amount) {
-			return apperr.New(apperr.KindBadRequest, "amount does not match the order")
+		if !sameVariant(s.Plan, a) {
+			return apperr.New(apperr.KindBadRequest, "variant does not match the order")
 		}
-		switch outcome {
-		case midtrans.OutcomePaid:
-			changed, err = h.repo().SettleSubscription(c.Context(), id)
-		case midtrans.OutcomeFailed:
-			changed, err = h.repo().EndSubscription(c.Context(), id, models.SubscriptionPending, models.SubscriptionCanceled)
-		case midtrans.OutcomeExpired:
-			changed, err = h.repo().EndSubscription(c.Context(), id, models.SubscriptionPending, models.SubscriptionExpired)
-		case midtrans.OutcomeRefunded:
-			changed, err = h.repo().EndSubscription(c.Context(), id, models.SubscriptionActive, models.SubscriptionCanceled)
+		status := models.SubscriptionExpired
+		if a.Live() {
+			status = models.SubscriptionActive
 		}
-		if err != nil {
+		if changed, err = h.repo().ApplySubscription(c.Context(), id, e.Data.ID, status, a.PeriodEnd(), a.Cancelled); err != nil {
 			return err
 		}
-	case orderPurchase:
+
+	case kind == orderPurchase && (event == "order_created" || event == "order_refunded"):
 		b, err := h.repo().GetPurchase(c.Context(), id)
 		if err != nil {
 			return err
 		}
-		if !sameAmount(n.GrossAmount, b.Amount) {
-			return apperr.New(apperr.KindBadRequest, "amount does not match the order")
+		if !sameVariant(b.Plan, a) {
+			return apperr.New(apperr.KindBadRequest, "variant does not match the order")
 		}
-		switch outcome {
-		case midtrans.OutcomePaid:
-			changed, err = h.repo().MovePurchase(c.Context(), id, models.PurchasePending, models.PurchasePaid)
-		case midtrans.OutcomeFailed, midtrans.OutcomeExpired:
-			changed, err = h.repo().MovePurchase(c.Context(), id, models.PurchasePending, models.PurchaseFailed)
-		case midtrans.OutcomeRefunded:
+		switch {
+		case event == "order_refunded" && a.Refunded:
 			changed, err = h.repo().MovePurchase(c.Context(), id, models.PurchasePaid, models.PurchaseRefunded)
+		case event == "order_created" && a.Status == orderPaid:
+			changed, err = h.repo().MovePurchase(c.Context(), id, models.PurchasePending, models.PurchasePaid)
+			// A payment that arrives for an order no longer pending needs a
+			// person: it is logged, not applied.
+			if err == nil && !changed {
+				h.app.Logger.Warn("lemon squeezy payment for an order that is not pending", "order_id", orderID)
+			}
+		case event == "order_created" && (a.Status == orderFailed || a.Status == orderFraudulent):
+			changed, err = h.repo().MovePurchase(c.Context(), id, models.PurchasePending, models.PurchaseFailed)
 		}
 		if err != nil {
 			return err
 		}
-	default:
-		return apperr.New(apperr.KindNotFound, "unknown order")
 	}
 
-	// A payment that arrives for an order no longer pending (one that expired
-	// here first, say) needs a person: it is logged, not applied.
-	if !changed && outcome == midtrans.OutcomePaid {
-		h.app.Logger.Warn("midtrans payment for an order that is not pending", "order_id", n.OrderID, "status", n.TransactionStatus)
-	}
-	h.app.Logger.Info("midtrans notification", "order_id", n.OrderID, "status", n.TransactionStatus, "outcome", outcome, "changed", changed)
-	return dtos.Message(c, fiber.StatusOK, "notification received")
+	h.app.Logger.Info("lemon squeezy webhook", "event", event, "order_id", orderID, "status", a.Status, "changed", changed)
+	return dtos.Message(c, fiber.StatusOK, "webhook received")
+}
+
+// sameVariant reports whether what was paid for is the variant plan is sold as.
+func sameVariant(plan models.Plan, a lemonsqueezy.Attributes) bool {
+	return plan.VariantID != nil && *plan.VariantID == a.VariantID()
 }

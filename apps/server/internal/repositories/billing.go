@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"montara-pass/server/internal/lib/apperr"
 	"montara-pass/server/internal/lib/constant"
@@ -12,7 +13,7 @@ import (
 )
 
 // BillingRepository manages the Cloud Edition's plans, subscriptions and
-// purchases (see migrations/ee/000001). The database holds the rules: only an
+// purchases (see migrations/ee). The database holds the rules: only an
 // account with the 'user' role subscribes or buys, each table takes only its
 // kind of plan, and a user has one live subscription.
 type BillingRepository struct {
@@ -21,11 +22,11 @@ type BillingRepository struct {
 
 const planColumns = `
 	p.id, p.created_at, p.updated_at, p.code, p.name, p.description,
-	p.billing, p.billing_interval, p.amount, p.currency, p.active`
+	p.billing, p.billing_interval, p.amount, p.currency, p.active, p.variant_id`
 
 func planDest(p *models.Plan) []any {
 	return []any{&p.ID, &p.CreatedAt, &p.UpdatedAt, &p.Code, &p.Name, &p.Description,
-		&p.Billing, &p.BillingInterval, &p.Amount, &p.Currency, &p.Active}
+		&p.Billing, &p.BillingInterval, &p.Amount, &p.Currency, &p.Active, &p.VariantID}
 }
 
 func scanPlan(row rowScanner) (models.Plan, error) {
@@ -54,9 +55,9 @@ func (r *BillingRepository) GetPlan(ctx context.Context, id uuid.UUID) (models.P
 // InsertPlan persists a new plan. A taken code is a conflict.
 func (r *BillingRepository) InsertPlan(ctx context.Context, p models.Plan) error {
 	_, err := r.execContext(ctx, `
-		INSERT INTO plans (id, code, name, description, billing, billing_interval, amount, currency, active)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-		p.ID, p.Code, p.Name, p.Description, p.Billing, p.BillingInterval, p.Amount, p.Currency, p.Active,
+		INSERT INTO plans (id, code, name, description, billing, billing_interval, amount, currency, active, variant_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+		p.ID, p.Code, p.Name, p.Description, p.Billing, p.BillingInterval, p.Amount, p.Currency, p.Active, p.VariantID,
 	)
 	if hasPgCode(err, pgUniqueViolation) {
 		return apperr.New(apperr.KindConflict, "a plan with code %q already exists", p.Code)
@@ -70,9 +71,9 @@ func (r *BillingRepository) InsertPlan(ctx context.Context, p models.Plan) error
 func (r *BillingRepository) UpdatePlan(ctx context.Context, p models.Plan) error {
 	res, err := r.execContext(ctx, `
 		UPDATE plans
-		SET name = $2, description = $3, amount = $4, currency = $5, active = $6, updated_at = now()
+		SET name = $2, description = $3, amount = $4, currency = $5, active = $6, variant_id = $7, updated_at = now()
 		WHERE id = $1`,
-		p.ID, p.Name, p.Description, p.Amount, p.Currency, p.Active,
+		p.ID, p.Name, p.Description, p.Amount, p.Currency, p.Active, p.VariantID,
 	)
 	if err != nil {
 		return err
@@ -148,13 +149,28 @@ func (r *BillingRepository) CountSubscriptions(ctx context.Context, p ListParams
 }
 
 // ExpireEnded marks the active subscriptions whose period is over as
-// expired: the user's, or with a nil userID everyone's, for the super user's
-// list. Run before reading or starting one, it stands in for a job.
+// expired, and drops the pending payments whose checkout can no longer be
+// paid: the user's, or with a nil userID everyone's, for the super user's
+// lists. Lemon Squeezy sends nothing when a checkout lapses, so a pending
+// row is let go a little after lemonsqueezy.CheckoutLifetime (an hour), once
+// a payment made at its last minute has had time to be reported. Run before
+// reading or starting one, it stands in for a job.
 // ponytail: lazy, on read; a periodic job if expiry must show elsewhere.
 func (r *BillingRepository) ExpireEnded(ctx context.Context, userID *uuid.UUID) error {
 	_, err := r.execContext(ctx, `
-		UPDATE subscriptions SET status = 'expired', updated_at = now()
-		WHERE ($1::uuid IS NULL OR user_id = $1) AND status = 'active' AND current_period_end <= now()`,
+		UPDATE subscriptions SET status = 'expired', checkout_url = NULL, updated_at = now()
+		WHERE ($1::uuid IS NULL OR user_id = $1)
+		  AND ((status = 'active' AND current_period_end <= now())
+		    OR (status = 'pending' AND created_at <= now() - interval '65 minutes'))`,
+		userID,
+	)
+	if err != nil {
+		return err
+	}
+	_, err = r.execContext(ctx, `
+		UPDATE purchases SET status = 'failed', checkout_url = NULL, updated_at = now()
+		WHERE ($1::uuid IS NULL OR user_id = $1)
+		  AND status = 'pending' AND created_at <= now() - interval '65 minutes'`,
 		userID,
 	)
 	return err
@@ -218,33 +234,47 @@ func translateRole(err error) error {
 	return err
 }
 
-// SettleSubscription activates a pending subscription for one billing
-// interval from now. It reports whether it changed anything: a repeated
-// notification finds it active already.
-func (r *BillingRepository) SettleSubscription(ctx context.Context, id uuid.UUID) (bool, error) {
+// ApplySubscription brings a subscription to what Lemon Squeezy reports for
+// it: active to periodEnd while it grants its plan, expired otherwise, with
+// canceled_at set once it will not renew. The first report (a pending row)
+// starts its period now and ties it to providerID. An active one moves on;
+// an expired one comes back only for its own Lemon Squeezy subscription, as
+// a renewal that was retried and then went through. A canceled (refunded)
+// one stays. It reports whether it changed anything.
+//
+// ponytail: webhooks are applied as they come, so a late retry of an older
+// one can win over a newer one; compare Lemon Squeezy's updated_at if that
+// ever shows.
+func (r *BillingRepository) ApplySubscription(ctx context.Context, id uuid.UUID, providerID, status string, periodEnd time.Time, cancelled bool) (bool, error) {
 	res, err := r.execContext(ctx, `
-		UPDATE subscriptions s
-		SET status = 'active', current_period_start = now(),
-		    current_period_end = now() + ('1 ' || p.billing_interval)::interval,
-		    checkout_url = NULL, updated_at = now()
-		FROM plans p
-		WHERE s.id = $1 AND p.id = s.plan_id AND s.status = 'pending'`,
-		id,
+		UPDATE subscriptions SET
+		    status = $3,
+		    current_period_start = CASE WHEN status = 'pending' THEN now() ELSE current_period_start END,
+		    current_period_end = GREATEST($4,
+		        (CASE WHEN status = 'pending' THEN now() ELSE current_period_start END) + interval '1 second'),
+		    canceled_at = CASE WHEN $5 THEN coalesce(canceled_at, now()) END,
+		    provider_subscription_id = $2, checkout_url = NULL, updated_at = now()
+		WHERE id = $1
+		  AND (status IN ('pending', 'active') OR (status = 'expired' AND provider_subscription_id = $2))
+		  AND (status, current_period_end, canceled_at IS NOT NULL, provider_subscription_id)
+		      IS DISTINCT FROM ($3, $4, $5, $2)`,
+		id, providerID, status, periodEnd, cancelled,
 	)
+	if hasPgCode(err, pgUniqueViolation) {
+		return false, apperr.New(apperr.KindConflict, "the user already has another live subscription")
+	}
 	return affected(res, err)
 }
 
-// EndSubscription moves a subscription in status from to status to: a
-// pending one whose payment failed or expired, or an active one refunded.
-func (r *BillingRepository) EndSubscription(ctx context.Context, id uuid.UUID, from, to string) (bool, error) {
-	res, err := r.execContext(ctx, `
-		UPDATE subscriptions
-		SET status = $3, checkout_url = NULL, updated_at = now(),
-		    canceled_at = CASE WHEN $3 = 'canceled' THEN now() END
-		WHERE id = $1 AND status = $2`,
-		id, from, to,
-	)
-	return affected(res, err)
+// ProviderSubscriptionID returns the Lemon Squeezy subscription of the user's
+// latest subscription that became one.
+func (r *BillingRepository) ProviderSubscriptionID(ctx context.Context, userID uuid.UUID) (string, error) {
+	var id string
+	err := r.queryRowContext(ctx, `
+		SELECT provider_subscription_id FROM subscriptions
+		WHERE user_id = $1 AND provider_subscription_id IS NOT NULL
+		ORDER BY created_at DESC LIMIT 1`, userID).Scan(&id)
+	return id, translateNotFound("subscriptions", err)
 }
 
 const purchaseColumns = `
@@ -384,9 +414,12 @@ func (r *BillingRepository) Stats(ctx context.Context) (models.Stats, error) {
 	}
 
 	// A paid period is one whose start was moved to the payment
-	// (SettleSubscription): unpaid ones keep the start they were created
+	// (ApplySubscription): unpaid ones keep the start they were created
 	// with. Of those, active and expired ones were kept; a canceled one was
 	// refunded.
+	// ponytail: one period per subscription; renewals Lemon Squeezy charges
+	// are not counted here. Record subscription_payment_success if the
+	// overview must match its dashboard.
 	rows, err := r.queryContext(ctx, `
 		SELECT currency, sum(amount)::bigint,
 		       (coalesce(sum(amount) FILTER (WHERE current_period_start >= now() - interval '30 days'), 0))::bigint
