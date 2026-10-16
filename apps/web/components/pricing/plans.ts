@@ -112,13 +112,13 @@ export const TIERS: Tier[] = [
  */
 export const TERMS: Record<Kind, string> = {
   free: "Nothing to pay, nothing to renew.",
-  recurring: "Renews until canceled. Paid through Midtrans.",
-  one_time: "One payment, no renewal. Paid through Midtrans.",
+  recurring: "Renews until canceled. Paid through Lemon Squeezy.",
+  one_time: "One payment, no renewal. Paid through Lemon Squeezy.",
 };
 
-/** A tier's amount from the minor unit: USD counts cents, IDR rupiah whole. */
+/** A tier's amount from cents, which the API counts every currency in. */
 export function formatAmount(amount: number, currency: string): string {
-  const digits = currency === "IDR" ? 0 : 2;
+  const digits = 2;
   const value = amount / 10 ** digits;
   // Whole amounts read as "$3", not "$3.00": a price list is scanned, and the
   // cents are noise on every row here.

@@ -28,9 +28,9 @@ async function plansOnOffer(): Promise<Plan[]> {
   }
 }
 
-/** Its price, from the minor unit the API counts in: rupiah whole, others in cents. */
+/** Its price, from cents, which the API counts every currency in. */
 function price(plan: Plan) {
-  const digits = plan.currency === "IDR" ? 0 : 2;
+  const digits = 2;
   const amount = new Intl.NumberFormat("en-US", {
     style: "currency",
     currencyDisplay: "narrowSymbol",
@@ -160,7 +160,7 @@ function CloudPlans({ plans }: { plans: Plan[] }) {
       <ul className="mt-6 flex flex-col gap-3">
         <Check>The same encryption, done in your browser</Check>
         <Check>We run the server and PostgreSQL</Check>
-        <Check>Paid through Midtrans</Check>
+        <Check>Paid through Lemon Squeezy</Check>
       </ul>
     </article>
   );

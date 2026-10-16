@@ -197,8 +197,8 @@ function PricingBelow() {
             </h2>
             <ul className="mt-6 flex flex-col gap-4 text-[15px] leading-7 text-mist">
               <li>
-                Midtrans handles the payment. The card statement and the invoice carry Midtrans, not
-                Montara Pass.
+                Lemon Squeezy handles the payment as the merchant of record. The card statement and
+                the invoice carry Lemon Squeezy, not Montara Pass.
               </li>
               <li>
                 A monthly or annual plan renews until you cancel. Cancelling stops the next charge
