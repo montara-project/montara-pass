@@ -556,7 +556,12 @@ a.icon-button {
   color: var(--fg);
 }
 
+/* Rows stand 4px apart, as the web app's do, so a lit row never runs into
+   the selected one beside it. */
 .items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1757,7 +1762,9 @@ input.range:active::-moz-range-thumb {
 
 /* Logins that belong together sit in one card, a line between them: the
    ones that share a password are seen to. */
+/* Grouped rows: one card, divided by hairlines rather than gaps. */
 .health-list {
+  gap: 0;
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 14px;
