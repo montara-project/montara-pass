@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// Billing, Cloud Edition only (see migrations/ee). Amounts are in the
+// Billing, Cloud Edition only (see migrations/cloud). Amounts are in the
 // currency's minor unit, cents as Lemon Squeezy counts them.
 
 // Plan kinds, as stored in plans.billing.

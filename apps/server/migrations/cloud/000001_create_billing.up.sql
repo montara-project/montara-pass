@@ -1,4 +1,4 @@
--- Billing, Cloud Edition only (see migrations.EE). Amounts are integers in
+-- Billing, Cloud Edition only (see migrations.Cloud). Amounts are integers in
 -- the currency's minor unit (cents for USD, rupiah for IDR), never floats.
 --
 -- Payments go through Midtrans Snap: every subscription period and every

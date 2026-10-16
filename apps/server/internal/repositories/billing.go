@@ -16,7 +16,7 @@ import (
 )
 
 // BillingRepository manages the Cloud Edition's plans, subscriptions and
-// purchases (see migrations/ee). The database holds the rules: only an
+// purchases (see migrations/cloud). The database holds the rules: only an
 // account with the 'user' role subscribes or buys, each table takes only its
 // kind of plan, and a user has one live subscription.
 type BillingRepository struct {

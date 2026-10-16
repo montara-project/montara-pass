@@ -76,7 +76,7 @@ func TestIntegration(t *testing.T) {
 
 	// Start from nothing; this also runs every down migration, the
 	// Cloud Edition's first, since its tables lean on the main ones.
-	for _, newMigrator := range []func(*sql.DB) (*migrate.Migrate, error){lib.NewEEMigrator, lib.NewMigrator} {
+	for _, newMigrator := range []func(*sql.DB) (*migrate.Migrate, error){lib.NewCloudMigrator, lib.NewMigrator} {
 		migrateDB, err := lib.OpenDB(dsn)
 		if err != nil {
 			t.Fatal(err)
@@ -972,7 +972,7 @@ func billingFlow(
 // where the deployment takes payments, while receiving one, changing a role
 // and leaving again do not. The run sets RequirePaidSharing, so the gate is
 // on. The super user owns vaultFlow's item and is exempt: billing keeps
-// plans to accounts with the 'user' role (migrations/ee/000001), so a plan is
+// plans to accounts with the 'user' role (migrations/cloud/000001), so a plan is
 // not the operator's to hold, and a gate they could not satisfy would leave
 // them unable to share at all.
 func shareGate(

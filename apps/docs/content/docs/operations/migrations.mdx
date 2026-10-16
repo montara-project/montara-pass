@@ -45,18 +45,18 @@ account, or brings it back to that password; running it again is harmless.
 
 ## Cloud Edition migrations
 
-`apps/server/migrations/ee` holds the tables only the Cloud Edition has.
+`apps/server/migrations/cloud` holds the tables only the Cloud Edition has.
 They keep their own version in `schema_migrations_ee`, run after the main ones
 and roll back before them. A Community Edition build never applies them, so
 its database has none of these tables; a database that moves to the
 Cloud Edition gets them on its next `up` or boot.
 
 `up`, `down`, `refresh` and `version` act on both tracks. `force` and `create`
-act on the main one unless `--ee` is passed:
+act on the main one unless `--cloud` is passed:
 
 ```sh
-go run ./cmd/migrate --ee create add_x   # new pair in migrations/ee
-go run ./cmd/migrate --ee force 1        # after a failed EE migration
+go run ./cmd/migrate --cloud create add_x   # new pair in migrations/cloud
+go run ./cmd/migrate --cloud force 1        # after a failed Cloud migration
 ```
 
 | Version | What it creates |

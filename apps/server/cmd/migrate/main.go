@@ -22,8 +22,8 @@ func main() {
 
 	if cfg.mode == modeCreate {
 		dir := "migrations"
-		if cfg.ee {
-			dir = "migrations/ee"
+		if cfg.cloud {
+			dir = "migrations/cloud"
 		}
 		if err := create(dir, cfg.name); err != nil {
 			log.Fatal(err)
@@ -64,10 +64,10 @@ func main() {
 		migrateDown(ms...)
 		migrateUp(up...)
 	case modeForce:
-		// validateFlag refuses --ee in the Community Edition, which has only
+		// validateFlag refuses --cloud in the Community Edition, which has only
 		// the main track.
 		target := ms[0]
-		if cfg.ee {
+		if cfg.cloud {
 			target = ms[1]
 		}
 		forceVersion(target, cfg.version)

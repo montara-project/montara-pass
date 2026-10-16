@@ -1,4 +1,4 @@
--- Payments move from Midtrans Snap to Lemon Squeezy (see migrations.EE). A
+-- Payments move from Midtrans Snap to Lemon Squeezy (see migrations.Cloud). A
 -- subscription now renews by itself: its status and current_period_end
 -- follow Lemon Squeezy's webhooks instead of ending after one paid period.
 

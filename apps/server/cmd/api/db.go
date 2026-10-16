@@ -29,15 +29,15 @@ func connectDB(cfg *config.ConfigDB) (*sql.DB, error) {
 // migration and the last one that fully applied is one below it; forcing to the
 // failed number itself would skip that migration. Below the first migration
 // nothing has been applied yet, which golang-migrate writes as -1. track picks
-// the one to force: "--ee " for the Cloud Edition's.
+// the one to force: "--cloud " for the Cloud Edition's.
 func repairHint(failed uint, track string) string {
 	repair := int(failed) - 1
 	if repair < 1 {
 		repair = -1
 	}
 	flag := ""
-	if track == "ee" {
-		flag = "--ee "
+	if track == "cloud" {
+		flag = "--cloud "
 	}
 	return fmt.Sprintf(
 		"migration %d failed and left the schema dirty; fix the cause, then run "+

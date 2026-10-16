@@ -117,7 +117,7 @@ func SyncCatalog(ctx context.Context, app *app.Application) error {
 	return nil
 }
 
-// Bounds of the plans table (migrations/ee/000001).
+// Bounds of the plans table (migrations/cloud/000001).
 const (
 	maxPlanName = 100
 	maxPlanDesc = 2000

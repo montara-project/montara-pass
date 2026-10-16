@@ -29,7 +29,7 @@ type config struct {
 	allowRemote bool
 	version     int
 	name        string
-	ee          bool
+	cloud       bool
 }
 
 func parseFlag(cfg *config) {
@@ -40,7 +40,7 @@ func parseFlag(cfg *config) {
 	// password, stays out of the process arguments.
 	flag.StringVar(&cfg.dbDSN, "db-dsn", os.Getenv("DB_DSN"), "PostgreSQL DSN (default $DB_DSN)")
 	flag.BoolVar(&cfg.allowRemote, "allow-remote", false, "allow down and refresh on a database that is not on localhost")
-	flag.BoolVar(&cfg.ee, "ee", false, "force and create act on the Cloud Edition's migrations (migrations/ee)")
+	flag.BoolVar(&cfg.cloud, "cloud", false, "force and create act on the Cloud Edition's migrations (migrations/cloud)")
 
 	flag.Parse()
 	validateFlag(cfg)
@@ -65,11 +65,11 @@ func validateFlag(cfg *config) {
 	}
 
 	// up, down, refresh and version always take every track.
-	if cfg.ee && cfg.mode != modeForce && cfg.mode != modeCreate {
-		log.Fatalf("flag --ee must not be provided when mode is %s", cfg.mode)
+	if cfg.cloud && cfg.mode != modeForce && cfg.mode != modeCreate {
+		log.Fatalf("flag --cloud must not be provided when mode is %s", cfg.mode)
 	}
-	if cfg.ee && cfg.mode == modeForce && appconfig.Community() {
-		log.Fatal("flag --ee: the community edition has no cloud migrations")
+	if cfg.cloud && cfg.mode == modeForce && appconfig.Community() {
+		log.Fatal("flag --cloud: the community edition has no cloud migrations")
 	}
 
 	// create only writes files, so it needs no database.

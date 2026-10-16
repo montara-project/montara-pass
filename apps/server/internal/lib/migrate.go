@@ -22,25 +22,27 @@ func NewMigrator(db *sql.DB) (*migrate.Migrate, error) {
 	return newMigrator(db, migrations.FS, ".", "")
 }
 
-// NewEEMigrator is NewMigrator over the Cloud Edition's migrations, which
+// NewCloudMigrator is NewMigrator over the Cloud Edition's migrations, which
 // keep their version in their own table. Run it after NewMigrator's, and roll
 // it back before.
-func NewEEMigrator(db *sql.DB) (*migrate.Migrate, error) {
-	return newMigrator(db, migrations.EE, "ee", eeTable)
+func NewCloudMigrator(db *sql.DB) (*migrate.Migrate, error) {
+	return newMigrator(db, migrations.Cloud, "cloud", cloudTable)
 }
 
-const eeTable = "schema_migrations_ee"
+// cloudTable keeps the name it had when the directory was migrations/ee:
+// renaming it would make every database run the Cloud migrations again.
+const cloudTable = "schema_migrations_ee"
 
 // Track is one sequence of migrations with its own version table.
 type Track struct {
-	// Name is "main" or "ee"; cmd/migrate takes --ee for the latter.
+	// Name is "main" or "cloud"; cmd/migrate takes --cloud for the latter.
 	Name string
 	New  func(*sql.DB) (*migrate.Migrate, error)
 }
 
 var (
-	mainTrack = Track{"main", NewMigrator}
-	eeTrack   = Track{"ee", NewEEMigrator}
+	mainTrack  = Track{"main", NewMigrator}
+	cloudTrack = Track{"cloud", NewCloudMigrator}
 )
 
 // Tracks lists the edition's tracks in the order they apply: the main one,
@@ -50,7 +52,7 @@ func Tracks() []Track {
 	if config.Community() {
 		return []Track{mainTrack}
 	}
-	return []Track{mainTrack, eeTrack}
+	return []Track{mainTrack, cloudTrack}
 }
 
 // CloudLeftover reports the Cloud Edition's track when a Community Edition
@@ -62,8 +64,8 @@ func CloudLeftover(ctx context.Context, db *sql.DB) (track Track, ok bool, err e
 	if !config.Community() {
 		return Track{}, false, nil
 	}
-	err = db.QueryRowContext(ctx, `SELECT to_regclass($1) IS NOT NULL`, eeTable).Scan(&ok)
-	return eeTrack, ok, err
+	err = db.QueryRowContext(ctx, `SELECT to_regclass($1) IS NOT NULL`, cloudTable).Scan(&ok)
+	return cloudTrack, ok, err
 }
 
 // newMigrator reads the migrations in dir of fsys. An empty table keeps
