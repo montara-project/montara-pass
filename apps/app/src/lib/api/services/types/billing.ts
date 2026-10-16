@@ -9,4 +9,6 @@ export type BillingResources = {
   /** Answers the subscription with the checkout_url to pay at. */
   subscribe: (planId: string) => Promise<AxiosItemResponse<Models.Subscription>>
   buy: (planId: string) => Promise<AxiosItemResponse<Models.Purchase>>
+  /** The customer portal, where a subscription is cancelled or its card changed. */
+  portal: () => Promise<AxiosItemResponse<Models.BillingPortal>>
 }

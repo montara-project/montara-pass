@@ -15,4 +15,5 @@ export namespace Models {
   export type Subscription = import('./billing').Subscription
   export type Purchase = import('./billing').Purchase
   export type BillingOverview = import('./billing').BillingOverview
+  export type BillingPortal = import('./billing').BillingPortal
 }
