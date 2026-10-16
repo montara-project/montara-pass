@@ -14,13 +14,16 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	authulamodels "github.com/Authula/authula/models"
 	"github.com/gofiber/fiber/v3"
 	"github.com/golang-migrate/migrate/v4"
+	"github.com/google/uuid"
 
 	"montara-pass/server/internal/app"
 	"montara-pass/server/internal/config"
@@ -56,6 +59,8 @@ func TestIntegration(t *testing.T) {
 			Port:   8080,
 			Name:   "montara-pass-test",
 			Secret: "0123456789abcdef0123456789abcdef",
+			// As SUPER_USER sets it.
+			SuperUserEmail: superEmail,
 			// fiber.App.Test's client address: the run makes more requests a minute
 			// than the API's limit allows one client.
 			RateLimitExemptIPs: "0.0.0.0",
@@ -100,7 +105,7 @@ func TestIntegration(t *testing.T) {
 
 	repos := repositories.New(db)
 	mirror := mirrorUser(&repos.User)
-	auth := newAuth(cfg, mirror, logger)
+	auth := newAuth(cfg, mirror, nil, logger)
 	defer auth.CloseSystems()
 	defer auth.ClosePlugins()
 
@@ -187,32 +192,8 @@ func TestIntegration(t *testing.T) {
 		t.Fatalf("reseed: %v", err)
 	}
 
-	// Lemon Squeezy, as far as billing sees it: every checkout gets a page,
-	// and every subscription a customer portal.
-	lemon := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/subscriptions/") {
-			_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"attributes": map[string]any{
-				"urls": map[string]string{"customer_portal": "https://portal.example" + r.URL.Path},
-			}}})
-			return
-		}
-		var body struct {
-			Data struct {
-				Attributes struct {
-					CheckoutData struct {
-						Custom struct {
-							OrderID string `json:"order_id"`
-						} `json:"custom"`
-					} `json:"checkout_data"`
-				} `json:"attributes"`
-			} `json:"data"`
-		}
-		_ = json.NewDecoder(r.Body).Decode(&body)
-		w.WriteHeader(http.StatusCreated)
-		_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"attributes": map[string]string{
-			"url": "https://pay.example/" + body.Data.Attributes.CheckoutData.Custom.OrderID,
-		}}})
-	}))
+	store := &lemonStore{customers: map[string]string{}}
+	lemon := httptest.NewServer(store)
 	defer lemon.Close()
 	payments := lemonsqueezy.New("ls-test-key", "1", lemonSecret)
 	payments.BaseURL = lemon.URL
@@ -337,7 +318,34 @@ func TestIntegration(t *testing.T) {
 	}
 
 	vaultFlow(t, call, superToken, userToken, userEmail, user.ID)
-	billingFlow(t, call, db, superToken, userToken)
+	billingFlow(t, call, db, store, superToken, userToken, user.ID)
+
+	// A new account is saved as a Lemon Squeezy customer in the background;
+	// the seeded super user is not.
+	signUp := saveCustomer(application)
+	newcomer := models.User{Base: models.Base{ID: uuid.New()}, Name: "Newcomer", Email: "newcomer@example.com"}
+	if err := repos.User.Upsert(ctx, newcomer); err != nil {
+		t.Fatal(err)
+	}
+	before := len(store.customers)
+	if err := signUp(&authulamodels.User{ID: superID(t, db, superEmail), Email: strings.ToUpper(superEmail)}); err != nil {
+		t.Fatal(err)
+	}
+	if err := signUp(&authulamodels.User{ID: newcomer.ID.String(), Name: newcomer.Name, Email: newcomer.Email}); err != nil {
+		t.Fatal(err)
+	}
+	var saved *string
+	for deadline := time.Now().Add(5 * time.Second); saved == nil && time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
+		if err := db.QueryRow(`SELECT provider_customer_id FROM users WHERE id = $1`, newcomer.ID).Scan(&saved); err != nil {
+			t.Fatal(err)
+		}
+	}
+	store.mu.Lock()
+	created := len(store.customers) - before
+	store.mu.Unlock()
+	if saved == nil || created != 1 {
+		t.Fatalf("customer on sign-up: %v, %d saved in the store", saved, created)
+	}
 	shareGate(t, application, call, db, superEmail, superToken, userToken, user.ID)
 
 	// An address nobody has verified gets no session from signing up, and a
@@ -614,17 +622,136 @@ func billing(t *testing.T, db *sql.DB, userID, superEmail string) {
 	}
 }
 
+// superID is the super user's id.
+func superID(t *testing.T, db *sql.DB, email string) string {
+	t.Helper()
+	var id string
+	if err := db.QueryRow(`SELECT id FROM users WHERE email = $1`, email).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	return id
+}
+
+// lemonVariant is one thing the fake store sells, at one price.
+type lemonVariant struct {
+	id, product, name, status string
+	// one_time, subscription, pwyw…
+	category string
+	price    int64
+	// Subscriptions: month, year, week…
+	interval string
+}
+
+// lemonStore is Lemon Squeezy as far as billing sees it: a catalog
+// billingFlow changes, the customers saved in it, a page for every checkout
+// and a customer portal for every subscription.
+type lemonStore struct {
+	mu        sync.Mutex
+	variants  []lemonVariant
+	customers map[string]string
+}
+
+func (l *lemonStore) set(variants ...lemonVariant) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.variants = variants
+}
+
+func (l *lemonStore) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	q := r.URL.Query()
+	data := func(v any) { _ = json.NewEncoder(w).Encode(map[string]any{"data": v}) }
+	resource := func(id string, attributes map[string]any) map[string]any {
+		return map[string]any{"id": id, "attributes": attributes}
+	}
+
+	switch path := r.Method + " " + r.URL.Path; {
+	case path == "GET /products":
+		seen := map[string]bool{}
+		products := []any{}
+		for _, v := range l.variants {
+			if !seen[v.product] {
+				seen[v.product] = true
+				products = append(products, resource(v.product, map[string]any{"name": v.product, "description": "<p>The " + v.product + " plan.</p>", "status": "published"}))
+			}
+		}
+		data(products)
+	case path == "GET /variants":
+		variants := []any{}
+		for _, v := range l.variants {
+			if v.product == q.Get("filter[product_id]") {
+				variants = append(variants, resource(v.id, map[string]any{"name": v.name, "description": "", "status": v.status}))
+			}
+		}
+		data(variants)
+	case path == "GET /prices":
+		prices := []any{}
+		for _, v := range l.variants {
+			if v.id == q.Get("filter[variant_id]") {
+				price := map[string]any{"category": v.category, "scheme": "standard", "unit_price": v.price}
+				if v.interval != "" {
+					price["renewal_interval_unit"], price["renewal_interval_quantity"] = v.interval, 1
+				}
+				prices = append(prices, resource("p"+v.id, price))
+			}
+		}
+		data(prices)
+	case path == "GET /customers":
+		found := []any{}
+		if id, ok := l.customers[q.Get("filter[email]")]; ok {
+			found = append(found, resource(id, map[string]any{}))
+		}
+		data(found)
+	case path == "POST /customers":
+		var body struct {
+			Data struct {
+				Attributes struct {
+					Email string `json:"email"`
+				} `json:"attributes"`
+			} `json:"data"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		id := strconv.Itoa(9001 + len(l.customers))
+		l.customers[body.Data.Attributes.Email] = id
+		w.WriteHeader(http.StatusCreated)
+		data(resource(id, map[string]any{}))
+	case path == "POST /checkouts":
+		var body struct {
+			Data struct {
+				Attributes struct {
+					CheckoutData struct {
+						Custom struct {
+							OrderID string `json:"order_id"`
+						} `json:"custom"`
+					} `json:"checkout_data"`
+				} `json:"attributes"`
+			} `json:"data"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		w.WriteHeader(http.StatusCreated)
+		data(map[string]any{"attributes": map[string]string{"url": "https://pay.example/" + body.Data.Attributes.CheckoutData.Custom.OrderID}})
+	case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/subscriptions/"):
+		data(map[string]any{"attributes": map[string]any{"urls": map[string]string{"customer_portal": "https://portal.example" + r.URL.Path}}})
+	default:
+		w.WriteHeader(http.StatusNotFound)
+		_ = json.NewEncoder(w).Encode(map[string]any{"errors": []map[string]string{{"detail": "Not found."}}})
+	}
+}
+
 // lemonSecret signs the webhooks billingFlow sends.
 const lemonSecret = "whsec-test"
 
-// billingFlow drives billing over HTTP: plans managed by the super user, and
-// a subscription and a purchase paid through Lemon Squeezy's webhook, which
-// is believed only when signed and for the variant the plan is sold as.
+// billingFlow drives billing over HTTP: plans synced from the Lemon Squeezy
+// catalog, the customer saved at checkout, and a subscription and a purchase
+// paid through Lemon Squeezy's webhook, which is believed only when signed
+// and for the variant the plan is sold as.
 func billingFlow(
 	t *testing.T,
 	call func(method, path, token string, body any, headers ...string) (int, map[string]any),
 	db *sql.DB,
-	superToken, userToken string,
+	store *lemonStore,
+	superToken, userToken, userID string,
 ) {
 	t.Helper()
 
@@ -660,34 +787,72 @@ func billingFlow(
 		return subscription, data["purchases"].([]any)
 	}
 
-	monthly := map[string]any{"code": "pro-monthly", "name": "Pro", "billing": "recurring", "billing_interval": "month", "amount": 300, "currency": "USD", "active": true, "variant_id": "101"}
-	want(http.StatusForbidden, http.MethodPost, "/api/v1/plans", userToken, monthly)
-	plan := want(http.StatusCreated, http.MethodPost, "/api/v1/plans", superToken, monthly)
-	want(http.StatusConflict, http.MethodPost, "/api/v1/plans", superToken, monthly)
-	want(http.StatusBadRequest, http.MethodPost, "/api/v1/plans", superToken, map[string]any{"code": "x", "name": "X", "billing": "one_time", "billing_interval": "month", "amount": 1, "currency": "USD", "active": true})
-	want(http.StatusUnprocessableEntity, http.MethodPost, "/api/v1/plans", superToken, map[string]any{"code": "x", "name": "X", "billing": "one_time", "amount": 1, "currency": "USD", "active": true, "variant_id": "v1"})
-	lifetime := want(http.StatusCreated, http.MethodPost, "/api/v1/plans", superToken, map[string]any{"code": "pro-lifetime", "name": "Pro forever", "billing": "one_time", "amount": 30000, "currency": "USD", "active": true, "variant_id": "102"})
-	retired := want(http.StatusCreated, http.MethodPost, "/api/v1/plans", superToken, map[string]any{"code": "old", "name": "Old", "billing": "recurring", "billing_interval": "year", "amount": 1, "currency": "USD", "active": false})
-	unsold := want(http.StatusCreated, http.MethodPost, "/api/v1/plans", superToken, map[string]any{"code": "pro-yearly", "name": "Pro yearly", "billing": "recurring", "billing_interval": "year", "amount": 2500, "currency": "USD", "active": true})
-	euro := want(http.StatusCreated, http.MethodPost, "/api/v1/plans", superToken, map[string]any{"code": "pro-eur", "name": "Pro EUR", "billing": "one_time", "amount": 300, "currency": "EUR", "active": true, "variant_id": "103"})
+	// The catalog: a monthly and a lifetime plan on sale, a yearly one in
+	// draft, and two billing cannot sell.
+	monthlyV := lemonVariant{"101", "Pro", "Monthly", "published", "subscription", 300, "month"}
+	lifetimeV := lemonVariant{"102", "Pro forever", "Default", "pending", "one_time", 30000, ""}
+	yearlyV := lemonVariant{"105", "Pro", "Yearly", "draft", "subscription", 2500, "year"}
+	store.set(monthlyV, lifetimeV, yearlyV,
+		lemonVariant{"103", "Pro", "Weekly", "published", "subscription", 100, "week"},
+		lemonVariant{"104", "Tip jar", "Default", "pending", "pwyw", 0, ""})
 
-	if status, out := call(http.MethodGet, "/api/v1/plans", "", nil); status != http.StatusOK || len(out["data"].([]any)) != 4 {
-		t.Fatalf("public plans: %d %v", status, out)
+	want(http.StatusForbidden, http.MethodPost, "/api/v1/plans/sync", userToken, nil)
+	if status, out := call(http.MethodPost, "/api/v1/plans/sync", superToken, nil); status != http.StatusOK || len(out["data"].([]any)) != 3 {
+		t.Fatalf("sync: %d %v", status, out)
+	}
+	byCode := func(token, path string) map[string]map[string]any {
+		t.Helper()
+		status, out := call(http.MethodGet, path, token, nil)
+		if status != http.StatusOK {
+			t.Fatalf("%s: %d %v", path, status, out)
+		}
+		plans := map[string]map[string]any{}
+		for _, p := range out["data"].([]any) {
+			plans[p.(map[string]any)["code"].(string)] = p.(map[string]any)
+		}
+		return plans
+	}
+	public := byCode("", "/api/v1/plans")
+	plan, lifetime := public["ls-101"], public["ls-102"]
+	if len(public) != 2 || plan == nil || lifetime == nil {
+		t.Fatalf("public plans: %v", public)
+	}
+	if plan["name"] != "Pro Monthly" || plan["billing"] != "recurring" || plan["billing_interval"] != "month" ||
+		plan["amount"] != float64(300) || plan["currency"] != "USD" || plan["description"] != "The Pro plan." ||
+		lifetime["name"] != "Pro forever" || lifetime["billing"] != "one_time" || lifetime["amount"] != float64(30000) {
+		t.Fatalf("synced plans: %v %v", plan, lifetime)
+	}
+	retired := byCode(superToken, "/api/v1/plans/all")["ls-105"]
+	if retired == nil || retired["active"] != false {
+		t.Fatalf("draft variant: %v", retired)
 	}
 
-	// Only a user account subscribes, to a plan on offer, of the right kind,
-	// sold through Lemon Squeezy and priced in the store's currency.
+	// Only a user account subscribes, to a plan on offer, of the right kind.
 	want(http.StatusForbidden, http.MethodPost, "/api/v1/billing/subscriptions", superToken, map[string]any{"plan_id": plan["id"]})
 	want(http.StatusNotFound, http.MethodPost, "/api/v1/billing/subscriptions", userToken, map[string]any{"plan_id": retired["id"]})
 	want(http.StatusNotFound, http.MethodPost, "/api/v1/billing/subscriptions", userToken, map[string]any{"plan_id": lifetime["id"]})
-	want(http.StatusConflict, http.MethodPost, "/api/v1/billing/subscriptions", userToken, map[string]any{"plan_id": unsold["id"]})
-	want(http.StatusConflict, http.MethodPost, "/api/v1/billing/purchases", userToken, map[string]any{"plan_id": euro["id"]})
 	want(http.StatusNotFound, http.MethodGet, "/api/v1/billing/portal", userToken, nil)
+
+	customer := func() *string {
+		t.Helper()
+		var id *string
+		if err := db.QueryRow(`SELECT provider_customer_id FROM users WHERE id = $1`, userID).Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	if customer() != nil {
+		t.Fatal("a customer was saved before any checkout")
+	}
 
 	sub := want(http.StatusCreated, http.MethodPost, "/api/v1/billing/subscriptions", userToken, map[string]any{"plan_id": plan["id"]})
 	orderID := "sub-" + sub["id"].(string)
 	if sub["status"] != "pending" || sub["checkout_url"] != "https://pay.example/"+orderID {
 		t.Fatalf("subscription: %v", sub)
+	}
+	// The checkout saved the account as a Lemon Squeezy customer.
+	if id := customer(); id == nil || *id != "9001" || len(store.customers) != 1 {
+		t.Fatalf("customer after checkout: %v, store %v", id, store.customers)
 	}
 	// Asked again while pending, the same payment is resumed.
 	if again := want(http.StatusOK, http.MethodPost, "/api/v1/billing/subscriptions", userToken, map[string]any{"plan_id": plan["id"]}); again["id"] != sub["id"] {
@@ -740,6 +905,10 @@ func billingFlow(
 	// A purchase: paid, bought only once, then refunded.
 	buy := want(http.StatusCreated, http.MethodPost, "/api/v1/billing/purchases", userToken, map[string]any{"plan_id": lifetime["id"]})
 	buyID := "buy-" + buy["id"].(string)
+	// A later checkout reuses the customer.
+	if id := customer(); *id != "9001" || len(store.customers) != 1 {
+		t.Fatalf("customer after a second checkout: %v, store %v", *id, store.customers)
+	}
 	item := map[string]any{"variant_id": 102}
 	wantWebhook("order_created", buyID, "2", map[string]any{"status": "pending", "first_order_item": item})
 	if _, purchases := overview(); purchases[0].(map[string]any)["status"] != "pending" {
@@ -768,17 +937,29 @@ func billingFlow(
 		t.Fatal("a lapsed checkout was resumed")
 	}
 
-	// The super user sees billing, empty, and retired plans.
-	if status, out := call(http.MethodGet, "/api/v1/plans/all", superToken, nil); status != http.StatusOK || len(out["data"].([]any)) != 5 {
-		t.Fatalf("all plans: %d %v", status, out)
+	// The catalog changes: the monthly price goes up, the lifetime plan is
+	// withdrawn and the yearly one turns into a one-time sale. A sync
+	// follows: what was bought keeps what it was charged, and a plan never
+	// changes kind, so the yearly one stays off sale.
+	monthlyV.price = 400
+	yearlyV.status, yearlyV.category, yearlyV.interval = "published", "one_time", ""
+	store.set(monthlyV, yearlyV)
+	want(http.StatusOK, http.MethodPost, "/api/v1/plans/sync", superToken, nil)
+	all := byCode(superToken, "/api/v1/plans/all")
+	if all["ls-101"]["amount"] != float64(400) || all["ls-101"]["active"] != true ||
+		all["ls-102"]["active"] != false || all["ls-105"]["active"] != false || all["ls-105"]["billing"] != "recurring" {
+		t.Fatalf("plans after the catalog changed: %v", all)
+	}
+	if subscription, _ := overview(); subscription["amount"] != float64(300) {
+		t.Fatalf("the subscription took the new price: %v", subscription)
 	}
 
-	// The overview: one customer in a paid period, five plans, four on offer,
-	// and every customer account made just now.
+	// The overview: one customer in a paid period, three plans, one on
+	// offer, and every customer account made just now.
 	want(http.StatusForbidden, http.MethodGet, "/api/v1/stats", userToken, nil)
 	stats := want(http.StatusOK, http.MethodGet, "/api/v1/stats", superToken, nil)
 	if users, _ := stats["users"].(float64); users < 1 || stats["new_users_30d"] != stats["users"] ||
-		stats["subscribed_users"] != float64(1) || stats["plans"] != float64(5) || stats["plans_on_offer"] != float64(4) {
+		stats["subscribed_users"] != float64(1) || stats["plans"] != float64(3) || stats["plans_on_offer"] != float64(1) {
 		t.Fatalf("stats: %v", stats)
 	}
 	// The one paid period, paid just now, in its currency.
@@ -823,10 +1004,10 @@ func shareGate(
 	}
 	// The plans billingFlow put on offer, reused here.
 	var monthly, lifetime string
-	if err := db.QueryRow(`SELECT id FROM plans WHERE code = 'pro-monthly'`).Scan(&monthly); err != nil {
+	if err := db.QueryRow(`SELECT id FROM plans WHERE code = 'ls-101'`).Scan(&monthly); err != nil {
 		t.Fatal(err)
 	}
-	if err := db.QueryRow(`SELECT id FROM plans WHERE code = 'pro-lifetime'`).Scan(&lifetime); err != nil {
+	if err := db.QueryRow(`SELECT id FROM plans WHERE code = 'ls-102'`).Scan(&lifetime); err != nil {
 		t.Fatal(err)
 	}
 

@@ -101,16 +101,16 @@ func routes(r *fiber.App, app *app.Application) {
 		items.Put("/:id/members/:userId", h.Item.SetMemberRole)
 		items.Delete("/:id/members/:userId", h.Item.RemoveMember)
 
-		// Billing. The plans are public, for the website; a super user
-		// manages them and sees what customers bought. Subscribing and
+		// Billing. The plans are public, for the website; they are the Lemon
+		// Squeezy store's catalog, which a super user syncs at once after
+		// changing it, and a super user sees what customers bought. Subscribing and
 		// buying need a signed-in user account; Lemon Squeezy reports what
 		// was paid, and its customer portal is where a subscription is
 		// cancelled.
 		plans := v1.Group("/plans")
 		plans.Get("/", h.Billing.ListPlans)
 		plans.Get("/all", m.Authorization, m.SuperUser, h.Billing.ListAllPlans)
-		plans.Post("/", m.Authorization, m.SuperUser, once, h.Billing.CreatePlan)
-		plans.Put("/:id", m.Authorization, m.SuperUser, once, h.Billing.UpdatePlan)
+		plans.Post("/sync", m.Authorization, m.SuperUser, h.Billing.SyncPlans)
 
 		// Every customer's subscriptions and purchases, for a super user.
 		v1.Get("/subscriptions", m.Authorization, m.SuperUser, h.Billing.ListSubscriptions)

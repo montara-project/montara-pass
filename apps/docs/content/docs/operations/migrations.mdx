@@ -63,6 +63,7 @@ go run ./cmd/migrate --ee force 1        # after a failed EE migration
 | --- | --- |
 | `000001` | billing: `plans`, `subscriptions`, `purchases` |
 | `000002` | Lemon Squeezy: `plans.variant_id`, `subscriptions.provider_subscription_id` |
+| `000003` | Lemon Squeezy catalog and customers: one plan per `variant_id`, `users.provider_customer_id` |
 
 Only an account with the `user` role holds a subscription or a purchase. The
 database enforces it: both tables reference `users (id, role)` with the role

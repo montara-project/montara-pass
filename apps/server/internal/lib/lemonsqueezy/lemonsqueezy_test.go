@@ -74,7 +74,7 @@ func TestEventVariant(t *testing.T) {
 }
 
 func TestClient(t *testing.T) {
-	var checkout map[string]any
+	var checkout, customer map[string]any
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer key" || r.Header.Get("Accept") != contentType {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -88,6 +88,38 @@ func TestClient(t *testing.T) {
 			_ = json.NewDecoder(r.Body).Decode(&checkout)
 			w.WriteHeader(http.StatusCreated)
 			_, _ = w.Write([]byte(`{"data":{"id":"c","attributes":{"url":"https://store.example/checkout/custom/c"}}}`))
+		case "GET /products":
+			if r.URL.Query().Get("filter[store_id]") != "1" {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			_, _ = w.Write([]byte(`{"meta":{"page":{"lastPage":1}},"data":[
+				{"id":"10","attributes":{"name":"Pro","description":"<p>All of it</p>","status":"published"}}]}`))
+		case "GET /variants":
+			// Two pages, to read past the first.
+			if r.URL.Query().Get("page[number]") == "1" {
+				_, _ = w.Write([]byte(`{"meta":{"page":{"lastPage":2}},"data":[{"id":"42","attributes":{"name":"Monthly","description":"","status":"published"}}]}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"meta":{"page":{"lastPage":2}},"data":[{"id":"43","attributes":{"name":"Old","description":"<b>gone</b>","status":"draft"}}]}`))
+		case "GET /prices":
+			if r.URL.Query().Get("filter[variant_id]") == "43" {
+				_, _ = w.Write([]byte(`{"data":[]}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"data":[
+				{"attributes":{"category":"subscription","scheme":"standard","unit_price":300,"renewal_interval_unit":"month","renewal_interval_quantity":1}},
+				{"attributes":{"category":"subscription","scheme":"standard","unit_price":250,"renewal_interval_unit":"month","renewal_interval_quantity":1}}]}`))
+		case "GET /customers":
+			if r.URL.Query().Get("filter[email]") == "known@b.co" {
+				_, _ = w.Write([]byte(`{"data":[{"id":"501"}]}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"data":[]}`))
+		case "POST /customers":
+			_ = json.NewDecoder(r.Body).Decode(&customer)
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"data":{"id":"502"}}`))
 		case "GET /subscriptions/7":
 			_, _ = w.Write([]byte(`{"data":{"id":"7","attributes":{"urls":{"customer_portal":"https://store.example/billing?signature=s"}}}}`))
 		default:
@@ -105,7 +137,7 @@ func TestClient(t *testing.T) {
 		t.Fatalf("load: %v, currency %q", err, c.Currency)
 	}
 
-	url, err := c.Checkout(ctx, Checkout{VariantID: "42", Amount: 300, Email: "a@b.co", Name: "A", OrderID: "sub-x", RedirectURL: "https://app.example/billing"})
+	url, err := c.Checkout(ctx, Checkout{VariantID: "42", Email: "a@b.co", Name: "A", OrderID: "sub-x", RedirectURL: "https://app.example/billing"})
 	if err != nil || url != "https://store.example/checkout/custom/c" {
 		t.Fatalf("checkout: %q %v", url, err)
 	}
@@ -113,8 +145,36 @@ func TestClient(t *testing.T) {
 	attributes := data["attributes"].(map[string]any)
 	custom := attributes["checkout_data"].(map[string]any)["custom"].(map[string]any)
 	variant := data["relationships"].(map[string]any)["variant"].(map[string]any)["data"].(map[string]any)
-	if attributes["custom_price"] != float64(300) || custom["order_id"] != "sub-x" || variant["id"] != "42" {
+	// The variant sells at its own price.
+	if _, priced := attributes["custom_price"]; priced || custom["order_id"] != "sub-x" || variant["id"] != "42" {
 		t.Errorf("checkout body: %v", checkout)
+	}
+
+	// The catalog: every page, each variant with its newest price, a variant
+	// without a description takes its product's.
+	variants, err := c.Catalog(ctx)
+	if err != nil || len(variants) != 2 {
+		t.Fatalf("catalog: %v %+v", err, variants)
+	}
+	if v := variants[0]; v.ID != "42" || v.ProductName != "Pro" || v.Name != "Monthly" || !v.Published ||
+		v.Description != "<p>All of it</p>" || v.Price == nil || *v.Price.UnitPrice != 300 || *v.Price.RenewalIntervalUnit != "month" {
+		t.Errorf("first variant: %+v %+v", v, v.Price)
+	}
+	if v := variants[1]; v.ID != "43" || v.Published || v.Price != nil || v.Description != "<b>gone</b>" {
+		t.Errorf("second variant: %+v", v)
+	}
+
+	// A customer is found by email, or else saved in the store.
+	if id, err := c.Customer(ctx, "Known", "known@b.co"); err != nil || id != "501" || customer != nil {
+		t.Errorf("known customer: %q %v, created %v", id, err, customer)
+	}
+	if id, err := c.Customer(ctx, "New", "new@b.co"); err != nil || id != "502" {
+		t.Errorf("new customer: %q %v", id, err)
+	}
+	attrs := customer["data"].(map[string]any)["attributes"].(map[string]any)
+	store := customer["data"].(map[string]any)["relationships"].(map[string]any)["store"].(map[string]any)["data"].(map[string]any)
+	if attrs["name"] != "New" || attrs["email"] != "new@b.co" || store["id"] != "1" {
+		t.Errorf("customer body: %v", customer)
 	}
 
 	if url, err := c.PortalURL(ctx, "7"); err != nil || url != "https://store.example/billing?signature=s" {

@@ -13,7 +13,7 @@ export interface Plan {
   amount: number
   currency: string
   active: boolean
-  /** The Lemon Squeezy variant it is sold as; null when it cannot be bought. */
+  /** The Lemon Squeezy variant it is synced from; null for a plan from before the sync. */
   variant_id: string | null
   created_at: ISO8601DateString
   updated_at: ISO8601DateString

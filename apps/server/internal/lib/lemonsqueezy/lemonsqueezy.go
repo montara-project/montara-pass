@@ -1,6 +1,7 @@
 // Package lemonsqueezy is the small part of the Lemon Squeezy API billing
-// needs: the store's currency, a checkout per payment, a subscription's
-// customer portal, and the signed webhook that reports what was paid.
+// needs: the store's currency and catalog, its customers, a checkout per
+// payment, a subscription's customer portal, and the signed webhook that
+// reports what was paid.
 // https://docs.lemonsqueezy.com/api
 package lemonsqueezy
 
@@ -14,6 +15,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"time"
 )
@@ -27,6 +29,9 @@ const (
 	CheckoutLifetime = time.Hour
 
 	contentType = "application/vnd.api+json"
+
+	// The most a list answers at once.
+	pageSize = 100
 )
 
 type Client struct {
@@ -53,20 +58,34 @@ func New(apiKey, storeID, webhookSecret string) *Client {
 	}
 }
 
-// do sends a JSON:API request and decodes the answer's data into out.
-func (c *Client) do(ctx context.Context, method, path string, body, out any) error {
+// document is a JSON:API answer.
+type document struct {
+	Data json.RawMessage `json:"data"`
+	Meta struct {
+		Page struct {
+			LastPage int `json:"lastPage"`
+		} `json:"page"`
+	} `json:"meta"`
+	Errors []struct {
+		Detail string `json:"detail"`
+	} `json:"errors"`
+}
+
+// send makes a JSON:API request and returns its answer.
+func (c *Client) send(ctx context.Context, method, path string, body any) (document, error) {
+	var doc document
 	var reader io.Reader
 	if body != nil {
 		raw, err := json.Marshal(body)
 		if err != nil {
-			return err
+			return doc, err
 		}
 		reader = bytes.NewReader(raw)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, method, c.BaseURL+path, reader)
 	if err != nil {
-		return err
+		return doc, err
 	}
 	req.Header.Set("Accept", contentType)
 	req.Header.Set("Content-Type", contentType)
@@ -74,27 +93,51 @@ func (c *Client) do(ctx context.Context, method, path string, body, out any) err
 
 	res, err := c.http.Do(req)
 	if err != nil {
-		return fmt.Errorf("lemon squeezy: %w", err)
+		return doc, fmt.Errorf("lemon squeezy: %w", err)
 	}
 	defer res.Body.Close()
 
-	var doc struct {
-		Data   json.RawMessage `json:"data"`
-		Errors []struct {
-			Detail string `json:"detail"`
-		} `json:"errors"`
-	}
 	if err := json.NewDecoder(res.Body).Decode(&doc); err != nil {
-		return fmt.Errorf("lemon squeezy: %s %s: status %d: %w", method, path, res.StatusCode, err)
+		return doc, fmt.Errorf("lemon squeezy: %s %s: status %d: %w", method, path, res.StatusCode, err)
 	}
 	if res.StatusCode >= 300 {
 		detail := ""
 		if len(doc.Errors) > 0 {
 			detail = doc.Errors[0].Detail
 		}
-		return fmt.Errorf("lemon squeezy: %s %s: status %d: %s", method, path, res.StatusCode, detail)
+		return doc, fmt.Errorf("lemon squeezy: %s %s: status %d: %s", method, path, res.StatusCode, detail)
+	}
+	return doc, nil
+}
+
+// do sends a request and decodes the answer's data into out.
+func (c *Client) do(ctx context.Context, method, path string, body, out any) error {
+	doc, err := c.send(ctx, method, path, body)
+	if err != nil {
+		return err
 	}
 	return json.Unmarshal(doc.Data, out)
+}
+
+// list reads every page of a list, filtered by query, into out.
+func list[T any](ctx context.Context, c *Client, path string, query url.Values) ([]T, error) {
+	var all []T
+	query.Set("page[size]", strconv.Itoa(pageSize))
+	for page := 1; ; page++ {
+		query.Set("page[number]", strconv.Itoa(page))
+		doc, err := c.send(ctx, http.MethodGet, path+"?"+query.Encode(), nil)
+		if err != nil {
+			return nil, err
+		}
+		var items []T
+		if err := json.Unmarshal(doc.Data, &items); err != nil {
+			return nil, err
+		}
+		all = append(all, items...)
+		if page >= doc.Meta.Page.LastPage {
+			return all, nil
+		}
+	}
 }
 
 // Load reads the store's currency, which also proves the API key and the
@@ -114,13 +157,11 @@ func (c *Client) Load(ctx context.Context) error {
 
 // Checkout describes one payment.
 type Checkout struct {
-	// The Lemon Squeezy variant the plan is sold as; it decides whether the
-	// payment bills once or renews.
+	// The Lemon Squeezy variant the plan is sold as, at its own price; it
+	// decides whether the payment bills once or renews.
 	VariantID string
-	// In cents of the store's currency; renewals keep it.
-	Amount int64
-	Email  string
-	Name   string
+	Email     string
+	Name      string
 	// Billing's own id for the payment, handed back in every webhook about it.
 	OrderID string
 	// Where the browser goes once the payment is made.
@@ -133,7 +174,6 @@ func (c *Client) Checkout(ctx context.Context, ch Checkout) (string, error) {
 		"data": map[string]any{
 			"type": "checkouts",
 			"attributes": map[string]any{
-				"custom_price":    ch.Amount,
 				"product_options": map[string]any{"redirect_url": ch.RedirectURL, "enabled_variants": []string{ch.VariantID}},
 				"checkout_data": map[string]any{
 					"email":  ch.Email,
@@ -161,6 +201,128 @@ func (c *Client) Checkout(ctx context.Context, ch Checkout) (string, error) {
 		return "", fmt.Errorf("lemon squeezy: checkout without a url")
 	}
 	return checkout.Attributes.URL, nil
+}
+
+// Variant is one thing the store sells, with what billing needs of its
+// product and of its current price.
+type Variant struct {
+	ID          string
+	ProductName string
+	Name        string
+	// HTML: the variant's own, or else its product's.
+	Description string
+	// Its product is published and it is not a draft. A product's only
+	// variant stays pending and is sold all the same.
+	Published bool
+	// Nil when the variant has no price yet.
+	Price *Price
+}
+
+// Price is a variant's current price: Lemon Squeezy keeps every one it had
+// and lists the newest first.
+type Price struct {
+	// one_time, subscription, lead_magnet (free) or pwyw.
+	Category string `json:"category"`
+	// standard, package, graduated or volume.
+	Scheme string `json:"scheme"`
+	// In cents; nil for usage-based, graduated and volume prices.
+	UnitPrice *int64 `json:"unit_price"`
+	// Subscriptions: billed every RenewalIntervalQuantity of day, week,
+	// month or year.
+	RenewalIntervalUnit     *string `json:"renewal_interval_unit"`
+	RenewalIntervalQuantity *int    `json:"renewal_interval_quantity"`
+}
+
+// Catalog reads the store's products, their variants and each variant's
+// current price.
+func (c *Client) Catalog(ctx context.Context) ([]Variant, error) {
+	type product struct {
+		ID         string `json:"id"`
+		Attributes struct {
+			Name        string `json:"name"`
+			Description string `json:"description"`
+			Status      string `json:"status"`
+		} `json:"attributes"`
+	}
+	type variant struct {
+		ID         string `json:"id"`
+		Attributes struct {
+			Name        string `json:"name"`
+			Description string `json:"description"`
+			Status      string `json:"status"`
+		} `json:"attributes"`
+	}
+	type price struct {
+		Attributes Price `json:"attributes"`
+	}
+
+	products, err := list[product](ctx, c, "/products", url.Values{"filter[store_id]": {c.storeID}})
+	if err != nil {
+		return nil, err
+	}
+
+	// ponytail: one request per product and per variant; a catalog of a few
+	// plans reads in well under Lemon Squeezy's 300 a minute.
+	var out []Variant
+	for _, p := range products {
+		variants, err := list[variant](ctx, c, "/variants", url.Values{"filter[product_id]": {p.ID}})
+		if err != nil {
+			return nil, err
+		}
+		for _, v := range variants {
+			prices, err := list[price](ctx, c, "/prices", url.Values{"filter[variant_id]": {v.ID}})
+			if err != nil {
+				return nil, err
+			}
+			item := Variant{
+				ID:          v.ID,
+				ProductName: p.Attributes.Name,
+				Name:        v.Attributes.Name,
+				Description: v.Attributes.Description,
+				Published:   p.Attributes.Status == "published" && v.Attributes.Status != "draft",
+			}
+			if item.Description == "" {
+				item.Description = p.Attributes.Description
+			}
+			if len(prices) > 0 {
+				item.Price = &prices[0].Attributes
+			}
+			out = append(out, item)
+		}
+	}
+	return out, nil
+}
+
+// Customer returns the id of the store's customer with email, saving one
+// with name when there is none, so an account and its orders meet in one.
+func (c *Client) Customer(ctx context.Context, name, email string) (string, error) {
+	type customer struct {
+		ID string `json:"id"`
+	}
+	found, err := list[customer](ctx, c, "/customers", url.Values{"filter[store_id]": {c.storeID}, "filter[email]": {email}})
+	if err != nil {
+		return "", err
+	}
+	if len(found) > 0 {
+		return found[0].ID, nil
+	}
+
+	var created customer
+	if err := c.do(ctx, http.MethodPost, "/customers", map[string]any{
+		"data": map[string]any{
+			"type":       "customers",
+			"attributes": map[string]string{"name": name, "email": email},
+			"relationships": map[string]any{
+				"store": map[string]any{"data": map[string]string{"type": "stores", "id": c.storeID}},
+			},
+		},
+	}, &created); err != nil {
+		return "", err
+	}
+	if created.ID == "" {
+		return "", fmt.Errorf("lemon squeezy: customer without an id")
+	}
+	return created.ID, nil
 }
 
 // PortalURL returns a freshly signed link to the customer portal of a

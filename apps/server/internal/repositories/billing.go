@@ -2,9 +2,12 @@ package repositories
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
+	"montara-pass/server/internal/lib"
 	"montara-pass/server/internal/lib/apperr"
 	"montara-pass/server/internal/lib/constant"
 	"montara-pass/server/internal/models"
@@ -52,33 +55,43 @@ func (r *BillingRepository) GetPlan(ctx context.Context, id uuid.UUID) (models.P
 	return scanPlan(r.queryRowContext(ctx, query, id))
 }
 
-// InsertPlan persists a new plan. A taken code is a conflict.
-func (r *BillingRepository) InsertPlan(ctx context.Context, p models.Plan) error {
-	_, err := r.execContext(ctx, `
-		INSERT INTO plans (id, code, name, description, billing, billing_interval, amount, currency, active, variant_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-		p.ID, p.Code, p.Name, p.Description, p.Billing, p.BillingInterval, p.Amount, p.Currency, p.Active, p.VariantID,
-	)
-	if hasPgCode(err, pgUniqueViolation) {
-		return apperr.New(apperr.KindConflict, "a plan with code %q already exists", p.Code)
-	}
-	return err
-}
+// SyncPlans makes the plans what the Lemon Squeezy catalog sells: each of
+// plans, found by its variant, is added or brought up to date, and every
+// other plan is taken off sale. A plan keeps its kind, which subscriptions
+// and purchases name: one whose variant changed kind is taken off sale too.
+// It returns the codes of those that did.
+func (r *BillingRepository) SyncPlans(ctx context.Context, plans []models.Plan) (changedKind []string, err error) {
+	err = lib.WithTransaction(ctx, r.DB, func(tx *sql.Tx) error {
+		kept := []string{}
+		for _, p := range plans {
+			var id uuid.UUID
+			err := tx.QueryRowContext(ctx, `
+				INSERT INTO plans (code, name, description, billing, billing_interval, amount, currency, active, variant_id)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+				ON CONFLICT (variant_id) DO UPDATE
+				SET name = EXCLUDED.name, description = EXCLUDED.description,
+				    billing_interval = EXCLUDED.billing_interval, amount = EXCLUDED.amount,
+				    currency = EXCLUDED.currency, active = EXCLUDED.active, updated_at = now()
+				WHERE plans.billing = EXCLUDED.billing
+				RETURNING id`,
+				p.Code, p.Name, p.Description, p.Billing, p.BillingInterval, p.Amount, p.Currency, p.Active, p.VariantID,
+			).Scan(&id)
+			switch {
+			case errors.Is(err, sql.ErrNoRows):
+				changedKind = append(changedKind, p.Code)
+			case err != nil:
+				return fmt.Errorf("sync plan %s: %w", p.Code, err)
+			default:
+				kept = append(kept, *p.VariantID)
+			}
+		}
 
-// UpdatePlan rewrites what may change about a plan: its kind and code stay,
-// since subscriptions and purchases name them. A new price applies to what is
-// bought next; what was bought keeps the amount it was charged.
-func (r *BillingRepository) UpdatePlan(ctx context.Context, p models.Plan) error {
-	res, err := r.execContext(ctx, `
-		UPDATE plans
-		SET name = $2, description = $3, amount = $4, currency = $5, active = $6, variant_id = $7, updated_at = now()
-		WHERE id = $1`,
-		p.ID, p.Name, p.Description, p.Amount, p.Currency, p.Active, p.VariantID,
-	)
-	if err != nil {
+		_, err := tx.ExecContext(ctx, `
+			UPDATE plans SET active = false, updated_at = now()
+			WHERE active AND (variant_id IS NULL OR NOT (variant_id = ANY($1)))`, kept)
 		return err
-	}
-	return requireAffected(res, "plan")
+	})
+	return changedKind, err
 }
 
 const subscriptionColumns = `
@@ -373,6 +386,28 @@ func (r *BillingRepository) MovePurchase(ctx context.Context, id uuid.UUID, from
 		id, from, to,
 	)
 	return affected(res, err)
+}
+
+// CustomerID returns the Lemon Squeezy customer a user is saved as.
+func (r *BillingRepository) CustomerID(ctx context.Context, userID uuid.UUID) (string, error) {
+	var id *string
+	err := r.queryRowContext(ctx, `SELECT provider_customer_id FROM users WHERE id = $1`, userID).Scan(&id)
+	if err == nil && id == nil {
+		err = sql.ErrNoRows
+	}
+	if err != nil {
+		return "", translateNotFound("customers", err)
+	}
+	return *id, nil
+}
+
+// SetCustomerID records the Lemon Squeezy customer a user is saved as, unless
+// one already is.
+func (r *BillingRepository) SetCustomerID(ctx context.Context, userID uuid.UUID, customerID string) error {
+	_, err := r.execContext(ctx, `
+		UPDATE users SET provider_customer_id = $2
+		WHERE id = $1 AND provider_customer_id IS NULL`, userID, customerID)
+	return err
 }
 
 // SetCheckout stores where the user pays for a pending subscription or

@@ -30,7 +30,9 @@ import (
 	oauth2plugintypes "github.com/Authula/authula/plugins/oauth2/types"
 	sessionplugin "github.com/Authula/authula/plugins/session"
 
+	"montara-pass/server/internal/app"
 	"montara-pass/server/internal/config"
+	"montara-pass/server/internal/handlers"
 	"montara-pass/server/internal/lib/constant"
 	"montara-pass/server/internal/models"
 	"montara-pass/server/internal/repositories"
@@ -150,6 +152,35 @@ func addTokensToResponse(reqCtx *authulamodels.RequestContext) error {
 	return err
 }
 
+// saveCustomer returns the hook that saves a new account as a Lemon Squeezy
+// customer, or nil where billing takes no payments. It works in the
+// background, so a sign-up does not wait on Lemon Squeezy; an account it
+// misses is saved at its first checkout. The seeded super user, who buys
+// nothing, is left out.
+func saveCustomer(application *app.Application) func(*authulamodels.User) error {
+	if application.Payments == nil {
+		return nil
+	}
+	return func(u *authulamodels.User) error {
+		if strings.EqualFold(u.Email, application.Config.App.SuperUserEmail) {
+			return nil
+		}
+		id, err := uuid.Parse(u.ID)
+		if err != nil {
+			return err
+		}
+		user := models.User{Base: models.Base{ID: id}, Name: u.Name, Email: u.Email}
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			if err := handlers.EnsureCustomer(ctx, application, user); err != nil {
+				application.Logger.Warn("save lemon squeezy customer on sign-up", "user", u.ID, "error", err)
+			}
+		}()
+		return nil
+	}
+}
+
 // promoteSuperUser returns the seeder's callback: mirror the user here too,
 // because Authula only logs a failed after-create hook, then give it the
 // super user role.
@@ -244,11 +275,15 @@ func (i tokenIssuer) route() authulamodels.Route {
 // OAuth2 and email magic links on top of cookie sessions, with emails sent
 // through Resend. Authula migrates its own tables (users, accounts, sessions,
 // verifications) into authSchema of the app database when it starts, and
-// mirror runs after every user it creates or updates.
-func newAuth(cfg config.Config, mirror func(*authulamodels.User) error, logger *slog.Logger) *authula.Auth {
+// mirror runs after every user it creates or updates. customer, when set,
+// runs after mirror on every user it creates.
+func newAuth(cfg config.Config, mirror, customer func(*authulamodels.User) error, logger *slog.Logger) *authula.Auth {
 	userHooks := &authulamodels.ServiceHooks[authulamodels.User]{}
 	userHooks.RegisterAfterCreate(mirror)
 	userHooks.RegisterAfterUpdate(mirror)
+	if customer != nil {
+		userHooks.RegisterAfterCreate(customer)
+	}
 
 	// Sign-up, magic links and Google all create users through this service,
 	// so in the Community Edition only the seeded super user gets made. The

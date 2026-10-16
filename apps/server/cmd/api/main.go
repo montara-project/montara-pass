@@ -12,6 +12,7 @@ import (
 	"montara-pass/server/internal/app"
 	"montara-pass/server/internal/config"
 	"montara-pass/server/internal/emails"
+	"montara-pass/server/internal/handlers"
 	"montara-pass/server/internal/lib/lemonsqueezy"
 	"montara-pass/server/internal/repositories"
 	"montara-pass/server/internal/seeders"
@@ -65,13 +66,41 @@ func run() error {
 	repos := repositories.New(db)
 	mirror := mirrorUser(&repos.User)
 
+	var payments *lemonsqueezy.Client
+	switch {
+	case config.Community():
+	case cfg.Billing.LemonSqueezyAPIKey == "":
+		logger.Warn("billing checkout disabled: lemonsqueezy-api-key is not set")
+	default:
+		// Reading the store checks the key and the store id now, and gives
+		// the currency every plan must be priced in.
+		payments = lemonsqueezy.New(cfg.Billing.LemonSqueezyAPIKey, cfg.Billing.LemonSqueezyStoreID, cfg.Billing.LemonSqueezyWebhookSecret)
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		err := payments.Load(ctx)
+		cancel()
+		if err != nil {
+			return fmt.Errorf("load lemon squeezy store: %w", err)
+		}
+		logger.Info("billing through lemon squeezy", "store", cfg.Billing.LemonSqueezyStoreID, "currency", payments.Currency)
+	}
+
+	application := &app.Application{
+		Config:       cfg,
+		Logger:       logger,
+		DB:           db,
+		Repositories: repos,
+		Redis:        cache,
+		Payments:     payments,
+	}
+
 	// Authula reads its email templates when it is built.
 	if err := emails.Install(); err != nil {
 		return fmt.Errorf("install email templates: %w", err)
 	}
 
 	// Creating the instance runs Authula's own migrations.
-	auth := newAuth(cfg, mirror, logger)
+	auth := newAuth(cfg, mirror, saveCustomer(application), logger)
+	application.Auth = auth
 	defer auth.CloseSystems()
 	defer auth.ClosePlugins()
 
@@ -113,31 +142,36 @@ func run() error {
 		}
 	}
 
-	var payments *lemonsqueezy.Client
-	switch {
-	case config.Community():
-	case cfg.Billing.LemonSqueezyAPIKey == "":
-		logger.Warn("billing checkout disabled: lemonsqueezy-api-key is not set")
-	default:
-		// Reading the store checks the key and the store id now, and gives
-		// the currency every plan must be priced in.
-		payments = lemonsqueezy.New(cfg.Billing.LemonSqueezyAPIKey, cfg.Billing.LemonSqueezyStoreID, cfg.Billing.LemonSqueezyWebhookSecret)
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-		err := payments.Load(ctx)
+	// Lemon Squeezy's catalog is read before serving, so the plans on offer
+	// are the store's from the first request, then again every
+	// catalogSyncInterval: the store sends nothing when it changes.
+	if application.Payments != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		err := handlers.SyncCatalog(ctx, application)
 		cancel()
 		if err != nil {
-			return fmt.Errorf("load lemon squeezy store: %w", err)
+			return fmt.Errorf("sync lemon squeezy catalog: %w", err)
 		}
-		logger.Info("billing through lemon squeezy", "store", cfg.Billing.LemonSqueezyStoreID, "currency", payments.Currency)
+		go syncCatalogEvery(application, catalogSyncInterval)
 	}
 
-	return serve(&app.Application{
-		Config:       cfg,
-		Logger:       logger,
-		DB:           db,
-		Repositories: repos,
-		Auth:         auth,
-		Redis:        cache,
-		Payments:     payments,
-	})
+	return serve(application)
+}
+
+// catalogSyncInterval is how often the plans follow the Lemon Squeezy
+// catalog; a super user who just changed it syncs at once (POST /plans/sync).
+const catalogSyncInterval = 15 * time.Minute
+
+// syncCatalogEvery syncs the catalog every interval, for as long as the
+// process runs.
+// ponytail: every replica syncs on its own clock; the sync is idempotent, so
+// only the Lemon Squeezy requests repeat.
+func syncCatalogEvery(application *app.Application, interval time.Duration) {
+	for range time.Tick(interval) {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		if err := handlers.SyncCatalog(ctx, application); err != nil {
+			application.Logger.Warn("sync lemon squeezy catalog", "error", err)
+		}
+		cancel()
+	}
 }

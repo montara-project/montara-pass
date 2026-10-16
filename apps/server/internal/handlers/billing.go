@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"html"
+	"regexp"
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
@@ -32,6 +34,7 @@ var (
 	errCheckout    = apperr.New(apperr.KindBadGateway, "the payment could not be started, try again")
 	errOnlyUsers   = apperr.New(apperr.KindForbidden, "only user accounts can subscribe or buy a plan")
 	errPortal      = apperr.New(apperr.KindBadGateway, "the subscription could not be opened, try again")
+	errCatalog     = apperr.New(apperr.KindBadGateway, "the Lemon Squeezy catalog could not be read, try again")
 )
 
 type billingHandler struct {
@@ -69,56 +72,138 @@ func (h *billingHandler) Stats(c fiber.Ctx) error {
 	return dtos.Get(c, stats)
 }
 
-func (h *billingHandler) CreatePlan(c fiber.Ctx) error {
-	var body dtos.PlanBody
-	if err := lib.ValidateRequestBody(c, &body); err != nil {
-		return err
+// SyncPlans reads the Lemon Squeezy catalog now, for a super user who just
+// changed it, and answers every plan.
+func (h *billingHandler) SyncPlans(c fiber.Ctx) error {
+	if h.app.Payments == nil {
+		return errPaymentsOff
 	}
-	if (body.Billing == models.PlanRecurring) != (body.BillingInterval != nil) {
-		return apperr.New(apperr.KindBadRequest, "billing_interval is required for a recurring plan, and only for one")
+	if err := SyncCatalog(c.Context(), h.app); err != nil {
+		h.app.Logger.Error("sync lemon squeezy catalog", "error", err)
+		return errCatalog
 	}
-
-	plan := models.Plan{
-		Code: body.Code, Name: body.Name, Description: body.Description,
-		Billing: body.Billing, BillingInterval: body.BillingInterval,
-		Amount: body.Amount, Currency: body.Currency, Active: body.Active, VariantID: body.VariantID,
-	}
-	var err error
-	if plan.ID, err = uuid.NewV7(); err != nil {
-		return err
-	}
-	if err := h.repo().InsertPlan(c.Context(), plan); err != nil {
-		return err
-	}
-
-	plan, err = h.repo().GetPlan(c.Context(), plan.ID)
-	if err != nil {
-		return err
-	}
-	return dtos.Created(c, plan, "plan created")
+	return h.ListAllPlans(c)
 }
 
-func (h *billingHandler) UpdatePlan(c fiber.Ctx) error {
-	id, err := pathID(c, "plan")
+// SyncCatalog makes the plans what the Lemon Squeezy store sells: one plan
+// per variant, named after its product, at the variant's current price, on
+// offer while both are published. A variant billing cannot sell (free, pay
+// what you want, or renewing other than every month or year) is left out
+// with a warning, and a plan whose variant is gone is taken off sale.
+func SyncCatalog(ctx context.Context, app *app.Application) error {
+	variants, err := app.Payments.Catalog(ctx)
 	if err != nil {
 		return err
 	}
-	var body dtos.PlanUpdateBody
-	if err := lib.ValidateRequestBody(c, &body); err != nil {
-		return err
+
+	plans := make([]models.Plan, 0, len(variants))
+	for _, v := range variants {
+		plan, reason := planFromVariant(v, app.Payments.Currency)
+		if reason != "" {
+			app.Logger.Warn("lemon squeezy variant not sold", "variant", v.ID, "product", v.ProductName, "reason", reason)
+			continue
+		}
+		plans = append(plans, plan)
 	}
 
-	plan := models.Plan{Name: body.Name, Description: body.Description, Amount: body.Amount, Currency: body.Currency, Active: body.Active, VariantID: body.VariantID}
-	plan.ID = id
-	if err := h.repo().UpdatePlan(c.Context(), plan); err != nil {
-		return err
-	}
-
-	plan, err = h.repo().GetPlan(c.Context(), id)
+	changedKind, err := app.Repositories.Billing.SyncPlans(ctx, plans)
 	if err != nil {
 		return err
 	}
-	return dtos.OK(c, plan)
+	for _, code := range changedKind {
+		app.Logger.Warn("lemon squeezy variant changed kind: its plan is off sale, sell the new kind as a new variant", "plan", code)
+	}
+	app.Logger.Info("lemon squeezy catalog synced", "plans", len(plans)-len(changedKind))
+	return nil
+}
+
+// Bounds of the plans table (migrations/ee/000001).
+const (
+	maxPlanName = 100
+	maxPlanDesc = 2000
+)
+
+var htmlTag = regexp.MustCompile(`<[^>]*>`)
+
+// planFromVariant is the plan a variant is sold as, or why it cannot be.
+func planFromVariant(v lemonsqueezy.Variant, currency string) (models.Plan, string) {
+	price := v.Price
+	switch {
+	case price == nil:
+		return models.Plan{}, "it has no price"
+	case price.Scheme != "standard" || price.UnitPrice == nil:
+		return models.Plan{}, "its price is not a standard one"
+	}
+
+	id := v.ID
+	plan := models.Plan{
+		Code:      "ls-" + v.ID,
+		Name:      v.ProductName,
+		Amount:    *price.UnitPrice,
+		Currency:  currency,
+		Active:    v.Published,
+		VariantID: &id,
+	}
+	// A product's only variant is called Default.
+	if v.Name != "" && !strings.EqualFold(v.Name, "Default") {
+		plan.Name += " " + v.Name
+	}
+	plan.Name = truncate(strings.TrimSpace(plan.Name), maxPlanName)
+	if plan.Name == "" {
+		return models.Plan{}, "it has no name"
+	}
+	if text := truncate(htmlText(v.Description), maxPlanDesc); text != "" {
+		plan.Description = &text
+	}
+
+	switch price.Category {
+	case "one_time":
+		plan.Billing = models.PlanOneTime
+	case "subscription":
+		unit := ""
+		if price.RenewalIntervalUnit != nil {
+			unit = *price.RenewalIntervalUnit
+		}
+		if (unit != "month" && unit != "year") || price.RenewalIntervalQuantity == nil || *price.RenewalIntervalQuantity != 1 {
+			return models.Plan{}, "it renews other than every month or year"
+		}
+		plan.Billing = models.PlanRecurring
+		plan.BillingInterval = &unit
+	default:
+		return models.Plan{}, "it is " + price.Category + ", not one_time or subscription"
+	}
+	return plan, ""
+}
+
+// htmlText is a Lemon Squeezy description as plain text.
+func htmlText(s string) string {
+	return strings.Join(strings.Fields(html.UnescapeString(htmlTag.ReplaceAllString(s, " "))), " ")
+}
+
+// truncate cuts s to at most n characters.
+func truncate(s string, n int) string {
+	if r := []rune(s); len(r) > n {
+		return strings.TrimSpace(string(r[:n]))
+	}
+	return s
+}
+
+// EnsureCustomer saves the user as a Lemon Squeezy customer, found by email
+// or made, unless they already are one.
+func EnsureCustomer(ctx context.Context, app *app.Application, user models.User) error {
+	repo := &app.Repositories.Billing
+	if _, err := repo.CustomerID(ctx, user.ID); !errors.Is(err, apperr.ErrNotFound) {
+		return err
+	}
+	name := user.Name
+	if name == "" {
+		name = user.Email
+	}
+	id, err := app.Payments.Customer(ctx, name, user.Email)
+	if err != nil {
+		return err
+	}
+	return repo.SetCustomerID(ctx, user.ID, id)
 }
 
 // billingListParams validates and clamps the super user's list query.
@@ -233,7 +318,7 @@ func (h *billingHandler) customer(c fiber.Ctx, kind string) (models.User, models
 		return models.User{}, models.Plan{}, err
 	}
 	if plan.VariantID == nil {
-		return models.User{}, models.Plan{}, apperr.New(apperr.KindConflict, "this plan cannot be bought yet: it is not sold through Lemon Squeezy")
+		return models.User{}, models.Plan{}, apperr.New(apperr.KindConflict, "this plan is not sold through Lemon Squeezy")
 	}
 	if plan.Currency != h.app.Payments.Currency {
 		return models.User{}, models.Plan{}, apperr.New(apperr.KindConflict, "this plan is priced in %s; payments are taken in %s", plan.Currency, h.app.Payments.Currency)
@@ -257,13 +342,17 @@ func startCheckout[T any](
 		return err
 	}
 	orderID := order + "-" + id.String()
+	// The account and its orders meet in one Lemon Squeezy customer.
+	if err := EnsureCustomer(c.Context(), h.app, user); err != nil {
+		h.app.Logger.Error("save lemon squeezy customer", "user", user.ID, "error", err)
+		return errCheckout
+	}
 	if err := insert(c.Context(), id, user.ID, plan, orderID); err != nil {
 		return err
 	}
 
 	url, err := h.app.Payments.Checkout(c.Context(), lemonsqueezy.Checkout{
 		VariantID:   *plan.VariantID,
-		Amount:      plan.Amount,
 		Email:       user.Email,
 		Name:        user.Name,
 		OrderID:     orderID,
