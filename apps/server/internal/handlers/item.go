@@ -391,7 +391,7 @@ func (h *itemHandler) RemoveMember(c fiber.Ctx) error {
 }
 
 func memberParam(c fiber.Ctx) (uuid.UUID, error) {
-	id, err := lib.ContextParamUUID(c, "userId")
+	id, err := uuid.Parse(c.Params("userId"))
 	if err != nil {
 		return uuid.Nil, apperr.New(apperr.KindBadRequest, "invalid user id")
 	}

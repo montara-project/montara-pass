@@ -18,10 +18,9 @@ const (
 // Subscription statuses. Lemon Squeezy renews a subscription by itself; it
 // is active while it grants its plan, to current_period_end.
 const (
-	SubscriptionPending  = "pending"
-	SubscriptionActive   = "active"
-	SubscriptionCanceled = "canceled"
-	SubscriptionExpired  = "expired"
+	SubscriptionPending = "pending"
+	SubscriptionActive  = "active"
+	SubscriptionExpired = "expired"
 )
 
 // Purchase statuses.

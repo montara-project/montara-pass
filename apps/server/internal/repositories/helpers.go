@@ -33,16 +33,6 @@ func hasPgCode(err error, code string) bool {
 	return errors.As(err, &pgErr) && pgErr.Code == code
 }
 
-// translateForeignKey maps a foreign-key violation onto a typed 409, so a
-// permanent delete blocked by referencing rows reads as a conflict rather than
-// a server error; any other error passes through unchanged.
-func translateForeignKey(err error, message string) error {
-	if hasPgCode(err, pgForeignKeyViolation) {
-		return apperr.New(apperr.KindConflict, "%s", message)
-	}
-	return err
-}
-
 // escapeLikePattern escapes ILIKE wildcards (%, _) so a search term matches
 // literally; the backslash is Postgres' default LIKE escape character.
 func escapeLikePattern(s string) string {
