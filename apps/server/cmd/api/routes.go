@@ -43,14 +43,6 @@ func routes(r *fiber.App, app *app.Application) {
 	exemptLoopback := app.Config.App.Env == config.EnvDevelopment
 	exemptIPs := splitCSV(app.Config.App.RateLimitExemptIPs)
 
-	// The Community Edition has no sign-up; answered ahead of Authula, which
-	// would otherwise serve it.
-	if config.Community() {
-		r.Post(authBasePath+"/email-password/sign-up", func(c fiber.Ctx) error {
-			return apperr.ErrNotFound
-		})
-	}
-
 	r.Use(authBasePath,
 		middlewares.RateLimit("auth", authRateLimit, exemptLoopback, exemptIPs, store),
 		middlewares.RateLimitEmail("auth-email", authEmailRateLimit, store),

@@ -251,7 +251,9 @@ func newAuth(cfg config.Config, mirror func(*authulamodels.User) error, logger *
 	userHooks.RegisterAfterUpdate(mirror)
 
 	// Sign-up, magic links and Google all create users through this service,
-	// so in the Community Edition only the seeded super user gets made.
+	// so in the Community Edition only the seeded super user gets made. The
+	// email-password plugin also turns sign-up off there (DisableSignUp), so
+	// it answers every address alike, before looking it up.
 	if config.Community() {
 		userHooks.RegisterBeforeCreate(func(u *authulamodels.User) error {
 			if !strings.EqualFold(u.Email, cfg.App.SuperUserEmail) {
@@ -334,6 +336,7 @@ func newAuth(cfg config.Config, mirror func(*authulamodels.User) error, logger *
 			sessionplugin.New(sessionplugin.SessionPluginConfig{Enabled: true}),
 			emailpasswordplugin.New(emailpasswordplugintypes.EmailPasswordPluginConfig{
 				Enabled:                  true,
+				DisableSignUp:            config.Community(),
 				MinPasswordLength:        8,
 				MaxPasswordLength:        128,
 				RequireEmailVerification: true,
