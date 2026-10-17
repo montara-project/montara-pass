@@ -11,25 +11,8 @@ import { toastAxiosError } from '@/lib/api/axios-error'
 import { queries } from '@/lib/api/queries'
 import { formatDate } from '@/lib/date'
 import { formatPrice } from '@/lib/money'
+import { isSandbox, planName, planPeriod, planTerms } from '@/lib/plan'
 import { cn } from '@/lib/utils'
-
-/**
- * A plan's name without the product and the store's environment, which the
- * synced names carry ("Montara Pass Pro Monthly - Sandbox" reads "Pro Monthly").
- */
-function planName(plan: Models.Plan) {
-  return plan.name.replace(/^Montara Pass\s+/i, '').replace(/\s+-\s+sandbox$/i, '')
-}
-
-/** A plan synced from Lemon Squeezy's test mode, which takes no real money. */
-const isSandbox = (plan: Models.Plan) => /\s+-\s+sandbox$/i.test(plan.name)
-
-const PERIOD = { month: '/ month', year: '/ year' } as const
-
-const TERMS = {
-  month: 'renews monthly · cancel any time',
-  year: 'renews yearly · cancel any time',
-} as const
 
 const label = 'text-muted-foreground pl-1 font-mono text-[11px] tracking-[0.12em] uppercase'
 
@@ -188,15 +171,9 @@ export default function BillingBlock() {
                     <span className="text-[28px] leading-none font-medium">
                       {formatPrice(plan.amount, 'USD')}
                     </span>
-                    <span className="text-muted-foreground text-xs">
-                      {plan.billing_interval ? PERIOD[plan.billing_interval] : 'once'}
-                    </span>
+                    <span className="text-muted-foreground text-xs">{planPeriod(plan)}</span>
                   </p>
-                  <p className="text-muted-foreground mb-4 font-mono text-xs">
-                    {plan.billing_interval
-                      ? TERMS[plan.billing_interval]
-                      : 'one payment · does not renew'}
-                  </p>
+                  <p className="text-muted-foreground mb-4 font-mono text-xs">{planTerms(plan)}</p>
                   {purchase?.status === 'paid' ? (
                     <span className="text-muted-foreground mt-auto pt-4 text-[13px]">
                       You own this.
