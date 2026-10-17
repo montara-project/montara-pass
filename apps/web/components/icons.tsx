@@ -62,18 +62,6 @@ export function AlertTriangleIcon(props: IconProps) {
   );
 }
 
-export function ScanIcon(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <path d="M4 8V6a2 2 0 0 1 2-2h2" />
-      <path d="M16 4h2a2 2 0 0 1 2 2v2" />
-      <path d="M20 16v2a2 2 0 0 1-2 2h-2" />
-      <path d="M8 20H6a2 2 0 0 1-2-2v-2" />
-      <path d="M7 12h10" />
-    </Svg>
-  );
-}
-
 export function UsersIcon(props: IconProps) {
   return (
     <Svg {...props}>
@@ -230,14 +218,6 @@ export function SendIcon(props: IconProps) {
   );
 }
 
-export function MessageSquareIcon(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <path d="M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2v10z" />
-    </Svg>
-  );
-}
-
 export function SunIcon(props: IconProps) {
   return (
     <Svg {...props}>
@@ -334,5 +314,110 @@ export function GithubIcon(props: IconProps) {
     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
       <path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.08 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02a9.56 9.56 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.75c0 .27.18.58.69.48A10 10 0 0 0 12 2z" />
     </svg>
+  );
+}
+
+export function PuzzleIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M19.4 14.4a1.6 1.6 0 0 0-.5 1.2V19a2 2 0 0 1-2 2h-3.4a1.6 1.6 0 0 1-1.2-.5 1.6 1.6 0 0 1-.5-1.2 2.3 2.3 0 1 0-4.6 0 1.6 1.6 0 0 1-.5 1.2 1.6 1.6 0 0 1-1.2.5H5a2 2 0 0 1-2-2v-3.4c0-.4.2-.9.5-1.2s.8-.5 1.2-.5a2.3 2.3 0 1 0 0-4.6c-.4 0-.9-.2-1.2-.5A1.6 1.6 0 0 1 3 8.4V5a2 2 0 0 1 2-2h3.4c.4 0 .9.2 1.2.5s.5.8.5 1.2a2.3 2.3 0 1 0 4.6 0c0-.4.2-.9.5-1.2s.8-.5 1.2-.5H19a2 2 0 0 1 2 2v3.4c0 .4-.2.9-.5 1.2s-.8.5-1.2.5a2.3 2.3 0 1 0 0 4.6c.4 0 .9.2 1.2.5z" />
+    </Svg>
+  );
+}
+
+export function TerminalIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 17l6-5-6-5" />
+      <path d="M12 19h8" />
+    </Svg>
+  );
+}
+
+export function PackageIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M21 8l-9-5-9 5v8l9 5 9-5V8z" />
+      <path d="M3 8l9 5 9-5" />
+      <path d="M12 13v8" />
+      <path d="M7.5 5.5l9 5" />
+    </Svg>
+  );
+}
+
+export function DatabaseIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <ellipse cx="12" cy="5" rx="8" ry="3" />
+      <path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5" />
+      <path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" />
+    </Svg>
+  );
+}
+
+export function CreditCardIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <path d="M2 10h20" />
+    </Svg>
+  );
+}
+
+export function InfinityIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 12c-2-2.7-4-4-6-4a4 4 0 0 0 0 8c2 0 4-1.3 6-4zm0 0c2 2.7 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.3-6 4z" />
+    </Svg>
+  );
+}
+
+export function ReceiptIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M5 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z" />
+      <path d="M14 8h-3a1.5 1.5 0 0 0 0 3h2a1.5 1.5 0 0 1 0 3H10" />
+      <path d="M12 6.5v1.5M12 14v1.5" />
+    </Svg>
+  );
+}
+
+export function LifeBuoyIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="3.5" />
+      <path d="M5.6 5.6l3.9 3.9M14.5 14.5l3.9 3.9M14.5 9.5l3.9-3.9M5.6 18.4l3.9-3.9" />
+    </Svg>
+  );
+}
+
+export function ShieldAlertIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3l7 3v5c0 4.6-3 7.9-7 9-4-1.1-7-4.4-7-9V6l7-3z" />
+      <path d="M12 8v4" />
+      <path d="M12 16h.01" />
+    </Svg>
+  );
+}
+
+export function BuildingIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18z" />
+      <path d="M6 12H4a2 2 0 0 0-2 2v8h4M18 9h2a2 2 0 0 1 2 2v11h-4" />
+      <path d="M10 6h4M10 10h4M10 14h4M10 18h4" />
+    </Svg>
+  );
+}
+
+export function NewspaperIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-4 0v-9c0-1.1.9-2 2-2h2" />
+      <path d="M18 14h-8M15 18h-5" />
+      <rect x="10" y="6" width="8" height="4" rx="1" />
+    </Svg>
   );
 }

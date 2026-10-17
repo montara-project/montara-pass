@@ -26,7 +26,7 @@ import {
   RefreshIcon,
   SearchIcon,
   ShareIcon,
-  SortIcon,
+  FilterIcon,
   StarIcon,
   TrashIcon,
 } from '../icons'
@@ -213,27 +213,29 @@ export default function FullVault({
         ) : (
           <>
             <section className="list-col" aria-label="Items">
-              <label className="search">
-                <SearchIcon />
-                <input
-                  type="search"
-                  placeholder="Search all items"
-                  aria-label="Search all items"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  autoFocus
-                />
-              </label>
-
+              {/* One bar: what to look for, how to order it, and what to add. */}
               <div className="list-tools">
+                <label className="search">
+                  <SearchIcon />
+                  <input
+                    type="search"
+                    placeholder="Search all items"
+                    aria-label="Search all items"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    autoFocus
+                  />
+                </label>
+                {/* The order it is in is named on hover and to a screen reader;
+                    pressing it takes the other one. */}
                 <button
-                  className="sort"
+                  className="icon-button"
+                  aria-label={`${SORT_LABEL[sort]}. Change the order`}
+                  title={SORT_LABEL[sort]}
                   onClick={() => setSort((current) => (current === 'name' ? 'updated' : 'name'))}
                 >
-                  {SORT_LABEL[sort]}
-                  <SortIcon width={16} height={16} />
+                  <FilterIcon />
                 </button>
-                <span className="spacer" />
                 <button
                   className="icon-button"
                   aria-label="Refresh vault"
@@ -243,9 +245,14 @@ export default function FullVault({
                 >
                   <RefreshIcon className={refreshing ? 'spin' : undefined} />
                 </button>
-                <button className="new-item" onClick={() => setPane({ mode: 'new' })}>
+                <button
+                  className="new-item"
+                  aria-label="New item"
+                  title="New item"
+                  onClick={() => setPane({ mode: 'new' })}
+                >
                   <PlusIcon width={18} height={18} />
-                  New item
+                  <span className="new-item-label">New item</span>
                 </button>
               </div>
 

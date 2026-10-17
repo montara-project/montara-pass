@@ -1,7 +1,106 @@
 # Release notes
 
-What changed for the people who use and run Montara Pass, from 1.2.0 to 1.5.0.
+What changed for the people who use and run Montara Pass, from 1.2.0 to 2.0.0.
 `CHANGELOG.md` lists every commit; this says what they add up to.
+
+## 2.0.0 (2026-10-16)
+
+Payments move from Midtrans to Lemon Squeezy, and the store's catalog is the
+plan list. The website gets a pricing page, the extension a Billing page, and
+categories are gone.
+
+### Before you upgrade
+
+- **Payments are Lemon Squeezy's.** `MIDTRANS_SERVER_KEY` and
+  `MIDTRANS_PRODUCTION` are gone; set `LEMONSQUEEZY_API_KEY`,
+  `LEMONSQUEEZY_STORE_ID` and `LEMONSQUEEZY_WEBHOOK_SECRET` instead, all three
+  or none. The webhook is now
+  `POST /api/v1/billing/lemonsqueezy/webhook`, and
+  `/api/v1/billing/midtrans/notification` is removed.
+- **The store is the plan list.** A plan is sold only once it names its Lemon
+  Squeezy `variant_id`, and every amount is cents whatever the currency, so a
+  plan stored in whole rupiah must be repriced. `POST /api/v1/plans` and
+  `PUT /api/v1/plans/:id` are gone: change a plan in the store, then sync. A
+  checkout no longer sends `custom_price`, so a plan costs what its variant
+  costs there.
+- **Sharing is gated by `REQUIRE_PAID_SHARING`, off by default.** A Cloud
+  deployment that charges for sharing sets it to `true`. Boot refuses the flag
+  without `LEMONSQUEEZY_API_KEY`, where no plan could be bought, and in the
+  Community Edition, which has no sharing.
+- **Categories are gone.** `/api/v1/categories` and its table are removed, and
+  so is the page in the web app. `cmd/migrate` no longer takes `--seed`, the
+  `migrate:up:seed` script is gone, and `SEED_ON_BOOT` only creates the super
+  user. `cmd/migrate` takes `--cloud` where it took `--ee`.
+- Coming from 1.8.0: `EDITION=ee` and `EDITION=ce` became `EDITION=cloud` and
+  `EDITION=community` in 1.9.0.
+
+### New
+
+- **A Billing page in the extension's full tab**, in the Cloud Edition: the
+  subscription with its status and when it renews or ends, the plans on offer
+  with Subscribe or Buy, and what was bought. Paying and cancelling happen at
+  Lemon Squeezy, in a tab of their own; the customer portal link is signed for
+  each visit, so it is asked for on click. The page reads billing again when
+  its tab comes back in front, and every five seconds while a payment is
+  pending. A server without billing says it takes no payments.
+- **A pricing page on the website**, with the site's design system written
+  down: self-hosted free, a free Cloud account, and Pro at $3 a month, $25 a
+  year or $300 once. Choosing a row marks it and names the action at its foot.
+  The page reads the plans from the same API the home card reads, so the two
+  cannot disagree, and beside the prices sits a ledger of what the server can
+  and cannot read: the same on every tier, the free one included.
+- **The subscription is managed in Lemon Squeezy's customer portal** from the
+  web app's Billing page, which now says when a subscription renews, or when
+  it ends once cancelled. The checkout brings the browser back with
+  `?checkout=done`, and prices read cents in every currency.
+- **Every username is masked in the extension's lists**: an email address
+  keeps the start of its local part and its domain (`us••••@mail.com`), any
+  other username keeps its start (`9r••••`), and the mask is four dots
+  whatever it hides, so it does not say how long the name was. The item's
+  detail offers an eye for the whole value, copying always takes it, and a
+  screen reader still reads it in the fill menu.
+- **The Community Edition runs without email.** `FROM_ADDRESS` and
+  `RESEND_API_KEY` may both be left empty: the email plugin is not registered,
+  magic-link sign-in is off, and a warning says so at boot. Password reset is
+  off with it; change `SUPER_USER` to reset that account's password. The Cloud
+  Edition still needs both, which the server now enforces itself.
+- **A super user can sync the catalog** with `POST /api/v1/plans/sync`. The
+  API also syncs when it starts and every 15 minutes, since the store sends
+  nothing when its catalog changes. Each new account is saved as a customer of
+  the store, in the background on sign-up, so a sign-up does not wait on Lemon
+  Squeezy.
+
+### Improved
+
+- The web app's Billing page sits in the sidebar beside the tools, as in the
+  extension's full tab, instead of only inside the account menu. The Community
+  Edition keeps neither.
+- In the extension's full tab the list's dividing line meets the header's, the
+  column headings stick under a hairline that says where the list begins, the
+  rows' scrollbar sits 4px off that line, and the rows stand 4px apart.
+- A refusal on sharing is shown where the sharing was attempted, in the
+  server's own words, instead of in a notice that scrolls away. The plan gate
+  says what to do about it, and the Billing page is where.
+
+### Fixed
+
+- Community sign-up answers 403 the same way for every address, the super
+  user's included, so that address cannot be guessed.
+- `cmd/migrate down` and `refresh` in the Community Edition roll the Cloud
+  migrations back first when `schema_migrations_ee` is there, instead of
+  failing halfway and leaving the schema dirty.
+- A mistyped edition fails in every binary, not only in the API.
+- The development rate limit exempts `::1` as well as `127.0.0.1`.
+
+### For self-hosters
+
+- `pnpm dev:community` runs a Community server in development, where
+  `pnpm dev` runs a Cloud one.
+- Point the Lemon Squeezy webhook at
+  `$AUTH_BASE_URL/api/v1/billing/lemonsqueezy/webhook`, with the events
+  `order_created`, `order_refunded`, `subscription_created` and
+  `subscription_updated`.
+- `cmd/migrate --cloud` forces or creates a Cloud migration.
 
 ## 1.7.0 (2026-10-14)
 

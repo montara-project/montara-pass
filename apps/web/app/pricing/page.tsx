@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 
-import { tiersOnOffer } from "@/components/pricing/offer";
+import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
+
 import { PricingPage } from "@/components/pricing/pricing-page";
+import { queries } from "@/lib/api/queries";
+import { getQueryClient } from "@/lib/providers/query-client";
 
 export const metadata: Metadata = {
   title: "Pricing — Montara Pass",
@@ -10,5 +13,12 @@ export const metadata: Metadata = {
 };
 
 export default async function Page() {
-  return <PricingPage tiers={await tiersOnOffer()} />;
+  const queryClient = getQueryClient();
+  await queryClient.prefetchQuery(queries.billing.plans());
+
+  return (
+    <HydrationBoundary state={dehydrate(queryClient)}>
+      <PricingPage />
+    </HydrationBoundary>
+  );
 }

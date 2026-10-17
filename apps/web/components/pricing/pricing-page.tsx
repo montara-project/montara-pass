@@ -2,11 +2,19 @@
 
 import { useState } from "react";
 
-import { ArrowRightIcon, CheckIcon } from "@/components/icons";
+import {
+  ArrowRightIcon,
+  CheckIcon,
+  CreditCardIcon,
+  InfinityIcon,
+  ReceiptIcon,
+  SyncIcon,
+} from "@/components/icons";
 import { docsUrl } from "@/components/links";
 import { PricingLedger } from "@/components/pricing/ledger-panel";
-import { formatAmount, SELF_HOST_HREF, TERMS, type Tier } from "@/components/pricing/plans";
-import { chip } from "@/components/shared";
+import { useTiers } from "@/components/pricing/offer";
+import { formatAmount, SELF_HOST_HREF, TERMS } from "@/components/pricing/plans";
+import { card, pill } from "@/components/shared";
 
 /**
  * The pricing page: the tiers as the receipt for the service.
@@ -15,20 +23,22 @@ import { chip } from "@/components/shared";
  * the proof. Selecting a line marks it and names the action at the foot of the
  * tape, so choosing a tier and acting on it are one motion on one surface.
  *
- * The tiers come from the route, which reads them from the API; this component
+ * The tiers come from the plans query the route prefetched; this component
  * only holds the selection.
  */
-export function PricingPage({ tiers }: { tiers: Tier[] }) {
-  // The tier the foot action offers. Monthly is where a visitor paying for the
-  // hosted service starts; nothing on the page calls one tier recommended.
-  const [chosen, setChosen] = useState("pro-monthly");
-  // The fallback matters: when the API serves plans whose codes are not the
-  // authored ones, the chosen code matches nothing, and the foot action must
-  // still offer something you can pay for rather than the free self-hosted row.
+export function PricingPage() {
+  const tiers = useTiers();
+  // The tier the foot action offers; none chosen yet means the yearly one, the
+  // row marked best value. Matched by its billing rather than by code, because
+  // the live plans' codes are the store's, not the authored ones.
+  const [chosen, setChosen] = useState<string>();
+  const yearly = tiers.find((tier) => tier.per === "/ year");
   const selected =
     tiers.find((tier) => tier.code === chosen) ??
+    yearly ??
     tiers.find((tier) => tier.kind !== "free") ??
     tiers[0];
+  const currency = "USD";
 
   return (
     <main>
@@ -36,12 +46,10 @@ export function PricingPage({ tiers }: { tiers: Tier[] }) {
         <section className="tape">
           <div className="tape-head">
             <p className="tape-slug">Montara Pass — pricing</p>
-            <p className="tape-slug">billed in usd</p>
+            <p className="tape-slug">billed in {currency}</p>
           </div>
 
-          <h1 className="tape-title">
-            Four prices. <span>One vault.</span>
-          </h1>
+          <h1 className="tape-title">Four prices. One vault.</h1>
           <p className="tape-lede">
             The encryption is the same on every row, including the free ones. What you pay for is
             who runs the server — ours, or yours.
@@ -49,8 +57,12 @@ export function PricingPage({ tiers }: { tiers: Tier[] }) {
 
           <fieldset className="tape-lines">
             <legend className="sr-only">Choose a tier</legend>
+            <p className="tape-cols tape-slug" aria-hidden="true">
+              <span>Plan</span>
+              <span>Price</span>
+            </p>
             {tiers.map((tier) => {
-              const on = tier.code === chosen;
+              const on = tier.code === selected.code;
               return (
                 <label key={tier.code} className="tape-line" data-on={on || undefined}>
                   <input
@@ -61,13 +73,19 @@ export function PricingPage({ tiers }: { tiers: Tier[] }) {
                     onChange={() => setChosen(tier.code)}
                     className="sr-only"
                   />
-                  <span className="tape-mark" aria-hidden="true" />
                   <span className="tape-body">
-                    <span className="tape-name">{tier.name}</span>
+                    <span className="tape-name">
+                      {tier.name}
+                      {tier === yearly ? (
+                        <span className="rounded-full bg-emerald-400/15 px-2.5 py-0.5 text-xs font-normal text-emerald-400 light:text-emerald-700">
+                          best value
+                        </span>
+                      ) : null}
+                    </span>
                     <span className="tape-terms">{tier.terms}</span>
                   </span>
                   <span className="tape-amount">
-                    {formatAmount(tier.amount, tier.currency)} <small>{tier.per}</small>
+                    {formatAmount(tier.amount, currency)} <small>{tier.per}</small>
                   </span>
                 </label>
               );
@@ -82,16 +100,13 @@ export function PricingPage({ tiers }: { tiers: Tier[] }) {
             <a href={SELF_HOST_HREF} className="btn btn-secondary">
               Or run it yourself
             </a>
-            <p className="tape-fineprint">
-              <span className={chip}>{selected.chip}</span>
-              <span className="block">{TERMS[selected.kind]}</span>
-              {selected.kind !== "free" ? (
-                <span className="block">
-                  No refunds: access runs to the end of the period you paid for.
-                </span>
-              ) : null}
-            </p>
           </div>
+          <p className="tape-fineprint">
+            {TERMS[selected.kind]}
+            {selected.kind !== "free" ? (
+              <span>No refunds: access runs to the end of the period you paid for.</span>
+            ) : null}
+          </p>
 
           {/* The foot changes with the selection; announce it rather than let it
               change silently for anyone not watching the tape. */}
@@ -133,16 +148,32 @@ const gates = [
   },
 ];
 
+const billing = [
+  {
+    icon: CreditCardIcon,
+    text: "Lemon Squeezy handles the payment as the merchant of record. The card statement and the invoice carry Lemon Squeezy, not Montara Pass.",
+  },
+  {
+    icon: SyncIcon,
+    text: "A monthly or annual plan renews until you cancel. Cancelling stops the next charge and leaves the period you already paid for intact.",
+  },
+  {
+    icon: InfinityIcon,
+    text: "The lifetime plan is one payment. It does not renew, and it does not expire.",
+  },
+  { icon: ReceiptIcon, text: "We do not refund. There is no trial period on the paid tiers." },
+];
+
+const heading = "font-heading text-2xl font-medium tracking-tight";
+const below = "border-t border-line px-6 py-20 sm:px-10 sm:py-24";
+
 function PricingBelow() {
   return (
     <>
-      <section
-        aria-labelledby="included"
-        className="border-t border-line px-6 py-20 sm:px-10 sm:py-24"
-      >
-        <div className="mx-auto grid max-w-4xl gap-12 md:grid-cols-[280px_minmax(0,1fr)]">
+      <section aria-labelledby="included" className={below}>
+        <div className="mx-auto grid max-w-4xl gap-10 md:grid-cols-2 md:gap-16">
           <div>
-            <h2 id="included" className="font-heading text-2xl font-medium tracking-tight">
+            <h2 id="included" className={heading}>
               What every tier has
             </h2>
             <p className="mt-4 text-[15px] leading-7 text-mist">
@@ -151,8 +182,8 @@ function PricingBelow() {
           </div>
           <ul className="flex flex-col gap-3.5">
             {included.map((item) => (
-              <li key={item} className="flex items-start gap-2.5 text-[15px] leading-7 text-mist">
-                <CheckIcon className="mt-1.5 size-4 shrink-0 text-fg" />
+              <li key={item} className="flex items-start gap-3 text-[15px] leading-7 text-mist">
+                <CheckIcon className="mt-1.5 size-4 shrink-0 text-accent-bright" />
                 <span>{item}</span>
               </li>
             ))}
@@ -160,62 +191,68 @@ function PricingBelow() {
         </div>
       </section>
 
-      <section
-        aria-labelledby="gates"
-        className="border-t border-line px-6 py-20 sm:px-10 sm:py-24"
-      >
+      <section aria-labelledby="gates" className={below}>
         <div className="mx-auto max-w-4xl">
-          <h2 id="gates" className="font-heading text-2xl font-medium tracking-tight">
-            What changes between tiers
-          </h2>
-          <dl className="mt-8 border-t border-line">
-            {gates.map((row) => (
+          <div className="text-center">
+            <h2 id="gates" className={heading}>
+              What changes between tiers
+            </h2>
+            <p className="mt-4 text-pretty text-[15px] leading-7 text-mist">
+              Almost nothing. The gaps are in who runs the server, and whether you can share an item
+              out.
+            </p>
+          </div>
+          <dl className="mt-10 border-t border-line">
+            {gates.map((row, i) => (
               <div
                 key={row.tier}
-                className="grid gap-2 border-b border-line py-6 sm:grid-cols-[200px_minmax(0,1fr)] sm:gap-8"
+                className="grid gap-2 border-b border-line py-7 sm:grid-cols-[220px_minmax(0,1fr)] sm:gap-8"
               >
-                <dt className="text-sm font-medium">{row.tier}</dt>
+                <dt className="text-[15px] font-medium">
+                  {row.tier}
+                  <span className="mt-1 block font-mono text-xs font-normal text-mist">
+                    0{i + 1}
+                  </span>
+                </dt>
                 <dd className="text-[15px] leading-7 text-mist">{row.gate}</dd>
               </div>
             ))}
           </dl>
-          <p className="mt-8 max-w-2xl text-[15px] leading-7 text-mist">
+          <p className="mt-10 text-pretty text-center text-[15px] leading-7 text-mist/70">
             Passkeys work on a free account. They live inside the encrypted item, so the server
             could not tell which items hold one even if we wanted it to.
           </p>
         </div>
       </section>
 
-      <section
-        aria-labelledby="billing"
-        className="border-t border-line px-6 py-20 sm:px-10 sm:py-24"
-      >
-        <div className="mx-auto grid max-w-4xl gap-10 md:grid-cols-2">
+      <section aria-labelledby="billing" className={below}>
+        <div className="mx-auto grid max-w-4xl items-start gap-10 md:grid-cols-2">
           <div>
-            <h2 id="billing" className="font-heading text-2xl font-medium tracking-tight">
+            <h2 id="billing" className={heading}>
               Billing, plainly
             </h2>
-            <ul className="mt-6 flex flex-col gap-4 text-[15px] leading-7 text-mist">
-              <li>
-                Lemon Squeezy handles the payment as the merchant of record. The card statement and
-                the invoice carry Lemon Squeezy, not Montara Pass.
-              </li>
-              <li>
-                A monthly or annual plan renews until you cancel. Cancelling stops the next charge
-                and leaves the period you already paid for intact.
-              </li>
-              <li>The lifetime plan is one payment. It does not renew, and it does not expire.</li>
-              <li>We do not refund. There is no trial period on the paid tiers.</li>
+            <p className="mt-4 text-[15px] leading-7 text-mist">
+              Four things worth knowing before you enter a card. No surprises, no dark patterns.
+            </p>
+            <ul className="mt-6 flex flex-col gap-5">
+              {billing.map((item) => (
+                <li key={item.text} className="flex items-start gap-3.5">
+                  <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md border border-line bg-card text-accent-bright">
+                    <item.icon className="size-3.5" />
+                  </span>
+                  <span className="text-[15px] leading-7 text-mist">{item.text}</span>
+                </li>
+              ))}
             </ul>
           </div>
-          <div className="rounded-[14px] border border-line bg-card p-6 sm:p-7">
-            <h3 className="text-sm text-mist">Before you pay</h3>
-            <p className="mt-4 text-[15px] leading-7">
+          <div className={card}>
+            <span className={`${pill} border border-line font-mono text-mist`}>before you pay</span>
+            <p className="mt-5 text-[15px] leading-7 text-mist">
               Try the free account, or self-host. Both use the same vault, the same clients and the
               same encryption as Pro — nothing is held back for the paid tier except sharing an item
               out.
             </p>
-            <a href={docsUrl("getting-started/docker")} className="btn btn-secondary mt-6">
+            <a href={docsUrl("getting-started/docker")} className="btn btn-secondary mt-7">
               Read the Docker guide
             </a>
           </div>

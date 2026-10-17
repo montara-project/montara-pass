@@ -4,6 +4,7 @@ import {
   IconFilterOff,
   IconLock,
   IconPlus,
+  IconSearch,
   IconStarFilled,
 } from '@tabler/icons-react'
 import { parseAsInteger, useQueryState } from 'nuqs'
@@ -14,8 +15,9 @@ import type { VaultFolder, VaultItem } from '@/types/vault'
 import EmptyState from '@/components/block/common/empty-state'
 import SelectInput from '@/components/block/common/select-input'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useFolders, useItems } from '@/hooks/use-vault'
+import { useAllItems, useFolders, useItems } from '@/hooks/use-vault'
 import { axiosErrorMessage } from '@/lib/api/axios-error'
 import { ItemTypeOptions } from '@/lib/constants/vault'
 import { formatDate } from '@/lib/date'
@@ -31,6 +33,14 @@ const ALL = 'all'
 /** Items to a page. The server cannot sort or search, so the list is paged as it comes. */
 const PAGE_SIZE = 25
 
+/** What a search looks in: the same fields as the extension's. */
+function matches(item: VaultItem, term: string) {
+  // Decrypted JSON is only typed, not checked: a field may not be a string.
+  return [item.secret?.name, item.secret?.username, item.secret?.url].some(
+    (value: unknown) => typeof value === 'string' && value.toLowerCase().includes(term)
+  )
+}
+
 /**
  * The vault: the list on one side and the item it has selected on the other.
  * In a narrow window the two take turns.
@@ -42,6 +52,10 @@ export default function Vault() {
   const [type, setType] = useQueryState('type')
   const [page, setPage] = useQueryState('page', parseAsInteger.withDefault(0))
   const [selectedId, setSelectedId] = useQueryState('item')
+  // Kept out of the URL: what someone searches their vault for would
+  // otherwise land in the browser's history.
+  const [search, setSearch] = useState('')
+  const term = search.trim().toLowerCase()
 
   const params = useMemo(
     () => ({
@@ -54,10 +68,26 @@ export default function Vault() {
   )
 
   const { data: folders } = useFolders()
-  const { data, isLoading, isError, error, refetch } = useItems(params)
-  const total = data?.metadata?.total ?? 0
-  const items = data?.data ?? []
-  const filtered = Boolean(folderId || type)
+  // The server cannot search ciphertext, so a search reads the whole vault,
+  // decrypted, and filters and pages it here. Without one, the server pages.
+  const paged = useItems(params)
+  const everything = useAllItems({ enabled: Boolean(term) })
+  const { isLoading, isError, error, refetch } = term ? everything : paged
+  const found = useMemo(
+    () =>
+      (everything.data ?? []).filter(
+        (item) =>
+          (!folderId || item.folder_id === folderId) &&
+          (!type || item.type === type) &&
+          matches(item, term)
+      ),
+    [everything.data, folderId, type, term]
+  )
+  const total = term ? found.length : (paged.data?.metadata?.total ?? 0)
+  const items = term
+    ? found.slice(params.offset, params.offset + PAGE_SIZE)
+    : (paged.data?.data ?? [])
+  const filtered = Boolean(folderId || type || term)
   const folderList = useMemo(() => folders ?? [], [folders])
 
   const selected = items.find((item) => item.id === selectedId) ?? null
@@ -109,6 +139,21 @@ export default function Vault() {
           </header>
 
           <div className="flex flex-wrap items-center gap-2 px-6 pb-4">
+            <div className="relative min-w-48 flex-1 sm:max-w-72">
+              <IconSearch
+                className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+                aria-hidden
+              />
+              <Input
+                type="search"
+                placeholder="Search items"
+                aria-label="Search items by name, username or URL"
+                value={search}
+                onChange={(event) => filter(() => setSearch(event.target.value))}
+                // The selects beside it set the field look; the input takes it too.
+                className="bg-field border-field-border rounded-control hover:border-muted-foreground focus-visible:border-focus focus-visible:ring-focus h-9 pl-9 shadow-none focus-visible:ring-1 dark:bg-field"
+              />
+            </div>
             <SelectInput
               // Remount once the folders arrive so the stored filter shows its name.
               key={`folder-${folderList.length}`}
@@ -171,7 +216,7 @@ export default function Vault() {
                 title={filtered ? 'No items match these filters' : 'Your vault is empty'}
                 description={
                   filtered
-                    ? 'Change the folder or the type above to see more.'
+                    ? 'Change the search, the folder or the type above to see more.'
                     : 'Add your first login or secure note with New item.'
                 }
               />

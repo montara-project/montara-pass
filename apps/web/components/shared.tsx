@@ -10,15 +10,21 @@ export function Dim({ children }: { children: React.ReactNode }) {
 /** A centred statement: two-tone heading and, at most, two lines of subcopy. */
 export function Statement({
   title,
+  eyebrow,
   children,
   as: Heading = "h2",
 }: {
   title: React.ReactNode;
+  /** A small pill above the heading naming the section. */
+  eyebrow?: string;
   children?: React.ReactNode;
   as?: "h1" | "h2";
 }) {
   return (
     <div className="mx-auto max-w-3xl px-6 py-20 text-center sm:py-28">
+      {eyebrow ? (
+        <span className={`${pill} mb-6 border border-line font-mono text-mist`}>{eyebrow}</span>
+      ) : null}
       <Heading className="text-balance font-heading text-4xl font-medium leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.5rem]">
         {title}
       </Heading>
@@ -45,6 +51,8 @@ export function Check({ children }: { children: React.ReactNode }) {
     </li>
   );
 }
+
+export const pill = "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs";
 
 export const chip =
   "rounded-md border border-line bg-card px-1.5 py-0.5 font-mono text-xs lowercase text-mist";
