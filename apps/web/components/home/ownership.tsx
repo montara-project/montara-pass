@@ -42,10 +42,15 @@ const layers = [
   },
 ];
 
-// The variables are the ones deploy/docker-compose.yml refuses to start without.
+// The first three are the ones deploy/docker-compose.yml refuses to start without;
+// the rest build the Community Edition, whose only account is the seeded one.
 const deploySteps = [
   { title: "Create a Compose service", detail: "deploy/docker-compose.yml" },
-  { title: "Set the secrets", detail: "POSTGRES_PASSWORD · APP_SECRET · AUTH_BASE_URL" },
+  {
+    title: "Set the secrets",
+    detail:
+      "POSTGRES_PASSWORD · APP_SECRET · AUTH_BASE_URL · EDITION=community · SEED_ON_BOOT=true · SUPER_USER",
+  },
   { title: "Point a domain at :8080", detail: "Caddy · Traefik · Dokploy" },
   { title: "Deploy", detail: "docker compose up -d · migrations run on boot" },
 ];
@@ -141,13 +146,15 @@ export function Ownership() {
               <span className="ml-1">terminal</span>
             </p>
             <pre className="overflow-x-auto bg-abyss px-4 py-4 leading-6 text-mist">
-              <span className="text-fg">$ docker compose up -d</span>
+              <span className="text-fg">$ docker compose -f deploy/docker-compose.yml up -d</span>
               {"\napi  listening on :8080\nmigrations applied\n"}
               <span className="text-accent-bright">vault ready · open your domain</span>
             </pre>
           </div>
 
-          <p className={cardFoot}>Needs Docker, PostgreSQL 18, a domain and a Resend API key.</p>
+          <p className={cardFoot}>
+            Needs Docker, PostgreSQL 18 and a domain. Resend is optional in the Community Edition.
+          </p>
         </article>
       </div>
 
