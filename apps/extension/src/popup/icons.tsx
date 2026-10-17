@@ -96,6 +96,14 @@ export const SortIcon = icon(
   </>
 )
 
+export const FilterIcon = icon(
+  <>
+    <path d="M3 6h18" />
+    <path d="M7 12h10" />
+    <path d="M10 18h4" />
+  </>
+)
+
 export const ChevronDownIcon = icon(<path d="m6 9 6 6 6-6" />)
 
 export const LogOutIcon = icon(

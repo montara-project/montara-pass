@@ -1286,13 +1286,25 @@ a.set-row svg {
 .list-tools {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 0 12px 8px 8px;
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+
+/* The search takes the bar's room; the buttons beside it stand as tall. */
+.list-tools .search {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.list-tools .icon-button {
+  width: 40px;
+  height: 40px;
 }
 
 .new-item {
-  height: 36px;
-  padding: 0 12px;
+  height: 40px;
+  padding: 0 14px;
 }
 
 .list-message {
@@ -1379,6 +1391,16 @@ a.set-row svg {
 }
 
 @container (max-width: 520px) {
+  /* New item keeps its sign and gives its words to the search beside it. */
+  .new-item {
+    width: 40px;
+    padding: 0;
+  }
+
+  .new-item-label {
+    display: none;
+  }
+
   /* The headings go; the line under them stays: it is where the list begins.
      The pixel of padding gives the line a box to sit in, inside the scroller
      rather than clipped above it. */
