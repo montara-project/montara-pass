@@ -35,8 +35,9 @@ const PAGE_SIZE = 25
 
 /** What a search looks in: the same fields as the extension's. */
 function matches(item: VaultItem, term: string) {
-  return [item.secret?.name, item.secret?.username, item.secret?.url].some((value) =>
-    value?.toLowerCase().includes(term)
+  // Decrypted JSON is only typed, not checked: a field may not be a string.
+  return [item.secret?.name, item.secret?.username, item.secret?.url].some(
+    (value: unknown) => typeof value === 'string' && value.toLowerCase().includes(term)
   )
 }
 
