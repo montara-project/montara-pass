@@ -3,6 +3,27 @@
 All notable changes to this project are documented in this file. Versions follow the git tags (`v*`); Docker images are published to ghcr.io with the same version.
 
 
+## [2.1.0](https://github.com/montara-project/montara-pass/compare/v2.0.0...v2.1.0) (2026-10-17)
+
+### Features
+
+* **app:** redesign billing page plans as priced cards with yearly marked ([a149ebc](https://github.com/montara-project/montara-pass/commit/a149ebc62b54690bcfb454e81ed1430ad1161263))
+* **app:** search the vault by name, username or URL ([9facd44](https://github.com/montara-project/montara-pass/commit/9facd446748226e211f51c51e2099234b74097c1))
+* **extension:** put search, sort, refresh and new item on one bar in full screen ([48dd5ce](https://github.com/montara-project/montara-pass/commit/48dd5ce191dd4d6ff435f9a36503451a5599befb))
+* **extension:** redesign billing page plans as priced cards with yearly marked ([ba89f06](https://github.com/montara-project/montara-pass/commit/ba89f06757303e78b691afdbafa6d3c48b6152e2))
+* **web:** read pricing plans through an API layer and TanStack Query ([bb95fc1](https://github.com/montara-project/montara-pass/commit/bb95fc1ca411e0f0d119a0b1746432e3058768da))
+* **web:** redesign contact page channels, form and office cards ([61b4511](https://github.com/montara-project/montara-pass/commit/61b4511acea136434b512ea5a2272155a441c297))
+* **web:** redesign home hero with a top glow and single-tone heading ([4d2e48c](https://github.com/montara-project/montara-pass/commit/4d2e48ce40c36e91ccd3b28ba0108bb9a8ad12f9))
+* **web:** redesign home pricing section as self-hosted and cloud cards ([c66ca34](https://github.com/montara-project/montara-pass/commit/c66ca349582a4fe607e5cdde4018d10908779d5d))
+* **web:** redesign pricing page plans as a table with yearly as best value ([77b44e0](https://github.com/montara-project/montara-pass/commit/77b44e0da89f8c7725ba1f01d7236426444746d4))
+* **web:** redesign self-host section as stack layers and deploy steps ([f4ed9cf](https://github.com/montara-project/montara-pass/commit/f4ed9cf8e30c451f72bae8d32303c3780565a3e5))
+* **web:** redesign the sections below the pricing plans ([624672d](https://github.com/montara-project/montara-pass/commit/624672dccfee6e9629a6baf713121a4c2afe2b4e))
+
+### Bug Fixes
+
+* **app:** only lowercase string fields in vault search ([2b51d82](https://github.com/montara-project/montara-pass/commit/2b51d82e59af87bdbd36f89fa38152ebc1eb91f0))
+* **web:** document Community Edition setup in the self-host guide ([11a27dc](https://github.com/montara-project/montara-pass/commit/11a27dc89ae1df710c0ccfc33093fc4504cf016a))
+
 ## [2.0.0](https://github.com/montara-project/montara-pass/compare/v1.9.0...v2.0.0) (2026-10-16)
 
 ### ⚠ BREAKING CHANGES
