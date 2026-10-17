@@ -1,5 +1,10 @@
+import { useQuery } from "@tanstack/react-query";
+
+import type { Models } from "@/lib/api/models";
+
 import { APP_URL } from "@/components/links";
 import { type Tier, TIERS } from "@/components/pricing/plans";
+import { queries } from "@/lib/api/queries";
 
 /**
  * The tiers the page lists: the two free rows, plus one row per plan the hosted
@@ -15,20 +20,10 @@ import { type Tier, TIERS } from "@/components/pricing/plans";
  * amounts and names replace the authored ones.
  */
 
-/** A plan as the API serves it (`apps/server` internal/models/billing.go). */
-type Plan = {
-  code: string;
-  name: string;
-  billing: "recurring" | "one_time";
-  billing_interval: "month" | "year" | null;
-  amount: number;
-  currency: string;
-};
-
 const FREE_TIERS = TIERS.filter((tier) => tier.kind === "free");
 
 /** A live plan as a tape row. */
-function fromPlan(plan: Plan): Tier {
+function fromPlan(plan: Models.Plan): Tier {
   const oneTime = plan.billing === "one_time";
   const yearly = plan.billing_interval === "year";
   return {
@@ -49,15 +44,9 @@ function fromPlan(plan: Plan): Tier {
   };
 }
 
-export async function tiersOnOffer(): Promise<Tier[]> {
-  try {
-    const res = await fetch(`${APP_URL}/api/v1/plans`, { next: { revalidate: 300 } });
-    if (!res.ok) return TIERS;
-    const body = (await res.json()) as { data?: Plan[] };
-    const plans = body.data ?? [];
-    if (plans.length === 0) return TIERS;
-    return [...FREE_TIERS, ...plans.map(fromPlan)];
-  } catch {
-    return TIERS;
-  }
+/** For client components under a route that prefetched `queries.billing.plans()`. */
+export function useTiers(): Tier[] {
+  const { data: plans } = useQuery(queries.billing.plans());
+  if (!plans?.length) return TIERS;
+  return [...FREE_TIERS, ...plans.map(fromPlan)];
 }

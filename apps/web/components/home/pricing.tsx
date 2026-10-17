@@ -1,15 +1,17 @@
+"use client";
+
 import { ArrowRightIcon, CheckIcon } from "@/components/icons";
 import { docsUrl } from "@/components/links";
-import { tiersOnOffer } from "@/components/pricing/offer";
+import { useTiers } from "@/components/pricing/offer";
 import { formatAmount, type Tier } from "@/components/pricing/plans";
 import { card } from "@/components/shared";
 
 const pill = "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs";
 
-export async function Pricing() {
+export function Pricing() {
   // The same rows as the pricing page: live plans, or the authored ones until
   // the hosted service has some.
-  const paid = (await tiersOnOffer()).filter((tier) => tier.kind !== "free");
+  const paid = useTiers().filter((tier) => tier.kind !== "free");
   const monthly = paid.find((tier) => tier.per === "/ month");
 
   return (
@@ -121,11 +123,11 @@ function PlanRow({ tier, monthly }: { tier: Tier; monthly?: Tier }) {
       <div className="ml-auto flex items-center gap-3">
         <div className="flex flex-col items-end">
           <span className="whitespace-nowrap text-lg font-medium">
-            {formatAmount(tier.amount, tier.currency)}
+            {formatAmount(tier.amount, "USD")}
           </span>
           {freeMonths > 0 ? (
             <span className="whitespace-nowrap font-mono text-xs text-mist">
-              was {formatAmount(full, tier.currency)}
+              was {formatAmount(full, "USD")}
             </span>
           ) : null}
         </div>

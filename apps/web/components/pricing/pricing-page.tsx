@@ -5,7 +5,8 @@ import { useState } from "react";
 import { ArrowRightIcon, CheckIcon } from "@/components/icons";
 import { docsUrl } from "@/components/links";
 import { PricingLedger } from "@/components/pricing/ledger-panel";
-import { formatAmount, SELF_HOST_HREF, TERMS, type Tier } from "@/components/pricing/plans";
+import { useTiers } from "@/components/pricing/offer";
+import { formatAmount, SELF_HOST_HREF, TERMS } from "@/components/pricing/plans";
 import { chip } from "@/components/shared";
 
 /**
@@ -15,10 +16,11 @@ import { chip } from "@/components/shared";
  * the proof. Selecting a line marks it and names the action at the foot of the
  * tape, so choosing a tier and acting on it are one motion on one surface.
  *
- * The tiers come from the route, which reads them from the API; this component
+ * The tiers come from the plans query the route prefetched; this component
  * only holds the selection.
  */
-export function PricingPage({ tiers }: { tiers: Tier[] }) {
+export function PricingPage() {
+  const tiers = useTiers();
   // The tier the foot action offers. Monthly is where a visitor paying for the
   // hosted service starts; nothing on the page calls one tier recommended.
   const [chosen, setChosen] = useState("pro-monthly");

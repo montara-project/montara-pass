@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import ReactQueryProvider from "@/lib/providers/react-query";
 
 import "./globals.css";
 
@@ -37,9 +38,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         />
         {/* Page frame: one bordered column, hatched gutters on either side. */}
         <div className="mx-auto min-h-screen w-full max-w-[1200px] border-x border-line bg-ink">
-          <SiteHeader />
-          {children}
-          <SiteFooter />
+          <ReactQueryProvider>
+            <SiteHeader />
+            {children}
+            <SiteFooter />
+          </ReactQueryProvider>
         </div>
       </body>
     </html>
