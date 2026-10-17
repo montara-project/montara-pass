@@ -1,67 +1,34 @@
-import { ArrowRightIcon } from "@/components/icons";
-import { APP_URL } from "@/components/links";
-import { Dim, Statement, Check, chip, card } from "@/components/shared";
+import { ArrowRightIcon, CheckIcon } from "@/components/icons";
+import { docsUrl } from "@/components/links";
+import { tiersOnOffer } from "@/components/pricing/offer";
+import { formatAmount, type Tier } from "@/components/pricing/plans";
+import { card } from "@/components/shared";
 
-/** A plan of the hosted service (apps/server internal/models/billing.go). */
-type Plan = {
-  code: string;
-  name: string;
-  billing: "recurring" | "one_time";
-  billing_interval: "month" | "year" | null;
-  amount: number;
-  currency: string;
-};
-
-/**
- * The plans the hosted service has on offer, read again at most every five
- * minutes. None when it cannot be reached: the card then says Cloud is not
- * for sale yet, as it did before there were plans.
- */
-async function plansOnOffer(): Promise<Plan[]> {
-  try {
-    const res = await fetch(`${APP_URL}/api/v1/plans`, { next: { revalidate: 300 } });
-    if (!res.ok) return [];
-    const body = (await res.json()) as { data?: Plan[] };
-    return body.data ?? [];
-  } catch {
-    return [];
-  }
-}
-
-/** Its price, from cents, which the API counts every currency in. */
-function price(plan: Plan) {
-  const digits = 2;
-  const amount = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currencyDisplay: "narrowSymbol",
-    currency: plan.currency,
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  }).format(plan.amount / 10 ** digits);
-  return { amount, per: plan.billing_interval ? `per ${plan.billing_interval}` : "once" };
-}
+const pill = "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs";
 
 export async function Pricing() {
-  const plans = await plansOnOffer();
+  // The same rows as the pricing page: live plans, or the authored ones until
+  // the hosted service has some.
+  const paid = (await tiersOnOffer()).filter((tier) => tier.kind !== "free");
+  const monthly = paid.find((tier) => tier.per === "/ month");
 
   return (
-    <section className="border-t border-line pb-20 sm:pb-28">
-      <Statement
-        title={
-          <>
-            Free to run. <Dim>Or let us host it.</Dim>
-          </>
-        }
-      >
-        Self-hosting costs you a server and nothing to us. Cloud runs the server for you, from $3 a
-        month.
-      </Statement>
+    <section className="border-t border-line">
+      <div className="mx-auto max-w-3xl px-6 pt-20 text-center sm:pt-28">
+        <span className={`${pill} border border-line font-mono text-mist`}>pricing</span>
+        <h2 className="mt-6 text-balance font-heading text-4xl font-medium leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.5rem]">
+          Free to run. Or let us host it.
+        </h2>
+        <p className="mx-auto mt-6 max-w-xl text-pretty leading-7 text-mist">
+          Self-hosting costs you a server and nothing to us. Cloud runs it for you, cancel anytime.
+        </p>
+      </div>
 
-      <div className="mx-auto -mt-8 grid max-w-4xl gap-6 px-6 md:grid-cols-2">
+      <div className="mx-auto mt-14 grid max-w-5xl gap-6 px-6 md:grid-cols-2">
         <article className={`${card} flex flex-col`}>
           <div className="flex items-center justify-between gap-3">
-            <h3 className="font-medium">Self-hosted</h3>
-            <span className={`${chip} inline-flex items-center gap-1.5`}>
+            <h3 className="text-lg font-medium">Self-hosted</h3>
+            <span className={`${pill} border border-line`}>
               <span className="size-1.5 rounded-full bg-accent-bright" />
               available now
             </span>
@@ -70,98 +37,105 @@ export async function Pricing() {
             <span className="font-heading text-5xl font-medium tracking-tight">$0</span>
             <span className="font-mono text-xs lowercase text-mist">forever</span>
           </p>
-          <ul className="mt-6 flex flex-1 flex-col gap-3">
-            <Check>Web app, browser extension and API</Check>
-            <Check>Sharing with roles and key rotation</Check>
-            <Check>Your server, your PostgreSQL, your backups</Check>
-            <Check>No tiers. Every feature is in the image</Check>
+          <p className="mt-5 border-b border-line pb-5 text-[15px] text-mist">
+            Run it on your own hardware. Nothing to us, nothing to renew.
+          </p>
+          <ul className="mt-5 flex flex-1 flex-col gap-3">
+            {[
+              "Web app, browser extension and API",
+              "Sharing with roles and key rotation",
+              "Your server, your PostgreSQL, your backups",
+              "No tiers. Every feature is in the image",
+            ].map((line) => (
+              <li key={line} className="flex items-start gap-2.5 text-[15px] leading-6 text-mist">
+                <CheckIcon className="mt-0.5 size-4 shrink-0 text-accent-bright" />
+                {line}
+              </li>
+            ))}
           </ul>
-          <a href="#self-host" className="btn btn-primary mt-8">
-            Self-host
+          <a href={docsUrl("getting-started/docker")} className="btn btn-primary mt-8 w-full">
+            Read the docs
             <ArrowRightIcon className="size-4" />
           </a>
+          <p className="mt-6 font-mono text-xs text-mist">
+            Docker · PostgreSQL 18 · domain · Resend API key
+          </p>
         </article>
 
-        {plans.length > 0 ? (
-          <CloudPlans plans={plans} />
-        ) : (
-          <article className={`${card} flex flex-col`}>
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="font-medium">Cloud</h3>
-              <span className={chip}>priced</span>
-            </div>
-            <p className="mt-5 text-[15px] leading-7 text-mist">
-              We run the server and PostgreSQL for you. The same encryption, done in your browser —
-              and a free account if you are not ready to pay for it.
-            </p>
-            <ul className="mt-6 flex flex-1 flex-col gap-3">
-              <Check>Free account, or Pro from $3 a month</Check>
-              <Check>The same encryption, done in your browser</Check>
-              <Check>No Docker, no migrations</Check>
-            </ul>
-            <a href="/pricing" className="btn btn-primary mt-8">
-              See the prices
-              <ArrowRightIcon className="size-4" />
-            </a>
-          </article>
-        )}
+        <article
+          className={`${card.replace("border-line", "border-accent/40")} flex flex-col bg-[radial-gradient(120%_70%_at_25%_0%,color-mix(in_srgb,var(--color-accent)_20%,transparent),transparent_70%)]`}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-lg font-medium">Cloud</h3>
+            <span className={`${pill} bg-accent-bright/15 text-accent-bright`}>most popular</span>
+          </div>
+          <p className="mt-5 border-b border-line pb-5 text-[15px] leading-6 text-mist">
+            We run the server and PostgreSQL for you. The same zero-knowledge encryption.
+          </p>
+          <ul className="flex flex-1 flex-col divide-y divide-line">
+            {paid.map((tier) => (
+              <PlanRow key={tier.code} tier={tier} monthly={monthly} />
+            ))}
+          </ul>
+          <p className="mt-6 font-mono text-xs text-mist">
+            Paid through Lemon Squeezy · cancel anytime
+          </p>
+        </article>
       </div>
 
-      <p className="mx-auto mt-10 max-w-xl text-balance px-6 text-center font-mono text-xs leading-5 text-mist">
-        Self-hosting needs Docker, PostgreSQL 18, a domain and a Resend API key for sign-in emails.
-      </p>
-      <p className="mt-3 px-6 text-center text-sm text-mist">
-        Need a business plan?{" "}
-        <a
-          href="/contact"
-          className="cursor-pointer font-medium text-fg underline-offset-4 hover:underline"
-        >
+      <p className="mt-16 border-t border-line px-6 py-8 text-center text-sm text-mist sm:mt-20">
+        Need a business plan or an invoice?{" "}
+        <a href="/contact" className="nudge font-medium text-accent-bright">
           Contact us
+          <ArrowRightIcon className="ml-1 inline size-3.5" />
         </a>
       </p>
     </section>
   );
 }
 
-/** The hosted service once it has plans: each one leads to billing in the web app. */
-function CloudPlans({ plans }: { plans: Plan[] }) {
+/** One Cloud plan; the yearly one is set against twelve months of the monthly. */
+function PlanRow({ tier, monthly }: { tier: Tier; monthly?: Tier }) {
+  const yearly = tier.per === "/ year";
+  const full = yearly && monthly ? monthly.amount * 12 : 0;
+  const freeMonths = full > tier.amount ? Math.round((full - tier.amount) / monthly!.amount) : 0;
+  const note =
+    tier.kind === "one_time"
+      ? "one payment"
+      : freeMonths > 0
+        ? `free ${freeMonths} months`
+        : `billed ${yearly ? "yearly" : "monthly"}`;
+
   return (
-    <article className={`${card} flex flex-col`}>
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="font-medium">Cloud</h3>
-        <span className={`${chip} inline-flex items-center gap-1.5`}>
-          <span className="size-1.5 rounded-full bg-accent-bright" />
-          available now
+    <li className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 py-4">
+      <div className="flex min-w-0 flex-col">
+        <span className="font-medium">
+          {tier.kind === "one_time" ? "Lifetime" : yearly ? "Yearly" : "Monthly"}
+        </span>
+        <span
+          className={`whitespace-nowrap font-mono text-xs ${freeMonths > 0 ? "text-emerald-400 light:text-emerald-600" : "text-mist"}`}
+        >
+          {note}
         </span>
       </div>
-      <ul className="mt-5 flex flex-1 flex-col divide-y divide-line">
-        {plans.map((plan) => {
-          const { amount, per } = price(plan);
-          return (
-            <li key={plan.code} className="flex items-center justify-between gap-4 py-3 first:pt-0">
-              <div className="flex min-w-0 flex-col">
-                <span className="font-medium">{plan.name}</span>
-                <span className="flex items-baseline gap-2">
-                  <span className="font-heading text-2xl font-medium tracking-tight">{amount}</span>
-                  <span className="font-mono text-xs lowercase text-mist">{per}</span>
-                </span>
-              </div>
-              <a
-                href={`${APP_URL}/billing?plan=${encodeURIComponent(plan.code)}`}
-                className="btn btn-primary shrink-0"
-              >
-                {plan.billing === "recurring" ? "Subscribe" : "Buy"}
-                <ArrowRightIcon className="size-4" />
-              </a>
-            </li>
-          );
-        })}
-      </ul>
-      <ul className="mt-6 flex flex-col gap-3">
-        <Check>The same encryption, done in your browser</Check>
-        <Check>We run the server and PostgreSQL</Check>
-        <Check>Paid through Lemon Squeezy</Check>
-      </ul>
-    </article>
+      <div className="ml-auto flex items-center gap-3">
+        <div className="flex flex-col items-end">
+          <span className="whitespace-nowrap text-lg font-medium">
+            {formatAmount(tier.amount, tier.currency)}
+          </span>
+          {freeMonths > 0 ? (
+            <span className="whitespace-nowrap font-mono text-xs text-mist">
+              was {formatAmount(full, tier.currency)}
+            </span>
+          ) : null}
+        </div>
+        <a
+          href={tier.action.href}
+          className={`btn shrink-0 ${yearly ? "btn-primary" : "btn-secondary"}`}
+        >
+          {tier.kind === "one_time" ? "Buy once" : "Subscribe"}
+        </a>
+      </div>
+    </li>
   );
 }
