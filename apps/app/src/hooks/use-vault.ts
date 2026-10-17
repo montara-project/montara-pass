@@ -73,12 +73,14 @@ const PAGE_SIZE = 100
 
 /**
  * Every live item of the vault, decrypted, for a check that has to see them
- * all at once. Items that cannot be decrypted are left out.
+ * all at once, or a search the server cannot run. Items that cannot be
+ * decrypted are left out. `enabled: false` holds it until it is wanted.
  */
-export function useAllItems() {
+export function useAllItems({ enabled = true }: { enabled?: boolean } = {}) {
   const keys = useVaultKeys()
 
   return useQuery({
+    enabled,
     // Under the items key, so saving an item refreshes it.
     queryKey: [ITEM_QUERY_KEY, 'all', 'decrypted'],
     queryFn: async (): Promise<VaultItem[]> => {
