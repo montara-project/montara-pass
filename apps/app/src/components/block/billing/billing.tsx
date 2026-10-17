@@ -1,4 +1,5 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { CreditCard } from 'lucide-react'
 import { useQueryState } from 'nuqs'
 
 import type { Models } from '@/lib/api/models'
@@ -12,13 +13,25 @@ import { formatDate } from '@/lib/date'
 import { formatPrice } from '@/lib/money'
 import { cn } from '@/lib/utils'
 
-const INTERVAL = { month: 'month', year: 'year' } as const
-
-/** The price with its period, if it has one: "$3.00 / month". */
-function price(plan: Models.Plan) {
-  const amount = formatPrice(plan.amount, plan.currency)
-  return plan.billing_interval ? `${amount} / ${INTERVAL[plan.billing_interval]}` : amount
+/**
+ * A plan's name without the product and the store's environment, which the
+ * synced names carry ("Montara Pass Pro Monthly - Sandbox" reads "Pro Monthly").
+ */
+function planName(plan: Models.Plan) {
+  return plan.name.replace(/^Montara Pass\s+/i, '').replace(/\s+-\s+sandbox$/i, '')
 }
+
+/** A plan synced from Lemon Squeezy's test mode, which takes no real money. */
+const isSandbox = (plan: Models.Plan) => /\s+-\s+sandbox$/i.test(plan.name)
+
+const PERIOD = { month: '/ month', year: '/ year' } as const
+
+const TERMS = {
+  month: 'renews monthly · cancel any time',
+  year: 'renews yearly · cancel any time',
+} as const
+
+const label = 'text-muted-foreground pl-1 font-mono text-[11px] tracking-[0.12em] uppercase'
 
 const STATUS: Record<Models.Subscription['status'] | Models.Purchase['status'], string> = {
   pending: 'Waiting for payment',
@@ -67,9 +80,21 @@ export default function BillingBlock() {
         purchase.plan_id === plan.id &&
         (purchase.status === 'paid' || purchase.status === 'pending')
     )
+  const lifetime = purchases.some((purchase) => purchase.status === 'paid')
+  // The plan marked out: the one the website sent the user here for, or else
+  // the yearly one.
+  const featured =
+    plans.data?.find((plan) => plan.code === chosen) ??
+    plans.data?.find((plan) => plan.billing_interval === 'year')
+  const currency = plans.data?.[0]?.currency
 
   return (
-    <Page title="Billing" description="Your plan, and what you have bought." width="wide">
+    <Page
+      title="Billing"
+      icon={CreditCard}
+      description={`Your plan, and what you have bought.${currency ? ` Prices in ${currency}.` : ''}`}
+      width="wide"
+    >
       {returned && subscription?.status !== 'active' && (
         <p className="rounded-card bg-hover px-4 py-3 text-[13px]">
           Thanks. Your payment is being confirmed; this page updates once it has gone through.
@@ -77,16 +102,16 @@ export default function BillingBlock() {
       )}
 
       <section aria-labelledby="current" className="flex flex-col gap-2">
-        <h2 id="current" className="text-muted-foreground pl-1 text-[13px] font-semibold">
+        <h2 id="current" className={label}>
           Subscription
         </h2>
-        <div className="rounded-card flex min-h-[64px] flex-wrap items-center justify-between gap-4 border px-4 py-3">
+        <div className="rounded-card bg-card flex min-h-[64px] flex-wrap items-center justify-between gap-4 border px-4 py-3">
           {overview.isLoading ? (
             <Skeleton className="h-4 w-48" />
           ) : subscription ? (
             <>
               <div className="flex min-w-0 flex-col gap-0.5">
-                <span className="font-medium">{subscription.plan.name}</span>
+                <span className="font-medium">{planName(subscription.plan)}</span>
                 <span className="text-muted-foreground text-[13px]">
                   {STATUS[subscription.status]}
                   {subscription.status === 'active' &&
@@ -113,13 +138,20 @@ export default function BillingBlock() {
               )}
             </>
           ) : (
-            <span className="text-muted-foreground text-[13px]">No subscription.</span>
+            <>
+              <span className="text-muted-foreground text-[13px]">No subscription.</span>
+              {!lifetime && (
+                <span className="bg-focus/15 text-focus rounded-full px-2.5 py-0.5 text-xs font-medium">
+                  free tier
+                </span>
+              )}
+            </>
           )}
         </div>
       </section>
 
       <section aria-labelledby="plans" className="flex flex-col gap-2">
-        <h2 id="plans" className="text-muted-foreground pl-1 text-[13px] font-semibold">
+        <h2 id="plans" className={label}>
           Plans
         </h2>
         {plans.isLoading ? (
@@ -132,32 +164,52 @@ export default function BillingBlock() {
               const purchase = plan.billing === 'one_time' ? owned(plan) : undefined
               // One subscription at a time; another once this one has ended.
               const subscribed = plan.billing === 'recurring' && subscription !== null
+              const marked = plan.id === featured?.id
               return (
                 <li
                   key={plan.id}
                   className={cn(
-                    'rounded-card flex flex-col gap-3 border p-4',
-                    chosen === plan.code && 'border-primary'
+                    'rounded-card bg-card flex flex-col gap-4 border p-5',
+                    // The featured plan: marked on the edge, in the one token
+                    // that holds 3:1 on a card in both themes (--focus:
+                    // Electric Blue on light, Arctic Cyan on dark).
+                    marked && 'border-focus bg-hover'
                   )}
                 >
-                  <div className="flex flex-col gap-0.5">
-                    <span className="font-medium">{plan.name}</span>
-                    <span className="text-[15px] font-semibold tabular-nums">{price(plan)}</span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium">{planName(plan)}</span>
+                    {isSandbox(plan) && (
+                      <span className="text-muted-foreground rounded-full border px-2.5 py-0.5 font-mono text-[11px]">
+                        sandbox
+                      </span>
+                    )}
                   </div>
-                  {plan.description && (
-                    <p className="text-muted-foreground flex-1 text-[13px]">{plan.description}</p>
-                  )}
+                  <p className="flex items-baseline gap-2 font-mono tabular-nums">
+                    <span className="text-[28px] leading-none font-medium">
+                      {formatPrice(plan.amount, 'USD')}
+                    </span>
+                    <span className="text-muted-foreground text-xs">
+                      {plan.billing_interval ? PERIOD[plan.billing_interval] : 'once'}
+                    </span>
+                  </p>
+                  <p className="text-muted-foreground mb-4 font-mono text-xs">
+                    {plan.billing_interval
+                      ? TERMS[plan.billing_interval]
+                      : 'one payment · does not renew'}
+                  </p>
                   {purchase?.status === 'paid' ? (
-                    <span className="text-muted-foreground mt-auto text-[13px]">You own this.</span>
+                    <span className="text-muted-foreground mt-auto pt-4 text-[13px]">
+                      You own this.
+                    </span>
                   ) : purchase?.checkout_url ? (
-                    <Button asChild size="sm" className="mt-auto">
+                    <Button asChild size="md" className="mt-auto w-full">
                       <a href={purchase.checkout_url}>Continue payment</a>
                     </Button>
                   ) : (
                     <Button
-                      size="sm"
-                      className="mt-auto"
-                      variant={chosen === plan.code ? 'primary' : 'outline'}
+                      size="md"
+                      className="mt-auto w-full"
+                      variant={marked ? 'mono' : 'outline'}
                       disabled={busy || subscribed || overview.isLoading}
                       onClick={() =>
                         plan.billing === 'recurring'
@@ -165,7 +217,7 @@ export default function BillingBlock() {
                           : buy.mutate(plan.id)
                       }
                     >
-                      {plan.billing === 'recurring' ? 'Subscribe' : 'Buy'}
+                      {plan.billing === 'recurring' ? 'Subscribe' : 'Buy once'}
                     </Button>
                   )}
                 </li>
@@ -177,18 +229,18 @@ export default function BillingBlock() {
 
       {purchases.length > 0 && (
         <section aria-labelledby="purchases" className="flex flex-col gap-2">
-          <h2 id="purchases" className="text-muted-foreground pl-1 text-[13px] font-semibold">
+          <h2 id="purchases" className={label}>
             Purchases
           </h2>
-          <ul className="rounded-card m-0 list-none divide-y overflow-hidden border p-0">
+          <ul className="rounded-card bg-card m-0 list-none divide-y overflow-hidden border p-0">
             {purchases.map((purchase) => (
               <li
                 key={purchase.id}
                 className="flex min-h-[52px] items-center justify-between gap-4 px-4 py-3"
               >
-                <span className="font-medium">{purchase.plan.name}</span>
+                <span className="font-medium">{planName(purchase.plan)}</span>
                 <span className="text-muted-foreground text-[13px] tabular-nums">
-                  {formatPrice(purchase.amount, purchase.currency)} · {STATUS[purchase.status]}
+                  {formatPrice(purchase.amount, 'USD')} · {STATUS[purchase.status]}
                   {purchase.paid_at && ` · ${formatDate(purchase.paid_at)}`}
                 </span>
               </li>
