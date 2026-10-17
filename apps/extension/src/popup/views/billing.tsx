@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Models } from '@/lib/api/models'
 
 import { formatPrice } from '@/lib/money'
+import { isSandbox, planName, planPeriod, planTerms } from '@/lib/plan'
 
 import {
   buy,
@@ -30,12 +31,6 @@ const STATUS: Record<Models.Subscription['status'] | Models.Purchase['status'], 
 }
 
 const DATE = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
-
-/** The price with its period, if it has one: "$3.00 / month". */
-function price(plan: Models.Plan) {
-  const amount = formatPrice(plan.amount, plan.currency)
-  return plan.billing_interval ? `${amount} / ${plan.billing_interval}` : amount
-}
 
 /** Payments happen at Lemon Squeezy, in a tab of their own. */
 function open(url: string) {
@@ -110,17 +105,21 @@ export default function Billing({ onSignedOut }: BillingProps) {
         purchase.plan_id === plan.id &&
         (purchase.status === 'paid' || purchase.status === 'pending')
     )
+  const lifetime = purchases.some((purchase) => purchase.status === 'paid')
+  // The plan marked out, as on the web app's billing page: the yearly one.
+  const featured = plans.find((plan) => plan.billing_interval === 'year')
+  const currency = plans[0]?.currency
 
   return (
     <div className="stack detail-body tool-body">
-      <header className="detail-head">
-        <span className="tile tile-large">
+      <header className="billing-head">
+        <h2 className="detail-title">
           <CreditCardIcon />
+          Billing
+        </h2>
+        <span className="muted">
+          Your plan, and what you have bought.{currency && ` Prices in ${currency}.`}
         </span>
-        <div className="item-text">
-          <h2 className="detail-title">Billing</h2>
-          <span className="muted">Your plan, and what you have bought.</span>
-        </div>
       </header>
 
       {error && (
@@ -143,7 +142,7 @@ export default function Billing({ onSignedOut }: BillingProps) {
               {subscription ? (
                 <>
                   <span className="item-text">
-                    <span className="item-name">{subscription.plan.name}</span>
+                    <span className="item-name">{planName(subscription.plan)}</span>
                     <span className="muted">
                       {STATUS[subscription.status]}
                       {subscription.status === 'active' &&
@@ -169,7 +168,10 @@ export default function Billing({ onSignedOut }: BillingProps) {
                   )}
                 </>
               ) : (
-                <span className="muted">No subscription.</span>
+                <>
+                  <span className="muted billing-none">No subscription.</span>
+                  {!lifetime && <span className="billing-pill">free tier</span>}
+                </>
               )}
             </div>
           </section>
@@ -187,10 +189,19 @@ export default function Billing({ onSignedOut }: BillingProps) {
                   // One subscription at a time; another once this one has ended.
                   const subscribed = plan.billing === 'recurring' && subscription !== null
                   return (
-                    <li key={plan.id} className="plan-card">
-                      <span className="item-name">{plan.name}</span>
-                      <span className="plan-price">{price(plan)}</span>
-                      {plan.description && <p className="muted">{plan.description}</p>}
+                    <li
+                      key={plan.id}
+                      className="plan-card"
+                      data-featured={plan.id === featured?.id || undefined}
+                    >
+                      <span className="plan-head">
+                        <span className="item-name">{planName(plan)}</span>
+                        {isSandbox(plan) && <span className="plan-chip">sandbox</span>}
+                      </span>
+                      <span className="plan-price">
+                        {formatPrice(plan.amount, 'USD')} <small>{planPeriod(plan)}</small>
+                      </span>
+                      <span className="plan-terms">{planTerms(plan)}</span>
                       {purchase?.status === 'paid' ? (
                         <span className="muted">You own this.</span>
                       ) : purchase?.checkout_url ? (
@@ -213,7 +224,7 @@ export default function Billing({ onSignedOut }: BillingProps) {
                             ? 'Opening…'
                             : plan.billing === 'recurring'
                               ? 'Subscribe'
-                              : 'Buy'}
+                              : 'Buy once'}
                         </button>
                       )}
                     </li>
@@ -235,9 +246,9 @@ export default function Billing({ onSignedOut }: BillingProps) {
               <ul className="billing-list">
                 {purchases.map((purchase) => (
                   <li key={purchase.id}>
-                    <span className="item-name">{purchase.plan.name}</span>
+                    <span className="item-name">{planName(purchase.plan)}</span>
                     <span className="muted">
-                      {formatPrice(purchase.amount, purchase.currency)} · {STATUS[purchase.status]}
+                      {formatPrice(purchase.amount, 'USD')} · {STATUS[purchase.status]}
                       {purchase.paid_at && ` · ${DATE.format(new Date(purchase.paid_at))}`}
                     </span>
                   </li>
