@@ -4,9 +4,7 @@ import { ArrowRightIcon, CheckIcon } from "@/components/icons";
 import { docsUrl } from "@/components/links";
 import { useTiers } from "@/components/pricing/offer";
 import { formatAmount, type Tier } from "@/components/pricing/plans";
-import { card } from "@/components/shared";
-
-const pill = "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs";
+import { card, pill } from "@/components/shared";
 
 export function Pricing() {
   // The same rows as the pricing page: live plans, or the authored ones until

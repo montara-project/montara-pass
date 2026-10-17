@@ -1,36 +1,62 @@
 import {
-  ArrowUpRightIcon,
+  DatabaseIcon,
   GlobeIcon,
-  LockIcon,
+  MailIcon,
+  PackageIcon,
+  PuzzleIcon,
   ServerIcon,
-  SparklesIcon,
-  UsersIcon,
+  ShieldCheckIcon,
+  TerminalIcon,
 } from "@/components/icons";
 import { docsUrl } from "@/components/links";
-import { Dim, Statement, IconTile, card } from "@/components/shared";
+import { card, chip, Dim, pill, Statement } from "@/components/shared";
+import pkg from "@/package.json";
 
-const parts = [
-  { icon: ServerIcon, name: "One Docker image", role: "api and web app" },
-  { icon: SparklesIcon, name: "Go · Fiber v3", role: "the api" },
-  { icon: LockIcon, name: "PostgreSQL 18", role: "ciphertext, wrapped keys" },
-  { icon: UsersIcon, name: "Authula", role: "password, magic link, google" },
-  { icon: GlobeIcon, name: "Resend", role: "sign-in emails" },
+/** Top to bottom: what you install, what the image ships, where the data lands. */
+const layers = [
+  {
+    name: "your devices",
+    note: "client side",
+    parts: [
+      { icon: GlobeIcon, name: "Web app", role: "react 19" },
+      { icon: PuzzleIcon, name: "Browser extension", role: "chrome · firefox" },
+      { icon: TerminalIcon, name: "API clients", role: "rest" },
+    ],
+  },
+  {
+    name: "your docker host",
+    note: "one image",
+    parts: [
+      { icon: PackageIcon, name: "Montara Pass image", role: "api + web app" },
+      { icon: ServerIcon, name: "Go · Fiber v3", role: "port 8080" },
+    ],
+  },
+  {
+    name: "your data & services",
+    note: "stays yours",
+    parts: [
+      { icon: DatabaseIcon, name: "PostgreSQL 18", role: "ciphertext, wrapped keys" },
+      { icon: ShieldCheckIcon, name: "Authula", role: "password, magic link, google" },
+      { icon: MailIcon, name: "Resend", role: "sign-in emails" },
+    ],
+  },
 ];
 
+// The variables are the ones deploy/docker-compose.yml refuses to start without.
 const deploySteps = [
-  <>
-    Create a Compose service from{" "}
-    <code className="whitespace-nowrap font-mono text-[0.8125rem]">deploy/docker-compose.yml</code>
-  </>,
-  "Set the database password, app secret and public URL",
-  "Add a domain for the server on port 8080",
-  "Deploy. Migrations run on boot",
+  { title: "Create a Compose service", detail: "deploy/docker-compose.yml" },
+  { title: "Set the secrets", detail: "POSTGRES_PASSWORD · APP_SECRET · AUTH_BASE_URL" },
+  { title: "Point a domain at :8080", detail: "Caddy · Traefik · Dokploy" },
+  { title: "Deploy", detail: "docker compose up -d · migrations run on boot" },
 ];
+
+const cardFoot = "mt-auto border-t border-line pt-6 font-mono text-xs leading-5 text-mist";
 
 export function Ownership() {
   return (
     <section id="self-host" className="border-t border-line pb-20 sm:pb-28">
       <Statement
+        eyebrow="the stack"
         title={
           <>
             <span className="inline-block">Your vault. Your server.</span> <Dim>Your Postgres.</Dim>
@@ -41,46 +67,98 @@ export function Ownership() {
         never leaves your infrastructure.
       </Statement>
 
-      <div className="mx-auto -mt-8 grid max-w-4xl gap-6 px-6 md:grid-cols-2">
-        <div className={card}>
-          <h3 className="text-sm text-mist">What you end up with</h3>
-          <ul className="mt-5 flex flex-col gap-4">
-            {parts.map((part) => (
-              <li key={part.name} className="flex items-center gap-3">
-                <IconTile icon={part.icon} />
-                <span className="shrink-0 text-sm font-medium">{part.name}</span>
-                <span className="ml-auto text-balance text-right font-mono text-xs lowercase text-mist">
-                  {part.role}
-                </span>
-              </li>
+      <div className="mx-auto -mt-4 grid max-w-5xl gap-6 px-6 md:grid-cols-2">
+        <article className={`${card} flex flex-col`}>
+          <span className={`${pill} self-start border border-line font-mono text-mist`}>
+            the stack
+          </span>
+          <h3 className="mt-4 text-lg font-medium">What runs where</h3>
+          <p className="mt-2 text-sm leading-6 text-mist">
+            Top to bottom: what you install, what we ship in the image, and where your data lands.
+          </p>
+
+          <div className="mt-6 mb-8 flex flex-col gap-4">
+            {layers.map((layer) => (
+              <div key={layer.name} className="rounded-xl border border-line bg-ink/60 p-4">
+                <p className="flex justify-between gap-3 font-mono text-xs tracking-wide text-mist">
+                  {layer.name}
+                  <span className="text-mist/70">{layer.note}</span>
+                </p>
+                <ul className="mt-3 flex flex-col gap-3">
+                  {layer.parts.map((part) => (
+                    <li key={part.name} className="flex items-center gap-3">
+                      <span className="flex size-7 shrink-0 items-center justify-center rounded-md border border-accent/30 bg-accent/10 text-accent-bright">
+                        <part.icon className="size-3.5" />
+                      </span>
+                      <span className="shrink-0 text-sm font-medium">{part.name}</span>
+                      <span className="ml-auto text-right font-mono text-xs text-mist">
+                        {part.role}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
-        </div>
-        <div className={card}>
-          <h3 className="text-sm text-mist">How you get there</h3>
-          <ol className="mt-5 flex flex-col gap-4">
+          </div>
+
+          <p className={cardFoot}>
+            <code className={`${chip} break-all bg-ink`}>
+              ghcr.io/montara-project/montara-pass/community:v{pkg.version}
+            </code>
+            <span className="mt-2 block">one Compose service · nothing phones home</span>
+          </p>
+        </article>
+
+        <article className={`${card} flex flex-col`}>
+          <span className={`${pill} self-start border border-line`}>
+            <span className="size-1.5 rounded-full bg-accent-bright" />
+            ~10 minutes
+          </span>
+          <h3 className="mt-4 text-lg font-medium">How you get there</h3>
+          <p className="mt-2 text-sm leading-6 text-mist">
+            Four steps from a fresh server to your first encrypted item.
+          </p>
+
+          <ol className="mt-6 flex flex-col gap-5">
             {deploySteps.map((step, i) => (
-              <li key={i} className="flex min-h-8 items-center gap-3 text-sm font-medium">
-                <span className="font-mono text-xs font-normal text-mist">0{i + 1}</span>
-                <span className="text-pretty">{step}</span>
+              <li key={step.title} className="flex gap-3">
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-line bg-ink font-mono text-xs">
+                  0{i + 1}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">{step.title}</p>
+                  <p className="mt-1 break-words font-mono text-xs text-mist">{step.detail}</p>
+                </div>
               </li>
             ))}
           </ol>
-        </div>
+
+          <div className="mt-6 mb-8 overflow-hidden rounded-xl border border-line font-mono text-xs">
+            <p className="flex items-center gap-2 border-b border-line bg-card-hover px-4 py-2.5 text-mist">
+              <span className="size-2.5 rounded-full bg-red-400" />
+              <span className="size-2.5 rounded-full bg-amber-400" />
+              <span className="size-2.5 rounded-full bg-emerald-400" />
+              <span className="ml-1">terminal</span>
+            </p>
+            <pre className="overflow-x-auto bg-abyss px-4 py-4 leading-6 text-mist">
+              <span className="text-fg">$ docker compose up -d</span>
+              {"\napi  listening on :8080\nmigrations applied\n"}
+              <span className="text-accent-bright">vault ready · open your domain</span>
+            </pre>
+          </div>
+
+          <p className={cardFoot}>Needs Docker, PostgreSQL 18, a domain and a Resend API key.</p>
+        </article>
       </div>
 
-      <p className="mt-12 px-6 text-center">
-        <a
-          href={docsUrl("getting-started/docker")}
-          className="nudge -my-2 inline-flex cursor-pointer items-center gap-1.5 py-2 text-sm font-medium underline-offset-4 hover:underline"
-        >
+      <div className="mt-12 px-6 text-center">
+        <a href={docsUrl("getting-started/docker")} className="btn btn-secondary">
           Read the Docker guide
-          <ArrowUpRightIcon className="size-4" />
         </a>
-        <span className="mt-2 block text-balance font-mono text-xs lowercase text-mist">
-          in the docs: docker, dokploy, configuration and migrations.
-        </span>
-      </p>
+        <p className="mt-3 font-mono text-xs text-mist">
+          docker · dokploy · configuration · migrations
+        </p>
+      </div>
     </section>
   );
 }

@@ -336,3 +336,41 @@ export function GithubIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function PuzzleIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M19.4 14.4a1.6 1.6 0 0 0-.5 1.2V19a2 2 0 0 1-2 2h-3.4a1.6 1.6 0 0 1-1.2-.5 1.6 1.6 0 0 1-.5-1.2 2.3 2.3 0 1 0-4.6 0 1.6 1.6 0 0 1-.5 1.2 1.6 1.6 0 0 1-1.2.5H5a2 2 0 0 1-2-2v-3.4c0-.4.2-.9.5-1.2s.8-.5 1.2-.5a2.3 2.3 0 1 0 0-4.6c-.4 0-.9-.2-1.2-.5A1.6 1.6 0 0 1 3 8.4V5a2 2 0 0 1 2-2h3.4c.4 0 .9.2 1.2.5s.5.8.5 1.2a2.3 2.3 0 1 0 4.6 0c0-.4.2-.9.5-1.2s.8-.5 1.2-.5H19a2 2 0 0 1 2 2v3.4c0 .4-.2.9-.5 1.2s-.8.5-1.2.5a2.3 2.3 0 1 0 0 4.6c.4 0 .9.2 1.2.5z" />
+    </Svg>
+  );
+}
+
+export function TerminalIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 17l6-5-6-5" />
+      <path d="M12 19h8" />
+    </Svg>
+  );
+}
+
+export function PackageIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M21 8l-9-5-9 5v8l9 5 9-5V8z" />
+      <path d="M3 8l9 5 9-5" />
+      <path d="M12 13v8" />
+      <path d="M7.5 5.5l9 5" />
+    </Svg>
+  );
+}
+
+export function DatabaseIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <ellipse cx="12" cy="5" rx="8" ry="3" />
+      <path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5" />
+      <path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" />
+    </Svg>
+  );
+}
