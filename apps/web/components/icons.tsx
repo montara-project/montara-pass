@@ -374,3 +374,30 @@ export function DatabaseIcon(props: IconProps) {
     </Svg>
   );
 }
+
+export function CreditCardIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <path d="M2 10h20" />
+    </Svg>
+  );
+}
+
+export function InfinityIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 12c-2-2.7-4-4-6-4a4 4 0 0 0 0 8c2 0 4-1.3 6-4zm0 0c2 2.7 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.3-6 4z" />
+    </Svg>
+  );
+}
+
+export function ReceiptIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M5 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z" />
+      <path d="M14 8h-3a1.5 1.5 0 0 0 0 3h2a1.5 1.5 0 0 1 0 3H10" />
+      <path d="M12 6.5v1.5M12 14v1.5" />
+    </Svg>
+  );
+}

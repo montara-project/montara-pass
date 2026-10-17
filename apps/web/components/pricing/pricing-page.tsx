@@ -2,11 +2,19 @@
 
 import { useState } from "react";
 
-import { ArrowRightIcon, CheckIcon } from "@/components/icons";
+import {
+  ArrowRightIcon,
+  CheckIcon,
+  CreditCardIcon,
+  InfinityIcon,
+  ReceiptIcon,
+  SyncIcon,
+} from "@/components/icons";
 import { docsUrl } from "@/components/links";
 import { PricingLedger } from "@/components/pricing/ledger-panel";
 import { useTiers } from "@/components/pricing/offer";
 import { formatAmount, SELF_HOST_HREF, TERMS } from "@/components/pricing/plans";
+import { card, pill } from "@/components/shared";
 
 /**
  * The pricing page: the tiers as the receipt for the service.
@@ -140,16 +148,32 @@ const gates = [
   },
 ];
 
+const billing = [
+  {
+    icon: CreditCardIcon,
+    text: "Lemon Squeezy handles the payment as the merchant of record. The card statement and the invoice carry Lemon Squeezy, not Montara Pass.",
+  },
+  {
+    icon: SyncIcon,
+    text: "A monthly or annual plan renews until you cancel. Cancelling stops the next charge and leaves the period you already paid for intact.",
+  },
+  {
+    icon: InfinityIcon,
+    text: "The lifetime plan is one payment. It does not renew, and it does not expire.",
+  },
+  { icon: ReceiptIcon, text: "We do not refund. There is no trial period on the paid tiers." },
+];
+
+const heading = "font-heading text-2xl font-medium tracking-tight";
+const below = "border-t border-line px-6 py-20 sm:px-10 sm:py-24";
+
 function PricingBelow() {
   return (
     <>
-      <section
-        aria-labelledby="included"
-        className="border-t border-line px-6 py-20 sm:px-10 sm:py-24"
-      >
-        <div className="mx-auto grid max-w-4xl gap-12 md:grid-cols-[280px_minmax(0,1fr)]">
+      <section aria-labelledby="included" className={below}>
+        <div className="mx-auto grid max-w-4xl gap-10 md:grid-cols-2 md:gap-16">
           <div>
-            <h2 id="included" className="font-heading text-2xl font-medium tracking-tight">
+            <h2 id="included" className={heading}>
               What every tier has
             </h2>
             <p className="mt-4 text-[15px] leading-7 text-mist">
@@ -158,8 +182,8 @@ function PricingBelow() {
           </div>
           <ul className="flex flex-col gap-3.5">
             {included.map((item) => (
-              <li key={item} className="flex items-start gap-2.5 text-[15px] leading-7 text-mist">
-                <CheckIcon className="mt-1.5 size-4 shrink-0 text-fg" />
+              <li key={item} className="flex items-start gap-3 text-[15px] leading-7 text-mist">
+                <CheckIcon className="mt-1.5 size-4 shrink-0 text-accent-bright" />
                 <span>{item}</span>
               </li>
             ))}
@@ -167,62 +191,68 @@ function PricingBelow() {
         </div>
       </section>
 
-      <section
-        aria-labelledby="gates"
-        className="border-t border-line px-6 py-20 sm:px-10 sm:py-24"
-      >
+      <section aria-labelledby="gates" className={below}>
         <div className="mx-auto max-w-4xl">
-          <h2 id="gates" className="font-heading text-2xl font-medium tracking-tight">
-            What changes between tiers
-          </h2>
-          <dl className="mt-8 border-t border-line">
-            {gates.map((row) => (
+          <div className="text-center">
+            <h2 id="gates" className={heading}>
+              What changes between tiers
+            </h2>
+            <p className="mt-4 text-pretty text-[15px] leading-7 text-mist">
+              Almost nothing. The gaps are in who runs the server, and whether you can share an item
+              out.
+            </p>
+          </div>
+          <dl className="mt-10 border-t border-line">
+            {gates.map((row, i) => (
               <div
                 key={row.tier}
-                className="grid gap-2 border-b border-line py-6 sm:grid-cols-[200px_minmax(0,1fr)] sm:gap-8"
+                className="grid gap-2 border-b border-line py-7 sm:grid-cols-[220px_minmax(0,1fr)] sm:gap-8"
               >
-                <dt className="text-sm font-medium">{row.tier}</dt>
+                <dt className="text-[15px] font-medium">
+                  {row.tier}
+                  <span className="mt-1 block font-mono text-xs font-normal text-mist">
+                    0{i + 1}
+                  </span>
+                </dt>
                 <dd className="text-[15px] leading-7 text-mist">{row.gate}</dd>
               </div>
             ))}
           </dl>
-          <p className="mt-8 max-w-2xl text-[15px] leading-7 text-mist">
+          <p className="mt-10 text-pretty text-center text-[15px] leading-7 text-mist/70">
             Passkeys work on a free account. They live inside the encrypted item, so the server
             could not tell which items hold one even if we wanted it to.
           </p>
         </div>
       </section>
 
-      <section
-        aria-labelledby="billing"
-        className="border-t border-line px-6 py-20 sm:px-10 sm:py-24"
-      >
-        <div className="mx-auto grid max-w-4xl gap-10 md:grid-cols-2">
+      <section aria-labelledby="billing" className={below}>
+        <div className="mx-auto grid max-w-4xl items-start gap-10 md:grid-cols-2">
           <div>
-            <h2 id="billing" className="font-heading text-2xl font-medium tracking-tight">
+            <h2 id="billing" className={heading}>
               Billing, plainly
             </h2>
-            <ul className="mt-6 flex flex-col gap-4 text-[15px] leading-7 text-mist">
-              <li>
-                Lemon Squeezy handles the payment as the merchant of record. The card statement and
-                the invoice carry Lemon Squeezy, not Montara Pass.
-              </li>
-              <li>
-                A monthly or annual plan renews until you cancel. Cancelling stops the next charge
-                and leaves the period you already paid for intact.
-              </li>
-              <li>The lifetime plan is one payment. It does not renew, and it does not expire.</li>
-              <li>We do not refund. There is no trial period on the paid tiers.</li>
+            <p className="mt-4 text-[15px] leading-7 text-mist">
+              Four things worth knowing before you enter a card. No surprises, no dark patterns.
+            </p>
+            <ul className="mt-6 flex flex-col gap-5">
+              {billing.map((item) => (
+                <li key={item.text} className="flex items-start gap-3.5">
+                  <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md border border-line bg-card text-accent-bright">
+                    <item.icon className="size-3.5" />
+                  </span>
+                  <span className="text-[15px] leading-7 text-mist">{item.text}</span>
+                </li>
+              ))}
             </ul>
           </div>
-          <div className="rounded-[14px] border border-line bg-card p-6 sm:p-7">
-            <h3 className="text-sm text-mist">Before you pay</h3>
-            <p className="mt-4 text-[15px] leading-7">
+          <div className={card}>
+            <span className={`${pill} border border-line font-mono text-mist`}>before you pay</span>
+            <p className="mt-5 text-[15px] leading-7 text-mist">
               Try the free account, or self-host. Both use the same vault, the same clients and the
               same encryption as Pro — nothing is held back for the paid tier except sharing an item
               out.
             </p>
-            <a href={docsUrl("getting-started/docker")} className="btn btn-secondary mt-6">
+            <a href={docsUrl("getting-started/docker")} className="btn btn-secondary mt-7">
               Read the Docker guide
             </a>
           </div>
