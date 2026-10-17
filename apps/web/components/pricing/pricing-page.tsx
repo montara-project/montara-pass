@@ -7,7 +7,6 @@ import { docsUrl } from "@/components/links";
 import { PricingLedger } from "@/components/pricing/ledger-panel";
 import { useTiers } from "@/components/pricing/offer";
 import { formatAmount, SELF_HOST_HREF, TERMS } from "@/components/pricing/plans";
-import { chip } from "@/components/shared";
 
 /**
  * The pricing page: the tiers as the receipt for the service.
@@ -21,16 +20,17 @@ import { chip } from "@/components/shared";
  */
 export function PricingPage() {
   const tiers = useTiers();
-  // The tier the foot action offers. Monthly is where a visitor paying for the
-  // hosted service starts; nothing on the page calls one tier recommended.
-  const [chosen, setChosen] = useState("pro-monthly");
-  // The fallback matters: when the API serves plans whose codes are not the
-  // authored ones, the chosen code matches nothing, and the foot action must
-  // still offer something you can pay for rather than the free self-hosted row.
+  // The tier the foot action offers; none chosen yet means the yearly one, the
+  // row marked best value. Matched by its billing rather than by code, because
+  // the live plans' codes are the store's, not the authored ones.
+  const [chosen, setChosen] = useState<string>();
+  const yearly = tiers.find((tier) => tier.per === "/ year");
   const selected =
     tiers.find((tier) => tier.code === chosen) ??
+    yearly ??
     tiers.find((tier) => tier.kind !== "free") ??
     tiers[0];
+  const currency = "USD";
 
   return (
     <main>
@@ -38,12 +38,10 @@ export function PricingPage() {
         <section className="tape">
           <div className="tape-head">
             <p className="tape-slug">Montara Pass — pricing</p>
-            <p className="tape-slug">billed in usd</p>
+            <p className="tape-slug">billed in {currency}</p>
           </div>
 
-          <h1 className="tape-title">
-            Four prices. <span>One vault.</span>
-          </h1>
+          <h1 className="tape-title">Four prices. One vault.</h1>
           <p className="tape-lede">
             The encryption is the same on every row, including the free ones. What you pay for is
             who runs the server — ours, or yours.
@@ -51,8 +49,12 @@ export function PricingPage() {
 
           <fieldset className="tape-lines">
             <legend className="sr-only">Choose a tier</legend>
+            <p className="tape-cols tape-slug" aria-hidden="true">
+              <span>Plan</span>
+              <span>Price</span>
+            </p>
             {tiers.map((tier) => {
-              const on = tier.code === chosen;
+              const on = tier.code === selected.code;
               return (
                 <label key={tier.code} className="tape-line" data-on={on || undefined}>
                   <input
@@ -63,13 +65,19 @@ export function PricingPage() {
                     onChange={() => setChosen(tier.code)}
                     className="sr-only"
                   />
-                  <span className="tape-mark" aria-hidden="true" />
                   <span className="tape-body">
-                    <span className="tape-name">{tier.name}</span>
+                    <span className="tape-name">
+                      {tier.name}
+                      {tier === yearly ? (
+                        <span className="rounded-full bg-emerald-400/15 px-2.5 py-0.5 text-xs font-normal text-emerald-400 light:text-emerald-700">
+                          best value
+                        </span>
+                      ) : null}
+                    </span>
                     <span className="tape-terms">{tier.terms}</span>
                   </span>
                   <span className="tape-amount">
-                    {formatAmount(tier.amount, tier.currency)} <small>{tier.per}</small>
+                    {formatAmount(tier.amount, currency)} <small>{tier.per}</small>
                   </span>
                 </label>
               );
@@ -84,16 +92,13 @@ export function PricingPage() {
             <a href={SELF_HOST_HREF} className="btn btn-secondary">
               Or run it yourself
             </a>
-            <p className="tape-fineprint">
-              <span className={chip}>{selected.chip}</span>
-              <span className="block">{TERMS[selected.kind]}</span>
-              {selected.kind !== "free" ? (
-                <span className="block">
-                  No refunds: access runs to the end of the period you paid for.
-                </span>
-              ) : null}
-            </p>
           </div>
+          <p className="tape-fineprint">
+            {TERMS[selected.kind]}
+            {selected.kind !== "free" ? (
+              <span>No refunds: access runs to the end of the period you paid for.</span>
+            ) : null}
+          </p>
 
           {/* The foot changes with the selection; announce it rather than let it
               change silently for anyone not watching the tape. */}

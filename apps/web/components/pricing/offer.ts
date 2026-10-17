@@ -28,7 +28,9 @@ function fromPlan(plan: Models.Plan): Tier {
   const yearly = plan.billing_interval === "year";
   return {
     code: plan.code,
-    name: plan.name,
+    // The API's names carry the product and the store's environment
+    // ("Montara Pass Pro Monthly - Sandbox"); the tape names the tier alone.
+    name: `Pro ${oneTime ? "Lifetime" : yearly ? "Yearly" : "Monthly"}`,
     terms: oneTime
       ? "all features · one payment · does not renew"
       : `all features · renews ${yearly ? "yearly" : "monthly"} · cancel any time`,
@@ -36,7 +38,6 @@ function fromPlan(plan: Models.Plan): Tier {
     currency: plan.currency,
     kind: plan.billing,
     per: oneTime ? "once" : yearly ? "/ year" : "/ month",
-    chip: oneTime ? "all features, for good" : "all features",
     action: {
       label: oneTime ? "Buy lifetime" : `Subscribe ${yearly ? "annually" : "monthly"}`,
       href: `${APP_URL}/billing?plan=${encodeURIComponent(plan.code)}`,

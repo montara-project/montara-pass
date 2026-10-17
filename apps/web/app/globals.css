@@ -160,30 +160,35 @@ summary::-webkit-details-marker {
     text-wrap: balance;
   }
 
-  .tape-title span {
-    color: color-mix(in srgb, var(--color-mist) 75%, transparent);
-  }
-
   .tape-lede {
     margin-top: 1rem;
-    max-width: 46ch;
+    max-width: 68ch;
     font-size: 0.9375rem;
     line-height: 1.75;
     color: var(--color-mist);
   }
 
   .tape-lines {
-    margin-top: 1.75rem;
-    border-top: 1px solid var(--color-line);
+    margin-top: 1.5rem;
+  }
+
+  /* The column heads, and the rows under them. */
+  .tape-cols,
+  .tape-line {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.875rem;
+    padding: 1.125rem 1.25rem;
+  }
+
+  .tape-cols {
+    padding-block: 0.75rem;
+    border-block: 1px solid var(--color-line);
   }
 
   .tape-line {
     position: relative;
-    display: grid;
-    grid-template-columns: 1.125rem minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 0.875rem;
-    padding: 0.9375rem 0.5rem 0.9375rem 0.25rem;
     border-bottom: 1px solid var(--color-line);
     cursor: pointer;
     transition: background-color 200ms;
@@ -193,9 +198,10 @@ summary::-webkit-details-marker {
     background: color-mix(in srgb, var(--color-fg) 3%, transparent);
   }
 
-  /* The selected line: a live mark, and a rule that runs to both edges. */
+  /* The selected line: a raised row with an accent rule down its edge. */
   .tape-line[data-on] {
-    background: color-mix(in srgb, var(--color-accent) 7%, transparent);
+    background: var(--color-card);
+    border-bottom-color: var(--color-accent-bright);
   }
 
   .tape-line[data-on]::before {
@@ -213,22 +219,6 @@ summary::-webkit-details-marker {
     border-radius: 6px;
   }
 
-  .tape-mark {
-    width: 0.5rem;
-    height: 0.5rem;
-    border: 1px solid var(--color-line);
-    border-radius: 9999px;
-    background: transparent;
-    transition:
-      border-color 200ms,
-      background-color 200ms;
-  }
-
-  .tape-line[data-on] .tape-mark {
-    border-color: var(--color-accent-bright);
-    background: var(--color-accent-bright);
-  }
-
   .tape-body {
     display: flex;
     min-width: 0;
@@ -237,7 +227,10 @@ summary::-webkit-details-marker {
   }
 
   .tape-name {
-    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    font-size: 0.9375rem;
     font-weight: 500;
   }
 
@@ -251,7 +244,7 @@ summary::-webkit-details-marker {
 
   .tape-amount {
     font-family: var(--font-mono);
-    font-size: 1rem;
+    font-size: 1.125rem;
     font-weight: 500;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
@@ -268,23 +261,20 @@ summary::-webkit-details-marker {
     flex-wrap: wrap;
     align-items: center;
     gap: 0.75rem;
-    margin-top: 2rem;
+    margin-top: 2.5rem;
   }
 
   .tape-fineprint {
-    flex: 1 1 16rem;
+    margin-top: 1.25rem;
     font-family: var(--font-mono);
     font-size: 0.6875rem;
-    line-height: 1.7;
+    line-height: 1.9;
     color: var(--color-mist);
   }
 
-  /* The chip names what the selected row entitles you to. */
-  .tape-fineprint > span:first-child {
-    display: inline-block;
-    margin-bottom: 0.375rem;
-    border-color: color-mix(in srgb, var(--color-accent-bright) 40%, transparent);
-    color: var(--color-accent-bright);
+  .tape-fineprint span {
+    display: block;
+    color: color-mix(in srgb, var(--color-mist) 60%, transparent);
   }
 
   .ledger {
@@ -302,7 +292,7 @@ summary::-webkit-details-marker {
 
   @media (min-width: 1024px) {
     .ledger {
-      border-left: 1px dashed color-mix(in srgb, var(--color-mist) 30%, transparent);
+      border-left: 1px solid var(--color-line);
     }
   }
 
@@ -324,7 +314,7 @@ summary::-webkit-details-marker {
     justify-content: space-between;
     gap: 0.875rem;
     padding: 0.5625rem 0;
-    border-bottom: 1px dashed color-mix(in srgb, var(--color-mist) 18%, transparent);
+    border-bottom: 1px solid var(--color-line);
     font-family: var(--font-mono);
     font-size: 0.6875rem;
     line-height: 1.4;
@@ -347,38 +337,39 @@ summary::-webkit-details-marker {
     border-radius: 9999px;
   }
 
-  /* The three states the column exists to contrast. Weight carries the
-     distinction as well as hue, so the column reads as a contrast in greyscale
-     too: what the server cannot read is the heavier type. */
-  .ledger-row[data-state="plain"] dd {
-    color: var(--color-mist);
+  /* The three states the column exists to contrast: amber for what the server
+     reads, green for what it holds sealed, accent for what never reaches it.
+     Weight carries the distinction as well as hue, so it survives greyscale.
+     light-dark() follows the theme's color-scheme, keeping each pair AA. */
+  .ledger-row dd {
+    color: var(--state);
+  }
+
+  .ledger-dot {
+    background: var(--state);
+  }
+
+  .ledger-row[data-state="plain"] {
+    --state: light-dark(#b45309, #fbbf24);
     font-weight: 400;
   }
 
-  .ledger-row[data-state="plain"] .ledger-dot {
-    background: var(--color-mist);
+  .ledger-row[data-state="cipher"] {
+    --state: light-dark(#047857, #34d399);
   }
 
-  .ledger-row[data-state="cipher"] dd {
-    color: var(--color-fg);
-    font-weight: 500;
+  .ledger-row[data-state="never"] {
+    --state: var(--color-accent-bright);
   }
 
-  .ledger-row[data-state="cipher"] .ledger-dot {
-    background: var(--color-fg);
-  }
-
+  .ledger-row[data-state="cipher"] dd,
   .ledger-row[data-state="never"] dd {
-    color: var(--color-accent-bright);
     font-weight: 500;
-  }
-
-  .ledger-row[data-state="never"] .ledger-dot {
-    background: var(--color-accent-bright);
   }
 
   .ledger-foot {
-    margin-top: 1.25rem;
+    margin-top: auto;
+    padding-top: 2rem;
     font-family: var(--font-mono);
     font-size: 0.6875rem;
     line-height: 1.7;
@@ -387,8 +378,7 @@ summary::-webkit-details-marker {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tape-line,
-  .tape-mark {
+  .tape-line {
     transition: none;
   }
 }

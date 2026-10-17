@@ -34,8 +34,6 @@ export type Tier = {
   kind: Kind;
   /** The line after the amount. */
   per: string;
-  /** The chip at the foot of the tape when this row is selected. */
-  chip: string;
   /** Where the action goes. */
   action: { label: string; href: string };
 };
@@ -56,7 +54,6 @@ export const TIERS: Tier[] = [
     currency: "USD",
     kind: "free",
     per: "forever",
-    chip: "every feature",
     action: { label: "How to self-host", href: SELF_HOST_HREF },
   },
   {
@@ -67,40 +64,36 @@ export const TIERS: Tier[] = [
     currency: "USD",
     kind: "free",
     per: "forever",
-    chip: "no card needed",
     action: { label: "Create an account", href: `${APP_URL}/sign-up` },
   },
   {
     code: "pro-monthly",
-    name: "Cloud, Pro — monthly",
+    name: "Pro Monthly",
     terms: "all features · renews monthly · cancel any time",
     amount: 300,
     currency: "USD",
     kind: "recurring",
     per: "/ month",
-    chip: "all features",
     action: { label: "Subscribe monthly", href: `${APP_URL}/billing?plan=pro-monthly` },
   },
   {
     code: "pro-yearly",
-    name: "Cloud, Pro — annual",
+    name: "Pro Yearly",
     terms: "all features · renews yearly · two months free",
     amount: 2500,
     currency: "USD",
     kind: "recurring",
     per: "/ year",
-    chip: "all features",
     action: { label: "Subscribe annually", href: `${APP_URL}/billing?plan=pro-yearly` },
   },
   {
     code: "pro-lifetime",
-    name: "Cloud, Pro — lifetime",
+    name: "Pro Lifetime",
     terms: "all features · one payment · does not renew",
     amount: 30000,
     currency: "USD",
     kind: "one_time",
     per: "once",
-    chip: "all features, for good",
     action: { label: "Buy lifetime", href: `${APP_URL}/billing?plan=pro-lifetime` },
   },
 ];
