@@ -62,18 +62,6 @@ export function AlertTriangleIcon(props: IconProps) {
   );
 }
 
-export function ScanIcon(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <path d="M4 8V6a2 2 0 0 1 2-2h2" />
-      <path d="M16 4h2a2 2 0 0 1 2 2v2" />
-      <path d="M20 16v2a2 2 0 0 1-2 2h-2" />
-      <path d="M8 20H6a2 2 0 0 1-2-2v-2" />
-      <path d="M7 12h10" />
-    </Svg>
-  );
-}
-
 export function UsersIcon(props: IconProps) {
   return (
     <Svg {...props}>
@@ -226,14 +214,6 @@ export function SendIcon(props: IconProps) {
     <Svg {...props}>
       <path d="M21.5 2.5L11 13" />
       <path d="M21.5 2.5L15 21.5l-4-8.5-8.5-4 19-6.5z" />
-    </Svg>
-  );
-}
-
-export function MessageSquareIcon(props: IconProps) {
-  return (
-    <Svg {...props}>
-      <path d="M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2v10z" />
     </Svg>
   );
 }
@@ -398,6 +378,46 @@ export function ReceiptIcon(props: IconProps) {
       <path d="M5 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1z" />
       <path d="M14 8h-3a1.5 1.5 0 0 0 0 3h2a1.5 1.5 0 0 1 0 3H10" />
       <path d="M12 6.5v1.5M12 14v1.5" />
+    </Svg>
+  );
+}
+
+export function LifeBuoyIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="3.5" />
+      <path d="M5.6 5.6l3.9 3.9M14.5 14.5l3.9 3.9M14.5 9.5l3.9-3.9M5.6 18.4l3.9-3.9" />
+    </Svg>
+  );
+}
+
+export function ShieldAlertIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3l7 3v5c0 4.6-3 7.9-7 9-4-1.1-7-4.4-7-9V6l7-3z" />
+      <path d="M12 8v4" />
+      <path d="M12 16h.01" />
+    </Svg>
+  );
+}
+
+export function BuildingIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18z" />
+      <path d="M6 12H4a2 2 0 0 0-2 2v8h4M18 9h2a2 2 0 0 1 2 2v11h-4" />
+      <path d="M10 6h4M10 10h4M10 14h4M10 18h4" />
+    </Svg>
+  );
+}
+
+export function NewspaperIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-4 0v-9c0-1.1.9-2 2-2h2" />
+      <path d="M18 14h-8M15 18h-5" />
+      <rect x="10" y="6" width="8" height="4" rx="1" />
     </Svg>
   );
 }

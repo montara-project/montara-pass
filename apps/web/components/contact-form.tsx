@@ -2,7 +2,14 @@
 
 import { useRef, useState, type FormEvent } from "react";
 
-import { AlertTriangleIcon, CheckIcon, ChevronDownIcon, SyncIcon } from "./icons";
+import {
+  AlertTriangleIcon,
+  ArrowRightIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  ShieldAlertIcon,
+  SyncIcon,
+} from "./icons";
 
 type FieldName = "name" | "email" | "topic" | "message";
 type Values = Record<FieldName, string>;
@@ -263,7 +270,9 @@ export function ContactForm() {
           onChange={(e) => setField("message", e.target.value)}
           onBlur={() => blurField("message")}
           aria-invalid={Boolean(errors.message)}
-          aria-describedby={errors.message ? "contact-message-error" : "contact-message-hint"}
+          aria-describedby={
+            errors.message ? "contact-message-error contact-message-hint" : "contact-message-hint"
+          }
           className={`mt-2 min-h-32 w-full resize-y rounded-xl border bg-abyss/60 px-4 py-3 text-sm leading-6 text-fg placeholder:text-mist/50 transition-colors duration-200 focus:outline-none focus:ring-2 ${
             errors.message
               ? "border-rose-400/60 focus:border-rose-300 focus:ring-rose-400/30"
@@ -278,13 +287,17 @@ export function ContactForm() {
           >
             {errors.message}
           </p>
-        ) : (
-          <p id="contact-message-hint" className="mt-1.5 text-xs leading-5 text-mist">
-            Please don&rsquo;t include passwords, passkeys, or recovery keys — we can&rsquo;t read
-            your vault, and we&rsquo;ll never ask.
-          </p>
-        )}
+        ) : null}
       </div>
+
+      <p
+        id="contact-message-hint"
+        className="flex items-start gap-2.5 rounded-xl bg-amber-400/10 px-4 py-3.5 text-xs leading-5 text-mist"
+      >
+        <ShieldAlertIcon className="mt-0.5 size-4 shrink-0 text-amber-400 light:text-amber-600" />
+        Please don&rsquo;t include passwords, passkeys, or recovery keys — we can&rsquo;t read your
+        vault, and we&rsquo;ll never ask.
+      </p>
 
       <button
         type="submit"
@@ -297,7 +310,10 @@ export function ContactForm() {
             Sending…
           </>
         ) : (
-          "Send message"
+          <>
+            Send message
+            <ArrowRightIcon className="size-4" />
+          </>
         )}
       </button>
     </form>
