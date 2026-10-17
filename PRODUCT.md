@@ -124,7 +124,8 @@ Undecided or not established:
   `README.md`.
 - A security audit with its findings and their status: `ISSUES.md`.
 - Legal copy: terms and privacy pages in `apps/web`.
-- Release history: `CHANGELOG.md`, `RELEASE_NOTES.md`.
+- Release history: `CHANGELOG.md`, `RELEASE_NOTES.md`, and the extension's
+  own `apps/extension/RELEASE_NOTES.md` for what goes on addons.mozilla.org.
 
 Absent, and not to be invented: customer names, testimonials, user counts,
 benchmarks, third-party audit or certification claims, pricing.

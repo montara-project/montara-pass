@@ -324,11 +324,12 @@ Inside the sheet a page is one of three:
   of 360 to 600px, divided by a hairline. Under 760px of sheet the two take
   turns, with a back button on the detail. The list drops its Folder and
   Updated columns by container query at 560px.
-- **A table page** (Folders, Trash, Categories): a heading with the page's
+- **A table page** (Folders, Trash): a heading with the page's
   one filled button, then the table on the sheet itself. No card around it.
 - **A tool or the account** (generator, health, account): one column in the
   middle of the sheet: 720px for the account, 1200px for a tool. The health
-  report sets its two lists side by side where each has 420px.
+  report sets its two lists side by side where each has 420px. **Billing**
+  reads at 1040px: wide enough for three plan cards in a row.
 
 Spacing is a 4px rhythm: 4 and 8 inside a control, 12 around a row, 16 between
 fields, 20 for a page's padding in a narrow window and 32 in a wide one.
@@ -377,8 +378,11 @@ on its free corners (`16px 16px 0 0`). Pills (999px) are for the switch, the
 meter, the toast and the account chip; circles for avatars only.
 
 Borders are 1px and never coloured for emphasis: a state changes the border's
-colour (hover to muted, focus to the focus colour, invalid to danger), not its
-width.
+colour (hover to muted, focus and the plan chosen on Billing to the focus
+colour, invalid to danger), not its width. The focus colour is the one that
+points; it is also the only token holding 3:1 on a card in both themes
+(Electric Blue on light, Arctic Cyan on dark), which is why the chosen plan
+takes it rather than `primary`.
 
 Icons are line icons on a 24 grid (Tabler): 2px stroke, round caps and joins,
 no fill, `currentColor`, 20px by default and 16 to 18px inside menus and
@@ -453,8 +457,10 @@ Calm and certain: one is filled, the rest stand back.
 ### Navigation
 
 - **Sidebar:** 32px items, muted at rest, body colour on hover; the current
-  one takes the hover tone. The account sits at its foot and opens a menu
-  beside it (Account, Billing, Lock vault, Sign out).
+  one takes the hover tone. Three groups: Vault (Vault, Folders, Trash), the
+  tools pinned to the foot above the account (Password generator, Password
+  health), and Billing in the Cloud Edition only, beside them. The account
+  sits below and opens a menu beside it (Account, Lock vault, Sign out).
 - **Menu:** card tone, 12px radius, 6px padding, the floating shadow; 36px
   items with an 18px muted icon; a destructive item is danger-coloured with a
   14% danger wash on hover. A row's menu grows from its button over 140ms

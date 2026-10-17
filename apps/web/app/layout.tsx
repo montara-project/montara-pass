@@ -37,7 +37,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           }}
         />
         {/* Page frame: one bordered column, hatched gutters on either side. */}
-        <div className="mx-auto min-h-screen w-full max-w-[1200px] border-x border-line bg-ink">
+        <div className="mx-auto min-h-screen w-full max-w-7xl border-x border-line bg-ink">
           <ReactQueryProvider>
             <SiteHeader />
             {children}

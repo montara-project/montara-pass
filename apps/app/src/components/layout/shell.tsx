@@ -53,30 +53,27 @@ import { COMMUNITY } from '@/lib/constants/edition'
 import { useVaultStore } from '@/lib/stores/vault'
 import { initials } from '@/lib/string'
 
-/** Only routes that actually exist are listed. */
+/** Only routes that actually exist are listed, and each names its breadcrumb group. */
 const NAV = [
-  { title: 'Vault', url: '/vault', icon: IconLock },
-  { title: 'Folders', url: '/folders', icon: IconFolders },
-  { title: 'Trash', url: '/trash', icon: IconTrash },
+  { title: 'Vault', url: '/vault', icon: IconLock, group: 'Vault' },
+  { title: 'Folders', url: '/folders', icon: IconFolders, group: 'Vault' },
+  { title: 'Trash', url: '/trash', icon: IconTrash, group: 'Vault' },
 ] as const
 
 /** Shown at the foot of the sidebar, above the account. */
 const TOOLS = [
-  { title: 'Password generator', url: '/generator', icon: IconKey },
-  { title: 'Password health', url: '/health', icon: IconShieldCheck },
+  { title: 'Password generator', url: '/generator', icon: IconKey, group: 'Tools' },
+  { title: 'Password health', url: '/health', icon: IconShieldCheck, group: 'Tools' },
+  // Billing is the Cloud Edition's: the Community server takes no payments.
+  ...(COMMUNITY
+    ? []
+    : [{ title: 'Billing', url: '/billing', icon: IconCreditCard, group: 'Account' } as const]),
 ] as const
 
-/** The account menu's pages, named in the breadcrumb only. */
-const ACCOUNT = [
-  { title: 'Account', url: '/profile' },
-  { title: 'Billing', url: '/billing' },
-] as const
+/** Named in the breadcrumb only: the account menu is the way to it. */
+const ACCOUNT = [{ title: 'Account', url: '/profile', group: 'Account' }] as const
 
-const CRUMBS = [
-  ...NAV.map((item) => ({ group: 'Vault', ...item })),
-  ...TOOLS.map((item) => ({ group: 'Tools', ...item })),
-  ...ACCOUNT.map((item) => ({ group: 'Account', ...item })),
-]
+const CRUMBS = [...NAV, ...TOOLS, ...ACCOUNT]
 
 /**
  * The frame of every page after the vault is unlocked: an inset sidebar
@@ -237,13 +234,6 @@ function Account() {
               Account
               <IconChevronRight className="ml-auto size-4!" />
             </DropdownMenuItem>
-            {!COMMUNITY && (
-              <DropdownMenuItem onClick={() => void navigate({ to: '/billing' })}>
-                <IconCreditCard />
-                Billing
-                <IconChevronRight className="ml-auto size-4!" />
-              </DropdownMenuItem>
-            )}
             <DropdownMenuItem onClick={lock}>
               <IconLock />
               Lock vault
