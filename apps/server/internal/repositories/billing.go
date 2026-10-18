@@ -279,6 +279,30 @@ func (r *BillingRepository) ApplySubscription(ctx context.Context, id uuid.UUID,
 	return affected(res, err)
 }
 
+// LinkedSubscriptions returns every subscription a Lemon Squeezy subscription
+// was tied to, by that subscription's id.
+func (r *BillingRepository) LinkedSubscriptions(ctx context.Context) (map[string]models.Subscription, error) {
+	query := fmt.Sprintf(`
+		SELECT s.provider_subscription_id, %s FROM subscriptions s JOIN plans p ON p.id = s.plan_id
+		WHERE s.provider_subscription_id IS NOT NULL`, subscriptionColumns)
+	rows, err := r.queryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := map[string]models.Subscription{}
+	for rows.Next() {
+		var providerID string
+		var s models.Subscription
+		if err := rows.Scan(append([]any{&providerID}, subscriptionDest(&s)...)...); err != nil {
+			return nil, err
+		}
+		out[providerID] = s
+	}
+	return out, rows.Err()
+}
+
 // ProviderSubscriptionID returns the Lemon Squeezy subscription of the user's
 // latest subscription that became one.
 func (r *BillingRepository) ProviderSubscriptionID(ctx context.Context, userID uuid.UUID) (string, error) {
