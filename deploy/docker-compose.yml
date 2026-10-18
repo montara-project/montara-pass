@@ -88,7 +88,7 @@ services:
       REQUIRE_PAID_SHARING: ${REQUIRE_PAID_SHARING:-false}
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:8080/api/health']
-      interval: 30s
+      interval: 5m
       timeout: 5s
       retries: 3
       start_period: 15s
