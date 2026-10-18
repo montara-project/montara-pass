@@ -78,7 +78,7 @@ export function ShareItemForm({ open, onOpenChange, record }: ShareItemFormProps
           role,
           encrypted_item_key: await wrapItemKeyFor(keys, record, recipient),
         })
-        toast.success(`Shared with ${recipient.name || recipient.email}`)
+        toast.success(`Shared with ${recipient.email}`)
         form.reset()
       } catch (error) {
         if (isForbidden(error)) {

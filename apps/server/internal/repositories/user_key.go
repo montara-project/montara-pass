@@ -63,10 +63,10 @@ func (r *UserKeyRepository) UpdateKDF(ctx context.Context, k models.UserKeys) er
 func (r *UserKeyRepository) PublicKeyByEmail(ctx context.Context, email string) (models.PublicKey, error) {
 	var k models.PublicKey
 	err := r.queryRowContext(ctx, `
-		SELECT u.id, u.name, u.email, k.public_key
+		SELECT u.id, u.email, k.public_key
 		FROM users u JOIN user_keys k ON k.user_id = u.id
 		WHERE u.email = $1
 		LIMIT 1`, email,
-	).Scan(&k.UserID, &k.Name, &k.Email, &k.PublicKey)
+	).Scan(&k.UserID, &k.Email, &k.PublicKey)
 	return k, translateNotFound("users", err)
 }

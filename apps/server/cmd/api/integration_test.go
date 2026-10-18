@@ -598,7 +598,8 @@ func vaultFlow(
 	want(http.StatusCreated, http.MethodPost, "/api/v1/keys", ownerToken, keys)
 	want(http.StatusConflict, http.MethodPost, "/api/v1/keys", ownerToken, keys)
 	want(http.StatusCreated, http.MethodPost, "/api/v1/keys", otherToken, keys)
-	if got := want(http.StatusOK, http.MethodGet, "/api/v1/keys/public?email="+otherEmail, ownerToken, nil); got["user_id"] != otherID || got["public_key"] != b64("public-key") {
+	// Only what the caller typed comes back with the key: not the name.
+	if got := want(http.StatusOK, http.MethodGet, "/api/v1/keys/public?email="+otherEmail, ownerToken, nil); got["user_id"] != otherID || got["public_key"] != b64("public-key") || got["name"] != nil {
 		t.Fatalf("public key lookup: %v", got)
 	}
 	rewrapped := map[string]any{
