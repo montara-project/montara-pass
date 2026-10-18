@@ -33,6 +33,25 @@ func RateLimit(name string, max int, exemptLoopback bool, exemptIPs []string, st
 	})
 }
 
+// RateLimitKey allows max requests per window for each key that key returns,
+// whatever address they come from. A request it returns "" for passes.
+func RateLimitKey(name string, max int, window time.Duration, key func(fiber.Ctx) string, store Store) fiber.Handler {
+	return limiter.New(limiter.Config{
+		Storage: store.storage,
+		KeyGenerator: func(c fiber.Ctx) string {
+			return "ratelimit:" + name + ":" + key(c)
+		},
+		Next: func(c fiber.Ctx) bool {
+			return key(c) == ""
+		},
+		Max:        max,
+		Expiration: window,
+		LimitReached: func(c fiber.Ctx) error {
+			return apperr.ErrTooManyRequests
+		},
+	})
+}
+
 // RateLimitEmail allows max requests a minute for each email address named in
 // a JSON body, whatever address they come from: guessing one account's
 // password from many IPs is counted as one client. A request that names no

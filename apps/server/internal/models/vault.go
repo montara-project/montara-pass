@@ -25,10 +25,11 @@ type UserKeys struct {
 	EncryptedPrivateKey []byte    `db:"encrypted_private_key" json:"encrypted_private_key"`
 }
 
-// PublicKey is what one user learns about another in order to share with them.
+// PublicKey is what one user learns about another in order to share with them:
+// no more than the address they typed already tells them. The name is shown
+// once the item is shared (ItemMember).
 type PublicKey struct {
 	UserID    uuid.UUID `db:"user_id" json:"user_id"`
-	Name      string    `db:"name" json:"name"`
 	Email     string    `db:"email" json:"email"`
 	PublicKey []byte    `db:"public_key" json:"public_key"`
 }

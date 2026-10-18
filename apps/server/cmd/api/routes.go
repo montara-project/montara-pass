@@ -1,6 +1,11 @@
 package main
 
 import (
+	"net/http"
+	"slices"
+	"strings"
+	"time"
+
 	fiberadapter "github.com/Authula/authula/adapters/fiber"
 	"github.com/gofiber/fiber/v3"
 
@@ -25,9 +30,72 @@ const (
 	publicKeyRateLimit = 20
 )
 
+// totpRateLimit is how many TOTP codes one account may try in totpRateWindow,
+// from any number of pending tokens and IPs.
+//
+// ponytail: a guess at a 6-digit code (±1 step) wins 3 times in 10^6, so this
+// caps a password holder at about 0.26 wins a year; lock the account after
+// repeated failures if that is too many.
+const (
+	totpRateLimit  = 10
+	totpRateWindow = time.Hour
+)
+
+// An IP that fails ipBlockMaxFailures times, each less than ipBlockWindow
+// after the last, is shut out of the API for ipBlockFor.
+const (
+	ipBlockMaxFailures = 20
+	ipBlockWindow      = 15 * time.Minute
+	ipBlockFor         = time.Hour
+)
+
+// guessPaths are the routes where a 401 or 403 means a wrong password or
+// code: what someone guessing them gets.
+var guessPaths = []string{
+	authBasePath + "/email-password/sign-in",
+	authBasePath + "/totp/verify",
+	authBasePath + "/totp/verify-backup-code",
+	authBasePath + "/totp/enable",
+	authBasePath + "/totp/disable",
+}
+
+// failedAttempt reports whether a request counts against its IP: a wrong
+// password, code or sign-in link, or running into a rate limiter. An expired
+// access token's 401 elsewhere is a client refreshing, not guessing.
+func failedAttempt(c fiber.Ctx, status int) bool {
+	switch status {
+	case http.StatusTooManyRequests:
+		return true
+	case http.StatusUnauthorized, http.StatusForbidden:
+		return slices.Contains(guessPaths, c.Path()) || strings.HasPrefix(c.Path(), authBasePath+"/magic-link/") ||
+			// A wrong account password on a master password change.
+			(c.Method() == fiber.MethodPut && strings.TrimSuffix(c.Path(), "/") == apiPrefix+"/v1/keys")
+	}
+	return false
+}
+
 func routes(r *fiber.App, app *app.Application) {
 	h := handlers.New(app)
 	m := middlewares.New(app)
+
+	// Counts, blocks, idempotent answers and their locks: in Redis when there
+	// is one, so replicas share them, and in memory otherwise.
+	store := middlewares.NewStore(app.Redis)
+
+	exemptLoopback := app.Config.App.Env == config.EnvDevelopment
+	exemptIPs := splitCSV(app.Config.App.RateLimitExemptIPs)
+
+	// First, so a blocked IP reaches nothing else of the API, and every
+	// limiter's 429 below is seen.
+	r.Use(apiPrefix, middlewares.IPBlock(middlewares.IPBlockConfig{
+		MaxFailures: ipBlockMaxFailures,
+		Window:      ipBlockWindow,
+		BlockFor:    ipBlockFor,
+		Failed:      failedAttempt,
+		Exempt: func(ip string) bool {
+			return slices.Contains(exemptIPs, ip) || (exemptLoopback && (ip == "127.0.0.1" || ip == "::1"))
+		},
+	}, store, app.Logger))
 
 	// Everything outside apiPrefix belongs to the web app (see serveWebApp).
 	api := r.Group(apiPrefix)
@@ -36,16 +104,11 @@ func routes(r *fiber.App, app *app.Application) {
 	// Authula: email & password, Google OAuth2 and magic-link sign-in,
 	// plus GET /me and POST /sign-out, all under authBasePath. The limiter
 	// guards password guessing and sign-in/reset email flooding.
-	// Counts, idempotent answers and their locks: in Redis when there is one,
-	// so replicas share them, and in memory otherwise.
-	store := middlewares.NewStore(app.Redis)
-
-	exemptLoopback := app.Config.App.Env == config.EnvDevelopment
-	exemptIPs := splitCSV(app.Config.App.RateLimitExemptIPs)
 
 	r.Use(authBasePath,
 		middlewares.RateLimit("auth", authRateLimit, exemptLoopback, exemptIPs, store),
 		middlewares.RateLimitEmail("auth-email", authEmailRateLimit, store),
+		middlewares.RateLimitKey("totp", totpRateLimit, totpRateWindow, totpVerifyUser(app.Auth), store),
 		fiberadapter.New(fiberadapter.Config{Handler: app.Auth.Handler()}),
 	)
 

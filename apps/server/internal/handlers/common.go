@@ -1,6 +1,11 @@
 package handlers
 
 import (
+	"context"
+
+	authula "github.com/Authula/authula"
+	authulamodels "github.com/Authula/authula/models"
+	authulaservices "github.com/Authula/authula/services"
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
@@ -26,4 +31,18 @@ func currentUser(c fiber.Ctx) (uuid.UUID, error) {
 		return uuid.Nil, apperr.ErrUnauthorized
 	}
 	return uid, nil
+}
+
+// AccountPasswordMatches reports whether password is the user's account
+// (email) password. A user without one, signed up with Google, never matches.
+// It guards what an access token alone must not be enough for.
+func AccountPasswordMatches(ctx context.Context, auth *authula.Auth, userID, password string) (bool, error) {
+	accounts := auth.ServiceRegistry.Get(authulamodels.ServiceAccount.String()).(authulaservices.AccountService)
+	passwords := auth.ServiceRegistry.Get(authulamodels.ServicePassword.String()).(authulaservices.PasswordService)
+
+	account, err := accounts.GetByUserIDAndProvider(ctx, userID, authulamodels.AuthProviderEmail.String())
+	if err != nil {
+		return false, err
+	}
+	return account != nil && account.Password != nil && passwords.Verify(password, *account.Password), nil
 }

@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -20,7 +21,9 @@ import (
 	"testing"
 	"time"
 
+	authula "github.com/Authula/authula"
 	authulamodels "github.com/Authula/authula/models"
+	totpservices "github.com/Authula/authula/plugins/totp/services"
 	"github.com/gofiber/fiber/v3"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/google/uuid"
@@ -313,7 +316,7 @@ func TestIntegration(t *testing.T) {
 		t.Fatalf("super user route as super user: %d %v", status, out)
 	}
 
-	vaultFlow(t, call, superToken, userToken, userEmail, user.ID)
+	vaultFlow(t, call, superToken, superPass, userToken, userEmail, user.ID)
 	billingFlow(t, call, db, store, superToken, userToken, user.ID)
 
 	// A new account is saved as a Lemon Squeezy customer in the background;
@@ -363,11 +366,16 @@ func TestIntegration(t *testing.T) {
 		t.Fatalf("public key of an unverified email: %d %v, want 404", status, out)
 	}
 
+	totpFlow(t, call, userToken, userEmail, userPass)
+
 	// A browser request from another site is refused before it is authenticated.
 	folder := map[string]string{"encrypted_name": base64.StdEncoding.EncodeToString([]byte("folder"))}
 	if status, _ := call(http.MethodPost, "/api/v1/folders", superToken, folder, "Sec-Fetch-Site", "cross-site", "Origin", "https://evil.example"); status != http.StatusForbidden {
 		t.Fatalf("cross-site create: %d, want 403", status)
 	}
+
+	ipBlockFlow(t, application)
+	passwordResetFlow(t, call, auth, user.ID, userEmail, userPass)
 
 	// Signing out revokes the access token.
 	if status, out := call(http.MethodPost, "/api/v1/auth/sign-out", superToken, map[string]any{}); status != http.StatusOK {
@@ -378,13 +386,222 @@ func TestIntegration(t *testing.T) {
 	}
 }
 
+// passwordResetFlow resets a user's password with a reset token, made here
+// as the emailed link would carry it, and checks that it ends every session
+// the user had: their access and refresh tokens stop working.
+func passwordResetFlow(
+	t *testing.T,
+	call func(method, path, token string, body any, headers ...string) (int, map[string]any),
+	auth *authula.Auth,
+	userID, email, password string,
+) {
+	t.Helper()
+
+	status, out := call(http.MethodPost, "/api/v1/auth/email-password/sign-in", "", map[string]string{"email": email, "password": password})
+	access, _ := out["access_token"].(string)
+	refresh, _ := out["refresh_token"].(string)
+	if status != http.StatusOK || access == "" || refresh == "" {
+		t.Fatalf("sign in before the reset: %d %v", status, out)
+	}
+
+	services := auth.CoreServices()
+	token, err := services.TokenService.Generate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := services.VerificationService.Create(context.Background(), userID, services.TokenService.Hash(token), authulamodels.TypePasswordResetRequest, email, time.Hour); err != nil {
+		t.Fatal(err)
+	}
+	const newPassword = "a-brand-new-password"
+	if status, out := call(http.MethodPost, "/api/v1/auth/email-password/change-password", "", map[string]string{"token": token, "password": newPassword}); status != http.StatusOK {
+		t.Fatalf("reset: %d %v", status, out)
+	}
+
+	if status, out := call(http.MethodGet, "/api/v1/auth/me", access, nil); status != http.StatusUnauthorized {
+		t.Fatalf("access token after the reset: %d %v, want 401", status, out)
+	}
+	if status, out := call(http.MethodPost, "/api/v1/auth/token/refresh", "", map[string]any{"refresh_token": refresh}); status == http.StatusOK {
+		t.Fatalf("refresh token after the reset: %d %v", status, out)
+	}
+	if status, out := call(http.MethodPost, "/api/v1/auth/email-password/sign-in", "", map[string]string{"email": email, "password": newPassword}); status != http.StatusOK || out["access_token"] == nil {
+		t.Fatalf("sign in with the new password: %d %v", status, out)
+	}
+}
+
+// ipBlockFlow guesses passwords from an IP that is not exempt until it is
+// shut out of the whole API, on a server of its own with counts in memory.
+func ipBlockFlow(t *testing.T, application *app.Application) {
+	t.Helper()
+
+	blocking := *application
+	blocking.Config.App.RateLimitExemptIPs = ""
+	blocking.Redis = nil
+	server, err := newServer(&blocking)
+	if err != nil {
+		t.Fatal(err)
+	}
+	send := func(method, path, body string) *http.Response {
+		t.Helper()
+		req := httptest.NewRequest(method, path, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		res, err := server.Test(req, fiber.TestConfig{Timeout: 30 * time.Second})
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		return res
+	}
+
+	// Wrong passwords answer 401, then the per-email limiter's 429: both count.
+	statuses := map[int]int{}
+	for range ipBlockMaxFailures {
+		res := send(http.MethodPost, "/api/v1/auth/email-password/sign-in", `{"email":"guess@example.com","password":"wrong-password"}`)
+		statuses[res.StatusCode]++
+	}
+	if statuses[http.StatusUnauthorized] == 0 {
+		t.Fatalf("wrong passwords answered %v, want 401s", statuses)
+	}
+	res := send(http.MethodGet, "/api/health", "")
+	if res.StatusCode != http.StatusTooManyRequests || res.Header.Get(fiber.HeaderRetryAfter) == "" {
+		t.Fatalf("health after %d failures: %d Retry-After=%q, want 429", ipBlockMaxFailures, res.StatusCode, res.Header.Get(fiber.HeaderRetryAfter))
+	}
+}
+
+// totpFlow turns TOTP on for a user, signs in through the TOTP step with the
+// pending token in a header, as the clients do, and turns it off again.
+func totpFlow(
+	t *testing.T,
+	call func(method, path, token string, body any, headers ...string) (int, map[string]any),
+	token, email, password string,
+) {
+	t.Helper()
+
+	totpEnabled := func(token string) any {
+		t.Helper()
+		status, out := call(http.MethodGet, "/api/v1/auth/me", token, nil)
+		if status != http.StatusOK {
+			t.Fatalf("me: %d %v", status, out)
+		}
+		return out["totp_enabled"]
+	}
+	signIn := func() map[string]any {
+		t.Helper()
+		status, out := call(http.MethodPost, "/api/v1/auth/email-password/sign-in", "", map[string]string{"email": email, "password": password})
+		if status != http.StatusOK {
+			t.Fatalf("sign in: %d %v", status, out)
+		}
+		return out
+	}
+	// verify answers the TOTP step; the bearer token goes along, as the web
+	// app sends it, and is not looked at.
+	verify := func(path, pending, code string) (int, map[string]any) {
+		t.Helper()
+		return call(http.MethodPost, "/api/v1/auth/totp/"+path, token, map[string]string{"code": code}, totpTokenHeader, pending)
+	}
+	codeFor := func(secret string) string {
+		t.Helper()
+		code, err := totpservices.NewTOTPService(6, 30).GenerateCode(secret, time.Now())
+		if err != nil {
+			t.Fatal(err)
+		}
+		return code
+	}
+
+	if enabled := totpEnabled(token); enabled != false {
+		t.Fatalf("totp_enabled before enabling: %v", enabled)
+	}
+
+	// Turning it on or off takes the account password, not a token alone.
+	if status, out := call(http.MethodPost, "/api/v1/auth/totp/enable", token, map[string]any{"password": "wrong-password"}); status != http.StatusForbidden {
+		t.Fatalf("enable with a wrong password: %d %v, want 403", status, out)
+	}
+	status, out := call(http.MethodPost, "/api/v1/auth/totp/enable", token, map[string]any{"password": password})
+	pending, _ := out["totp_token"].(string)
+	uri, _ := out["totp_uri"].(string)
+	codes, _ := out["backup_codes"].([]any)
+	if status != http.StatusOK || pending == "" || uri == "" || len(codes) == 0 {
+		t.Fatalf("enable: %d %v", status, out)
+	}
+	parsed, err := url.Parse(uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secret := parsed.Query().Get("secret")
+
+	// Not on until a code from the secret is verified.
+	if out := signIn(); out["access_token"] == nil {
+		t.Fatalf("sign in before confirming: %v", out)
+	}
+	if status, out := verify("verify", pending, "000000"); status != http.StatusUnauthorized {
+		t.Fatalf("confirm with a wrong code: %d %v, want 401", status, out)
+	}
+	if status, out := verify("verify", pending, codeFor(secret)); status != http.StatusOK || out["access_token"] == nil {
+		t.Fatalf("confirm: %d %v", status, out)
+	}
+	if enabled := totpEnabled(token); enabled != true {
+		t.Fatalf("totp_enabled after confirming: %v", enabled)
+	}
+
+	// Signing in now stops at the TOTP step, without tokens.
+	out = signIn()
+	pending, _ = out["totp_token"].(string)
+	if out["totp_redirect"] != true || pending == "" || out["access_token"] != nil {
+		t.Fatalf("sign in with totp: %v", out)
+	}
+	if status, out := verify("verify", "", codeFor(secret)); status != http.StatusUnauthorized {
+		t.Fatalf("verify without the pending token: %d %v, want 401", status, out)
+	}
+	if status, out := verify("verify", pending, codeFor(secret)); status != http.StatusOK || out["access_token"] == nil {
+		t.Fatalf("verify: %d %v", status, out)
+	}
+
+	// A backup code works once.
+	pending, _ = signIn()["totp_token"].(string)
+	status, out = verify("verify-backup-code", pending, codes[0].(string))
+	token, _ = out["access_token"].(string)
+	if status != http.StatusOK || token == "" {
+		t.Fatalf("verify backup code: %d %v", status, out)
+	}
+	pending, _ = signIn()["totp_token"].(string)
+	if status, out := verify("verify-backup-code", pending, codes[0].(string)); status == http.StatusOK {
+		t.Fatalf("a used backup code again: %d %v", status, out)
+	}
+
+	// Codes are counted per account: the tries above count too. A wrong code
+	// leaves the pending token alive, so one token serves.
+	pending, _ = signIn()["totp_token"].(string)
+	limited := false
+	for range totpRateLimit {
+		if status, _ := verify("verify", pending, "000000"); status == http.StatusTooManyRequests {
+			limited = true
+			break
+		}
+	}
+	if !limited {
+		t.Fatalf("%d wrong codes were not limited", totpRateLimit)
+	}
+
+	if status, out := call(http.MethodPost, "/api/v1/auth/totp/disable", token, map[string]any{}); status != http.StatusForbidden {
+		t.Fatalf("disable without the password: %d %v, want 403", status, out)
+	}
+	if status, out := call(http.MethodPost, "/api/v1/auth/totp/disable", token, map[string]any{"password": password}); status != http.StatusOK {
+		t.Fatalf("disable: %d %v", status, out)
+	}
+	if enabled := totpEnabled(token); enabled != false {
+		t.Fatalf("totp_enabled after disabling: %v", enabled)
+	}
+	if out := signIn(); out["access_token"] == nil {
+		t.Fatalf("sign in after disabling: %v", out)
+	}
+}
+
 // vaultFlow exercises the end-to-end encrypted vault as two users: an owner
 // and the user an item is shared with. The server never reads the payloads,
 // so any bytes stand in for ciphertext.
 func vaultFlow(
 	t *testing.T,
 	call func(method, path, token string, body any, headers ...string) (int, map[string]any),
-	ownerToken, otherToken, otherEmail, otherID string,
+	ownerToken, ownerPassword, otherToken, otherEmail, otherID string,
 ) {
 	t.Helper()
 
@@ -425,13 +642,19 @@ func vaultFlow(
 	want(http.StatusCreated, http.MethodPost, "/api/v1/keys", ownerToken, keys)
 	want(http.StatusConflict, http.MethodPost, "/api/v1/keys", ownerToken, keys)
 	want(http.StatusCreated, http.MethodPost, "/api/v1/keys", otherToken, keys)
-	if got := want(http.StatusOK, http.MethodGet, "/api/v1/keys/public?email="+otherEmail, ownerToken, nil); got["user_id"] != otherID || got["public_key"] != b64("public-key") {
+	// Only what the caller typed comes back with the key: not the name.
+	if got := want(http.StatusOK, http.MethodGet, "/api/v1/keys/public?email="+otherEmail, ownerToken, nil); got["user_id"] != otherID || got["public_key"] != b64("public-key") || got["name"] != nil {
 		t.Fatalf("public key lookup: %v", got)
 	}
 	rewrapped := map[string]any{
 		"kdf_salt": b64("fedcba9876543210"), "kdf_memory_kib": 65536, "kdf_iterations": 3, "kdf_parallelism": 4,
 		"encrypted_vault_key": b64("vault-key-2"),
 	}
+	// Replacing the one wrapped vault key takes the account password too.
+	want(http.StatusUnprocessableEntity, http.MethodPut, "/api/v1/keys", ownerToken, rewrapped)
+	rewrapped["password"] = "wrong-password"
+	want(http.StatusForbidden, http.MethodPut, "/api/v1/keys", ownerToken, rewrapped)
+	rewrapped["password"] = ownerPassword
 	if got := want(http.StatusOK, http.MethodPut, "/api/v1/keys", ownerToken, rewrapped); got["encrypted_vault_key"] != b64("vault-key-2") || got["public_key"] != b64("public-key") {
 		t.Fatalf("keys after a master password change: %v", got)
 	}

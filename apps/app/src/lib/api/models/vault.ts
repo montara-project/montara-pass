@@ -19,9 +19,9 @@ export interface UserKeys {
 }
 
 /** What one user learns about another in order to share with them. */
+/** Only what the caller typed comes back with the key, not the name. */
 export interface PublicKey {
   user_id: string
-  name: string
   email: string
   public_key: Base64
 }

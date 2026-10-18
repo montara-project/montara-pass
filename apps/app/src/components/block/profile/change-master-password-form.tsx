@@ -23,6 +23,7 @@ export default function ChangeMasterPasswordForm() {
   const [isLoading, setIsLoading] = useState(false)
 
   const defaultValues: ChangeMasterPasswordFormDto = {
+    account_password: '',
     current_password: '',
     master_password: '',
     confirm_password: '',
@@ -39,9 +40,10 @@ export default function ChangeMasterPasswordForm() {
 
       try {
         const dto = parseDto(ChangeMasterPasswordFormSchema, value)
-        await mutation.mutateAsync(
-          await changeMasterPassword(dto.current_password, dto.master_password, userKeys)
-        )
+        await mutation.mutateAsync({
+          ...(await changeMasterPassword(dto.current_password, dto.master_password, userKeys)),
+          password: dto.account_password,
+        })
         toast.success('Master password changed')
         form.reset()
       } catch (error) {
@@ -70,6 +72,17 @@ export default function ChangeMasterPasswordForm() {
           Separate from your account password, and never sent to the server. If you forget it, your
           vault cannot be recovered.
         </p>
+
+        <form.AppField
+          name="account_password"
+          children={(field) => (
+            <field.PasswordField
+              label="Account password"
+              autoComplete="current-password"
+              asterisk
+            />
+          )}
+        />
 
         <form.AppField
           name="current_password"

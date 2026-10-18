@@ -21,6 +21,8 @@ export interface Session {
 export interface Profile {
   user: User
   session: Session
+  /** Whether signing in asks for a code from an authenticator app. GET /me only. */
+  totp_enabled?: boolean
 }
 
 /** Body of POST /api/v1/auth/token/refresh. */
@@ -36,4 +38,20 @@ export interface TokenPair {
 export interface SignInData extends Profile, Partial<TokenPair> {
   expires_at?: ISO8601DateString
   expires_in?: number
+  /**
+   * Set instead of the tokens when the user turned TOTP on: the sign-in goes
+   * on at POST /totp/verify with a code and this token, which lives 5 minutes.
+   */
+  totp_redirect?: boolean
+  totp_token?: string
+}
+
+/**
+ * Body of POST /api/v1/auth/totp/enable. It takes effect once a code from the
+ * secret in totp_uri is sent to POST /totp/verify with totp_token.
+ */
+export interface TotpSetup {
+  totp_uri: string
+  backup_codes: string[]
+  totp_token: string
 }

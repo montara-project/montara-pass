@@ -23,8 +23,8 @@ flag of the same name in kebab-case (`go run ./cmd/api -h`).
 | `SEED_ON_BOOT` | `false` | Run the idempotent seeders before serving. Needs `SUPER_USER`. |
 | `SUPER_USER` | none | `email:password` of the super user to seed. |
 | `CORS_ALLOWED_ORIGINS` | none | Comma-separated browser origins. Empty means same-origin only, which is enough when the API serves the web app. |
-| `RATE_LIMIT_EXEMPT_IPS` | none | Comma-separated client IPs the rate limiter skips. |
-| `TRUSTED_PROXIES` | none | IPs or CIDRs trusted to supply `X-Forwarded-For`. Set it behind a reverse proxy, or the rate limit counts the proxy instead of the visitor. |
+| `RATE_LIMIT_EXEMPT_IPS` | none | Comma-separated client IPs the rate limiter and the IP block skip. An IP that fails 20 times in a row (a wrong password or code, or a rate limit hit), each within 15 minutes of the last, is shut out of the API for an hour. |
+| `TRUSTED_PROXIES` | none | IPs or CIDRs trusted to supply `X-Forwarded-For`. Set it behind a reverse proxy, or the rate limit and the IP block count the proxy instead of the visitor, and one visitor's failures block everyone. |
 | `AUTH_BASE_URL` | `http://localhost:$PORT` | Public URL of the API, used in email links and the Google callback. |
 | `FROM_ADDRESS` | none | Sender of auth emails. Must be a domain verified in Resend. Required in the Cloud Edition; the Community Edition may leave it and `RESEND_API_KEY` empty, which turns off password reset and magic-link sign-in (change `SUPER_USER` to reset the password). |
 | `RESEND_API_KEY` | none | Resend API key. Required with `FROM_ADDRESS`. |

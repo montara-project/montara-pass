@@ -32,6 +32,9 @@ export const SetupVaultFormSchema = z
 
 export const ChangeMasterPasswordFormSchema = z
   .object({
+    // The server asks for it too: an access token alone must not be enough
+    // to replace the one wrapped copy of the vault key.
+    account_password: requiredString('account password'),
     current_password: requiredString('current master password'),
     master_password: masterPassword('new master password'),
     confirm_password: requiredString('confirmation'),
@@ -81,6 +84,11 @@ export type KDFRequest = {
   kdf_iterations: number
   kdf_parallelism: number
   encrypted_vault_key: string
+}
+
+/** PUT /api/v1/keys: a new master password, with the account password. */
+export type KDFUpdateRequest = KDFRequest & {
+  password: string
 }
 
 export type UserKeysRequest = KDFRequest & {

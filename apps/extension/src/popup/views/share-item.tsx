@@ -67,7 +67,7 @@ export default function ShareItem({ keys, item, onDone, onSignedOut, onNotice }:
           role,
           encrypted_item_key: await wrapItemKeyFor(keys, item, recipient),
         })
-        onNotice(`Shared with ${recipient.name || recipient.email}`)
+        onNotice(`Shared with ${recipient.email}`)
         // Ready for the next person, with the same access as the last.
         formApi.resetField('email')
         // The share went through; a list that fails to reload stays as it was.
