@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	authula "github.com/Authula/authula"
 	authulamodels "github.com/Authula/authula/models"
 	totpservices "github.com/Authula/authula/plugins/totp/services"
 	"github.com/gofiber/fiber/v3"
@@ -374,6 +375,7 @@ func TestIntegration(t *testing.T) {
 	}
 
 	ipBlockFlow(t, application)
+	passwordResetFlow(t, call, auth, user.ID, userEmail, userPass)
 
 	// Signing out revokes the access token.
 	if status, out := call(http.MethodPost, "/api/v1/auth/sign-out", superToken, map[string]any{}); status != http.StatusOK {
@@ -381,6 +383,48 @@ func TestIntegration(t *testing.T) {
 	}
 	if status, _ := call(http.MethodPost, "/api/v1/folders", superToken, folder); status != http.StatusUnauthorized {
 		t.Fatalf("create after sign out: %d, want 401", status)
+	}
+}
+
+// passwordResetFlow resets a user's password with a reset token, made here
+// as the emailed link would carry it, and checks that it ends every session
+// the user had: their access and refresh tokens stop working.
+func passwordResetFlow(
+	t *testing.T,
+	call func(method, path, token string, body any, headers ...string) (int, map[string]any),
+	auth *authula.Auth,
+	userID, email, password string,
+) {
+	t.Helper()
+
+	status, out := call(http.MethodPost, "/api/v1/auth/email-password/sign-in", "", map[string]string{"email": email, "password": password})
+	access, _ := out["access_token"].(string)
+	refresh, _ := out["refresh_token"].(string)
+	if status != http.StatusOK || access == "" || refresh == "" {
+		t.Fatalf("sign in before the reset: %d %v", status, out)
+	}
+
+	services := auth.CoreServices()
+	token, err := services.TokenService.Generate()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := services.VerificationService.Create(context.Background(), userID, services.TokenService.Hash(token), authulamodels.TypePasswordResetRequest, email, time.Hour); err != nil {
+		t.Fatal(err)
+	}
+	const newPassword = "a-brand-new-password"
+	if status, out := call(http.MethodPost, "/api/v1/auth/email-password/change-password", "", map[string]string{"token": token, "password": newPassword}); status != http.StatusOK {
+		t.Fatalf("reset: %d %v", status, out)
+	}
+
+	if status, out := call(http.MethodGet, "/api/v1/auth/me", access, nil); status != http.StatusUnauthorized {
+		t.Fatalf("access token after the reset: %d %v, want 401", status, out)
+	}
+	if status, out := call(http.MethodPost, "/api/v1/auth/token/refresh", "", map[string]any{"refresh_token": refresh}); status == http.StatusOK {
+		t.Fatalf("refresh token after the reset: %d %v", status, out)
+	}
+	if status, out := call(http.MethodPost, "/api/v1/auth/email-password/sign-in", "", map[string]string{"email": email, "password": newPassword}); status != http.StatusOK || out["access_token"] == nil {
+		t.Fatalf("sign in with the new password: %d %v", status, out)
 	}
 }
 

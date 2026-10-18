@@ -498,7 +498,9 @@ func newAuth(cfg config.Config, mirror, customer func(*authulamodels.User) error
 		logger.Warn("auth emails disabled: resend-api-key is not set; no password reset or magic-link sign-in, change SUPER_USER to reset the password")
 	}
 
-	auth := authula.New(&authula.AuthConfig{
+	// Set below; the password reset hook runs only once requests arrive.
+	var auth *authula.Auth
+	auth = authula.New(&authula.AuthConfig{
 		Config: authConfig,
 		Plugins: append(plugins,
 			// Mints an access and refresh token on every successful sign-in and
@@ -523,6 +525,17 @@ func newAuth(cfg config.Config, mirror, customer func(*authulamodels.User) error
 				AutoSignIn:             false,
 				SendEmailOnSignUp:      true,
 				PasswordResetExpiresIn: time.Hour,
+				// A reset ends every session, and so every access and refresh
+				// token: whoever took one keeps nothing once the password is
+				// new. Before, not after: an error here stops the reset,
+				// where Authula only logs one from the after hook.
+				ServiceHooks: &emailpasswordplugintypes.EmailPasswordServiceHooksConfig{
+					PasswordChange: &emailpasswordplugintypes.PasswordChangeServiceHooksConfig{
+						BeforeChangePassword: func(ctx context.Context, u *authulamodels.User, _ string) error {
+							return auth.CoreServices().SessionService.DeleteAllByUserID(ctx, u.ID)
+						},
+					},
+				},
 			}),
 			magiclinkplugin.New(magiclinkplugintypes.MagicLinkPluginConfig{
 				Enabled:   emailEnabled,
