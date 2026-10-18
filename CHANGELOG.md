@@ -3,6 +3,21 @@
 All notable changes to this project are documented in this file. Versions follow the git tags (`v*`); Docker images are published to ghcr.io with the same version.
 
 
+## [2.2.0](https://github.com/montara-project/montara-pass/compare/v2.1.0...v2.2.0) (2026-10-18)
+
+### Features
+
+* **auth:** add optional TOTP two-step verification ([1618cda](https://github.com/montara-project/montara-pass/commit/1618cdad9e6c562ddbc934758476a7f79d1eb8b1))
+* **server:** block client IPs that keep failing ([01cab11](https://github.com/montara-project/montara-pass/commit/01cab11bf7f3fa0d67db9fff939d10d15fff57e9))
+
+### Bug Fixes
+
+* **auth:** end every session when the password is reset ([300359b](https://github.com/montara-project/montara-pass/commit/300359bb308b35e68d1e89b4e65533710427e9b2))
+* update deploy docker compose ([02ed8cd](https://github.com/montara-project/montara-pass/commit/02ed8cdbd595dd85bf8b22893f46b221d8541a79))
+* update script zip ([7d5ec59](https://github.com/montara-project/montara-pass/commit/7d5ec590854fbf415b472f72f51b13565e921b9d))
+* **vault:** require the account password to change the master password ([8d1579a](https://github.com/montara-project/montara-pass/commit/8d1579afcc0b706c8a1a9eec41fd2375eb036313))
+* **vault:** stop the public key lookup from returning the name ([a28a638](https://github.com/montara-project/montara-pass/commit/a28a638fd08abb9666d5f443534eb76d0601a55a))
+
 ## [2.1.0](https://github.com/montara-project/montara-pass/compare/v2.0.0...v2.1.0) (2026-10-17)
 
 ### Features
