@@ -75,6 +75,8 @@ api.interceptors.response.use(undefined, async (error: AxiosError) => {
     error.response?.status === 401 &&
     config !== undefined &&
     !url.startsWith(`${AUTH_PATH}/email-password/`) &&
+    // A wrong code, not a dead session.
+    !url.startsWith(`${AUTH_PATH}/totp/verify`) &&
     !url.startsWith(`${AUTH_PATH}/token/refresh`)
 
   if (!recoverable) {

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	fiberadapter "github.com/Authula/authula/adapters/fiber"
 	"github.com/gofiber/fiber/v3"
 
@@ -25,6 +27,17 @@ const (
 	publicKeyRateLimit = 20
 )
 
+// totpRateLimit is how many TOTP codes one account may try in totpRateWindow,
+// from any number of pending tokens and IPs.
+//
+// ponytail: a guess at a 6-digit code (±1 step) wins 3 times in 10^6, so this
+// caps a password holder at about 0.26 wins a year; lock the account after
+// repeated failures if that is too many.
+const (
+	totpRateLimit  = 10
+	totpRateWindow = time.Hour
+)
+
 func routes(r *fiber.App, app *app.Application) {
 	h := handlers.New(app)
 	m := middlewares.New(app)
@@ -46,6 +59,7 @@ func routes(r *fiber.App, app *app.Application) {
 	r.Use(authBasePath,
 		middlewares.RateLimit("auth", authRateLimit, exemptLoopback, exemptIPs, store),
 		middlewares.RateLimitEmail("auth-email", authEmailRateLimit, store),
+		middlewares.RateLimitKey("totp", totpRateLimit, totpRateWindow, totpVerifyUser(app.Auth), store),
 		fiberadapter.New(fiberadapter.Config{Handler: app.Auth.Handler()}),
 	)
 

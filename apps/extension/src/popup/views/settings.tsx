@@ -13,6 +13,7 @@ import { originOf } from '../../lib/site'
 import { DEFAULT_SETTINGS, getSettings, saveSettings } from '../../lib/storage'
 import { checked, submit, useAppForm } from '../form'
 import { ArrowLeftIcon, ExternalLinkIcon, LockIcon } from '../icons'
+import TwoFactor from './two-factor'
 
 interface SettingsProps {
   onClose: () => void
@@ -58,6 +59,8 @@ function planSummary({ subscription, purchases }: Models.BillingOverview) {
 export default function Settings({ onClose, onLock, onSignOut }: SettingsProps) {
   const [saved, setSaved] = useState(DEFAULT_SETTINGS)
   const [email, setEmail] = useState('')
+  // Whether signing in asks for an authenticator code; undefined while loading.
+  const [totpEnabled, setTotpEnabled] = useState<boolean>()
   // undefined while loading; null where the server has no billing.
   const [billing, setBilling] = useState<Models.BillingOverview | null>()
   // What the browser said about reaching the server, as opposed to the fields.
@@ -114,7 +117,10 @@ export default function Settings({ onClose, onLock, onSignOut }: SettingsProps) 
   useEffect(() => {
     if (!signedIn) return
     void getProfile()
-      .then((profile) => setEmail(profile.user.email))
+      .then((profile) => {
+        setEmail(profile.user.email)
+        setTotpEnabled(profile.totp_enabled ?? false)
+      })
       .catch(() => {})
     if (!COMMUNITY) {
       void getBilling()
@@ -204,6 +210,7 @@ export default function Settings({ onClose, onLock, onSignOut }: SettingsProps) 
       <section className="set-section" aria-labelledby="set-security">
         <h2 id="set-security">Security</h2>
         <div className="set-card">
+          {signedIn && <TwoFactor enabled={totpEnabled} onChange={setTotpEnabled} />}
           <div className="set-row">
             <span className="set-text">
               Auto-lock

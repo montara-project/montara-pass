@@ -6,6 +6,8 @@ import type {
 } from '@/lib/api/dtos/vault/schema'
 import type { Models } from '@/lib/api/models'
 
+import { isTotpCode, TOTP_CODE_REQUIRED, TOTP_TOKEN_HEADER } from '@/lib/auth/totp'
+
 import { clearTokens, getSettings, getTokens, saveTokens } from './storage'
 
 // A small fetch client for the routes the popup needs. The web app uses axios
@@ -59,6 +61,7 @@ async function send(
       // the web app's business.
       credentials: 'omit',
       headers: {
+        ...(init.headers as Record<string, string> | undefined),
         ...(init.body ? { 'Content-Type': 'application/json' } : {}),
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
@@ -120,7 +123,18 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 type Envelope<T> = { data: T }
 type ListEnvelope<T> = { data: T[]; metadata: { total?: number } }
 
-export async function signIn(email: string, password: string): Promise<void> {
+async function saveSignIn(data: Models.SignInData): Promise<void> {
+  if (!data.access_token || !data.refresh_token) {
+    throw new ApiError('Sign-in response did not include tokens', 200)
+  }
+  await saveTokens({ accessToken: data.access_token, refreshToken: data.refresh_token })
+}
+
+/**
+ * Signs in and stores the tokens. A user who turned TOTP on gets no tokens
+ * yet but a `totpToken`, for {@link verifyTotp}.
+ */
+export async function signIn(email: string, password: string): Promise<{ totpToken?: string }> {
   const res = await send(`${AUTH_PATH}/email-password/sign-in`, {
     method: 'POST',
     body: JSON.stringify({ email, password }),
@@ -128,10 +142,57 @@ export async function signIn(email: string, password: string): Promise<void> {
   if (!res.ok) throw await errorFrom(res)
 
   const data = (await res.json()) as Models.SignInData
-  if (!data.access_token || !data.refresh_token) {
-    throw new ApiError('Sign-in response did not include tokens', res.status)
-  }
-  await saveTokens({ accessToken: data.access_token, refreshToken: data.refresh_token })
+  if (data.totp_token) return { totpToken: data.totp_token }
+
+  await saveSignIn(data)
+  return {}
+}
+
+/**
+ * Answers the TOTP step with a code from the authenticator app, or else a
+ * backup code: those are lowercase, and a phone keyboard may have capitalised
+ * one. Sent without the bearer token: the API answers it signed out.
+ */
+async function answerTotp(totpToken: string, code: string): Promise<Models.SignInData> {
+  const backup = !isTotpCode(code)
+  const res = await send(`${AUTH_PATH}/totp/${backup ? 'verify-backup-code' : 'verify'}`, {
+    method: 'POST',
+    body: JSON.stringify({ code: backup ? code.toLowerCase() : code }),
+    headers: { [TOTP_TOKEN_HEADER]: totpToken },
+  })
+  if (!res.ok) throw await errorFrom(res)
+  return (await res.json()) as Models.SignInData
+}
+
+/** Finishes a sign-in that stopped at the TOTP step. */
+export async function verifyTotp(totpToken: string, code: string): Promise<void> {
+  await saveSignIn(await answerTotp(totpToken, code))
+}
+
+/** Starts turning TOTP on: the secret, and the backup codes, shown once. */
+export function enableTotp(password: string): Promise<Models.TotpSetup> {
+  return request(`${AUTH_PATH}/totp/enable`, { method: 'POST', body: JSON.stringify({ password }) })
+}
+
+/**
+ * Turns TOTP on with a code from the new secret; only such a code does. It
+ * begins a session of its own, whose tokens replace the current ones before
+ * the old session is ended by its id: a request that meets the ended session
+ * then refreshes with the new tokens.
+ */
+export async function confirmTotp(totpToken: string, code: string): Promise<void> {
+  if (!isTotpCode(code)) throw new ApiError(TOTP_CODE_REQUIRED, 0)
+
+  const old = (await getProfile()).session.id
+  await saveSignIn(await answerTotp(totpToken, code))
+  await request(`${AUTH_PATH}/sign-out`, {
+    method: 'POST',
+    body: JSON.stringify({ session_id: old }),
+  }).catch(() => {})
+}
+
+export async function disableTotp(password: string): Promise<void> {
+  await request(`${AUTH_PATH}/totp/disable`, { method: 'POST', body: JSON.stringify({ password }) })
 }
 
 /** Ends the session on the server, best-effort, and forgets the tokens. */

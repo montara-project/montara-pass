@@ -9,11 +9,14 @@ import { HOME_PATH } from '@/lib/constants/auth'
 import { COMMUNITY } from '@/lib/constants/edition'
 
 import AuthShell, { authLinkStrong } from './auth-shell'
+import TotpForm from './totp-form'
 
 export default function LoginForm() {
   const navigate = useNavigate()
   // What the server said, as opposed to what the fields say about themselves.
   const [error, setError] = useState('')
+  // Set when the account asks for a code from an authenticator app.
+  const [totpToken, setTotpToken] = useState('')
 
   const form = useAppForm({
     defaultValues: { email: '', password: '' },
@@ -24,13 +27,21 @@ export default function LoginForm() {
 
       try {
         // The password goes as typed: a space is part of it.
-        await signInWithEmail({ ...value, email: value.email.trim() })
+        const { totpToken } = await signInWithEmail({ ...value, email: value.email.trim() })
+        if (totpToken) {
+          setTotpToken(totpToken)
+          return
+        }
         await navigate({ to: HOME_PATH, replace: true })
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Sign-in failed')
       }
     },
   })
+
+  if (totpToken) {
+    return <TotpForm totpToken={totpToken} onBack={() => setTotpToken('')} />
+  }
 
   return (
     <AuthShell title="Sign in" note="Sign in with your account password.">

@@ -6,6 +6,7 @@ import { queries } from '@/lib/api/queries'
 import { formatDate } from '@/lib/date'
 
 import ChangeMasterPasswordForm from './change-master-password-form'
+import TwoFactor from './two-factor'
 
 /** The account: who is signed in, and the password that opens their vault. */
 export default function ProfileBlock() {
@@ -40,6 +41,8 @@ export default function ProfileBlock() {
           ))}
         </dl>
       </section>
+
+      <TwoFactor />
 
       <ChangeMasterPasswordForm />
     </Page>

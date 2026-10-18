@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 
 	authula "github.com/Authula/authula"
@@ -29,11 +30,17 @@ import (
 	oauth2plugin "github.com/Authula/authula/plugins/oauth2"
 	oauth2plugintypes "github.com/Authula/authula/plugins/oauth2/types"
 	sessionplugin "github.com/Authula/authula/plugins/session"
+	totpplugin "github.com/Authula/authula/plugins/totp"
+	totpconstants "github.com/Authula/authula/plugins/totp/constants"
+	totprepository "github.com/Authula/authula/plugins/totp/repository"
+	totpplugintypes "github.com/Authula/authula/plugins/totp/types"
+	authulaservices "github.com/Authula/authula/services"
 
 	"montara-pass/server/internal/app"
 	"montara-pass/server/internal/config"
 	"montara-pass/server/internal/handlers"
 	"montara-pass/server/internal/lib/constant"
+	"montara-pass/server/internal/middlewares"
 	"montara-pass/server/internal/models"
 	"montara-pass/server/internal/repositories"
 )
@@ -46,13 +53,16 @@ var (
 	sessionAuth         = sessionplugin.HookIDSessionAuth.String()
 	sessionAuthOptional = sessionplugin.HookIDSessionAuthOptional.String()
 	bearerAuthOptional  = bearerplugin.HookIDBearerAuthOptional.String()
+	totpIntercept       = totpplugin.HookIDTOTPIntercept.String()
 )
 
 // authRouteMappings attaches auth capabilities to Authula's routes. Paths
 // are relative to authBasePath. Sign-in style routes take an optional session
-// so an already signed-in user is recognised; account routes require either
-// a bearer access token or a session: the optional bearer check runs first
-// and the session check stands down once it has identified the caller.
+// so an already signed-in user is recognised, and stop at the TOTP step for a
+// user who turned it on; account routes require either a bearer access token
+// or a session: the optional bearer check runs first and the session check
+// stands down once it has identified the caller. The TOTP verify routes have
+// no mapping: they are answered with the pending token, by a signed-out caller.
 var authRouteMappings = []authulamodels.RouteMapping{
 	{
 		Paths:   []string{"GET:/me", "POST:/sign-out", "POST:/token"},
@@ -68,12 +78,14 @@ var authRouteMappings = []authulamodels.RouteMapping{
 			"/magic-link/*",
 			"/oauth2/*",
 		},
-		Plugins: []string{sessionAuthOptional},
+		Plugins: []string{sessionAuthOptional, totpIntercept},
 	},
 	{
 		Paths: []string{
 			"POST:/email-password/send-email-verification",
 			"POST:/email-password/request-email-change",
+			"POST:/totp/enable",
+			"POST:/totp/disable",
 		},
 		Plugins: []string{bearerAuthOptional, sessionAuth},
 	},
@@ -129,20 +141,26 @@ func addTokensToResponse(reqCtx *authulamodels.RequestContext) error {
 		return nil
 	}
 
+	// The token was minted just now, so it expires accessTokenTTL from now,
+	// give or take the second it took.
+	return addToResponse(reqCtx, map[string]any{
+		"access_token":  access,
+		"refresh_token": reqCtx.Values[jwtplugintypes.JWTTokenTypeRefresh.String()],
+		"expires_at":    time.Now().Add(accessTokenTTL).UTC().Truncate(time.Second),
+		"expires_in":    int64(accessTokenTTL.Seconds()),
+	})
+}
+
+// addToResponse sets fields of the JSON object a handler already wrote. A
+// response that is not one is left alone.
+func addToResponse(reqCtx *authulamodels.RequestContext, fields map[string]any) error {
 	var body map[string]json.RawMessage
 	if err := json.Unmarshal(reqCtx.ResponseBody, &body); err != nil || body == nil {
 		return nil
 	}
 
-	// The token was minted just now, so it expires accessTokenTTL from now,
-	// give or take the second it took.
 	var err error
-	for key, value := range map[string]any{
-		"access_token":  access,
-		"refresh_token": reqCtx.Values[jwtplugintypes.JWTTokenTypeRefresh.String()],
-		"expires_at":    time.Now().Add(accessTokenTTL).UTC().Truncate(time.Second),
-		"expires_in":    int64(accessTokenTTL.Seconds()),
-	} {
+	for key, value := range fields {
 		if body[key], err = json.Marshal(value); err != nil {
 			return err
 		}
@@ -150,6 +168,120 @@ func addTokensToResponse(reqCtx *authulamodels.RequestContext) error {
 
 	reqCtx.ResponseBody, err = json.Marshal(body)
 	return err
+}
+
+// totpTokenHeader carries the TOTP pending token back to /totp/verify and
+// /totp/verify-backup-code. The totp plugin keeps that token in a cookie, which
+// neither the extension (it omits credentials) nor the web app on another
+// origin sends.
+const totpTokenHeader = "X-TOTP-Token"
+
+// addTOTPTokenToResponse copies the pending token the totp plugin set as a
+// cookie, when a sign-in stopped at the TOTP step or /totp/enable began, into
+// the body as totp_token. Verifying deletes the cookie with an empty value,
+// which is skipped.
+func addTOTPTokenToResponse(reqCtx *authulamodels.RequestContext) error {
+	for _, line := range reqCtx.ResponseWriter.Header().Values("Set-Cookie") {
+		c, err := http.ParseSetCookie(line)
+		if err == nil && c.Name == totpconstants.CookieTOTPPending && c.Value != "" {
+			return addToResponse(reqCtx, map[string]any{"totp_token": c.Value})
+		}
+	}
+	return nil
+}
+
+// isTOTPVerify reports whether a request answers the TOTP step, with a code
+// or with a backup code.
+func isTOTPVerify(reqCtx *authulamodels.RequestContext) bool {
+	return reqCtx.Method == http.MethodPost &&
+		(reqCtx.Path == authBasePath+"/totp/verify" || reqCtx.Path == authBasePath+"/totp/verify-backup-code")
+}
+
+// totpTokenToCookie hands a pending token sent in totpTokenHeader to the totp
+// plugin as the cookie it reads. A cookie the browser sent itself comes first.
+func totpTokenToCookie(reqCtx *authulamodels.RequestContext) error {
+	if token := reqCtx.Request.Header.Get(totpTokenHeader); token != "" {
+		reqCtx.Request.AddCookie(&http.Cookie{Name: totpconstants.CookieTOTPPending, Value: token})
+	}
+	return nil
+}
+
+// totpVerifyUser returns, for a request answering the TOTP step, the user its
+// pending token was issued to, so attempts are counted per account however
+// many tokens and IPs they come from; "" for any other request.
+func totpVerifyUser(auth *authula.Auth) func(fiber.Ctx) string {
+	tokens := auth.ServiceRegistry.Get(authulamodels.ServiceToken.String()).(authulaservices.TokenService)
+	verifications := auth.ServiceRegistry.Get(authulamodels.ServiceVerification.String()).(authulaservices.VerificationService)
+
+	return func(c fiber.Ctx) string {
+		if c.Method() != fiber.MethodPost || !strings.HasPrefix(c.Path(), authBasePath+"/totp/verify") {
+			return ""
+		}
+		token := c.Get(totpTokenHeader)
+		if token == "" {
+			token = c.Cookies(totpconstants.CookieTOTPPending)
+		}
+		if token == "" {
+			return ""
+		}
+		v, err := verifications.GetByToken(c.Context(), tokens.Hash(token))
+		if err != nil || v == nil || v.UserID == nil {
+			return ""
+		}
+		return *v.UserID
+	}
+}
+
+// isTOTPToggle reports whether a request turns TOTP on or off.
+func isTOTPToggle(reqCtx *authulamodels.RequestContext) bool {
+	return reqCtx.Method == http.MethodPost &&
+		(reqCtx.Path == authBasePath+"/totp/enable" || reqCtx.Path == authBasePath+"/totp/disable")
+}
+
+// requirePassword returns the hook that asks for the account password, as
+// {"password"} in the body, before TOTP is turned on or off: an access token
+// alone must not be enough to lock the owner out or to drop the second step.
+// It answers 403, not 401, which the clients would take for a dead session.
+func requirePassword(auth *authula.Auth) func(*authulamodels.RequestContext) error {
+	accounts := auth.ServiceRegistry.Get(authulamodels.ServiceAccount.String()).(authulaservices.AccountService)
+	passwords := auth.ServiceRegistry.Get(authulamodels.ServicePassword.String()).(authulaservices.PasswordService)
+
+	return func(reqCtx *authulamodels.RequestContext) error {
+		// The route itself refuses a caller nobody identified.
+		if reqCtx.Actor == nil {
+			return nil
+		}
+
+		var body struct {
+			Password string `json:"password"`
+		}
+		_ = json.NewDecoder(reqCtx.Request.Body).Decode(&body)
+
+		account, err := accounts.GetByUserIDAndProvider(reqCtx.Request.Context(), reqCtx.Actor.ID, authulamodels.AuthProviderEmail.String())
+		if err != nil {
+			return err
+		}
+		if account == nil || account.Password == nil || !passwords.Verify(body.Password, *account.Password) {
+			reqCtx.SetJSONResponse(http.StatusForbidden, map[string]any{"message": "incorrect password"})
+			reqCtx.Handled = true
+		}
+		return nil
+	}
+}
+
+// addTOTPStatusToMe returns the hook that tells GET /me whether the user
+// turned TOTP on, as totp_enabled, for the settings that turn it on and off.
+func addTOTPStatusToMe(repo *totprepository.TOTPRepository) func(*authulamodels.RequestContext) error {
+	return func(reqCtx *authulamodels.RequestContext) error {
+		if reqCtx.Actor == nil {
+			return nil
+		}
+		enabled, err := repo.IsEnabled(reqCtx.Request.Context(), reqCtx.Actor.ID)
+		if err != nil {
+			return err
+		}
+		return addToResponse(reqCtx, map[string]any{"totp_enabled": enabled})
+	}
 }
 
 // saveCustomer returns the hook that saves a new account as a Lemon Squeezy
@@ -273,7 +405,7 @@ func (i tokenIssuer) route() authulamodels.Route {
 
 // newAuth builds the embedded Authula instance: email & password, Google
 // OAuth2 and email magic links on top of cookie sessions, with emails sent
-// through Resend. Authula migrates its own tables (users, accounts, sessions,
+// through Resend, and an optional TOTP step at sign-in. Authula migrates its own tables (users, accounts, sessions,
 // verifications) into authSchema of the app database when it starts, and
 // mirror runs after every user it creates or updates. customer, when set,
 // runs after mirror on every user it creates.
@@ -336,6 +468,11 @@ func newAuth(cfg config.Config, mirror, customer func(*authulamodels.User) error
 			CORS: authulamodels.CORSConfig{
 				AllowCredentials: true,
 				AllowedOrigins:   origins,
+				// Authula's defaults, and the headers the clients add.
+				AllowedHeaders: []string{
+					"Authorization", "Content-Type", "Cookie", "Set-Cookie",
+					middlewares.IdempotencyKeyHeader, totpTokenHeader,
+				},
 			},
 		}),
 		authulaconfig.WithRouteMappings(authRouteMappings),
@@ -394,6 +531,13 @@ func newAuth(cfg config.Config, mirror, customer func(*authulamodels.User) error
 				Enabled:   emailEnabled,
 				ExpiresIn: 15 * time.Minute,
 			}),
+			// Authenticator-app codes, for users who turn them on in settings.
+			// Enabling answers with the secret, and takes effect once a code
+			// from it has been verified.
+			totpplugin.New(totpplugintypes.TOTPPluginConfig{
+				Enabled:      true,
+				SecureCookie: cfg.App.Env != config.EnvDevelopment,
+			}),
 			oauth2plugin.New(oauth2plugintypes.OAuth2PluginConfig{
 				Enabled: googleEnabled,
 				Providers: map[string]oauth2plugintypes.ProviderConfig{
@@ -431,6 +575,32 @@ func newAuth(cfg config.Config, mirror, customer func(*authulamodels.User) error
 	auth.RegisterHook(authulamodels.Hook{
 		Stage:   authulamodels.HookAfter,
 		Handler: addTokensToResponse,
+		Order:   20,
+	})
+
+	auth.RegisterHook(authulamodels.Hook{
+		Stage:   authulamodels.HookBefore,
+		Matcher: isTOTPVerify,
+		Handler: totpTokenToCookie,
+	})
+	// Order 20 runs after the bearer and session checks (10) found the caller.
+	auth.RegisterHook(authulamodels.Hook{
+		Stage:   authulamodels.HookBefore,
+		Matcher: isTOTPToggle,
+		Handler: requirePassword(auth),
+		Order:   20,
+	})
+	auth.RegisterHook(authulamodels.Hook{
+		Stage:   authulamodels.HookAfter,
+		Handler: addTOTPTokenToResponse,
+		Order:   20,
+	})
+	auth.RegisterHook(authulamodels.Hook{
+		Stage: authulamodels.HookAfter,
+		Matcher: func(reqCtx *authulamodels.RequestContext) bool {
+			return reqCtx.Method == http.MethodGet && reqCtx.Path == authBasePath+"/me"
+		},
+		Handler: addTOTPStatusToMe(totprepository.NewTOTPRepository(auth.DB())),
 		Order:   20,
 	})
 

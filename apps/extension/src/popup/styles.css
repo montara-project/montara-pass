@@ -1228,6 +1228,46 @@ a.set-row svg {
   max-width: 360px;
 }
 
+/* Turning TOTP on: the QR code, the key and the backup codes, one under another. */
+.totp-setup {
+  flex-direction: column;
+  align-items: stretch;
+  font-size: 13px;
+}
+
+.totp-setup p {
+  margin: 0;
+}
+
+.totp-setup .set-actions {
+  justify-content: flex-end;
+}
+
+.totp-qr {
+  align-self: center;
+  padding: 8px;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.totp-key,
+.totp-codes {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--hover);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.totp-codes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 16px;
+  list-style: none;
+}
+
 .set-foot {
   display: flex;
   flex-wrap: wrap;

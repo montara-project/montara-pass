@@ -9,6 +9,11 @@ export const SignInSchema = z.object({
 
 export type SignInDto = z.infer<typeof SignInSchema>
 
+/** A code from an authenticator app, or a backup code. */
+export const TotpCodeSchema = z.object({
+  code: requiredString('code'),
+})
+
 // The API accepts passwords of 8 to 128 characters.
 export const SignUpSchema = z.object({
   name: requiredString('name'),
