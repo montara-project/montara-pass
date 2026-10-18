@@ -11,6 +11,24 @@ headings and no HTML, so a `##` line would show literally. It holds 3000
 characters. AMO shows what is pasted there on the add-on's Version history
 page, and Firefox shows it in the Release Notes tab of `about:addons`.
 
+## 2.2.0 (2026-10-18)
+
+**New**
+
+- **Two-step verification, optional.** Turn it on in **Settings → Security**
+  with your account password, scan the QR code with an authenticator app such
+  as Google Authenticator, and keep the backup codes. Signing in then asks for
+  the 6-digit code, or a backup code.
+
+**Improved**
+
+- Sharing an item names the recipient by their email address.
+
+**Also**
+
+- The permissions the add-on asks for are unchanged, so updating does not ask
+  again.
+
 ## 2.0.0 (2026-10-16)
 
 **New**
