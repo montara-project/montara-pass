@@ -243,9 +243,6 @@ func isTOTPToggle(reqCtx *authulamodels.RequestContext) bool {
 // alone must not be enough to lock the owner out or to drop the second step.
 // It answers 403, not 401, which the clients would take for a dead session.
 func requirePassword(auth *authula.Auth) func(*authulamodels.RequestContext) error {
-	accounts := auth.ServiceRegistry.Get(authulamodels.ServiceAccount.String()).(authulaservices.AccountService)
-	passwords := auth.ServiceRegistry.Get(authulamodels.ServicePassword.String()).(authulaservices.PasswordService)
-
 	return func(reqCtx *authulamodels.RequestContext) error {
 		// The route itself refuses a caller nobody identified.
 		if reqCtx.Actor == nil {
@@ -257,11 +254,11 @@ func requirePassword(auth *authula.Auth) func(*authulamodels.RequestContext) err
 		}
 		_ = json.NewDecoder(reqCtx.Request.Body).Decode(&body)
 
-		account, err := accounts.GetByUserIDAndProvider(reqCtx.Request.Context(), reqCtx.Actor.ID, authulamodels.AuthProviderEmail.String())
+		ok, err := handlers.AccountPasswordMatches(reqCtx.Request.Context(), auth, reqCtx.Actor.ID, body.Password)
 		if err != nil {
 			return err
 		}
-		if account == nil || account.Password == nil || !passwords.Verify(body.Password, *account.Password) {
+		if !ok {
 			reqCtx.SetJSONResponse(http.StatusForbidden, map[string]any{"message": "incorrect password"})
 			reqCtx.Handled = true
 		}

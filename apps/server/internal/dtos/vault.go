@@ -41,6 +41,8 @@ const (
 	defaultCipherVersion = 1
 	maxCipherVersion     = math.MaxInt16
 	maxRevision          = math.MaxInt32
+	// The account password's limit (see authula.go).
+	maxAccountPasswordLen = 128
 )
 
 // kdfRules declares the fields that describe how the master key is derived
@@ -64,6 +66,20 @@ type KDFBody struct {
 
 func (dto KDFBody) Validate(v *validator.MapValidator) {
 	kdfRules(v)
+}
+
+// KDFUpdateBody changes the master password: the new KDF parameters and the
+// vault key wrapped under them, with the account password. The server keeps
+// one copy of the wrapped vault key, so an access token alone must not be
+// enough to replace it and lose the vault for good.
+type KDFUpdateBody struct {
+	KDFBody
+	Password string `json:"password"`
+}
+
+func (dto KDFUpdateBody) Validate(v *validator.MapValidator) {
+	kdfRules(v)
+	v.Field("password").Required().String().MaxLen(maxAccountPasswordLen)
 }
 
 // UserKeysBody creates a user's key set, once.

@@ -315,7 +315,7 @@ func TestIntegration(t *testing.T) {
 		t.Fatalf("super user route as super user: %d %v", status, out)
 	}
 
-	vaultFlow(t, call, superToken, userToken, userEmail, user.ID)
+	vaultFlow(t, call, superToken, superPass, userToken, userEmail, user.ID)
 	billingFlow(t, call, db, store, superToken, userToken, user.ID)
 
 	// A new account is saved as a Lemon Squeezy customer in the background;
@@ -557,7 +557,7 @@ func totpFlow(
 func vaultFlow(
 	t *testing.T,
 	call func(method, path, token string, body any, headers ...string) (int, map[string]any),
-	ownerToken, otherToken, otherEmail, otherID string,
+	ownerToken, ownerPassword, otherToken, otherEmail, otherID string,
 ) {
 	t.Helper()
 
@@ -606,6 +606,11 @@ func vaultFlow(
 		"kdf_salt": b64("fedcba9876543210"), "kdf_memory_kib": 65536, "kdf_iterations": 3, "kdf_parallelism": 4,
 		"encrypted_vault_key": b64("vault-key-2"),
 	}
+	// Replacing the one wrapped vault key takes the account password too.
+	want(http.StatusUnprocessableEntity, http.MethodPut, "/api/v1/keys", ownerToken, rewrapped)
+	rewrapped["password"] = "wrong-password"
+	want(http.StatusForbidden, http.MethodPut, "/api/v1/keys", ownerToken, rewrapped)
+	rewrapped["password"] = ownerPassword
 	if got := want(http.StatusOK, http.MethodPut, "/api/v1/keys", ownerToken, rewrapped); got["encrypted_vault_key"] != b64("vault-key-2") || got["public_key"] != b64("public-key") {
 		t.Fatalf("keys after a master password change: %v", got)
 	}

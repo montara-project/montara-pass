@@ -7,6 +7,7 @@ import (
 	"montara-pass/server/internal/app"
 	"montara-pass/server/internal/dtos"
 	"montara-pass/server/internal/lib"
+	"montara-pass/server/internal/lib/apperr"
 	"montara-pass/server/internal/models"
 	"montara-pass/server/internal/repositories"
 )
@@ -68,12 +69,20 @@ func (h *keyHandler) UpdateKDF(c fiber.Ctx) error {
 		return err
 	}
 
-	var body dtos.KDFBody
+	var body dtos.KDFUpdateBody
 	if err := lib.ValidateRequestBody(c, &body); err != nil {
 		return err
 	}
+	ok, err := AccountPasswordMatches(c.Context(), h.app.Auth, uid.String(), body.Password)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		// 403, not 401, which the clients would take for a dead session.
+		return apperr.New(apperr.KindForbidden, "incorrect account password")
+	}
 
-	if err := h.repo().UpdateKDF(c.Context(), kdfKeys(uid, body)); err != nil {
+	if err := h.repo().UpdateKDF(c.Context(), kdfKeys(uid, body.KDFBody)); err != nil {
 		return err
 	}
 

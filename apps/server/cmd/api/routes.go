@@ -67,7 +67,9 @@ func failedAttempt(c fiber.Ctx, status int) bool {
 	case http.StatusTooManyRequests:
 		return true
 	case http.StatusUnauthorized, http.StatusForbidden:
-		return slices.Contains(guessPaths, c.Path()) || strings.HasPrefix(c.Path(), authBasePath+"/magic-link/")
+		return slices.Contains(guessPaths, c.Path()) || strings.HasPrefix(c.Path(), authBasePath+"/magic-link/") ||
+			// A wrong account password on a master password change.
+			(c.Method() == fiber.MethodPut && strings.TrimSuffix(c.Path(), "/") == apiPrefix+"/v1/keys")
 	}
 	return false
 }
