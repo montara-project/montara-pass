@@ -9,6 +9,8 @@ const AUTO_LOCK_ALARM = 'auto-lock'
 const VAULT_SESSION_KEY = 'vault'
 const TOKENS_KEY = 'tokens'
 const SETTINGS_KEY = 'settings'
+/** The version the browser has downloaded and waits to install. */
+const UPDATE_KEY = 'update'
 /** A sign-up may take a redirect or two before it lands somewhere. */
 const PENDING_TTL_MS = 5 * 60_000
 /** The key a tab's pending login is stored under, and the name of its alarm. */
@@ -38,6 +40,13 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
   if (reason === 'install') {
     void chrome.tabs.create({ url: chrome.runtime.getURL('popup.html?view=full') })
   }
+  if (reason === 'update') void chrome.storage.local.remove(UPDATE_KEY)
+})
+
+// A new version is downloaded. Listening holds it back until the popup's
+// Update button reloads the extension, instead of it landing mid-fill.
+chrome.runtime.onUpdateAvailable.addListener(({ version }) => {
+  void chrome.storage.local.set({ [UPDATE_KEY]: version })
 })
 
 chrome.alarms.onAlarm.addListener((alarm) => {
