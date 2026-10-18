@@ -293,6 +293,25 @@ a.icon-button {
   padding: 14px 16px 10px 20px;
 }
 
+/* Shown only while a downloaded version waits to be installed. */
+.update-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-fg);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.update-button svg {
+  width: 16px;
+  height: 16px;
+}
+
 .avatar {
   width: 32px;
   height: 32px;

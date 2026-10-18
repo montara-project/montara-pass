@@ -20,6 +20,8 @@ export const DEFAULT_SETTINGS: Settings = {
 
 const SETTINGS_KEY = 'settings'
 const TOKENS_KEY = 'tokens'
+/** Set by the background script: the version waiting to be installed. */
+export const UPDATE_KEY = 'update'
 
 export async function getSettings(): Promise<Settings> {
   const stored = await chrome.storage.local.get(SETTINGS_KEY)

@@ -42,6 +42,7 @@ import {
 } from '../icons'
 import { ItemTile } from '../item-tile'
 import { initials, openFullScreen } from '../layout'
+import { UpdateButton } from '../update-button'
 import { useFolders, useVaultItems } from '../use-vault-items'
 import AddItem from './add-item'
 import ItemForm from './item-form'
@@ -342,6 +343,8 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
       <header className="topbar">
         <h1>Vault</h1>
         <span className="spacer" />
+
+        <UpdateButton />
 
         <button className="icon-button" aria-label="Lock vault" title="Lock vault" onClick={onLock}>
           <LockIcon />

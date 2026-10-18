@@ -48,6 +48,7 @@ import {
   SortIcon,
 } from './icons'
 import { initials } from './layout'
+import { UpdateButton } from './update-button'
 
 type Icon = typeof KeyIcon
 export type Tool = 'generator' | 'health' | 'billing'
@@ -188,6 +189,7 @@ export function VaultSidebar<F extends string>({
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
+          <UpdateButton className="ml-auto" />
         </header>
         {/* Passes the inset's height on: the list scrolls inside it, not past it.
             No padding of its own: the columns pad themselves, so the line
