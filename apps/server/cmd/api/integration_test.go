@@ -373,12 +373,53 @@ func TestIntegration(t *testing.T) {
 		t.Fatalf("cross-site create: %d, want 403", status)
 	}
 
+	ipBlockFlow(t, application)
+
 	// Signing out revokes the access token.
 	if status, out := call(http.MethodPost, "/api/v1/auth/sign-out", superToken, map[string]any{}); status != http.StatusOK {
 		t.Fatalf("sign out: %d %v", status, out)
 	}
 	if status, _ := call(http.MethodPost, "/api/v1/folders", superToken, folder); status != http.StatusUnauthorized {
 		t.Fatalf("create after sign out: %d, want 401", status)
+	}
+}
+
+// ipBlockFlow guesses passwords from an IP that is not exempt until it is
+// shut out of the whole API, on a server of its own with counts in memory.
+func ipBlockFlow(t *testing.T, application *app.Application) {
+	t.Helper()
+
+	blocking := *application
+	blocking.Config.App.RateLimitExemptIPs = ""
+	blocking.Redis = nil
+	server, err := newServer(&blocking)
+	if err != nil {
+		t.Fatal(err)
+	}
+	send := func(method, path, body string) *http.Response {
+		t.Helper()
+		req := httptest.NewRequest(method, path, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		res, err := server.Test(req, fiber.TestConfig{Timeout: 30 * time.Second})
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		return res
+	}
+
+	// Wrong passwords answer 401, then the per-email limiter's 429: both count.
+	statuses := map[int]int{}
+	for range ipBlockMaxFailures {
+		res := send(http.MethodPost, "/api/v1/auth/email-password/sign-in", `{"email":"guess@example.com","password":"wrong-password"}`)
+		statuses[res.StatusCode]++
+	}
+	if statuses[http.StatusUnauthorized] == 0 {
+		t.Fatalf("wrong passwords answered %v, want 401s", statuses)
+	}
+	res := send(http.MethodGet, "/api/health", "")
+	if res.StatusCode != http.StatusTooManyRequests || res.Header.Get(fiber.HeaderRetryAfter) == "" {
+		t.Fatalf("health after %d failures: %d Retry-After=%q, want 429", ipBlockMaxFailures, res.StatusCode, res.Header.Get(fiber.HeaderRetryAfter))
 	}
 }
 
