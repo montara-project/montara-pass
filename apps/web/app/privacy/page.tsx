@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 
 import { LegalPage, type LegalSection } from "@/components/legal-page";
+import { pageMeta } from "@/lib/constants/meta";
 
-export const metadata: Metadata = {
-  title: "Privacy Policy — Montara Pass",
+export const metadata: Metadata = pageMeta({
+  title: "Privacy Policy",
   description:
     "What Montara Pass stores about your account, what it cannot read, and who else handles your data. Covers the website, the hosted service and the browser extension.",
-};
+  path: "/privacy",
+});
 
 const updated = "October 11, 2026";
 

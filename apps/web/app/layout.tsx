@@ -2,16 +2,12 @@ import type { Metadata } from "next";
 
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { META } from "@/lib/constants/meta";
 import ReactQueryProvider from "@/lib/providers/react-query";
 
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "Montara Pass — Zero-knowledge password manager",
-  description:
-    "Montara Pass is an end-to-end encrypted password manager you can run yourself. Logins are encrypted in the browser; the server stores ciphertext and wrapped keys.",
-  icons: { icon: "/static/logo-32.png", apple: "/static/logo-128.png" },
-};
+export const metadata: Metadata = META;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (

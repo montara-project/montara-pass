@@ -3,6 +3,14 @@ import { Dim, Statement } from "@/components/shared";
 
 const faqs = [
   {
+    q: "How secure is Montara Pass?",
+    a: "Your master password is stretched into a key with Argon2id on your device. Every item is encrypted with AES-256-GCM under its own key, and those keys are wrapped with RSA-OAEP 3072. The server only ever holds the encrypted forms, so someone who copies its database gets ciphertext and nothing to open it with.",
+  },
+  {
+    q: "Is Montara Pass open source?",
+    a: "Yes. The server, web app and browser extension are MIT-licensed and on GitHub, so you can read exactly how your vault is encrypted and run the whole stack yourself.",
+  },
+  {
     q: "What can the server see?",
     a: "Ciphertext, wrapped keys, and one field in the clear: the item type, login or secure_note, so clients can filter. It also knows your account email and which users an item is shared with. It never receives the master password, any unwrapped key, item content or folder names.",
   },
