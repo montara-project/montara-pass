@@ -1,13 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
-
-import type { VaultItem } from '@/types/vault'
+import type { VaultItem } from '@montara-pass/shared/types/vault'
 
 import {
   decryptFolderName,
   decryptItem,
   encryptItemUpdate,
   type VaultKeys,
-} from '@/lib/crypto/vault'
+} from '@montara-pass/shared/crypto/vault'
+import { useCallback, useEffect, useState } from 'react'
 
 import type { FolderOption } from './views/item-form'
 

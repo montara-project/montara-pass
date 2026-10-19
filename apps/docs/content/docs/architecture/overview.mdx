@@ -24,8 +24,8 @@ and proxies `/api` to the Go server.
 - The **web app** is the full client: it creates the vault, manages folders,
   items, sharing and the trash.
 - The **extension** reads the same vault and fills logins into pages. It
-  imports the web app's `lib/crypto` module directly, so both produce and read
-  exactly the same ciphertext.
+  imports the same `@montara-pass/shared` package as the web app, so both
+  produce and read exactly the same ciphertext.
 - The **marketing site** and these **docs** are separate static-ish sites and
   do not talk to the API.
 
@@ -66,11 +66,18 @@ Everything lives under `apps/app/src`.
 | Path | Role |
 | --- | --- |
 | `src/routes` | File-based routes for TanStack Router; `(auth)` and `(app)` are groups that add no URL segment |
-| `lib/api` | One axios client that refreshes the access token on a 401, then `services`, `queries` (TanStack Query), `models` and `dtos` (zod) |
-| `lib/crypto` | Key derivation, AES-GCM, RSA-OAEP and the vault operations built on them |
+| `lib/api` | One axios client that refreshes the access token on a 401, then `services` and `queries` (TanStack Query) |
 | `lib/stores/vault.ts` | The unlocked keys, in memory only |
 | `components/{ui,block,layout}` | Primitives, feature blocks and page chrome |
 | `config/env.ts` | The `VITE_*` variables, validated once |
 
-The extension imports `lib/crypto`, the API models and the item schema from
-here through its `@/` alias, which points at `apps/app/src`.
+The code both clients need lives in `packages/shared` (`@montara-pass/shared`):
+
+| Path | Role |
+| --- | --- |
+| `crypto` | Key derivation, AES-GCM, RSA-OAEP and the vault operations built on them |
+| `api/models`, `api/dtos` | The API models and their zod schemas |
+| `auth/totp`, `password`, `validation`, `constants` | TOTP, password generation and health, shared validation and constants |
+
+The extension still borrows a few UI components from the web app through its
+`@/` alias, which points at `apps/app/src`.

@@ -41,7 +41,7 @@ The shared part of an item.
 | --- | --- |
 | `id` | `uuidv7()` |
 | `owner_id` | Deleting the owner deletes the item for everyone |
-| `type` | `login`, `secure_note`, `card` or `identity`; the clients create the first two |
+| `type` | `login`, `secure_note`, `contact`, `card` or `identity`; the clients create the first three |
 | `cipher_version` | Format of `encrypted_data`, currently `1` |
 | `encrypted_data` | Up to 65536 bytes |
 | `revision` | Incremented on every write |

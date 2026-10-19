@@ -2583,6 +2583,98 @@ select:disabled {
   gap: 16px;
 }
 
+/* A one-time code: a box per digit, drawn over the one invisible input that
+   input-otp keeps on top of them. */
+.otp {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.otp-group {
+  display: flex;
+  gap: 8px;
+}
+
+.otp-slot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 48px;
+  border: 1px solid var(--field-border);
+  border-radius: 10px;
+  background: var(--field);
+  color: var(--fg);
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  transition:
+    border-color 120ms ease-out,
+    box-shadow 120ms ease-out;
+}
+
+.otp:hover .otp-slot {
+  border-color: var(--muted);
+}
+
+.otp .otp-slot[data-active] {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 1px var(--focus);
+}
+
+/* What the server refused marks every box. */
+.otp:has(input[aria-invalid='true']) .otp-slot {
+  border-color: var(--danger);
+}
+
+.otp-caret {
+  width: 1px;
+  height: 20px;
+  background: var(--fg);
+  animation: otp-caret-blink 1.2s ease-out infinite;
+}
+
+.otp-separator {
+  width: 12px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--field-border);
+}
+
+@keyframes otp-caret-blink {
+  0%,
+  70%,
+  100% {
+    opacity: 1;
+  }
+  20%,
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .otp-slot {
+    transition: none;
+  }
+
+  .otp-caret {
+    animation: none;
+  }
+}
+
+/* Between a code from the app and a backup code, under the field. */
+.otp-switch {
+  align-self: flex-start;
+}
+
+/* A field that takes the whole row of its grid. */
+.form-wide {
+  grid-column: 1 / -1;
+}
+
 .form-field {
   display: flex;
   flex-direction: column;

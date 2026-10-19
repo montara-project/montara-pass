@@ -1,5 +1,3 @@
-import { useId, useState, type CSSProperties } from 'react'
-
 import {
   characterKind,
   DEFAULT_PASSWORD_OPTIONS,
@@ -9,8 +7,10 @@ import {
   passwordBits,
   passwordStrength,
   type PasswordOptions,
-} from '@/lib/password'
+} from '@montara-pass/shared/password'
+import { useId, useState, type CSSProperties } from 'react'
 
+import { copySecret } from '../../lib/clipboard'
 import { CopyIcon, KeyIcon, RefreshIcon } from '../icons'
 
 type Kind = 'uppercase' | 'lowercase' | 'digits' | 'symbols'
@@ -59,7 +59,7 @@ export default function PasswordGenerator({ onNotice }: PasswordGeneratorProps) 
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(password)
+      await copySecret(password)
       onNotice('Password copied')
     } catch {
       onNotice('Could not copy the password')

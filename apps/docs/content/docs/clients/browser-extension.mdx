@@ -4,8 +4,8 @@ description: Fill and save logins from the vault in Chrome and Firefox.
 ---
 
 `apps/extension` is a Manifest V3 extension for Chrome, other Chromium
-browsers and Firefox 140 or newer (142 on Android). It uses the web app's
-`lib/crypto` module, so it reads and writes the same vault.
+browsers and Firefox 140 or newer (142 on Android). It uses the same
+`@montara-pass/shared` crypto as the web app, so it reads and writes the same vault.
 
 <Callout type="info">
   The vault itself is created in the web app. The extension signs in and
@@ -48,7 +48,8 @@ After signing in and unlocking, the popup shows:
 
 - **Logins for the current site**, each with a **Fill** button.
 - The whole vault, with search, a sort toggle and buttons to copy the username
-  or the password.
+  or the password. A copied username or password is wiped from the clipboard
+  a minute later, even with the popup closed.
 - **Add**, to save a login for the current site, with a password generator
   (20 characters by default).
 - **Full screen**, which opens the vault in a tab.
@@ -56,7 +57,7 @@ After signing in and unlocking, the popup shows:
 ## Full screen
 
 The tab view has three columns: filters (all items, logins, secure notes,
-favorites), the list, and the selected item. The list is the wide column and
+contacts, favorites), the list, and the selected item. The list is the wide column and
 shows each item's folder and when it was last used; the item beside it keeps
 a reading width. Passwords stay hidden until revealed. Items can be created
 and edited here, including their folder. A secure note is written in the
@@ -184,6 +185,7 @@ without the route is ignored: the login is filled all the same.
 | Unlocked vault keys | `chrome.storage.session` (in memory) | after 15 minutes without use, when the browser closes, on **Lock** |
 | Master password | nowhere | used once to unlock |
 | A login just submitted, until it is saved or declined | `chrome.storage.session` (in memory) | on save, on **Not now**, when the tab closes, after 5 minutes |
+| A copied username or password | the system clipboard | after 1 minute, by the background script |
 
 ## Permissions
 
@@ -191,8 +193,9 @@ without the route is ignored: the login is filled all the same.
 | --- | --- |
 | `storage` | Tokens, settings and the unlocked keys |
 | `activeTab`, `scripting` | Fill the page the user is looking at, on click |
-| `alarms` | The auto-lock timer |
-| `clipboardWrite` | Copy buttons |
+| `alarms` | The auto-lock timer, and the one that wipes the clipboard |
+| `clipboardWrite` | Copy buttons, and wiping what they copied |
+| `offscreen` (Chrome only) | Wipe the clipboard: Chrome's service worker has none, so it borrows an offscreen page. Firefox's event page wipes it itself. |
 | Host permission for every site | Run the inline menu's content script, and call a self-hosted server at any address |
 
 For Firefox the manifest also declares what leaves the browser

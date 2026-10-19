@@ -1,9 +1,8 @@
+import type { Models } from '@montara-pass/shared/api/models'
+
+import { formatPrice } from '@montara-pass/shared/money'
+import { isSandbox, planName, planPeriod, planTerms } from '@montara-pass/shared/plan'
 import { useCallback, useEffect, useState } from 'react'
-
-import type { Models } from '@/lib/api/models'
-
-import { formatPrice } from '@/lib/money'
-import { isSandbox, planName, planPeriod, planTerms } from '@/lib/plan'
 
 import {
   buy,

@@ -1,3 +1,8 @@
+import type { VaultKeys } from '@montara-pass/shared/crypto/vault'
+import type { VaultItem } from '@montara-pass/shared/types/vault'
+
+import { COMMUNITY } from '@montara-pass/shared/constants/edition'
+import { ITEM_TYPE_LABEL } from '@montara-pass/shared/constants/vault'
 import {
   useEffect,
   useMemo,
@@ -7,13 +12,9 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react'
 
-import type { VaultKeys } from '@/lib/crypto/vault'
-import type { VaultItem } from '@/types/vault'
-
-import { COMMUNITY } from '@/lib/constants/edition'
-
 import { markItemUsed, setItemPlacement, SignedOutError, trashItem } from '../../lib/api'
 import { fillLogin } from '../../lib/autofill'
+import { copySecret } from '../../lib/clipboard'
 import { fillsSite, hostOf, linkOf } from '../../lib/site'
 import { lastUsedLabel } from '../../lib/usage'
 import { maskUsername } from '../../lib/username'
@@ -157,9 +158,10 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
     return (items ?? [])
       .filter((item) => item.secret !== null)
       .filter((item) =>
-        [item.secret?.name, item.secret?.username, item.secret?.url]
-          .filter(Boolean)
-          .some((value) => value!.toLowerCase().includes(term))
+        // A decrypted secret is not checked, and a shared one is someone else's.
+        [item.secret?.name, item.secret?.username, item.secret?.url, item.secret?.contact?.email]
+          .filter((value): value is string => typeof value === 'string')
+          .some((value) => value.toLowerCase().includes(term))
       )
       .sort((a, b) =>
         sort === 'updated'
@@ -191,7 +193,7 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
       setNotice(`This item has no ${label}`)
       return
     }
-    await navigator.clipboard.writeText(value)
+    await copySecret(value)
     setNotice(`${label[0].toUpperCase()}${label.slice(1)} copied`)
   }
 
@@ -471,7 +473,8 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
                       ? item.secret!.username
                         ? maskUsername(item.secret!.username)
                         : 'No username'
-                      : 'Secure note'}
+                      : (item.type === 'contact' && item.secret!.contact?.email) ||
+                        ITEM_TYPE_LABEL[item.type]}
                   </span>
                 </div>
 
@@ -570,6 +573,18 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
                     Copy password
                   </button>
                 </>
+              ) : menuItem.type === 'contact' ? (
+                <button
+                  role="menuitem"
+                  className="menu-item"
+                  onClick={() => {
+                    setRowMenu(null)
+                    void copy(menuItem.secret!.contact?.email, 'email')
+                  }}
+                >
+                  <CopyIcon />
+                  Copy email
+                </button>
               ) : (
                 <button
                   role="menuitem"

@@ -1,4 +1,4 @@
-import type { VaultItem } from '@/types/vault'
+import type { VaultItem } from './types/vault'
 
 // Generating passwords and judging the ones in the vault. Everything here
 // runs on decrypted content in the client; nothing is sent anywhere. The

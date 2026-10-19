@@ -1,16 +1,24 @@
-import type { VaultItem } from '@/types/vault'
+import type { VaultItem } from '@montara-pass/shared/types/vault'
 
-import { itemIcon } from '@/lib/crypto/vault'
+import { itemIcon } from '@montara-pass/shared/crypto/vault'
 
-import { KeyholeIcon, NoteIcon } from './icons'
+import { KeyholeIcon, NoteIcon, UserIcon } from './icons'
 
-/** An item's square: the icon saved with a login, or a keyhole without one. */
+/** An item's square: the icon saved with a login, or a line icon without one. */
 export function ItemTile({ item, large }: { item: VaultItem; large?: boolean }) {
   const icon = item.type === 'login' ? itemIcon(item.secret) : null
 
   return (
     <span className={`tile${large ? ' tile-large' : ''}${icon ? ' tile-favicon' : ''}`}>
-      {icon ? <img src={icon} alt="" /> : item.type === 'login' ? <KeyholeIcon /> : <NoteIcon />}
+      {icon ? (
+        <img src={icon} alt="" />
+      ) : item.type === 'login' ? (
+        <KeyholeIcon />
+      ) : item.type === 'contact' ? (
+        <UserIcon />
+      ) : (
+        <NoteIcon />
+      )}
     </span>
   )
 }

@@ -1,14 +1,15 @@
-import { env } from '@/config/env'
+import type { SignInDto, SignUpDto } from '@montara-pass/shared/api/dtos/auth/schema'
+import type { SignInData } from '@montara-pass/shared/api/models/user'
 
-import type { SignInDto, SignUpDto } from '../api/dtos/auth/schema'
-import type { SignInData } from '../api/models/user'
+import { isTotpCode, TOTP_CODE_REQUIRED } from '@montara-pass/shared/auth/totp'
+
+import { env } from '@/config/env'
 
 import { throwAxiosError } from '../api/axios-error'
 import { services } from '../api/services'
 import { VERIFY_EMAIL_PATH } from '../constants/auth'
 import { useVaultStore } from '../stores/vault'
 import { clearAuthTokens, setAuthTokens } from './token-storage'
-import { isTotpCode, TOTP_CODE_REQUIRED } from './totp'
 
 function storeSignIn(data: SignInData) {
   if (!data.access_token) {

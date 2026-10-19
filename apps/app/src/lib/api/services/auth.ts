@@ -1,6 +1,7 @@
+import { TOTP_TOKEN_HEADER } from '@montara-pass/shared/auth/totp'
+
 import type { AuthResources } from './types/auth'
 
-import { TOTP_TOKEN_HEADER } from '../../auth/totp'
 import { api, AUTH_PATH } from '../client-fetch'
 
 const resources = (): AuthResources => ({

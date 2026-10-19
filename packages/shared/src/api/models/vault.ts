@@ -1,4 +1,4 @@
-import type { ISO8601DateString } from '@/types/time'
+import type { ISO8601DateString } from '../../types/time'
 
 /** Base64 of bytes the client encrypted or wrapped; the server cannot read it. */
 export type Base64 = string

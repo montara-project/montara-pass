@@ -78,9 +78,9 @@ Confirmed capabilities:
 
 Constraints future work must keep:
 
-- The extension and the web app share `apps/app/src/lib/crypto` and the zod
-  schemas in `apps/app/src/lib/api/dtos`, so both read and write the same
-  ciphertext and check the same things in the same words.
+- The extension and the web app share `packages/shared` (the crypto, the
+  API models and the zod schemas), so both read and write the same ciphertext
+  and check the same things in the same words.
 - The extension stays light on dependencies: its own fetch client rather than
   the web app's axios, and nothing added for what a few lines can do.
 - Extension pages run under a CSP that allows `'self'` and

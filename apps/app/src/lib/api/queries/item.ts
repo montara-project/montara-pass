@@ -1,7 +1,3 @@
-import { mutationOptions, queryOptions } from '@tanstack/react-query'
-
-import { getQueryClient } from '@/lib/providers/react-query'
-
 import type {
   ItemCreateRequest,
   ItemListParams,
@@ -9,7 +5,11 @@ import type {
   ItemRotateKeyRequest,
   ItemShareRequest,
   ItemUpdateRequest,
-} from '../dtos/vault/schema'
+} from '@montara-pass/shared/api/dtos/vault/schema'
+
+import { mutationOptions, queryOptions } from '@tanstack/react-query'
+
+import { getQueryClient } from '@/lib/providers/react-query'
 
 import { services } from '../services'
 

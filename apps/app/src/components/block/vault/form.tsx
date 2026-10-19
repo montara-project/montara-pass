@@ -1,19 +1,32 @@
+import type { ItemSecret } from '@montara-pass/shared/crypto/vault'
+import type { VaultItem } from '@montara-pass/shared/types/vault'
+
+import {
+  ItemEditFormSchema,
+  type ItemEditFormDto,
+} from '@montara-pass/shared/api/dtos/vault/schema'
+import {
+  CONTACT_FIELDS,
+  ItemTypeOptions,
+  type ItemType,
+} from '@montara-pass/shared/constants/vault'
+import {
+  contactFields,
+  encryptItemUpdate,
+  encryptNewItem,
+  keepUnedited,
+  toContact,
+} from '@montara-pass/shared/crypto/vault'
 import { useSelector } from '@tanstack/react-form'
 import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
-
-import type { ItemSecret } from '@/lib/crypto/vault'
-import type { VaultItem } from '@/types/vault'
 
 import SimpleAlertScrollableDialogForm from '@/components/block/common/simple-alert-scrollable-dialog-form'
 import { checked, useAppForm } from '@/hooks/form'
 import { useFolders, useVaultKeys } from '@/hooks/use-vault'
 import { toastAxiosError } from '@/lib/api/axios-error'
 import { parseDto } from '@/lib/api/dtos/parse'
-import { ItemEditFormSchema, type ItemEditFormDto } from '@/lib/api/dtos/vault/schema'
 import { queries } from '@/lib/api/queries'
-import { ItemTypeOptions, type ItemType } from '@/lib/constants/vault'
-import { encryptItemUpdate, encryptNewItem, keepUnedited } from '@/lib/crypto/vault'
 
 /** Select value standing for "no folder": a select item cannot be empty. */
 const NO_FOLDER = 'none'
@@ -26,6 +39,9 @@ function toSecret(value: ItemEditFormDto): ItemSecret {
       // Only "hidden" is written down; a note is visible without it.
       ...(value.visible ? {} : { visible: false }),
     }
+  }
+  if (value.type === 'contact') {
+    return { name: value.name, contact: toContact(value.contact), notes: value.notes }
   }
   return {
     name: value.name,
@@ -179,6 +195,28 @@ function ItemFieldsForm({
         </>
       )}
 
+      {type === 'contact' && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {CONTACT_FIELDS.map((contactField) => (
+            <div
+              key={contactField.key}
+              className={'wide' in contactField ? 'sm:col-span-2' : undefined}
+            >
+              <form.AppField
+                name={`contact.${contactField.key}`}
+                children={(field) => (
+                  <field.TextField
+                    label={contactField.label}
+                    autoComplete="off"
+                    disabled={readOnly}
+                  />
+                )}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
       <form.AppField
         name="notes"
         children={(field) => (
@@ -233,6 +271,7 @@ export function AddItemForm({ open, onOpenChange, folderId }: AddItemFormProps) 
         notes: '',
         folder_id: folderId ?? NO_FOLDER,
         visible: true,
+        contact: contactFields(undefined),
       }}
       loading={mutation.isPending}
       onSave={async (value) => {
@@ -278,6 +317,7 @@ export function EditItemForm({ open, onOpenChange, record }: EditItemFormProps) 
         folder_id: record.folder_id ?? NO_FOLDER,
         // A secure note may be kept blurred in the item's detail until revealed.
         visible: secret?.visible !== false,
+        contact: contactFields(secret?.contact),
       }}
       loading={updateMutation.isPending || placementMutation.isPending}
       readOnly={readOnly}

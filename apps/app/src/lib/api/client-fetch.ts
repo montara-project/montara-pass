@@ -1,8 +1,8 @@
+import type { TokenPair } from '@montara-pass/shared/api/models/user'
+
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 
 import { env } from '@/config/env'
-
-import type { TokenPair } from './models/user'
 
 import {
   clearAuthTokens,

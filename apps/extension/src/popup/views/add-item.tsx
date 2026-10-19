@@ -1,6 +1,5 @@
+import { encryptNewItem, type VaultKeys } from '@montara-pass/shared/crypto/vault'
 import { useState } from 'react'
-
-import { encryptNewItem, type VaultKeys } from '@/lib/crypto/vault'
 
 import { createItem, SignedOutError } from '../../lib/api'
 import { fetchIcon } from '../../lib/icon'

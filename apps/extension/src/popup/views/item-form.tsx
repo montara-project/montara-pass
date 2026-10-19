@@ -1,16 +1,21 @@
-import { useStore } from '@tanstack/react-form'
-import { useState } from 'react'
+import type { VaultItem } from '@montara-pass/shared/types/vault'
 
-import type { VaultItem } from '@/types/vault'
-
-import { ItemTypeOptions, type ItemType } from '@/lib/constants/vault'
 import {
+  CONTACT_FIELDS,
+  ItemTypeOptions,
+  type ItemType,
+} from '@montara-pass/shared/constants/vault'
+import {
+  contactFields,
   encryptItemUpdate,
   encryptNewItem,
   keepUnedited,
+  toContact,
   type ItemSecret,
   type VaultKeys,
-} from '@/lib/crypto/vault'
+} from '@montara-pass/shared/crypto/vault'
+import { useStore } from '@tanstack/react-form'
+import { useState } from 'react'
 
 import { ApiError, createItem, setItemPlacement, SignedOutError, updateItem } from '../../lib/api'
 import { fetchIcon } from '../../lib/icon'
@@ -28,6 +33,9 @@ export interface FolderOption {
 function toSecret(value: ItemEditFormDto): ItemSecret {
   if (value.type === 'secure_note') {
     return { name: value.name, notes: value.notes }
+  }
+  if (value.type === 'contact') {
+    return { name: value.name, contact: toContact(value.contact), notes: value.notes }
   }
   return {
     name: value.name,
@@ -76,6 +84,7 @@ export default function ItemForm({
     folder_id: item?.folder_id ?? NO_FOLDER,
     // A secure note may be kept blurred in the item's detail until revealed.
     visible: item?.secret?.visible !== false,
+    contact: contactFields(item?.secret?.contact),
   }
 
   const form = useAppForm({
@@ -220,6 +229,24 @@ export default function ItemForm({
             children={(field) => <field.TextField label="URL" placeholder="https://example.com" />}
           />
         </>
+      )}
+
+      {type === 'contact' && (
+        <div className="form-grid">
+          {CONTACT_FIELDS.map((contactField) => (
+            <div
+              key={contactField.key}
+              className={'wide' in contactField ? 'form-wide' : undefined}
+            >
+              <form.AppField
+                name={`contact.${contactField.key}`}
+                children={(field) => (
+                  <field.TextField label={contactField.label} autoComplete="off" />
+                )}
+              />
+            </div>
+          ))}
+        </div>
       )}
 
       {/* Notes are Markdown for every type, edited as rich text. */}

@@ -1,8 +1,8 @@
+import type { KDFUpdateRequest, UserKeysRequest } from '@montara-pass/shared/api/dtos/vault/schema'
+
 import { mutationOptions, queryOptions } from '@tanstack/react-query'
 
 import { getQueryClient } from '@/lib/providers/react-query'
-
-import type { KDFUpdateRequest, UserKeysRequest } from '../dtos/vault/schema'
 
 import { isNotFound } from '../axios-error'
 import { services } from '../services'

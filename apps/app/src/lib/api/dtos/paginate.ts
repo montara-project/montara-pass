@@ -1,6 +1,5 @@
+import { optionalNumber } from '@montara-pass/shared/validation'
 import z from 'zod'
-
-import { optionalNumber } from '@/lib/validation'
 
 /**
  * Shared pagination query for list endpoints. The Go API binds `offset`

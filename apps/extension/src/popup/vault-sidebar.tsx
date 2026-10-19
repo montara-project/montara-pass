@@ -2,6 +2,8 @@ import './sidebar.css'
 
 import type { ReactNode } from 'react'
 
+import { COMMUNITY } from '@montara-pass/shared/constants/edition'
+
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -35,7 +37,6 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar'
-import { COMMUNITY } from '@/lib/constants/edition'
 
 import {
   CreditCardIcon,

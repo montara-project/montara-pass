@@ -1,7 +1,8 @@
+import type { VaultItem } from '@montara-pass/shared/types/vault'
+
+import { passwordHealth } from '@montara-pass/shared/password'
 import { IconChevronRight, IconShieldCheck } from '@tabler/icons-react'
 import { useMemo, useState } from 'react'
-
-import type { VaultItem } from '@/types/vault'
 
 import EmptyState from '@/components/block/common/empty-state'
 import { EditItemForm } from '@/components/block/vault/form'
@@ -9,7 +10,6 @@ import ItemTile from '@/components/block/vault/item-tile'
 import ToolHead from '@/components/layout/tool-head'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAllItems } from '@/hooks/use-vault'
-import { passwordHealth } from '@/lib/password'
 
 function Stat({ label, value, alert }: { label: string; value: number; alert?: boolean }) {
   return (

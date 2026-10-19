@@ -1,12 +1,11 @@
 import '../popup/styles.css'
 
+import type { VaultItem } from '@montara-pass/shared/types/vault'
+
+import { encryptNewItem, type VaultKeys } from '@montara-pass/shared/crypto/vault'
+import { generatePassword } from '@montara-pass/shared/password'
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-
-import type { VaultItem } from '@/types/vault'
-
-import { encryptNewItem, type VaultKeys } from '@/lib/crypto/vault'
-import { generatePassword } from '@/lib/password'
 
 import { createItem, markItemUsed, SignedOutError } from '../lib/api'
 import { fillLogin, fillNewPassword } from '../lib/autofill'

@@ -1,22 +1,23 @@
+import type { Models } from '@montara-pass/shared/api/models'
+import type { VaultFolder } from '@montara-pass/shared/types/vault'
+
+import {
+  FolderFormSchema,
+  type FolderFormDto,
+  type FolderRequest,
+} from '@montara-pass/shared/api/dtos/vault/schema'
+import { encryptFolderName } from '@montara-pass/shared/crypto/vault'
 import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
-import type { Models } from '@/lib/api/models'
 import type { BaseAbstractForm } from '@/types/form'
-import type { VaultFolder } from '@/types/vault'
 
 import SimpleAlertScrollableDialogForm from '@/components/block/common/simple-alert-scrollable-dialog-form'
 import { useAppForm } from '@/hooks/form'
 import { useVaultKeys } from '@/hooks/use-vault'
 import { toastAxiosError } from '@/lib/api/axios-error'
 import { parseDto } from '@/lib/api/dtos/parse'
-import {
-  FolderFormSchema,
-  type FolderFormDto,
-  type FolderRequest,
-} from '@/lib/api/dtos/vault/schema'
 import { queries } from '@/lib/api/queries'
-import { encryptFolderName } from '@/lib/crypto/vault'
 
 type TModel = FolderFormDto
 type TMutation = FolderRequest

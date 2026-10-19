@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import type { Models } from '@montara-pass/shared/api/models'
+import type { VaultKeys } from '@montara-pass/shared/crypto/vault'
 
-import type { Models } from '@/lib/api/models'
-import type { VaultKeys } from '@/lib/crypto/vault'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 
 import { getUserKeys, SignedOutError, signOut } from '../lib/api'
 import { loadVault, lockVault } from '../lib/session'

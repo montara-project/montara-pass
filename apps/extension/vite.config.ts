@@ -11,7 +11,7 @@ type Target = 'chrome' | 'firefox'
 const ALL_SITES = ['http://*/*', 'https://*/*']
 
 // VITE_EDITION=community builds the Community Edition (no sign-up, no sharing; see
-// app/src/lib/constants/edition.ts) into its own folder, under its own name
+// packages/shared/src/constants/edition.ts) into its own folder, under its own name
 // and add-on id, so it installs next to the Cloud Edition.
 const COMMUNITY = process.env.VITE_EDITION === 'community'
 const NAME = COMMUNITY ? 'Montara Pass CE' : 'Montara Pass'
@@ -33,8 +33,17 @@ function manifest(target: Target) {
       default_popup: 'popup.html',
       default_icon: { 16: 'icons/16.png', 32: 'icons/32.png' },
     },
-    // activeTab + scripting fill the page the user is looking at.
-    permissions: ['storage', 'activeTab', 'scripting', 'alarms', 'clipboardWrite'],
+    // activeTab + scripting fill the page the user is looking at. Chrome's
+    // service worker wipes the clipboard from an offscreen page; Firefox has
+    // no such permission and does it from its event page.
+    permissions: [
+      'storage',
+      'activeTab',
+      'scripting',
+      'alarms',
+      'clipboardWrite',
+      ...(target === 'chrome' ? ['offscreen'] : []),
+    ],
     // Every site: the inline menu looks for login fields on each page, and
     // the server may be a self-hosted one at any address.
     host_permissions: ALL_SITES,
@@ -181,8 +190,8 @@ export default defineConfig(({ mode }) => {
       // bring a second React.
       dedupe: ['react', 'react-dom'],
       alias: {
-        // The crypto and the API models are the web app's own: the extension
-        // must read and write exactly the same ciphertext.
+        // The sidebar and notes editor UI are the web app's own. The crypto and
+        // the API models come from @montara-pass/shared.
         '@': path.resolve(import.meta.dirname, '../app/src'),
       },
     },
@@ -201,6 +210,7 @@ export default defineConfig(({ mode }) => {
         input: {
           popup: path.resolve(import.meta.dirname, 'popup.html'),
           inline: path.resolve(import.meta.dirname, 'inline.html'),
+          offscreen: path.resolve(import.meta.dirname, 'offscreen.html'),
           background: path.resolve(import.meta.dirname, 'src/background.ts'),
           // A content script cannot be a module: like
           // the background script it imports nothing and stays one file.

@@ -1,3 +1,5 @@
+import { COMMUNITY } from '@montara-pass/shared/constants/edition'
+import { initials } from '@montara-pass/shared/string'
 import {
   IconChevronRight,
   IconCreditCard,
@@ -49,9 +51,7 @@ import { env } from '@/config/env'
 import { useSignOut } from '@/hooks/use-sign-out'
 import { queries } from '@/lib/api/queries'
 import { HOME_PATH } from '@/lib/constants/auth'
-import { COMMUNITY } from '@/lib/constants/edition'
 import { useVaultStore } from '@/lib/stores/vault'
-import { initials } from '@/lib/string'
 
 /** Only routes that actually exist are listed, and each names its breadcrumb group. */
 const NAV = [

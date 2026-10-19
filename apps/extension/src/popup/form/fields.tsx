@@ -1,4 +1,6 @@
+import { generatePassword } from '@montara-pass/shared/password'
 import { useStore } from '@tanstack/react-form'
+import { OTPInput, REGEXP_ONLY_DIGITS, type SlotProps } from 'input-otp'
 import {
   lazy,
   Suspense,
@@ -8,8 +10,6 @@ import {
   type ReactNode,
   type SelectHTMLAttributes,
 } from 'react'
-
-import { generatePassword } from '@/lib/password'
 
 import { ChevronDownIcon, EyeIcon, EyeOffIcon } from '../icons'
 import { useFieldContext, useFormContext } from './context'
@@ -254,6 +254,72 @@ export function SwitchField({ label, description }: { label: string; description
  * A field of the sign-in and unlock screens, with its label inside the box.
  * A password gets a button that shows what was typed.
  */
+/** One box of a code: the digit typed into it, or the caret while it waits for one. */
+function OtpSlot({ char, hasFakeCaret, isActive }: SlotProps) {
+  return (
+    <div className="otp-slot" data-active={isActive || undefined}>
+      {char}
+      {hasFakeCaret && <span className="otp-caret" aria-hidden="true" />}
+    </div>
+  )
+}
+
+/**
+ * A 6-digit code from an authenticator app, a box per digit, as the web app
+ * has it (after HeroUI's InputOTP, on the same library). One invisible input
+ * takes the typing, pasting and the code the system offers.
+ */
+export function OtpField({
+  label,
+  invalid,
+  autoFocus,
+}: {
+  label: string
+  /** What the server refused marks the field as well. */
+  invalid?: boolean
+  autoFocus?: boolean
+}) {
+  const field = useFieldContext<string>()
+  const value = useStore(field.store, (state) => state.value)
+  const error = useFieldError()
+
+  return (
+    <Frame label={label}>
+      {(props) => (
+        <OTPInput
+          {...props}
+          name={field.name}
+          maxLength={6}
+          pattern={REGEXP_ONLY_DIGITS}
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          autoFocus={autoFocus}
+          value={value}
+          onChange={field.handleChange}
+          onBlur={field.handleBlur}
+          aria-invalid={invalid || error ? true : undefined}
+          containerClassName="otp"
+          render={({ slots }) => (
+            <>
+              <div className="otp-group">
+                {slots.slice(0, 3).map((slot, i) => (
+                  <OtpSlot key={i} {...slot} />
+                ))}
+              </div>
+              <div className="otp-separator" aria-hidden="true" />
+              <div className="otp-group">
+                {slots.slice(3).map((slot, i) => (
+                  <OtpSlot key={i} {...slot} />
+                ))}
+              </div>
+            </>
+          )}
+        />
+      )}
+    </Frame>
+  )
+}
+
 export function AuthField({
   label,
   type = 'text',

@@ -1,4 +1,8 @@
-import { importVaultMaterial, type VaultKeys, type VaultMaterial } from '@/lib/crypto/vault'
+import {
+  importVaultMaterial,
+  type VaultKeys,
+  type VaultMaterial,
+} from '@montara-pass/shared/crypto/vault'
 
 // The unlocked vault keys. A popup lives only while it is open, so the keys
 // are kept in chrome.storage.session between openings: it is held in memory,

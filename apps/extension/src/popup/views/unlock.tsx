@@ -1,14 +1,13 @@
-import { useEffect, useState } from 'react'
+import type { Models } from '@montara-pass/shared/api/models'
 
-import type { Models } from '@/lib/api/models'
-
-import { UnlockFormSchema } from '@/lib/api/dtos/vault/schema'
+import { UnlockFormSchema } from '@montara-pass/shared/api/dtos/vault/schema'
 import {
   importVaultMaterial,
   unlockVaultMaterial,
   WrongMasterPasswordError,
   type VaultKeys,
-} from '@/lib/crypto/vault'
+} from '@montara-pass/shared/crypto/vault'
+import { useEffect, useState } from 'react'
 
 import { getProfile } from '../../lib/api'
 import { AUTO_LOCK_MINUTES, storeVault } from '../../lib/session'

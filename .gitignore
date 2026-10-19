@@ -9,6 +9,7 @@ dist/
 
 graft/
 .omc
+.delta/
 
 # Impeccable session artifacts; see apps/web/.gitignore for the same rule.
 .impeccable/questions/

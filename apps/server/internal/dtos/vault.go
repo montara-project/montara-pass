@@ -31,7 +31,7 @@ const (
 )
 
 const (
-	itemTypePattern  = `^(login|secure_note|card|identity)$`
+	itemTypePattern  = `^(login|secure_note|card|identity|contact)$`
 	shareRolePattern = `^(editor|viewer)$`
 
 	maxEmailLen = 254

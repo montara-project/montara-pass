@@ -1,6 +1,7 @@
-import type { ItemRotateKeyRequest, KDFRequest, UserKeysRequest } from '@/lib/api/dtos/vault/schema'
-import type { Models } from '@/lib/api/models'
+import type { ItemRotateKeyRequest, KDFRequest, UserKeysRequest } from '../api/dtos/vault/schema'
+import type { Models } from '../api/models'
 
+import { CONTACT_FIELDS, type ContactField } from '../constants/vault'
 import {
   generateKeyPair,
   importPrivateKey,
@@ -65,6 +66,24 @@ export interface ItemSecret {
   visible?: boolean
   /** The passkey for the site, when the extension made one. */
   passkey?: Passkey
+  /** A contact's details; only the fields filled in are kept. */
+  contact?: Contact
+}
+
+export type Contact = Partial<Record<ContactField, string>>
+
+/** Every field of a contact, '' where it has none: what a form starts from. */
+export function contactFields(contact: Contact | undefined): Record<ContactField, string> {
+  return Object.fromEntries(CONTACT_FIELDS.map(({ key }) => [key, contact?.[key] ?? ''])) as Record<
+    ContactField,
+    string
+  >
+}
+
+/** The filled fields of a contact form, or undefined when none is. */
+export function toContact(fields: Contact | undefined): Contact | undefined {
+  const filled = Object.entries(fields ?? {}).filter(([, value]) => value?.trim())
+  return filled.length ? Object.fromEntries(filled) : undefined
 }
 
 /**

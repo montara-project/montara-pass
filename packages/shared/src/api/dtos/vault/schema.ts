@@ -1,11 +1,16 @@
 import z from 'zod'
 
-import { ITEM_TYPES, SHARE_ROLES } from '@/lib/constants/vault'
-import { optionalString, requiredEnum, requiredString } from '@/lib/validation'
+import {
+  CONTACT_FIELDS,
+  ITEM_TYPES,
+  SHARE_ROLES,
+  type ContactField,
+} from '../../../constants/vault'
+import { optionalString, requiredEnum, requiredString } from '../../../validation'
 
 // Two kinds of schema live here. The *Form* schemas validate what the user
 // types, in the clear. The *Request* types describe what actually leaves the
-// browser: ciphertext and wrapped keys as base64 (see lib/crypto/vault.ts).
+// browser: ciphertext and wrapped keys as base64 (see crypto/vault.ts).
 
 /** Minimum length of a master password. It is the only thing protecting the vault. */
 export const MIN_MASTER_PASSWORD_LENGTH = 12
@@ -63,10 +68,23 @@ export const ItemFormSchema = z.object({
   folder_id: optionalString('folder'),
 })
 
+/** A contact's fields, all optional, under `contact.` in the item form. */
+const ContactFormSchema = z.object(
+  Object.fromEntries(
+    CONTACT_FIELDS.map(({ key, label }) => [key, optionalString(label.toLowerCase())])
+  ) as Record<ContactField, ReturnType<typeof optionalString>>
+)
+
 export type ItemFormDto = z.infer<typeof ItemFormSchema>
 
-/** The item form, with the switch that keeps a secure note blurred until shown. */
-export const ItemEditFormSchema = ItemFormSchema.extend({ visible: z.boolean() })
+/**
+ * The item form, with the switch that keeps a secure note blurred until
+ * shown and a contact's fields.
+ */
+export const ItemEditFormSchema = ItemFormSchema.extend({
+  visible: z.boolean(),
+  contact: ContactFormSchema,
+})
 
 export type ItemEditFormDto = z.infer<typeof ItemEditFormSchema>
 

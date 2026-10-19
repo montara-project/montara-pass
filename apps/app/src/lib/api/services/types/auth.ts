@@ -1,7 +1,6 @@
+import type { SignInDto, SignUpDto } from '@montara-pass/shared/api/dtos/auth/schema'
+import type { Profile, SignInData, TotpSetup } from '@montara-pass/shared/api/models/user'
 import type { AxiosResponse } from 'axios'
-
-import type { SignInDto, SignUpDto } from '../../dtos/auth/schema'
-import type { Profile, SignInData, TotpSetup } from '../../models/user'
 
 // Authula's routes answer with their own bodies, not the {data} envelope.
 export type AuthResources = {
