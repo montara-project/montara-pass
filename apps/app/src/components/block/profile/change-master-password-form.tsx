@@ -1,3 +1,8 @@
+import {
+  ChangeMasterPasswordFormSchema,
+  type ChangeMasterPasswordFormDto,
+} from '@montara-pass/shared/api/dtos/vault/schema'
+import { changeMasterPassword } from '@montara-pass/shared/crypto/vault'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -6,12 +11,7 @@ import { Button } from '@/components/ui/button'
 import { useAppForm } from '@/hooks/form'
 import { toastAxiosError } from '@/lib/api/axios-error'
 import { parseDto } from '@/lib/api/dtos/parse'
-import {
-  ChangeMasterPasswordFormSchema,
-  type ChangeMasterPasswordFormDto,
-} from '@/lib/api/dtos/vault/schema'
 import { queries } from '@/lib/api/queries'
-import { changeMasterPassword } from '@/lib/crypto/vault'
 
 /**
  * Change the master password. Only the vault key is re-wrapped: every item,

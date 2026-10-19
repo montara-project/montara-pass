@@ -1,25 +1,32 @@
-import { useSelector } from '@tanstack/react-form'
-import { useMutation } from '@tanstack/react-query'
-import { toast } from 'sonner'
+import type { ItemSecret } from '@montara-pass/shared/crypto/vault'
+import type { VaultItem } from '@montara-pass/shared/types/vault'
 
-import type { ItemSecret } from '@/lib/crypto/vault'
-import type { VaultItem } from '@/types/vault'
-
-import SimpleAlertScrollableDialogForm from '@/components/block/common/simple-alert-scrollable-dialog-form'
-import { checked, useAppForm } from '@/hooks/form'
-import { useFolders, useVaultKeys } from '@/hooks/use-vault'
-import { toastAxiosError } from '@/lib/api/axios-error'
-import { parseDto } from '@/lib/api/dtos/parse'
-import { ItemEditFormSchema, type ItemEditFormDto } from '@/lib/api/dtos/vault/schema'
-import { queries } from '@/lib/api/queries'
-import { CONTACT_FIELDS, ItemTypeOptions, type ItemType } from '@/lib/constants/vault'
+import {
+  ItemEditFormSchema,
+  type ItemEditFormDto,
+} from '@montara-pass/shared/api/dtos/vault/schema'
+import {
+  CONTACT_FIELDS,
+  ItemTypeOptions,
+  type ItemType,
+} from '@montara-pass/shared/constants/vault'
 import {
   contactFields,
   encryptItemUpdate,
   encryptNewItem,
   keepUnedited,
   toContact,
-} from '@/lib/crypto/vault'
+} from '@montara-pass/shared/crypto/vault'
+import { useSelector } from '@tanstack/react-form'
+import { useMutation } from '@tanstack/react-query'
+import { toast } from 'sonner'
+
+import SimpleAlertScrollableDialogForm from '@/components/block/common/simple-alert-scrollable-dialog-form'
+import { checked, useAppForm } from '@/hooks/form'
+import { useFolders, useVaultKeys } from '@/hooks/use-vault'
+import { toastAxiosError } from '@/lib/api/axios-error'
+import { parseDto } from '@/lib/api/dtos/parse'
+import { queries } from '@/lib/api/queries'
 
 /** Select value standing for "no folder": a select item cannot be empty. */
 const NO_FOLDER = 'none'

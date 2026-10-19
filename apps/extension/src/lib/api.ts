@@ -3,10 +3,10 @@ import type {
   ItemPlacementRequest,
   ItemShareRequest,
   ItemUpdateRequest,
-} from '@/lib/api/dtos/vault/schema'
-import type { Models } from '@/lib/api/models'
+} from '@montara-pass/shared/api/dtos/vault/schema'
+import type { Models } from '@montara-pass/shared/api/models'
 
-import { isTotpCode, TOTP_CODE_REQUIRED, TOTP_TOKEN_HEADER } from '@/lib/auth/totp'
+import { isTotpCode, TOTP_CODE_REQUIRED, TOTP_TOKEN_HEADER } from '@montara-pass/shared/auth/totp'
 
 import { clearTokens, getSettings, getTokens, saveTokens } from './storage'
 

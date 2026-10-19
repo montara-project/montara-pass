@@ -1,10 +1,9 @@
+import type { VaultKeys } from '@montara-pass/shared/crypto/vault'
+import type { VaultItem } from '@montara-pass/shared/types/vault'
+
+import { COMMUNITY } from '@montara-pass/shared/constants/edition'
+import { CONTACT_FIELDS, ITEM_TYPE_LABEL } from '@montara-pass/shared/constants/vault'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
-
-import type { VaultKeys } from '@/lib/crypto/vault'
-import type { VaultItem } from '@/types/vault'
-
-import { COMMUNITY } from '@/lib/constants/edition'
-import { CONTACT_FIELDS, ITEM_TYPE_LABEL } from '@/lib/constants/vault'
 
 import { setItemPlacement, SignedOutError, trashItem } from '../../lib/api'
 import { copySecret } from '../../lib/clipboard'

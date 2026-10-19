@@ -1,6 +1,6 @@
 import z from 'zod'
 
-import { requiredString } from '@/lib/validation'
+import { requiredString } from '../../../validation'
 
 export const SignInSchema = z.object({
   email: requiredString('email').email('email must be a valid email address'),

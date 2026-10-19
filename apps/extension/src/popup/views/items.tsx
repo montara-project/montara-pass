@@ -1,3 +1,8 @@
+import type { VaultKeys } from '@montara-pass/shared/crypto/vault'
+import type { VaultItem } from '@montara-pass/shared/types/vault'
+
+import { COMMUNITY } from '@montara-pass/shared/constants/edition'
+import { ITEM_TYPE_LABEL } from '@montara-pass/shared/constants/vault'
 import {
   useEffect,
   useMemo,
@@ -6,12 +11,6 @@ import {
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react'
-
-import type { VaultKeys } from '@/lib/crypto/vault'
-import type { VaultItem } from '@/types/vault'
-
-import { COMMUNITY } from '@/lib/constants/edition'
-import { ITEM_TYPE_LABEL } from '@/lib/constants/vault'
 
 import { markItemUsed, setItemPlacement, SignedOutError, trashItem } from '../../lib/api'
 import { fillLogin } from '../../lib/autofill'

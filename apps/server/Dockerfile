@@ -26,11 +26,13 @@ WORKDIR /build
 # resolves the frozen workspace graph.
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/app/package.json apps/app/package.json
+COPY packages/shared/package.json packages/shared/package.json
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    corepack enable && pnpm install --frozen-lockfile --filter @montara-pass/app
+    corepack enable && pnpm install --frozen-lockfile --filter @montara-pass/app...
 
 COPY apps/app apps/app
+COPY packages/shared packages/shared
 
 # Vite inlines VITE_* into the bundle at build time: .env is docker-ignored and
 # runtime env vars can't reach the static dist. An empty VITE_API_URL means the

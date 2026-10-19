@@ -11,7 +11,7 @@ type Target = 'chrome' | 'firefox'
 const ALL_SITES = ['http://*/*', 'https://*/*']
 
 // VITE_EDITION=community builds the Community Edition (no sign-up, no sharing; see
-// app/src/lib/constants/edition.ts) into its own folder, under its own name
+// packages/shared/src/constants/edition.ts) into its own folder, under its own name
 // and add-on id, so it installs next to the Cloud Edition.
 const COMMUNITY = process.env.VITE_EDITION === 'community'
 const NAME = COMMUNITY ? 'Montara Pass CE' : 'Montara Pass'
@@ -190,8 +190,8 @@ export default defineConfig(({ mode }) => {
       // bring a second React.
       dedupe: ['react', 'react-dom'],
       alias: {
-        // The crypto and the API models are the web app's own: the extension
-        // must read and write exactly the same ciphertext.
+        // The sidebar and notes editor UI are the web app's own. The crypto and
+        // the API models come from @montara-pass/shared.
         '@': path.resolve(import.meta.dirname, '../app/src'),
       },
     },

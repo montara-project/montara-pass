@@ -1,4 +1,4 @@
-import type { Models } from '@/lib/api/models'
+import type { Models } from './api/models'
 
 // How a plan reads, shared with the browser extension (its `@/` is this
 // app's src), so the two billing pages name and price plans alike.

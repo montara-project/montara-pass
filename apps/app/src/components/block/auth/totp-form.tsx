@@ -1,9 +1,9 @@
+import { TotpCodeSchema } from '@montara-pass/shared/api/dtos/auth/schema'
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 
 import { checked, useAppForm } from '@/hooks/form'
 import { submitForm } from '@/hooks/submit-form'
-import { TotpCodeSchema } from '@/lib/api/dtos/auth/schema'
 import { verifyTotp } from '@/lib/auth/email-auth'
 import { HOME_PATH } from '@/lib/constants/auth'
 import { cn } from '@/lib/utils'

@@ -1,7 +1,7 @@
-import type { AxiosItemResponse } from '@/types/api'
+import type { KDFUpdateRequest, UserKeysRequest } from '@montara-pass/shared/api/dtos/vault/schema'
+import type { Models } from '@montara-pass/shared/api/models'
 
-import type { KDFUpdateRequest, UserKeysRequest } from '../../dtos/vault/schema'
-import type { Models } from '../../models'
+import type { AxiosItemResponse } from '@/types/api'
 
 export type KeyResources = {
   /** 404 until the signed-in user has set up a vault. */

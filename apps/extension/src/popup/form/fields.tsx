@@ -1,3 +1,4 @@
+import { generatePassword } from '@montara-pass/shared/password'
 import { useStore } from '@tanstack/react-form'
 import { OTPInput, REGEXP_ONLY_DIGITS, type SlotProps } from 'input-otp'
 import {
@@ -9,8 +10,6 @@ import {
   type ReactNode,
   type SelectHTMLAttributes,
 } from 'react'
-
-import { generatePassword } from '@/lib/password'
 
 import { ChevronDownIcon, EyeIcon, EyeOffIcon } from '../icons'
 import { useFieldContext, useFormContext } from './context'

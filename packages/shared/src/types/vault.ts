@@ -1,5 +1,5 @@
-import type { Models } from '@/lib/api/models'
-import type { ItemSecret } from '@/lib/crypto/vault'
+import type { Models } from '../api/models'
+import type { ItemSecret } from '../crypto/vault'
 
 /** A folder with its name decrypted. */
 export type VaultFolder = Models.Folder & {

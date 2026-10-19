@@ -1,11 +1,16 @@
 import z from 'zod'
 
-import { CONTACT_FIELDS, ITEM_TYPES, SHARE_ROLES, type ContactField } from '@/lib/constants/vault'
-import { optionalString, requiredEnum, requiredString } from '@/lib/validation'
+import {
+  CONTACT_FIELDS,
+  ITEM_TYPES,
+  SHARE_ROLES,
+  type ContactField,
+} from '../../../constants/vault'
+import { optionalString, requiredEnum, requiredString } from '../../../validation'
 
 // Two kinds of schema live here. The *Form* schemas validate what the user
 // types, in the clear. The *Request* types describe what actually leaves the
-// browser: ciphertext and wrapped keys as base64 (see lib/crypto/vault.ts).
+// browser: ciphertext and wrapped keys as base64 (see crypto/vault.ts).
 
 /** Minimum length of a master password. It is the only thing protecting the vault. */
 export const MIN_MASTER_PASSWORD_LENGTH = 12

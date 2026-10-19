@@ -1,4 +1,4 @@
-import type { ISO8601DateString } from '@/types/time'
+import type { ISO8601DateString } from '../../types/time'
 
 /** The Authula user, as GET /api/v1/auth/me and the sign-in routes return it. */
 export interface User {

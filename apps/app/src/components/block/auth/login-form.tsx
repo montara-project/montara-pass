@@ -1,12 +1,12 @@
+import { SignInSchema } from '@montara-pass/shared/api/dtos/auth/schema'
+import { COMMUNITY } from '@montara-pass/shared/constants/edition'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 
 import { checked, useAppForm } from '@/hooks/form'
 import { submitForm } from '@/hooks/submit-form'
-import { SignInSchema } from '@/lib/api/dtos/auth/schema'
 import { signInWithEmail } from '@/lib/auth/email-auth'
 import { HOME_PATH } from '@/lib/constants/auth'
-import { COMMUNITY } from '@/lib/constants/edition'
 
 import AuthShell, { authLinkStrong } from './auth-shell'
 import TotpForm from './totp-form'

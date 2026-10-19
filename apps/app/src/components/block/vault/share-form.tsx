@@ -1,10 +1,13 @@
+import type { Models } from '@montara-pass/shared/api/models'
+import type { VaultItem } from '@montara-pass/shared/types/vault'
+
+import { ShareFormSchema, type ShareFormDto } from '@montara-pass/shared/api/dtos/vault/schema'
+import { ITEM_ROLE_OWNER, ShareRoleOptions } from '@montara-pass/shared/constants/vault'
+import { rotateItemKey, wrapItemKeyFor } from '@montara-pass/shared/crypto/vault'
 import { IconTrash } from '@tabler/icons-react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { toast } from 'sonner'
-
-import type { Models } from '@/lib/api/models'
-import type { VaultItem } from '@/types/vault'
 
 import SelectInput from '@/components/block/common/select-input'
 import SimpleAlertScrollableDialogForm from '@/components/block/common/simple-alert-scrollable-dialog-form'
@@ -14,11 +17,8 @@ import { useAppForm } from '@/hooks/form'
 import { useVaultKeys } from '@/hooks/use-vault'
 import { axiosErrorMessage, isForbidden, isNotFound, toastAxiosError } from '@/lib/api/axios-error'
 import { parseDto } from '@/lib/api/dtos/parse'
-import { ShareFormSchema, type ShareFormDto } from '@/lib/api/dtos/vault/schema'
 import { queries } from '@/lib/api/queries'
 import { services } from '@/lib/api/services'
-import { ITEM_ROLE_OWNER, ShareRoleOptions } from '@/lib/constants/vault'
-import { rotateItemKey, wrapItemKeyFor } from '@/lib/crypto/vault'
 
 /** The public key of a user with a vault, or a readable error when there is none. */
 async function lookupPublicKey(email: string): Promise<Models.PublicKey> {

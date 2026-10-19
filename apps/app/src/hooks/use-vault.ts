@@ -1,13 +1,14 @@
+import type { ItemListParams } from '@montara-pass/shared/api/dtos/vault/schema'
+import type { VaultFolder, VaultItem } from '@montara-pass/shared/types/vault'
+
+import { decryptFolderName, decryptItem, type VaultKeys } from '@montara-pass/shared/crypto/vault'
 import { useQuery } from '@tanstack/react-query'
 
-import type { ItemListParams } from '@/lib/api/dtos/vault/schema'
 import type { ApiListResponse } from '@/types/api'
-import type { VaultFolder, VaultItem } from '@/types/vault'
 
 import { FOLDER_QUERY_KEY } from '@/lib/api/queries/folder'
 import { ITEM_QUERY_KEY, LIST_ITEM_QUERY_KEY } from '@/lib/api/queries/item'
 import { services } from '@/lib/api/services'
-import { decryptFolderName, decryptItem, type VaultKeys } from '@/lib/crypto/vault'
 import { useVaultStore } from '@/lib/stores/vault'
 
 /**

@@ -1,10 +1,10 @@
+import { generatePassword } from '@montara-pass/shared/password'
 import { IconEye, IconEyeOff } from '@tabler/icons-react'
 import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { useFieldContext } from '@/hooks/form-context'
-import { generatePassword } from '@/lib/password'
 
 import { useFieldErrors } from './field-error'
 

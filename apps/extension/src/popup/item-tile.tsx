@@ -1,6 +1,6 @@
-import type { VaultItem } from '@/types/vault'
+import type { VaultItem } from '@montara-pass/shared/types/vault'
 
-import { itemIcon } from '@/lib/crypto/vault'
+import { itemIcon } from '@montara-pass/shared/crypto/vault'
 
 import { KeyholeIcon, NoteIcon, UserIcon } from './icons'
 

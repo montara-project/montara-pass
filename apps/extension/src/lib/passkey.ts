@@ -1,6 +1,6 @@
-import { getDomain } from 'tldts'
+import type { Passkey } from '@montara-pass/shared/crypto/vault'
 
-import type { Passkey } from '@/lib/crypto/vault'
+import { getDomain } from 'tldts'
 
 // The authenticator side of WebAuthn: what a security key or the operating
 // system does elsewhere. It runs in the prompt (src/inline/main.tsx), an
@@ -102,7 +102,7 @@ export function rpIdFor(requested: string | undefined, pageUrl: string): string 
 const utf8 = (value: string): Bytes => new TextEncoder().encode(value)
 
 // base64url, which is what WebAuthn speaks; the vault's own values are
-// standard base64 (apps/app/src/lib/crypto/encoding.ts).
+// standard base64 (packages/shared/src/crypto/encoding.ts).
 const toBase64Url = (bytes: Uint8Array) =>
   btoa(String.fromCharCode(...bytes))
     .replace(/\+/g, '-')

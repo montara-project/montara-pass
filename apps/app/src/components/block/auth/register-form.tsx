@@ -1,9 +1,9 @@
+import { SignUpSchema } from '@montara-pass/shared/api/dtos/auth/schema'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 
 import { checked, useAppForm } from '@/hooks/form'
 import { submitForm } from '@/hooks/submit-form'
-import { SignUpSchema } from '@/lib/api/dtos/auth/schema'
 import { signUpWithEmail } from '@/lib/auth/email-auth'
 import { HOME_PATH, SIGN_IN_PATH } from '@/lib/constants/auth'
 

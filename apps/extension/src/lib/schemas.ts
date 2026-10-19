@@ -1,7 +1,6 @@
+import { ItemFormSchema } from '@montara-pass/shared/api/dtos/vault/schema'
+import { optionalString } from '@montara-pass/shared/validation'
 import z from 'zod'
-
-import { ItemFormSchema } from '@/lib/api/dtos/vault/schema'
-import { optionalString } from '@/lib/validation'
 
 import { originOf } from './site'
 
@@ -45,7 +44,10 @@ export type AddLoginFormDto = z.infer<typeof AddLoginFormSchema>
 
 // The item form with its Visible switch is the web app's own, as the other
 // shared schemas are.
-export { ItemEditFormSchema, type ItemEditFormDto } from '@/lib/api/dtos/vault/schema'
+export {
+  ItemEditFormSchema,
+  type ItemEditFormDto,
+} from '@montara-pass/shared/api/dtos/vault/schema'
 
 /** The save prompt: the password is the page's, only the username can be put right. */
 export const SaveLoginFormSchema = z.object({

@@ -1,9 +1,9 @@
+import { formatDate } from '@montara-pass/shared/date'
 import { useQuery } from '@tanstack/react-query'
 
 import Page from '@/components/layout/page'
 import { Skeleton } from '@/components/ui/skeleton'
 import { queries } from '@/lib/api/queries'
-import { formatDate } from '@/lib/date'
 
 import ChangeMasterPasswordForm from './change-master-password-form'
 import TwoFactor from './two-factor'

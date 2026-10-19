@@ -1,9 +1,8 @@
+import type { Models } from '@montara-pass/shared/api/models'
+
+import { SignInSchema, TotpCodeSchema } from '@montara-pass/shared/api/dtos/auth/schema'
+import { totpQrCode, totpSecret } from '@montara-pass/shared/auth/totp'
 import { useState } from 'react'
-
-import type { Models } from '@/lib/api/models'
-
-import { SignInSchema, TotpCodeSchema } from '@/lib/api/dtos/auth/schema'
-import { totpQrCode, totpSecret } from '@/lib/auth/totp'
 
 import { confirmTotp, disableTotp, enableTotp } from '../../lib/api'
 import { checked, submit, useAppForm } from '../form'

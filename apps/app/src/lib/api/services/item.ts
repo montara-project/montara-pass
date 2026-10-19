@@ -1,6 +1,7 @@
+import type { Models } from '@montara-pass/shared/api/models'
+
 import { HTTP_METHOD } from '@/types/api'
 
-import type { Models } from '../models'
 import type { ItemMethods, ItemResources } from './types/item'
 
 import { api } from '../client-fetch'

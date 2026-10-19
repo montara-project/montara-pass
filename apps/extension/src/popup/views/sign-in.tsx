@@ -1,7 +1,6 @@
+import { SignInSchema, TotpCodeSchema } from '@montara-pass/shared/api/dtos/auth/schema'
+import { COMMUNITY } from '@montara-pass/shared/constants/edition'
 import { useEffect, useState } from 'react'
-
-import { SignInSchema, TotpCodeSchema } from '@/lib/api/dtos/auth/schema'
-import { COMMUNITY } from '@/lib/constants/edition'
 
 import { signIn, verifyTotp } from '../../lib/api'
 import { DEFAULT_SETTINGS, getSettings } from '../../lib/storage'

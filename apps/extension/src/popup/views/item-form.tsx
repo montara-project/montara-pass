@@ -1,9 +1,10 @@
-import { useStore } from '@tanstack/react-form'
-import { useState } from 'react'
+import type { VaultItem } from '@montara-pass/shared/types/vault'
 
-import type { VaultItem } from '@/types/vault'
-
-import { CONTACT_FIELDS, ItemTypeOptions, type ItemType } from '@/lib/constants/vault'
+import {
+  CONTACT_FIELDS,
+  ItemTypeOptions,
+  type ItemType,
+} from '@montara-pass/shared/constants/vault'
 import {
   contactFields,
   encryptItemUpdate,
@@ -12,7 +13,9 @@ import {
   toContact,
   type ItemSecret,
   type VaultKeys,
-} from '@/lib/crypto/vault'
+} from '@montara-pass/shared/crypto/vault'
+import { useStore } from '@tanstack/react-form'
+import { useState } from 'react'
 
 import { ApiError, createItem, setItemPlacement, SignedOutError, updateItem } from '../../lib/api'
 import { fetchIcon } from '../../lib/icon'

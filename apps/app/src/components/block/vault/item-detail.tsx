@@ -1,3 +1,11 @@
+import type { VaultFolder, VaultItem } from '@montara-pass/shared/types/vault'
+
+import { COMMUNITY } from '@montara-pass/shared/constants/edition'
+import {
+  CONTACT_FIELDS,
+  ITEM_ROLE_OWNER,
+  ITEM_TYPE_LABEL,
+} from '@montara-pass/shared/constants/vault'
 import {
   IconArrowLeft,
   IconCopy,
@@ -16,8 +24,6 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { lazy, Suspense, useState } from 'react'
 import { toast } from 'sonner'
 
-import type { VaultFolder, VaultItem } from '@/types/vault'
-
 import SimpleAlertDialog from '@/components/block/common/simple-alert-dialog'
 import { Button } from '@/components/ui/button'
 import {
@@ -29,8 +35,6 @@ import {
 import { toastAxiosError } from '@/lib/api/axios-error'
 import { queries } from '@/lib/api/queries'
 import { copySecret } from '@/lib/clipboard'
-import { COMMUNITY } from '@/lib/constants/edition'
-import { CONTACT_FIELDS, ITEM_ROLE_OWNER, ITEM_TYPE_LABEL } from '@/lib/constants/vault'
 import { cn } from '@/lib/utils'
 
 import { EditItemForm } from './form'

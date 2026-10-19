@@ -1,18 +1,18 @@
+import type { TotpSetup } from '@montara-pass/shared/api/models/user'
+
+import { SignInSchema, TotpCodeSchema } from '@montara-pass/shared/api/dtos/auth/schema'
+import { totpQrCode, totpSecret } from '@montara-pass/shared/auth/totp'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { toast } from 'sonner'
 
-import type { TotpSetup } from '@/lib/api/models/user'
-
 import { Button } from '@/components/ui/button'
 import { checked, useAppForm } from '@/hooks/form'
 import { toastAxiosError } from '@/lib/api/axios-error'
-import { SignInSchema, TotpCodeSchema } from '@/lib/api/dtos/auth/schema'
 import { queries } from '@/lib/api/queries'
 import { PROFILE_QUERY_KEY } from '@/lib/api/queries/auth'
 import { services } from '@/lib/api/services'
 import { confirmTotp } from '@/lib/auth/email-auth'
-import { totpQrCode, totpSecret } from '@/lib/auth/totp'
 
 const PasswordSchema = SignInSchema.pick({ password: true })
 

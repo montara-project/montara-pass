@@ -112,9 +112,10 @@ with a fallback to `index.html` for client routes. `CORS_ALLOWED_ORIGINS` is
 only needed when the app is hosted somewhere else (`VITE_API_URL`).
 
 - `lib/api`: one axios client (`client-fetch.ts`, refreshes the access token
-  on a 401), then `services` (HTTP), `queries` (TanStack Query options),
-  `models` and `dtos` (zod).
-- `lib/crypto`: the end-to-end encryption. Argon2id turns the master password
+  on a 401), then `services` (HTTP) and `queries` (TanStack Query options).
+- `@montara-pass/shared` (`packages/shared`): the code the app and the
+  extension share. `api/models` and `api/dtos` (zod), and `crypto`, the
+  end-to-end encryption. Argon2id turns the master password
   into the master key; that unwraps the vault key (folder names, private key);
   the RSA-OAEP private key unwraps one AES-256-GCM key per item. Sharing wraps
   the item key with the recipient's public key.
@@ -126,8 +127,8 @@ only needed when the app is hosted somewhere else (`VITE_API_URL`).
 ## Browser extension
 
 `apps/extension` fills and saves logins from the vault in Chrome (and other
-Chromium browsers) and Firefox 140+. It reuses the web app's `lib/crypto`, so
-both read and write the same ciphertext.
+Chromium browsers) and Firefox 140+. It shares `packages/shared` with the web
+app, so both read and write the same ciphertext.
 
 ```sh
 pnpm build:extension   # writes apps/extension/dist/chrome and dist/firefox

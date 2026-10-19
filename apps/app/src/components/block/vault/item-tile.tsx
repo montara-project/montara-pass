@@ -1,8 +1,8 @@
+import type { VaultItem } from '@montara-pass/shared/types/vault'
+
+import { itemIcon } from '@montara-pass/shared/crypto/vault'
 import { IconKey, IconNote, IconUser } from '@tabler/icons-react'
 
-import type { VaultItem } from '@/types/vault'
-
-import { itemIcon } from '@/lib/crypto/vault'
 import { cn } from '@/lib/utils'
 
 /** An item's square: the icon saved with a login, or a line icon without one. */

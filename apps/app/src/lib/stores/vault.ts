@@ -1,6 +1,6 @@
-import { create } from 'zustand'
+import type { VaultKeys } from '@montara-pass/shared/crypto/vault'
 
-import type { VaultKeys } from '@/lib/crypto/vault'
+import { create } from 'zustand'
 
 interface VaultStore {
   /** The unlocked keys, or null while the vault is locked. */

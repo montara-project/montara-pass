@@ -1,6 +1,6 @@
-import type { AxiosItemResponse } from '@/types/api'
+import type { Models } from '@montara-pass/shared/api/models'
 
-import type { Models } from '../../models'
+import type { AxiosItemResponse } from '@/types/api'
 
 export type BillingResources = {
   /** The plans on offer; public. */

@@ -1,8 +1,7 @@
-import type { ItemRotateKeyRequest, KDFRequest, UserKeysRequest } from '@/lib/api/dtos/vault/schema'
-import type { Models } from '@/lib/api/models'
+import type { ItemRotateKeyRequest, KDFRequest, UserKeysRequest } from '../api/dtos/vault/schema'
+import type { Models } from '../api/models'
 
-import { CONTACT_FIELDS, type ContactField } from '@/lib/constants/vault'
-
+import { CONTACT_FIELDS, type ContactField } from '../constants/vault'
 import {
   generateKeyPair,
   importPrivateKey,

@@ -1,17 +1,17 @@
 import type {
+  ItemPlacementRequest,
+  ItemRotateKeyRequest,
+  ItemShareRequest,
+} from '@montara-pass/shared/api/dtos/vault/schema'
+import type { Models } from '@montara-pass/shared/api/models'
+
+import type {
   AxiosDeleteResponse,
   AxiosItemResponse,
   AxiosListResponse,
   HTTP_METHOD,
   Resources,
 } from '@/types/api'
-
-import type {
-  ItemPlacementRequest,
-  ItemRotateKeyRequest,
-  ItemShareRequest,
-} from '../../dtos/vault/schema'
-import type { Models } from '../../models'
 
 export type ItemMethods = [HTTP_METHOD.GET, HTTP_METHOD.POST, HTTP_METHOD.PUT, HTTP_METHOD.DELETE]
 

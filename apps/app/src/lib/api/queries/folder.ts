@@ -1,8 +1,8 @@
+import type { FolderRequest } from '@montara-pass/shared/api/dtos/vault/schema'
+
 import { mutationOptions, queryOptions } from '@tanstack/react-query'
 
 import { getQueryClient } from '@/lib/providers/react-query'
-
-import type { FolderRequest } from '../dtos/vault/schema'
 
 import { services } from '../services'
 import { ITEM_QUERY_KEY } from './item'

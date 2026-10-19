@@ -1,4 +1,4 @@
-import type { ISO8601DateString } from '@/types/time'
+import type { ISO8601DateString } from '../../types/time'
 
 // Billing, Cloud Edition only (apps/server internal/models/billing.go).
 // Amounts are in the currency's minor unit; see formatPrice.

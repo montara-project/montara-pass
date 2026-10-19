@@ -1,7 +1,18 @@
+import type { Models } from '@montara-pass/shared/api/models'
+
+import {
+  MIN_MASTER_PASSWORD_LENGTH,
+  SetupVaultFormSchema,
+  UnlockFormSchema,
+} from '@montara-pass/shared/api/dtos/vault/schema'
+import {
+  createUserKeys,
+  unlockVault,
+  WrongMasterPasswordError,
+} from '@montara-pass/shared/crypto/vault'
+import { initials } from '@montara-pass/shared/string'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
-
-import type { Models } from '@/lib/api/models'
 
 import AuthShell, { authLink } from '@/components/block/auth/auth-shell'
 import { Button } from '@/components/ui/button'
@@ -9,17 +20,10 @@ import { checked, useAppForm } from '@/hooks/form'
 import { submitForm } from '@/hooks/submit-form'
 import { useSignOut } from '@/hooks/use-sign-out'
 import { axiosErrorMessage } from '@/lib/api/axios-error'
-import {
-  MIN_MASTER_PASSWORD_LENGTH,
-  SetupVaultFormSchema,
-  UnlockFormSchema,
-} from '@/lib/api/dtos/vault/schema'
 import { queries } from '@/lib/api/queries'
 import { FOLDER_QUERY_KEY } from '@/lib/api/queries/folder'
 import { ITEM_QUERY_KEY } from '@/lib/api/queries/item'
-import { createUserKeys, unlockVault, WrongMasterPasswordError } from '@/lib/crypto/vault'
 import { AUTO_LOCK_MINUTES, useVaultStore } from '@/lib/stores/vault'
-import { initials } from '@/lib/string'
 
 interface VaultGateProps {
   children: React.ReactNode

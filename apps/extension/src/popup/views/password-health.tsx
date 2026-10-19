@@ -1,8 +1,7 @@
+import type { VaultItem } from '@montara-pass/shared/types/vault'
+
+import { passwordHealth } from '@montara-pass/shared/password'
 import { useMemo } from 'react'
-
-import type { VaultItem } from '@/types/vault'
-
-import { passwordHealth } from '@/lib/password'
 
 import { maskUsername } from '../../lib/username'
 import { ChevronRightIcon, ShieldIcon } from '../icons'

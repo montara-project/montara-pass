@@ -4,8 +4,8 @@ description: Fill and save logins from the vault in Chrome and Firefox.
 ---
 
 `apps/extension` is a Manifest V3 extension for Chrome, other Chromium
-browsers and Firefox 140 or newer (142 on Android). It uses the web app's
-`lib/crypto` module, so it reads and writes the same vault.
+browsers and Firefox 140 or newer (142 on Android). It uses the same
+`@montara-pass/shared` crypto as the web app, so it reads and writes the same vault.
 
 <Callout type="info">
   The vault itself is created in the web app. The extension signs in and
