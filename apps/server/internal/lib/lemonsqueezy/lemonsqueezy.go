@@ -396,6 +396,7 @@ type Attributes struct {
 	Cancelled             bool       `json:"cancelled"`
 	RenewsAt              time.Time  `json:"renews_at"`
 	EndsAt                *time.Time `json:"ends_at"`
+	UpdatedAt             time.Time  `json:"updated_at"`
 }
 
 // VariantID is the variant that was paid for, as the plans store it.

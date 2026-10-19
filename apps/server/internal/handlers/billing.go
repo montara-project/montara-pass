@@ -270,7 +270,7 @@ func (h *billingHandler) SyncSubscriptions(c fiber.Ctx) error {
 			h.app.Logger.Warn("lemon squeezy subscription on another variant", "subscription", r.ID)
 			continue
 		}
-		changed, err := h.repo().ApplySubscription(c.Context(), s.ID, r.ID, subscriptionStatus(r.Attributes), r.Attributes.PeriodEnd(), r.Attributes.Cancelled)
+		changed, err := h.repo().ApplySubscription(c.Context(), s.ID, r.ID, subscriptionStatus(r.Attributes), r.Attributes.PeriodEnd(), r.Attributes.Cancelled, r.Attributes.UpdatedAt)
 		if errors.Is(err, apperr.New(apperr.KindConflict, "")) {
 			// The user holds another live subscription; a person sorts it out.
 			h.app.Logger.Warn("lemon squeezy subscription not applied", "subscription", r.ID, "error", err)
@@ -559,7 +559,7 @@ func (h *billingHandler) LemonSqueezyWebhook(c fiber.Ctx) error {
 		if !sameVariant(s.Plan, a) {
 			return apperr.New(apperr.KindBadRequest, "variant does not match the order")
 		}
-		if changed, err = h.repo().ApplySubscription(c.Context(), id, e.Data.ID, subscriptionStatus(a), a.PeriodEnd(), a.Cancelled); err != nil {
+		if changed, err = h.repo().ApplySubscription(c.Context(), id, e.Data.ID, subscriptionStatus(a), a.PeriodEnd(), a.Cancelled, a.UpdatedAt); err != nil {
 			return err
 		}
 

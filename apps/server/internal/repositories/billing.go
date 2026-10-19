@@ -253,12 +253,10 @@ func translateRole(err error) error {
 // starts its period now and ties it to providerID. An active one moves on;
 // an expired one comes back only for its own Lemon Squeezy subscription, as
 // a renewal that was retried and then went through. A canceled (refunded)
-// one stays. It reports whether it changed anything.
-//
-// ponytail: webhooks are applied as they come, so a late retry of an older
-// one can win over a newer one; compare Lemon Squeezy's updated_at if that
-// ever shows.
-func (r *BillingRepository) ApplySubscription(ctx context.Context, id uuid.UUID, providerID, status string, periodEnd time.Time, cancelled bool) (bool, error) {
+// one stays. A report older than the last one applied (by Lemon Squeezy's
+// updated_at, providerUpdatedAt) is stale, as from a late retry, and left
+// out. It reports whether it changed anything.
+func (r *BillingRepository) ApplySubscription(ctx context.Context, id uuid.UUID, providerID, status string, periodEnd time.Time, cancelled bool, providerUpdatedAt time.Time) (bool, error) {
 	res, err := r.execContext(ctx, `
 		UPDATE subscriptions SET
 		    status = $3,
@@ -266,12 +264,13 @@ func (r *BillingRepository) ApplySubscription(ctx context.Context, id uuid.UUID,
 		    current_period_end = GREATEST($4,
 		        (CASE WHEN status = 'pending' THEN now() ELSE current_period_start END) + interval '1 second'),
 		    canceled_at = CASE WHEN $5 THEN coalesce(canceled_at, now()) END,
-		    provider_subscription_id = $2, checkout_url = NULL, updated_at = now()
+		    provider_subscription_id = $2, provider_updated_at = $6, checkout_url = NULL, updated_at = now()
 		WHERE id = $1
 		  AND (status IN ('pending', 'active') OR (status = 'expired' AND provider_subscription_id = $2))
-		  AND (status, current_period_end, canceled_at IS NOT NULL, provider_subscription_id)
-		      IS DISTINCT FROM ($3, $4, $5, $2)`,
-		id, providerID, status, periodEnd, cancelled,
+		  AND (provider_updated_at IS NULL OR provider_updated_at <= $6)
+		  AND (status, current_period_end, canceled_at IS NOT NULL, provider_subscription_id, provider_updated_at)
+		      IS DISTINCT FROM ($3, $4, $5, $2, $6)`,
+		id, providerID, status, periodEnd, cancelled, providerUpdatedAt,
 	)
 	if hasPgCode(err, pgUniqueViolation) {
 		return false, apperr.New(apperr.KindConflict, "the user already has another live subscription")
