@@ -3,6 +3,18 @@
 All notable changes to this project are documented in this file. Versions follow the git tags (`v*`); Docker images are published to ghcr.io with the same version.
 
 
+## [2.2.2](https://github.com/montara-project/montara-pass/compare/v2.2.1...v2.2.2) (2026-10-19)
+
+### Features
+
+* **billing:** sync subscriptions from Lemon Squeezy ([cbc4148](https://github.com/montara-project/montara-pass/commit/cbc41486a44b4c81c1840c27db308ae7c138a0c6))
+* **web:** improve SEO metadata, robots and sitemap ([07f680a](https://github.com/montara-project/montara-pass/commit/07f680a3f7b05e3c270ca717e19bd2131292c2bb))
+
+### Bug Fixes
+
+* **billing:** ignore stale Lemon Squeezy subscription updates ([ffb395f](https://github.com/montara-project/montara-pass/commit/ffb395ff2d277c0fa790e0f3495b8ab6fe7d5ef9))
+* update thumbnail ([891190d](https://github.com/montara-project/montara-pass/commit/891190d68a8bc5c99aa3f5131e6b26af68407f8e))
+
 ## [2.2.1](https://github.com/montara-project/montara-pass/compare/v2.2.0...v2.2.1) (2026-10-18)
 
 ### Features
