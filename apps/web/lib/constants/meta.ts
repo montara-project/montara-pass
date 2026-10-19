@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 export const META_URL = "https://montarapass.com";
 export const META_TITLE = `Montara Pass - Secure, Open-Source Password Manager`;
 export const META_DESCRIPTION = `Montara Pass is a secure, open-source password manager with zero-knowledge encryption. Logins are encrypted in your browser; the server only stores ciphertext.`;
-export const META_IMAGE = "/static/montara-pass-logo.png";
+export const META_IMAGE = "/static/montarapass-thumbnail.png";
 export const META_KEYWORDS = `password manager, zero-knowledge encryption, open-source password manager, secure password manager`;
 
 const SITE_NAME = "Montara Pass";
