@@ -4,6 +4,7 @@ import type { VaultKeys } from '@/lib/crypto/vault'
 import type { VaultItem } from '@/types/vault'
 
 import { COMMUNITY } from '@/lib/constants/edition'
+import { CONTACT_FIELDS, ITEM_TYPE_LABEL } from '@/lib/constants/vault'
 
 import { setItemPlacement, SignedOutError, trashItem } from '../../lib/api'
 import { copySecret } from '../../lib/clipboard'
@@ -30,6 +31,7 @@ import {
   FilterIcon,
   StarIcon,
   TrashIcon,
+  UserIcon,
 } from '../icons'
 import { ItemTile } from '../item-tile'
 import { useFolders, useVaultItems } from '../use-vault-items'
@@ -49,7 +51,7 @@ interface FullVaultProps {
   onSettings: () => void
 }
 
-type Filter = 'all' | 'login' | 'secure_note' | 'favorite'
+type Filter = 'all' | 'login' | 'secure_note' | 'contact' | 'favorite'
 type Sort = 'name' | 'updated'
 /** What the detail pane shows. */
 type Pane =
@@ -62,6 +64,7 @@ const FILTERS: { value: Filter; label: string; icon: typeof GridIcon }[] = [
   { value: 'all', label: 'All items', icon: GridIcon },
   { value: 'login', label: 'Logins', icon: KeyIcon },
   { value: 'secure_note', label: 'Secure notes', icon: NoteIcon },
+  { value: 'contact', label: 'Contacts', icon: UserIcon },
   { value: 'favorite', label: 'Favorites', icon: StarIcon },
 ]
 
@@ -119,6 +122,7 @@ export default function FullVault({
       all: readable.length,
       login: readable.filter((item) => item.type === 'login').length,
       secure_note: readable.filter((item) => item.type === 'secure_note').length,
+      contact: readable.filter((item) => item.type === 'contact').length,
       favorite: readable.filter((item) => item.favorite).length,
     }),
     [readable]
@@ -132,7 +136,7 @@ export default function FullVault({
         filter === 'all' ? true : filter === 'favorite' ? item.favorite : item.type === filter
       )
       .filter((item) =>
-        [item.secret?.name, item.secret?.username, item.secret?.url]
+        [item.secret?.name, item.secret?.username, item.secret?.url, item.secret?.contact?.email]
           .filter(Boolean)
           .some((value) => value!.toLowerCase().includes(term))
       )
@@ -296,7 +300,8 @@ export default function FullVault({
                               ? item.secret!.username
                                 ? maskUsername(item.secret!.username)
                                 : 'No username'
-                              : 'Secure note'}
+                              : (item.type === 'contact' && item.secret!.contact?.email) ||
+                                ITEM_TYPE_LABEL[item.type]}
                           </span>
                         </span>
                         <span className="col muted">
@@ -432,9 +437,10 @@ function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: Item
 
   const secret = item.secret!
   const isLogin = item.type === 'login'
+  const isNote = item.type === 'secure_note'
   const canEdit = item.role !== 'viewer'
   // A secure note marked not visible stays blurred until it is revealed.
-  const hidesNote = !isLogin && secret.visible === false
+  const hidesNote = isNote && secret.visible === false
   const noteHidden = hidesNote && !revealed
   // Only http(s) addresses become links.
   const website = linkOf(secret.url)
@@ -446,7 +452,7 @@ function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: Item
         <div className="item-text">
           <h2 className="detail-title">{secret.name}</h2>
           <span className="muted">
-            {isLogin ? 'Login' : 'Secure note'}
+            {ITEM_TYPE_LABEL[item.type] ?? item.type}
             {item.role !== 'owner' && ` · shared with you (${item.role})`}
           </span>
         </div>
@@ -614,7 +620,28 @@ function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: Item
           </>
         )}
 
-        {(secret.notes || !isLogin) && (
+        {item.type === 'contact' &&
+          CONTACT_FIELDS.map(({ key, label }) => {
+            const value = secret.contact?.[key]
+            return (
+              <div key={key} className="field">
+                <dt>{label}</dt>
+                <dd>{value || <span className="muted">None</span>}</dd>
+                {value && (
+                  <button
+                    className="icon-button"
+                    aria-label={`Copy ${label.toLowerCase()}`}
+                    title={`Copy ${label.toLowerCase()}`}
+                    onClick={() => onCopy(value, label.toLowerCase())}
+                  >
+                    <CopyIcon />
+                  </button>
+                )}
+              </div>
+            )
+          })}
+
+        {(secret.notes || isNote) && (
           <div className="field field-notes">
             <dt>Notes</dt>
             {/* Out of reach while blurred: not selectable, not read aloud. */}

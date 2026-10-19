@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAllItems, useFolders, useItems } from '@/hooks/use-vault'
 import { axiosErrorMessage } from '@/lib/api/axios-error'
-import { ItemTypeOptions } from '@/lib/constants/vault'
+import { ITEM_TYPE_LABEL, ItemTypeOptions } from '@/lib/constants/vault'
 import { formatDate } from '@/lib/date'
 import { cn } from '@/lib/utils'
 
@@ -36,9 +36,12 @@ const PAGE_SIZE = 25
 /** What a search looks in: the same fields as the extension's. */
 function matches(item: VaultItem, term: string) {
   // Decrypted JSON is only typed, not checked: a field may not be a string.
-  return [item.secret?.name, item.secret?.username, item.secret?.url].some(
-    (value: unknown) => typeof value === 'string' && value.toLowerCase().includes(term)
-  )
+  return [
+    item.secret?.name,
+    item.secret?.username,
+    item.secret?.url,
+    item.secret?.contact?.email,
+  ].some((value: unknown) => typeof value === 'string' && value.toLowerCase().includes(term))
 }
 
 /**
@@ -336,7 +339,8 @@ function ItemRow({ item, folders, selected, onSelect }: ItemRowProps) {
           {item.type === 'login'
             ? item.secret?.username || 'No username'
             : item.secret
-              ? 'Secure note'
+              ? (item.type === 'contact' && item.secret.contact?.email) ||
+                ITEM_TYPE_LABEL[item.type]
               : ''}
         </span>
       </span>

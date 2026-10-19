@@ -2583,6 +2583,11 @@ select:disabled {
   gap: 16px;
 }
 
+/* A field that takes the whole row of its grid. */
+.form-wide {
+  grid-column: 1 / -1;
+}
+
 .form-field {
   display: flex;
   flex-direction: column;

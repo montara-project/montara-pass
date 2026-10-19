@@ -11,6 +11,7 @@ import type { VaultKeys } from '@/lib/crypto/vault'
 import type { VaultItem } from '@/types/vault'
 
 import { COMMUNITY } from '@/lib/constants/edition'
+import { ITEM_TYPE_LABEL } from '@/lib/constants/vault'
 
 import { markItemUsed, setItemPlacement, SignedOutError, trashItem } from '../../lib/api'
 import { fillLogin } from '../../lib/autofill'
@@ -472,7 +473,8 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
                       ? item.secret!.username
                         ? maskUsername(item.secret!.username)
                         : 'No username'
-                      : 'Secure note'}
+                      : (item.type === 'contact' && item.secret!.contact?.email) ||
+                        ITEM_TYPE_LABEL[item.type]}
                   </span>
                 </div>
 
@@ -571,6 +573,18 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
                     Copy password
                   </button>
                 </>
+              ) : menuItem.type === 'contact' ? (
+                <button
+                  role="menuitem"
+                  className="menu-item"
+                  onClick={() => {
+                    setRowMenu(null)
+                    void copy(menuItem.secret!.contact?.email, 'email')
+                  }}
+                >
+                  <CopyIcon />
+                  Copy email
+                </button>
               ) : (
                 <button
                   role="menuitem"

@@ -30,7 +30,7 @@ import { toastAxiosError } from '@/lib/api/axios-error'
 import { queries } from '@/lib/api/queries'
 import { copySecret } from '@/lib/clipboard'
 import { COMMUNITY } from '@/lib/constants/edition'
-import { ITEM_ROLE_OWNER } from '@/lib/constants/vault'
+import { CONTACT_FIELDS, ITEM_ROLE_OWNER, ITEM_TYPE_LABEL } from '@/lib/constants/vault'
 import { cn } from '@/lib/utils'
 
 import { EditItemForm } from './form'
@@ -152,11 +152,12 @@ export default function ItemDetail({ item, folders, onClose }: ItemDetailProps) 
 
   const secret = item.secret
   const isLogin = item.type === 'login'
+  const isNote = item.type === 'secure_note'
   const isOwner = item.role === ITEM_ROLE_OWNER
   const canEdit = item.role !== 'viewer'
   const folder = folders.find((f) => f.id === item.folder_id)
   // A secure note marked not visible stays blurred until it is revealed.
-  const noteHidden = !isLogin && secret?.visible === false && !revealed
+  const noteHidden = isNote && secret?.visible === false && !revealed
   // Only http(s) addresses become links.
   const website = linkOf(secret?.url)
 
@@ -212,7 +213,7 @@ export default function ItemDetail({ item, folders, onClose }: ItemDetailProps) 
             {secret ? secret.name : 'Unable to decrypt'}
           </h2>
           <span className="text-muted-foreground text-[13px]">
-            {isLogin ? 'Login' : 'Secure note'}
+            {ITEM_TYPE_LABEL[item.type] ?? item.type}
             {!isOwner && ` · shared with you (${item.role})`}
           </span>
         </div>
@@ -346,7 +347,30 @@ export default function ItemDetail({ item, folders, onClose }: ItemDetailProps) 
             </>
           )}
 
-          {(secret.notes || !isLogin) && (
+          {item.type === 'contact' &&
+            CONTACT_FIELDS.map(({ key, label }) => {
+              const value = secret.contact?.[key]
+              return (
+                <Field
+                  key={key}
+                  label={label}
+                  actions={
+                    value && (
+                      <IconAction
+                        label={`Copy ${label.toLowerCase()}`}
+                        onClick={() => void copy(value, label.toLowerCase())}
+                      >
+                        <IconCopy />
+                      </IconAction>
+                    )
+                  }
+                >
+                  {value || none}
+                </Field>
+              )
+            })}
+
+          {(secret.notes || isNote) && (
             // A note is read, not acted on: the row does not light up.
             // Hidden, the row is tall enough for what it says about itself, however
             // short the note.
