@@ -1082,7 +1082,8 @@ func billingFlow(
 	// Webhooks: a bad signature or another variant is refused, a sale billing
 	// did not start is let be, and a valid one activates the subscription.
 	renews := time.Now().Add(30 * 24 * time.Hour).UTC().Truncate(time.Second)
-	active := map[string]any{"status": "active", "variant_id": 101, "cancelled": false, "renews_at": renews, "ends_at": nil}
+	stamp := func(h int) time.Time { return renews.Add(time.Duration(h-24*30) * time.Hour) }
+	active := map[string]any{"status": "active", "variant_id": 101, "cancelled": false, "renews_at": renews, "ends_at": nil, "updated_at": stamp(0)}
 	if status, _ := call(http.MethodPost, "/api/v1/billing/lemonsqueezy/webhook", "", map[string]any{"meta": map[string]any{"event_name": "subscription_created"}}, "X-Signature", "forged"); status != http.StatusForbidden {
 		t.Fatalf("forged webhook: %d", status)
 	}
@@ -1108,15 +1109,23 @@ func billingFlow(
 
 	// Cancelled in the portal, it runs out its period; then it expires.
 	ends := renews.Add(-24 * time.Hour)
-	wantWebhook("subscription_updated", orderID, "7001", map[string]any{"status": "cancelled", "variant_id": 101, "cancelled": true, "renews_at": renews, "ends_at": ends})
+	cancelled := map[string]any{"status": "cancelled", "variant_id": 101, "cancelled": true, "renews_at": renews, "ends_at": ends, "updated_at": stamp(1)}
+	wantWebhook("subscription_updated", orderID, "7001", cancelled)
 	if subscription, _ = overview(); subscription["status"] != "active" || subscription["canceled_at"] == nil {
 		t.Fatalf("overview after cancelling: %v", subscription)
 	}
-	wantWebhook("subscription_updated", orderID, "7001", map[string]any{"status": "expired", "variant_id": 101, "cancelled": true, "renews_at": renews, "ends_at": ends})
+	wantWebhook("subscription_updated", orderID, "7001", map[string]any{"status": "expired", "variant_id": 101, "cancelled": true, "renews_at": renews, "ends_at": ends, "updated_at": stamp(2)})
 	if subscription, _ = overview(); subscription != nil {
 		t.Fatalf("overview after expiry: %v", subscription)
 	}
+	// A late retry of an older webhook is stale: it changes nothing.
+	wantWebhook("subscription_updated", orderID, "7001", cancelled)
+	wantWebhook("subscription_updated", orderID, "7001", active)
+	if subscription, _ = overview(); subscription != nil {
+		t.Fatalf("overview after stale webhooks: %v", subscription)
+	}
 	// A renewal retried until it went through brings it back.
+	active["updated_at"] = stamp(3)
 	wantWebhook("subscription_updated", orderID, "7001", active)
 	if subscription, _ = overview(); subscription == nil || subscription["status"] != "active" || subscription["canceled_at"] != nil {
 		t.Fatalf("overview after a recovered renewal: %v", subscription)

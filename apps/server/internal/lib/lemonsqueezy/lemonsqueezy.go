@@ -345,6 +345,18 @@ func (c *Client) PortalURL(ctx context.Context, subscriptionID string) (string, 
 	return subscription.Attributes.URLs.CustomerPortal, nil
 }
 
+// Subscription is one of the store's subscriptions.
+type Subscription struct {
+	ID         string     `json:"id"`
+	Attributes Attributes `json:"attributes"`
+}
+
+// Subscriptions reads every subscription of the store. Unlike a webhook, it
+// carries no custom data, so it is matched by its id alone.
+func (c *Client) Subscriptions(ctx context.Context) ([]Subscription, error) {
+	return list[Subscription](ctx, c, "/subscriptions", url.Values{"filter[store_id]": {c.storeID}})
+}
+
 // Verify reports whether body was signed with the webhook's secret: the
 // X-Signature header is the hex HMAC-SHA256 of the raw body.
 func (c *Client) Verify(body []byte, signature string) bool {
@@ -384,6 +396,7 @@ type Attributes struct {
 	Cancelled             bool       `json:"cancelled"`
 	RenewsAt              time.Time  `json:"renews_at"`
 	EndsAt                *time.Time `json:"ends_at"`
+	UpdatedAt             time.Time  `json:"updated_at"`
 }
 
 // VariantID is the variant that was paid for, as the plans store it.

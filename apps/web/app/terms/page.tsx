@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 
 import { LegalPage, type LegalSection } from "@/components/legal-page";
+import { pageMeta } from "@/lib/constants/meta";
 
-export const metadata: Metadata = {
-  title: "Terms of Service — Montara Pass",
+export const metadata: Metadata = pageMeta({
+  title: "Terms of Service",
   description:
     "The terms that govern your use of Montara Pass: accounts, billing, acceptable use, liability, and how changes to the service are handled.",
-};
+  path: "/terms",
+});
 
 const updated = "September 28, 2026";
 

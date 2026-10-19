@@ -13,12 +13,14 @@ import {
   ShieldCheckIcon,
 } from "@/components/icons";
 import { card, Dim, Statement } from "@/components/shared";
+import { pageMeta } from "@/lib/constants/meta";
 
-export const metadata: Metadata = {
-  title: "Contact — Montara Pass",
+export const metadata: Metadata = pageMeta({
+  title: "Contact Support and Security",
   description:
     "Reach the Montara Pass team: product support, security disclosure, business and sales, or press. We reply within one business day.",
-};
+  path: "/contact",
+});
 
 const channels = [
   {

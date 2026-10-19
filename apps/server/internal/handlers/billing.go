@@ -35,6 +35,7 @@ var (
 	errOnlyUsers   = apperr.New(apperr.KindForbidden, "only user accounts can subscribe or buy a plan")
 	errPortal      = apperr.New(apperr.KindBadGateway, "the subscription could not be opened, try again")
 	errCatalog     = apperr.New(apperr.KindBadGateway, "the Lemon Squeezy catalog could not be read, try again")
+	errSyncSubs    = apperr.New(apperr.KindBadGateway, "the Lemon Squeezy subscriptions could not be read, try again")
 )
 
 type billingHandler struct {
@@ -235,6 +236,62 @@ func (h *billingHandler) ListSubscriptions(c fiber.Ctx) error {
 		return err
 	}
 	return dtos.List(c, subscriptions, dtos.ListMeta(int(total), q.Offset, q.Limit))
+}
+
+// SyncSubscriptions brings every subscription Lemon Squeezy already reported
+// on to what it says now, for a super user who suspects a missed webhook, and
+// answers how many changed. A Lemon Squeezy subscription carries no order id,
+// so one whose first webhook never came cannot be matched: it stays pending
+// until it lapses.
+func (h *billingHandler) SyncSubscriptions(c fiber.Ctx) error {
+	if h.app.Payments == nil {
+		return errPaymentsOff
+	}
+	remote, err := h.app.Payments.Subscriptions(c.Context())
+	if err != nil {
+		h.app.Logger.Error("sync lemon squeezy subscriptions", "error", err)
+		return errSyncSubs
+	}
+	local, err := h.repo().LinkedSubscriptions(c.Context())
+	if err != nil {
+		return err
+	}
+
+	// ponytail: one UPDATE per linked subscription; batch it if the store
+	// ever holds thousands.
+	updated := 0
+	for _, r := range remote {
+		s, ok := local[r.ID]
+		if !ok {
+			// Sold outside billing, or never reported by a webhook.
+			continue
+		}
+		if !sameVariant(s.Plan, r.Attributes) {
+			h.app.Logger.Warn("lemon squeezy subscription on another variant", "subscription", r.ID)
+			continue
+		}
+		changed, err := h.repo().ApplySubscription(c.Context(), s.ID, r.ID, subscriptionStatus(r.Attributes), r.Attributes.PeriodEnd(), r.Attributes.Cancelled, r.Attributes.UpdatedAt)
+		if errors.Is(err, apperr.New(apperr.KindConflict, "")) {
+			// The user holds another live subscription; a person sorts it out.
+			h.app.Logger.Warn("lemon squeezy subscription not applied", "subscription", r.ID, "error", err)
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		if changed {
+			updated++
+		}
+	}
+	return dtos.OK(c, fiber.Map{"updated": updated})
+}
+
+// subscriptionStatus is what a Lemon Squeezy subscription makes its own.
+func subscriptionStatus(a lemonsqueezy.Attributes) string {
+	if a.Live() {
+		return models.SubscriptionActive
+	}
+	return models.SubscriptionExpired
 }
 
 // ListPurchases answers every customer's purchases, for a super user.
@@ -502,11 +559,7 @@ func (h *billingHandler) LemonSqueezyWebhook(c fiber.Ctx) error {
 		if !sameVariant(s.Plan, a) {
 			return apperr.New(apperr.KindBadRequest, "variant does not match the order")
 		}
-		status := models.SubscriptionExpired
-		if a.Live() {
-			status = models.SubscriptionActive
-		}
-		if changed, err = h.repo().ApplySubscription(c.Context(), id, e.Data.ID, status, a.PeriodEnd(), a.Cancelled); err != nil {
+		if changed, err = h.repo().ApplySubscription(c.Context(), id, e.Data.ID, subscriptionStatus(a), a.PeriodEnd(), a.Cancelled, a.UpdatedAt); err != nil {
 			return err
 		}
 

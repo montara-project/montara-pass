@@ -120,6 +120,13 @@ func TestClient(t *testing.T) {
 			_ = json.NewDecoder(r.Body).Decode(&customer)
 			w.WriteHeader(http.StatusCreated)
 			_, _ = w.Write([]byte(`{"data":{"id":"502"}}`))
+		case "GET /subscriptions":
+			if r.URL.Query().Get("filter[store_id]") != "1" {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			_, _ = w.Write([]byte(`{"meta":{"page":{"lastPage":1}},"data":[
+				{"id":"7","attributes":{"status":"cancelled","variant_id":42,"cancelled":true,"renews_at":"2026-11-01T00:00:00Z","ends_at":"2026-11-01T00:00:00Z"}}]}`))
 		case "GET /subscriptions/7":
 			_, _ = w.Write([]byte(`{"data":{"id":"7","attributes":{"urls":{"customer_portal":"https://store.example/billing?signature=s"}}}}`))
 		default:
@@ -175,6 +182,14 @@ func TestClient(t *testing.T) {
 	store := customer["data"].(map[string]any)["relationships"].(map[string]any)["store"].(map[string]any)["data"].(map[string]any)
 	if attrs["name"] != "New" || attrs["email"] != "new@b.co" || store["id"] != "1" {
 		t.Errorf("customer body: %v", customer)
+	}
+
+	subs, err := c.Subscriptions(ctx)
+	if err != nil || len(subs) != 1 {
+		t.Fatalf("subscriptions: %v %+v", err, subs)
+	}
+	if s := subs[0]; s.ID != "7" || s.Attributes.VariantID() != "42" || !s.Attributes.Cancelled || !s.Attributes.Live() {
+		t.Errorf("subscription: %+v", s)
 	}
 
 	if url, err := c.PortalURL(ctx, "7"); err != nil || url != "https://store.example/billing?signature=s" {

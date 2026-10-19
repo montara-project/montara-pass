@@ -29,8 +29,8 @@ export function Hero() {
           your server can&rsquo;t read.
         </h1>
         <p className="mx-auto mt-7 max-w-xl text-pretty text-lg leading-8 text-mist">
-          Montara Pass encrypts every login in the browser. The server you run stores ciphertext and
-          wrapped keys. Nothing else.
+          Montara Pass is a secure, open-source password manager that encrypts every login in the
+          browser. The server you run stores ciphertext and wrapped keys. Nothing else.
         </p>
 
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
