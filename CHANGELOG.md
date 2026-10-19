@@ -3,6 +3,19 @@
 All notable changes to this project are documented in this file. Versions follow the git tags (`v*`); Docker images are published to ghcr.io with the same version.
 
 
+## [2.3.0](https://github.com/montara-project/montara-pass/compare/v2.2.2...v2.3.0) (2026-10-19)
+
+### Features
+
+* add contact item type ([39e3901](https://github.com/montara-project/montara-pass/commit/39e39011b6edacf3ca6dc5c0757e13326a16f33f))
+* add OTP input for two-step verification codes ([4950692](https://github.com/montara-project/montara-pass/commit/49506920ffa31f8ae03df2ff17bd6e4f25e2b800))
+* clear copied secrets from the clipboard after one minute ([135b912](https://github.com/montara-project/montara-pass/commit/135b91291b3856bfabe2faf371a8669ab95c3656))
+
+### Bug Fixes
+
+* search contacts by email in the popup and skip non-string fields ([766302e](https://github.com/montara-project/montara-pass/commit/766302e1a825751f91eaebb444c7952242ef48ae))
+* wipe the clipboard when an offscreen document is already open ([db77a6a](https://github.com/montara-project/montara-pass/commit/db77a6aeaceaf34eb26faf308f01257d267dbb37))
+
 ## [2.2.2](https://github.com/montara-project/montara-pass/compare/v2.2.1...v2.2.2) (2026-10-19)
 
 ### Features
