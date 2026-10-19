@@ -1,6 +1,7 @@
 import { createFormHook, revalidateLogic } from '@tanstack/react-form'
 
 import AuthField from '@/components/block/form/auth-field'
+import OtpField from '@/components/block/form/otp-field'
 import PasswordField from '@/components/block/form/password-field'
 import RichTextField from '@/components/block/form/rich-text-field'
 import SelectField from '@/components/block/form/select-field'
@@ -14,6 +15,7 @@ import { fieldContext, formContext } from './form-context'
 export const { useAppForm } = createFormHook({
   fieldComponents: {
     AuthField,
+    OtpField,
     TextField,
     PasswordField,
     SelectField,

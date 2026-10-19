@@ -290,6 +290,19 @@
   }
 }
 
+/* The caret of a code's empty box: input-otp draws it, its input is invisible. */
+@keyframes caret-blink {
+  0%,
+  70%,
+  100% {
+    opacity: 1;
+  }
+  20%,
+  50% {
+    opacity: 0;
+  }
+}
+
 /* A page arriving on the sheet: it settles into place rather than cutting in.
    Short, because it happens on every move; the page it replaces just goes. */
 @keyframes page-in {

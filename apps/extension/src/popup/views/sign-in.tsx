@@ -120,6 +120,8 @@ interface TotpStepProps {
 /** The second step of signing in, for an account that turned TOTP on. */
 function TotpStep({ totpToken, onSignedIn, onBack }: TotpStepProps) {
   const [error, setError] = useState('')
+  // A backup code is longer than six digits and has letters: it gets a plain field.
+  const [backup, setBackup] = useState(false)
 
   const form = useAppForm({
     defaultValues: { code: '' },
@@ -149,15 +151,33 @@ function TotpStep({ totpToken, onSignedIn, onBack }: TotpStepProps) {
       <BrandMark />
       <h1 className="auth-title">Two-step verification</h1>
       <p className="muted auth-note">
-        Enter the 6-digit code from your authenticator app, or one of your backup codes.
+        {backup
+          ? 'Enter one of your backup codes. Each one works once.'
+          : 'Enter the 6-digit code from your authenticator app.'}
       </p>
 
       <form.AppField
         name="code"
-        children={(field) => (
-          <field.AuthField label="Code" autoComplete="one-time-code" autoFocus invalid={!!error} />
-        )}
+        children={(field) =>
+          backup ? (
+            <field.AuthField label="Backup code" autoComplete="off" autoFocus invalid={!!error} />
+          ) : (
+            <field.OtpField label="Code" autoFocus invalid={!!error} />
+          )
+        }
       />
+
+      <button
+        type="button"
+        className="auth-link otp-switch"
+        onClick={() => {
+          setBackup((value) => !value)
+          setError('')
+          form.reset()
+        }}
+      >
+        {backup ? 'Use a code from the app' : 'Use a backup code'}
+      </button>
 
       {error && (
         <p className="error" role="alert">

@@ -172,14 +172,7 @@ export default function TwoFactor({ enabled, onChange }: TwoFactorProps) {
 
           <codeForm.AppField
             name="code"
-            children={(field) => (
-              <field.TextField
-                label="6-digit code from the app"
-                autoComplete="one-time-code"
-                inputMode="numeric"
-                required
-              />
-            )}
+            children={(field) => <field.OtpField label="6-digit code from the app" />}
           />
 
           <span className="set-actions">
