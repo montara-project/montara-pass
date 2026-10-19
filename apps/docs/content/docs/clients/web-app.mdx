@@ -50,6 +50,15 @@ Every page under the app shell sits behind a gate with three states:
 The unlocked keys live in a zustand store that is not persisted. Reloading the
 page, or closing the tab, locks the vault.
 
+## Clipboard
+
+A username or password copied from an item or the generator is wiped from the
+clipboard a minute later; a newer copy restarts the minute. Only a focused
+page may write to the clipboard, so a tab in the background wipes it when it
+is focused again, and a tab closed before the minute is up leaves it there.
+The clipboard is emptied without being read first, so whatever was copied
+since is wiped too.
+
 ## Sessions
 
 The access and refresh tokens are kept in cookies and sent as a bearer header.
