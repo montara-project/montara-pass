@@ -36,6 +36,9 @@ async function wipeClipboard() {
     document.removeEventListener('copy', blank)
     return
   }
+  // Only one may be open, and one already open has done its wipe on load:
+  // close it, so the new one wipes again.
+  await chrome.offscreen.closeDocument().catch(() => undefined)
   // It resolves once the page has loaded, which is when it has done its work.
   await chrome.offscreen
     .createDocument({
