@@ -135,9 +135,10 @@ export default function FullVault({
         filter === 'all' ? true : filter === 'favorite' ? item.favorite : item.type === filter
       )
       .filter((item) =>
+        // A decrypted secret is not checked, and a shared one is someone else's.
         [item.secret?.name, item.secret?.username, item.secret?.url, item.secret?.contact?.email]
-          .filter(Boolean)
-          .some((value) => value!.toLowerCase().includes(term))
+          .filter((value): value is string => typeof value === 'string')
+          .some((value) => value.toLowerCase().includes(term))
       )
       .sort((a, b) =>
         sort === 'updated'

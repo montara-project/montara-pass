@@ -158,9 +158,10 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
     return (items ?? [])
       .filter((item) => item.secret !== null)
       .filter((item) =>
-        [item.secret?.name, item.secret?.username, item.secret?.url]
-          .filter(Boolean)
-          .some((value) => value!.toLowerCase().includes(term))
+        // A decrypted secret is not checked, and a shared one is someone else's.
+        [item.secret?.name, item.secret?.username, item.secret?.url, item.secret?.contact?.email]
+          .filter((value): value is string => typeof value === 'string')
+          .some((value) => value.toLowerCase().includes(term))
       )
       .sort((a, b) =>
         sort === 'updated'
