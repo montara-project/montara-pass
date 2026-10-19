@@ -14,6 +14,7 @@ import { COMMUNITY } from '@/lib/constants/edition'
 
 import { markItemUsed, setItemPlacement, SignedOutError, trashItem } from '../../lib/api'
 import { fillLogin } from '../../lib/autofill'
+import { copySecret } from '../../lib/clipboard'
 import { fillsSite, hostOf, linkOf } from '../../lib/site'
 import { lastUsedLabel } from '../../lib/usage'
 import { maskUsername } from '../../lib/username'
@@ -191,7 +192,7 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
       setNotice(`This item has no ${label}`)
       return
     }
-    await navigator.clipboard.writeText(value)
+    await copySecret(value)
     setNotice(`${label[0].toUpperCase()}${label.slice(1)} copied`)
   }
 

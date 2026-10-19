@@ -1,11 +1,14 @@
-// The background script locks the vault when the auto-lock alarm fires, tells
+// The background script locks the vault when the auto-lock alarm fires, wipes
+// a copied secret from the clipboard when its alarm fires, tells
 // the inline menu which tab it sits in, holds a login that was just submitted
 // until the save prompt takes it, and says whether anyone is signed in to
 // answer a request for a passkey. It imports nothing, so it stays a single
 // file the manifest can name.
-// Keep the names in sync with src/lib/session.ts and src/lib/storage.ts.
+// Keep the names in sync with src/lib/session.ts, src/lib/storage.ts and
+// src/lib/clipboard.ts.
 
 const AUTO_LOCK_ALARM = 'auto-lock'
+const CLEAR_CLIPBOARD_ALARM = 'clear-clipboard'
 const VAULT_SESSION_KEY = 'vault'
 const TOKENS_KEY = 'tokens'
 const SETTINGS_KEY = 'settings'
@@ -16,6 +19,33 @@ const PENDING_TTL_MS = 5 * 60_000
 /** The key a tab's pending login is stored under, and the name of its alarm. */
 const PENDING_PREFIX = 'pending:'
 const pendingKey = (tabId: number) => `${PENDING_PREFIX}${tabId}`
+
+/**
+ * Empty the clipboard. Firefox runs this script as an event page, which has a
+ * document to copy from; Chrome's service worker has none and borrows an
+ * offscreen one (src/offscreen.ts does the same as below).
+ */
+async function wipeClipboard() {
+  if (!chrome.offscreen) {
+    const blank = (event: ClipboardEvent) => {
+      event.clipboardData?.setData('text/plain', '')
+      event.preventDefault()
+    }
+    document.addEventListener('copy', blank)
+    document.execCommand('copy')
+    document.removeEventListener('copy', blank)
+    return
+  }
+  // It resolves once the page has loaded, which is when it has done its work.
+  await chrome.offscreen
+    .createDocument({
+      url: 'offscreen.html',
+      reasons: [chrome.offscreen.Reason.CLIPBOARD],
+      justification: 'Wipe a copied password from the clipboard',
+    })
+    .catch(() => undefined)
+  await chrome.offscreen.closeDocument().catch(() => undefined)
+}
 
 /** The origin of a URL, or null for what is not one. */
 const originOf = (value: unknown) => {
@@ -53,6 +83,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === AUTO_LOCK_ALARM) {
     void chrome.storage.session.remove(VAULT_SESSION_KEY)
   }
+  if (alarm.name === CLEAR_CLIPBOARD_ALARM) void wipeClipboard()
   // A login nobody answered for: gone even if its prompt is still open.
   if (alarm.name.startsWith(PENDING_PREFIX)) {
     void chrome.storage.session.remove(alarm.name)

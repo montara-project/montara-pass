@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { toastAxiosError } from '@/lib/api/axios-error'
 import { queries } from '@/lib/api/queries'
+import { copySecret } from '@/lib/clipboard'
 import { COMMUNITY } from '@/lib/constants/edition'
 import { ITEM_ROLE_OWNER } from '@/lib/constants/vault'
 import { cn } from '@/lib/utils'
@@ -70,7 +71,7 @@ async function copy(value: string | undefined, label: string) {
   }
 
   try {
-    await navigator.clipboard.writeText(value)
+    await copySecret(value)
     toast(`${label[0].toUpperCase()}${label.slice(1)} copied`)
   } catch {
     toast.error(`Could not copy the ${label}`)

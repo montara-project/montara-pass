@@ -6,6 +6,7 @@ import type { VaultItem } from '@/types/vault'
 import { COMMUNITY } from '@/lib/constants/edition'
 
 import { setItemPlacement, SignedOutError, trashItem } from '../../lib/api'
+import { copySecret } from '../../lib/clipboard'
 import { linkOf } from '../../lib/site'
 import { getSettings } from '../../lib/storage'
 import { lastUsedAgo } from '../../lib/usage'
@@ -171,7 +172,7 @@ export default function FullVault({
       setNotice(`This item has no ${label}`)
       return
     }
-    await navigator.clipboard.writeText(value)
+    await copySecret(value)
     setNotice(`${label[0].toUpperCase()}${label.slice(1)} copied`)
   }
 

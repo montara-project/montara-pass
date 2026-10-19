@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import ToolHead from '@/components/layout/tool-head'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
+import { copySecret } from '@/lib/clipboard'
 import {
   characterKind,
   DEFAULT_PASSWORD_OPTIONS,
@@ -64,7 +65,7 @@ export default function PasswordGenerator() {
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(password)
+      await copySecret(password)
       toast('Password copied')
     } catch {
       toast.error('Could not copy the password')

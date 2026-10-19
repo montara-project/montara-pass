@@ -11,6 +11,7 @@ import {
   type PasswordOptions,
 } from '@/lib/password'
 
+import { copySecret } from '../../lib/clipboard'
 import { CopyIcon, KeyIcon, RefreshIcon } from '../icons'
 
 type Kind = 'uppercase' | 'lowercase' | 'digits' | 'symbols'
@@ -59,7 +60,7 @@ export default function PasswordGenerator({ onNotice }: PasswordGeneratorProps) 
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(password)
+      await copySecret(password)
       onNotice('Password copied')
     } catch {
       onNotice('Could not copy the password')
