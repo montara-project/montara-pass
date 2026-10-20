@@ -2,14 +2,13 @@
 
 import { ArrowRightIcon, CheckIcon } from "@/components/icons";
 import { docsUrl } from "@/components/links";
-import { useTiers } from "@/components/pricing/offer";
 import { formatAmount, type Tier } from "@/components/pricing/plans";
 import { card, pill } from "@/components/shared";
 
-export function Pricing() {
+export function Pricing({ tiers }: { tiers: Tier[] }) {
   // The same rows as the pricing page: live plans, or the authored ones until
   // the hosted service has some.
-  const paid = useTiers().filter((tier) => tier.kind !== "free");
+  const paid = tiers.filter((tier) => tier.kind !== "free");
   const monthly = paid.find((tier) => tier.per === "/ month");
 
   return (

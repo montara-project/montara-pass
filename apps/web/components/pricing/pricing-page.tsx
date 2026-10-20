@@ -12,8 +12,7 @@ import {
 } from "@/components/icons";
 import { docsUrl } from "@/components/links";
 import { PricingLedger } from "@/components/pricing/ledger-panel";
-import { useTiers } from "@/components/pricing/offer";
-import { formatAmount, SELF_HOST_HREF, TERMS } from "@/components/pricing/plans";
+import { formatAmount, SELF_HOST_HREF, TERMS, type Tier } from "@/components/pricing/plans";
 import { card, pill } from "@/components/shared";
 
 /**
@@ -23,11 +22,10 @@ import { card, pill } from "@/components/shared";
  * the proof. Selecting a line marks it and names the action at the foot of the
  * tape, so choosing a tier and acting on it are one motion on one surface.
  *
- * The tiers come from the plans query the route prefetched; this component
- * only holds the selection.
+ * The tiers come from the route, which read the plans on the server; this
+ * component only holds the selection.
  */
-export function PricingPage() {
-  const tiers = useTiers();
+export function PricingPage({ tiers }: { tiers: Tier[] }) {
   // The tier the foot action offers; none chosen yet means the yearly one, the
   // row marked best value. Matched by its billing rather than by code, because
   // the live plans' codes are the store's, not the authored ones.

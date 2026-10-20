@@ -1,10 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-
-import type { Models } from "@/lib/api/models";
-
 import { APP_URL } from "@/components/links";
 import { type Tier, TIERS } from "@/components/pricing/plans";
-import { queries } from "@/lib/api/queries";
 
 /**
  * The tiers the page lists: the two free rows, plus one row per plan the hosted
@@ -20,10 +15,20 @@ import { queries } from "@/lib/api/queries";
  * amounts and names replace the authored ones.
  */
 
+/** A plan as `GET /api/v1/plans` serves it (apps/server internal/models/billing.go); only the fields the site reads. */
+interface Plan {
+  code: string;
+  billing: "recurring" | "one_time";
+  billing_interval: "month" | "year" | null;
+  /** In the currency's minor unit. */
+  amount: number;
+  currency: string;
+}
+
 const FREE_TIERS = TIERS.filter((tier) => tier.kind === "free");
 
 /** A live plan as a tape row. */
-function fromPlan(plan: Models.Plan): Tier {
+function fromPlan(plan: Plan): Tier {
   const oneTime = plan.billing === "one_time";
   const yearly = plan.billing_interval === "year";
   return {
@@ -45,9 +50,19 @@ function fromPlan(plan: Models.Plan): Tier {
   };
 }
 
-/** For client components under a route that prefetched `queries.billing.plans()`. */
-export function useTiers(): Tier[] {
-  const { data: plans } = useQuery(queries.billing.plans());
-  if (!plans?.length) return TIERS;
-  return [...FREE_TIERS, ...plans.map(fromPlan)];
+/**
+ * The tiers, for a server component to hand its page. The plans are public and
+ * read again at most every five minutes; the API does not answer this site's
+ * origin from the browser (CORS is off unless configured), so they are read
+ * here only. An API that does not answer leaves the authored rows.
+ */
+export async function getTiers(): Promise<Tier[]> {
+  try {
+    const res = await fetch(`${APP_URL}/api/v1/plans`, { next: { revalidate: 300 } });
+    if (!res.ok) return TIERS;
+    const plans = ((await res.json()) as { data?: Plan[] }).data;
+    return plans?.length ? [...FREE_TIERS, ...plans.map(fromPlan)] : TIERS;
+  } catch {
+    return TIERS;
+  }
 }
