@@ -57,6 +57,7 @@ var guessPaths = []string{
 	authBasePath + "/totp/verify-backup-code",
 	authBasePath + "/totp/enable",
 	authBasePath + "/totp/disable",
+	authBasePath + "/email-password/request-email-change",
 }
 
 // failedAttempt reports whether a request counts against its IP: a wrong
@@ -109,6 +110,7 @@ func routes(r *fiber.App, app *app.Application) {
 		middlewares.RateLimit("auth", authRateLimit, exemptLoopback, exemptIPs, store),
 		middlewares.RateLimitEmail("auth-email", authEmailRateLimit, store),
 		middlewares.RateLimitKey("totp", totpRateLimit, totpRateWindow, totpVerifyUser(app.Auth), store),
+		requirePassword(app.Auth, m),
 		fiberadapter.New(fiberadapter.Config{Handler: app.Auth.Handler()}),
 	)
 

@@ -191,8 +191,12 @@ export async function confirmTotp(totpToken: string, code: string): Promise<void
   }).catch(() => {})
 }
 
-export async function disableTotp(password: string): Promise<void> {
-  await request(`${AUTH_PATH}/totp/disable`, { method: 'POST', body: JSON.stringify({ password }) })
+/** Turns TOTP off, with the account password and a code from the app or a backup code. */
+export async function disableTotp(password: string, code: string): Promise<void> {
+  await request(`${AUTH_PATH}/totp/disable`, {
+    method: 'POST',
+    body: JSON.stringify({ password, code }),
+  })
 }
 
 /** Ends the session on the server, best-effort, and forgets the tokens. */

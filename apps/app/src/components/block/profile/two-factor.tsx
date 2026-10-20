@@ -1,10 +1,15 @@
 import type { TotpSetup } from '@montara-pass/shared/api/models/user'
 
-import { SignInSchema, TotpCodeSchema } from '@montara-pass/shared/api/dtos/auth/schema'
+import {
+  SignInSchema,
+  TotpCodeSchema,
+  TotpDisableSchema,
+} from '@montara-pass/shared/api/dtos/auth/schema'
 import { totpQrCode, totpSecret } from '@montara-pass/shared/auth/totp'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import z from 'zod'
 
 import { Button } from '@/components/ui/button'
 import { checked, useAppForm } from '@/hooks/form'
@@ -14,19 +19,20 @@ import { PROFILE_QUERY_KEY } from '@/lib/api/queries/auth'
 import { services } from '@/lib/api/services'
 import { confirmTotp } from '@/lib/auth/email-auth'
 
-const PasswordSchema = SignInSchema.pick({ password: true })
+// Turning it on takes the password alone; the code field is not shown.
+const PasswordSchema = SignInSchema.pick({ password: true }).extend({ code: z.string() })
 
 /**
  * Optional TOTP: signing in also asks for a code from an authenticator app
- * such as Google Authenticator. Turning it on or off takes the account
- * password. Turning it on shows the secret and the backup codes once, and
+ * such as Google Authenticator. Turning it on takes the account password,
+ * turning it off a code from the app or a backup code too. Turning it on shows the secret and the backup codes once, and
  * takes effect when a code from the app has been verified.
  */
 export default function TwoFactor() {
   const queryClient = useQueryClient()
   const { data } = useQuery(queries.auth.profile())
   const enabled = data?.totp_enabled
-  // Asking for the password, before turning it on or off.
+  // Asking for the password (and to turn it off, a code), before turning it on or off.
   const [asking, setAsking] = useState(false)
   // The secret being set up, until a code from it is verified.
   const [setup, setSetup] = useState<TotpSetup | null>(null)
@@ -34,13 +40,13 @@ export default function TwoFactor() {
   const refresh = () => queryClient.invalidateQueries({ queryKey: [PROFILE_QUERY_KEY] })
 
   const passwordForm = useAppForm({
-    defaultValues: { password: '' },
+    defaultValues: { password: '', code: '' },
     validationLogic: checked,
-    validators: { onDynamic: PasswordSchema },
+    validators: { onDynamic: enabled ? TotpDisableSchema : PasswordSchema },
     onSubmit: async ({ value }) => {
       try {
         if (enabled) {
-          await services.auth.totpDisable(value.password)
+          await services.auth.totpDisable(value.password, value.code.replace(/\s/g, ''))
           toast.success('Two-step verification is off')
           await refresh()
         } else {
@@ -155,6 +161,19 @@ export default function TwoFactor() {
                 />
               )}
             />
+            {enabled && (
+              <passwordForm.AppField
+                name="code"
+                children={(field) => (
+                  <field.TextField
+                    label="Code from your authenticator app, or a backup code"
+                    autoComplete="one-time-code"
+                    spellCheck={false}
+                    asterisk
+                  />
+                )}
+              />
+            )}
             <div className="flex gap-2">
               <passwordForm.AppForm>
                 <passwordForm.SubmitButton

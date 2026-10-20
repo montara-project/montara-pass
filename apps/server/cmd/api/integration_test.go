@@ -581,10 +581,21 @@ func totpFlow(
 		t.Fatalf("%d wrong codes were not limited", totpRateLimit)
 	}
 
-	if status, out := call(http.MethodPost, "/api/v1/auth/totp/disable", token, map[string]any{}); status != http.StatusForbidden {
+	// Turning it off takes the password and a code: from the app, or an
+	// unused backup code.
+	disable := func(body map[string]any) (int, map[string]any) {
+		t.Helper()
+		return call(http.MethodPost, "/api/v1/auth/totp/disable", token, body)
+	}
+	if status, out := disable(map[string]any{"code": codeFor(secret)}); status != http.StatusForbidden {
 		t.Fatalf("disable without the password: %d %v, want 403", status, out)
 	}
-	if status, out := call(http.MethodPost, "/api/v1/auth/totp/disable", token, map[string]any{"password": password}); status != http.StatusOK {
+	for _, code := range []string{"", "000000", codes[0].(string)} {
+		if status, out := disable(map[string]any{"password": password, "code": code}); status != http.StatusForbidden || out["message"] != "incorrect code" {
+			t.Fatalf("disable with code %q: %d %v, want 403", code, status, out)
+		}
+	}
+	if status, out := disable(map[string]any{"password": password, "code": codeFor(secret)}); status != http.StatusOK {
 		t.Fatalf("disable: %d %v", status, out)
 	}
 	if enabled := totpEnabled(token); enabled != false {
@@ -592,6 +603,17 @@ func totpFlow(
 	}
 	if out := signIn(); out["access_token"] == nil {
 		t.Fatalf("sign in after disabling: %v", out)
+	}
+
+	// Moving the account to another address takes the password too: its
+	// confirmation goes to the new one, where a password reset could follow.
+	move := map[string]any{"new_email": "moved-" + email}
+	if status, out := call(http.MethodPost, "/api/v1/auth/email-password/request-email-change", token, move); status != http.StatusForbidden {
+		t.Fatalf("email change without the password: %d %v, want 403", status, out)
+	}
+	move["password"] = password
+	if status, out := call(http.MethodPost, "/api/v1/auth/email-password/request-email-change", token, move); status != http.StatusOK {
+		t.Fatalf("email change: %d %v", status, out)
 	}
 }
 

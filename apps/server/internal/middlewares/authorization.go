@@ -38,12 +38,7 @@ func bearerToken(header string) string {
 // other users share items with whoever holds an email address, so an
 // unverified account could collect what was meant for the address's owner.
 func (m *Middlewares) Authorization(c fiber.Ctx) error {
-	userID := m.bearerUserID(c)
-	if userID == "" {
-		userID = m.sessionUserID(c)
-	}
-
-	uid, err := uuid.Parse(userID)
+	uid, err := uuid.Parse(m.UserID(c))
 	if err != nil {
 		return apperr.ErrUnauthorized
 	}
@@ -65,10 +60,20 @@ func (m *Middlewares) Authorization(c fiber.Ctx) error {
 	return c.Next()
 }
 
+// UserID returns the user a request is signed in as, by a valid access token
+// or else a live session cookie, or "" for none. It does not ask for a
+// verified email; Authorization does.
+func (m *Middlewares) UserID(c fiber.Ctx) string {
+	if id := m.bearerUserID(c); id != "" {
+		return id
+	}
+	return m.sessionUserID(c)
+}
+
 // bearerUserID returns the user a valid access token belongs to, or "". The
-// jwt plugin verifies the signature and expiry and that the token's session
-// still exists, so signing out revokes it. It does not check that the session
-// is still live, so that is checked here.
+// jwt plugin verifies the signature, the expiry and the token's blacklist,
+// not its session, so signing out or a password reset revokes it only
+// through the session check here.
 func (m *Middlewares) bearerUserID(c fiber.Ctx) string {
 	token := bearerToken(c.Get(fiber.HeaderAuthorization))
 	if token == "" {

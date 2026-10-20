@@ -14,6 +14,9 @@ export const TotpCodeSchema = z.object({
   code: requiredString('code'),
 })
 
+/** Turning TOTP off: the account password, and a code from the app or a backup code. */
+export const TotpDisableSchema = SignInSchema.pick({ password: true }).extend(TotpCodeSchema.shape)
+
 // The API accepts passwords of 8 to 128 characters.
 export const SignUpSchema = z.object({
   name: requiredString('name'),
