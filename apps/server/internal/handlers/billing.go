@@ -290,11 +290,11 @@ func (h *billingHandler) ListSubscriptions(c fiber.Ctx) error {
 		return err
 	}
 
-	subscriptions, err := h.repo().ListSubscriptions(c.Context(), p, q.Status)
+	subscriptions, err := h.repo().ListSubscriptions(c.Context(), p, q.Status, q.Mode)
 	if err != nil {
 		return err
 	}
-	total, err := h.repo().CountSubscriptions(c.Context(), p, q.Status)
+	total, err := h.repo().CountSubscriptions(c.Context(), p, q.Status, q.Mode)
 	if err != nil {
 		return err
 	}
@@ -368,11 +368,11 @@ func (h *billingHandler) ListPurchases(c fiber.Ctx) error {
 		return err
 	}
 
-	purchases, err := h.repo().ListAllPurchases(c.Context(), p, q.Status)
+	purchases, err := h.repo().ListAllPurchases(c.Context(), p, q.Status, q.Mode)
 	if err != nil {
 		return err
 	}
-	total, err := h.repo().CountAllPurchases(c.Context(), p, q.Status)
+	total, err := h.repo().CountAllPurchases(c.Context(), p, q.Status, q.Mode)
 	if err != nil {
 		return err
 	}
