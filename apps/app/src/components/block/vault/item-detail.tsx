@@ -6,6 +6,7 @@ import {
   ITEM_ROLE_OWNER,
   ITEM_TYPE_LABEL,
 } from '@montara-pass/shared/constants/vault'
+import { linkOf } from '@montara-pass/shared/url'
 import {
   IconArrowLeft,
   IconCopy,
@@ -54,19 +55,6 @@ const MASK = '••••••••••••'
 
 /** When something happened to an item, to the minute: the seconds say nothing. */
 const WHEN = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
-
-/** A saved address as a link, or null for anything that is not http(s). */
-function linkOf(url: string | undefined): string | null {
-  if (!url) return null
-
-  try {
-    const href = url.includes('://') ? url : `https://${url}`
-    const { protocol } = new URL(href)
-    return protocol === 'http:' || protocol === 'https:' ? href : null
-  } catch {
-    return null
-  }
-}
 
 async function copy(value: string | undefined, label: string) {
   if (!value) {

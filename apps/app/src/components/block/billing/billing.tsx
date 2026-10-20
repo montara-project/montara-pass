@@ -3,6 +3,7 @@ import type { Models } from '@montara-pass/shared/api/models'
 import { formatDate } from '@montara-pass/shared/date'
 import { formatPrice } from '@montara-pass/shared/money'
 import {
+  BILLING_STATUS,
   isSandbox,
   planName,
   planOffer,
@@ -22,16 +23,6 @@ import { queries } from '@/lib/api/queries'
 import { cn } from '@/lib/utils'
 
 const label = 'text-muted-foreground pl-1 font-mono text-[11px] tracking-[0.12em] uppercase'
-
-const STATUS: Record<Models.Subscription['status'] | Models.Purchase['status'], string> = {
-  pending: 'Waiting for payment',
-  active: 'Active',
-  paid: 'Paid',
-  canceled: 'Canceled',
-  expired: 'Expired',
-  failed: 'Payment failed',
-  refunded: 'Refunded',
-}
 
 /**
  * Billing, Cloud Edition only: the subscription and purchases of the
@@ -103,7 +94,7 @@ export default function BillingBlock() {
               <div className="flex min-w-0 flex-col gap-0.5">
                 <span className="font-medium">{planName(subscription.plan)}</span>
                 <span className="text-muted-foreground text-[13px]">
-                  {STATUS[subscription.status]}
+                  {BILLING_STATUS[subscription.status]}
                   {subscription.status === 'active' &&
                     (subscription.canceled_at
                       ? `, ends ${formatDate(subscription.current_period_end)}`
@@ -242,7 +233,7 @@ export default function BillingBlock() {
               >
                 <span className="font-medium">{planName(purchase.plan)}</span>
                 <span className="text-muted-foreground text-[13px] tabular-nums">
-                  {formatPrice(purchase.amount, 'USD')} · {STATUS[purchase.status]}
+                  {formatPrice(purchase.amount, 'USD')} · {BILLING_STATUS[purchase.status]}
                   {purchase.paid_at && ` · ${formatDate(purchase.paid_at)}`}
                 </span>
               </li>

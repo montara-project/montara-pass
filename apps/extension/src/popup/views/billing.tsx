@@ -2,6 +2,7 @@ import type { Models } from '@montara-pass/shared/api/models'
 
 import { formatPrice } from '@montara-pass/shared/money'
 import {
+  BILLING_STATUS,
   isSandbox,
   planName,
   planOffer,
@@ -24,16 +25,6 @@ import { CreditCardIcon } from '../icons'
 interface BillingProps {
   /** The session ended underneath the page. */
   onSignedOut: () => void
-}
-
-const STATUS: Record<Models.Subscription['status'] | Models.Purchase['status'], string> = {
-  pending: 'Waiting for payment',
-  active: 'Active',
-  paid: 'Paid',
-  canceled: 'Canceled',
-  expired: 'Expired',
-  failed: 'Payment failed',
-  refunded: 'Refunded',
 }
 
 const DATE = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
@@ -150,7 +141,7 @@ export default function Billing({ onSignedOut }: BillingProps) {
                   <span className="item-text">
                     <span className="item-name">{planName(subscription.plan)}</span>
                     <span className="muted">
-                      {STATUS[subscription.status]}
+                      {BILLING_STATUS[subscription.status]}
                       {subscription.status === 'active' &&
                         `, ${subscription.canceled_at ? 'ends' : 'renews'} ${DATE.format(new Date(subscription.current_period_end))}`}
                     </span>
@@ -271,7 +262,7 @@ export default function Billing({ onSignedOut }: BillingProps) {
                   <li key={purchase.id}>
                     <span className="item-name">{planName(purchase.plan)}</span>
                     <span className="muted">
-                      {formatPrice(purchase.amount, 'USD')} · {STATUS[purchase.status]}
+                      {formatPrice(purchase.amount, 'USD')} · {BILLING_STATUS[purchase.status]}
                       {purchase.paid_at && ` · ${DATE.format(new Date(purchase.paid_at))}`}
                     </span>
                   </li>

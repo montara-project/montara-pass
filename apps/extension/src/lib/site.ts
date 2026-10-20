@@ -12,12 +12,6 @@ export function hostOf(url: string | undefined): string | null {
   }
 }
 
-/** A saved address as a link, or null for anything that is not http(s). */
-export function linkOf(url: string | undefined): string | null {
-  if (!url || !hostOf(url)) return null
-  return url.includes('://') ? url : `https://${url}`
-}
-
 /** The origin of an http(s) URL, or null for anything else. */
 export function originOf(value: string | undefined): string | null {
   try {

@@ -13,6 +13,20 @@ export function planName(plan: Models.Plan) {
   return plan.name.replace(/^Montara Pass\s+/i, '').replace(/\s+-\s+sandbox$/i, '')
 }
 
+/** A subscription's or a purchase's status, as the billing pages name it. */
+export const BILLING_STATUS: Record<
+  Models.Subscription['status'] | Models.Purchase['status'],
+  string
+> = {
+  pending: 'Waiting for payment',
+  active: 'Active',
+  paid: 'Paid',
+  canceled: 'Canceled',
+  expired: 'Expired',
+  failed: 'Payment failed',
+  refunded: 'Refunded',
+}
+
 /** A plan synced from Lemon Squeezy's test mode, which takes no real money. */
 export const isSandbox = (plan: Models.Plan) => /\s+-\s+sandbox$/i.test(plan.name)
 
