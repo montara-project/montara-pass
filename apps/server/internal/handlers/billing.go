@@ -484,9 +484,10 @@ func startCheckout[T any](
 	}
 	url, err := h.app.Payments.Checkout(c.Context(), checkout)
 	// The code is as of the last catalog sync: one deleted, rescoped or used
-	// up since may get the checkout refused. It is opened once more without
-	// it, at the full price.
-	if err != nil && discount != "" {
+	// up since may get the checkout refused. When Lemon Squeezy says so, it
+	// is opened once more without it, at the full price. Any other failure is
+	// not retried, so a price is never changed for a network error.
+	if discount != "" && lemonsqueezy.RefusedDiscount(err) {
 		h.app.Logger.Warn("lemon squeezy checkout with a discount failed, trying without it", "order_id", orderID, "code", discount, "error", err)
 		if _, err = h.repo().SetAmount(c.Context(), table, id, plan.Amount); err == nil {
 			checkout.DiscountCode = ""

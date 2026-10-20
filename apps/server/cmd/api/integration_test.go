@@ -587,6 +587,9 @@ func totpFlow(
 		t.Helper()
 		return call(http.MethodPost, "/api/v1/auth/totp/disable", token, body)
 	}
+	if status, out := call(http.MethodPost, "/api/v1/auth/totp/disable", "", map[string]any{"password": password, "code": codeFor(secret)}); status != http.StatusUnauthorized {
+		t.Fatalf("disable signed out: %d %v, want 401", status, out)
+	}
 	if status, out := disable(map[string]any{"code": codeFor(secret)}); status != http.StatusForbidden {
 		t.Fatalf("disable without the password: %d %v, want 403", status, out)
 	}
@@ -994,7 +997,10 @@ func (l *lemonStore) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewDecoder(r.Body).Decode(&body)
 		if l.refuseDiscounts && body.Data.Attributes.CheckoutData.DiscountCode != "" {
 			w.WriteHeader(http.StatusUnprocessableEntity)
-			_ = json.NewEncoder(w).Encode(map[string]any{"errors": []map[string]string{{"detail": "The discount code is not valid."}}})
+			_ = json.NewEncoder(w).Encode(map[string]any{"errors": []map[string]any{{
+				"detail": "The code is not valid.",
+				"source": map[string]string{"pointer": "/data/attributes/checkout_data/discount_code"},
+			}}})
 			return
 		}
 		l.checkoutDiscount = body.Data.Attributes.CheckoutData.DiscountCode

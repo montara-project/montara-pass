@@ -12,11 +12,14 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -69,7 +72,44 @@ type document struct {
 	} `json:"meta"`
 	Errors []struct {
 		Detail string `json:"detail"`
+		Source struct {
+			Pointer string `json:"pointer"`
+		} `json:"source"`
 	} `json:"errors"`
+}
+
+// RequestError is an answer Lemon Squeezy gave with an error status: it got
+// the request and refused it, unlike a request that never reached it.
+type RequestError struct {
+	Method, Path string
+	Status       int
+	// What the JSON:API errors say, and the fields they point at.
+	Details, Pointers []string
+}
+
+func (e *RequestError) Error() string {
+	detail := ""
+	if len(e.Details) > 0 {
+		detail = e.Details[0]
+	}
+	return fmt.Sprintf("lemon squeezy: %s %s: status %d: %s", e.Method, e.Path, e.Status, detail)
+}
+
+// RefusedDiscount reports whether err is Lemon Squeezy refusing a request
+// over its discount code: a client error whose details or fields name it.
+// A request that did not get through, or failed on Lemon Squeezy's side, is
+// not one.
+func RefusedDiscount(err error) bool {
+	var re *RequestError
+	if !errors.As(err, &re) || re.Status < 400 || re.Status >= 500 {
+		return false
+	}
+	for _, s := range append(slices.Clone(re.Details), re.Pointers...) {
+		if strings.Contains(strings.ToLower(s), "discount") {
+			return true
+		}
+	}
+	return false
 }
 
 // send makes a JSON:API request and returns its answer.
@@ -102,11 +142,12 @@ func (c *Client) send(ctx context.Context, method, path string, body any) (docum
 		return doc, fmt.Errorf("lemon squeezy: %s %s: status %d: %w", method, path, res.StatusCode, err)
 	}
 	if res.StatusCode >= 300 {
-		detail := ""
-		if len(doc.Errors) > 0 {
-			detail = doc.Errors[0].Detail
+		re := &RequestError{Method: method, Path: path, Status: res.StatusCode}
+		for _, e := range doc.Errors {
+			re.Details = append(re.Details, e.Detail)
+			re.Pointers = append(re.Pointers, e.Source.Pointer)
 		}
-		return doc, fmt.Errorf("lemon squeezy: %s %s: status %d: %s", method, path, res.StatusCode, detail)
+		return doc, re
 	}
 	return doc, nil
 }

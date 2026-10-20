@@ -254,7 +254,7 @@ var passwordPaths = []string{
 //
 // It runs in front of Authula, on the body Fiber keeps, because an Authula
 // hook that read the body would leave its handler none. A caller nobody
-// identified is passed on, for Authula to refuse.
+// identified is refused here with 401, whatever Authula's route mapping says.
 //
 // ponytail: a wrong code here is counted by the IP block, not per account
 // as at sign-in; guessing it already takes the password and a live session.
@@ -267,7 +267,7 @@ func requirePassword(auth *authula.Auth, m *middlewares.Middlewares) fiber.Handl
 		}
 		userID := m.UserID(c)
 		if userID == "" {
-			return c.Next()
+			return apperr.ErrUnauthorized
 		}
 
 		var body struct {

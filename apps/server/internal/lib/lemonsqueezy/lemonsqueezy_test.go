@@ -293,3 +293,34 @@ func TestPaid(t *testing.T) {
 		t.Errorf("an event without a total: %v", *paid)
 	}
 }
+
+func TestRefusedDiscount(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Query().Get("case") {
+		case "code":
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			_, _ = w.Write([]byte(`{"errors":[{"detail":"The code is not valid.","source":{"pointer":"/data/attributes/checkout_data/discount_code"}}]}`))
+		case "email":
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			_, _ = w.Write([]byte(`{"errors":[{"detail":"The email must be valid.","source":{"pointer":"/data/attributes/checkout_data/email"}}]}`))
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"errors":[{"detail":"Server error with the discount."}]}`))
+		}
+	}))
+	defer srv.Close()
+
+	c := New("key", "1", "whsec")
+	c.BaseURL = srv.URL
+	for name, want := range map[string]bool{"code": true, "email": false, "server": false} {
+		_, err := c.send(context.Background(), http.MethodPost, "/checkouts?case="+name, nil)
+		if err == nil || RefusedDiscount(err) != want {
+			t.Errorf("%s: %v, refused discount %v", name, err, !want)
+		}
+	}
+
+	srv.Close()
+	if _, err := c.send(context.Background(), http.MethodPost, "/checkouts", nil); err == nil || RefusedDiscount(err) {
+		t.Errorf("a request that never arrived: %v", err)
+	}
+}
