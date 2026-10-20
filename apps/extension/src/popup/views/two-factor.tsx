@@ -1,8 +1,13 @@
 import type { Models } from '@montara-pass/shared/api/models'
 
-import { SignInSchema, TotpCodeSchema } from '@montara-pass/shared/api/dtos/auth/schema'
+import {
+  SignInSchema,
+  TotpCodeSchema,
+  TotpDisableSchema,
+} from '@montara-pass/shared/api/dtos/auth/schema'
 import { totpQrCode, totpSecret } from '@montara-pass/shared/auth/totp'
 import { useState } from 'react'
+import z from 'zod'
 
 import { confirmTotp, disableTotp, enableTotp } from '../../lib/api'
 import { checked, submit, useAppForm } from '../form'
@@ -13,32 +18,34 @@ interface TwoFactorProps {
   onChange: (enabled: boolean) => void
 }
 
-const PasswordSchema = SignInSchema.pick({ password: true })
+// Turning it on takes the password alone; the code field is not shown.
+const PasswordSchema = SignInSchema.pick({ password: true }).extend({ code: z.string() })
 
 const messageOf = (err: unknown) => (err instanceof Error ? err.message : 'Request failed')
 
 /**
  * The rows of the Security card that turn optional TOTP on and off, as the
- * web app's account page does. Both take the account password. Turning it on
+ * web app's account page does. Both take the account password, and turning
+ * it off a code from the app or a backup code too. Turning it on
  * shows the secret and the backup codes once, and takes effect when a code
  * from the app has been verified.
  */
 export default function TwoFactor({ enabled, onChange }: TwoFactorProps) {
-  // Asking for the password, before turning it on or off.
+  // Asking for the password (and to turn it off, a code), before turning it on or off.
   const [asking, setAsking] = useState(false)
   // The secret being set up, until a code from it is verified.
   const [setup, setSetup] = useState<Models.TotpSetup | null>(null)
   const [error, setError] = useState('')
 
   const passwordForm = useAppForm({
-    defaultValues: { password: '' },
+    defaultValues: { password: '', code: '' },
     validationLogic: checked,
-    validators: { onDynamic: PasswordSchema },
+    validators: { onDynamic: enabled ? TotpDisableSchema : PasswordSchema },
     onSubmit: async ({ value }) => {
       setError('')
       try {
         if (enabled) {
-          await disableTotp(value.password)
+          await disableTotp(value.password, value.code.replace(/\s/g, ''))
           onChange(false)
         } else {
           setSetup(await enableTotp(value.password))
@@ -125,6 +132,19 @@ export default function TwoFactor({ enabled, onChange }: TwoFactorProps) {
               />
             )}
           />
+          {enabled && (
+            <passwordForm.AppField
+              name="code"
+              children={(field) => (
+                <field.TextField
+                  label="Code from your authenticator app, or a backup code"
+                  autoComplete="one-time-code"
+                  spellCheck={false}
+                  required
+                />
+              )}
+            />
+          )}
           <span className="set-actions">
             <button type="button" className="secondary" onClick={cancel}>
               Cancel

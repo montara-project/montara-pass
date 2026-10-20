@@ -34,6 +34,13 @@ URL**, such as `https://pass.example.com/api`. Only the origin is kept: the
 extension adds `/api/v1/…` itself, and links to the web app on the same
 origin.
 
+The server must use https: the account password, the session tokens and
+TOTP codes cross the network, so a released build refuses an `http://`
+address, and sends nothing to one saved before this rule. Changing the server
+while signed in signs out of the old one first: its session is ended there,
+and its tokens and the unlocked vault keys are forgotten before the new
+address is saved, so they never reach the new server.
+
 `pnpm --filter @montara-pass/extension watch` builds in development mode,
 where the API and the web app run on separate ports. That build points at
 `http://localhost:8080` and `http://localhost:5173`, and its settings show

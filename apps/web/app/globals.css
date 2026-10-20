@@ -250,6 +250,14 @@ summary::-webkit-details-marker {
     white-space: nowrap;
   }
 
+  /* What a plan on offer is marked down from. */
+  .tape-was {
+    margin-right: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--color-mist);
+  }
+
   .tape-amount small {
     font-size: 0.6875rem;
     font-weight: 400;

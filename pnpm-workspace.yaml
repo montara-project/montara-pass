@@ -12,3 +12,6 @@ minimumReleaseAgeExclude:
 overrides:
   # GHSA-px8p-9vwx-vf98: satori (via vinext's @vercel/og) asks for 0.7.3.
   'fflate@<0.7.5': 0.7.5
+  # GHSA-238p-pmpm-9mq7: micromark-extension-math (via @milkdown/crepe) asks
+  # for 0.16; crepe itself already runs on 0.18.
+  'katex@<0.18.2': 0.18.10

@@ -2,7 +2,7 @@ import { ItemFormSchema } from '@montara-pass/shared/api/dtos/vault/schema'
 import { optionalString } from '@montara-pass/shared/validation'
 import z from 'zod'
 
-import { originOf } from './site'
+import { originOf, serverAllowed } from './site'
 
 // The schemas of the extension's own forms. Sign-in, unlock, sharing and the
 // item form use the web app's, so both check the same things in the same
@@ -11,7 +11,11 @@ import { originOf } from './site'
 /** `pnpm watch`: the API and the web app run apart, each with its own URL. */
 const DEV = import.meta.env.MODE === 'development'
 
-const NOT_A_URL = 'Enter an http(s) URL, like https://vault.example.com'
+const NOT_A_URL = DEV
+  ? 'Enter an http(s) URL, like https://vault.example.com'
+  : 'Enter an https URL, like https://vault.example.com'
+const NOT_HTTPS =
+  'The server must use https: over http the account password and the session would cross the network unencrypted.'
 
 /**
  * Where the extension finds its server. A released build asks for one URL,
@@ -24,8 +28,12 @@ export const ServerFormSchema = z
     appUrl: z.string(),
   })
   .superRefine((value, ctx) => {
-    if ((DEV || value.selfHosted) && !originOf(value.apiUrl)) {
-      ctx.addIssue({ code: 'custom', path: ['apiUrl'], message: NOT_A_URL })
+    if (DEV || value.selfHosted) {
+      const origin = originOf(value.apiUrl)
+      if (!origin) ctx.addIssue({ code: 'custom', path: ['apiUrl'], message: NOT_A_URL })
+      else if (!serverAllowed(origin)) {
+        ctx.addIssue({ code: 'custom', path: ['apiUrl'], message: NOT_HTTPS })
+      }
     }
     if (DEV && !originOf(value.appUrl)) {
       ctx.addIssue({ code: 'custom', path: ['appUrl'], message: NOT_A_URL })

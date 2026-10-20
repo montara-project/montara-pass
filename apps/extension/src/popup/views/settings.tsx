@@ -5,9 +5,9 @@ import { formatDate } from '@montara-pass/shared/date'
 import { useSelector } from '@tanstack/react-form'
 import { useEffect, useRef, useState } from 'react'
 
-import { getBilling, getProfile } from '../../lib/api'
+import { getBilling, getProfile, signOut } from '../../lib/api'
 import { ServerFormSchema } from '../../lib/schemas'
-import { AUTO_LOCK_MINUTES } from '../../lib/session'
+import { AUTO_LOCK_MINUTES, lockVault } from '../../lib/session'
 import { originOf } from '../../lib/site'
 import { DEFAULT_SETTINGS, getSettings, saveSettings } from '../../lib/storage'
 import { checked, submit, useAppForm } from '../form'
@@ -88,6 +88,13 @@ export default function Settings({ onClose, onLock, onSignOut }: SettingsProps) 
         return
       }
 
+      // Another server: the session belongs to the one the extension leaves.
+      // It is ended there and its tokens and vault keys forgotten before the
+      // new address is saved, so they are never sent to the new server.
+      if (apiOrigin !== saved.apiUrl) {
+        await lockVault()
+        await signOut()
+      }
       await saveSettings({ apiUrl: apiOrigin, appUrl: appOrigin })
       onClose()
     },

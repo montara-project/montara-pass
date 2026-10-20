@@ -2,14 +2,13 @@
 
 import { ArrowRightIcon, CheckIcon } from "@/components/icons";
 import { docsUrl } from "@/components/links";
-import { useTiers } from "@/components/pricing/offer";
 import { formatAmount, type Tier } from "@/components/pricing/plans";
 import { card, pill } from "@/components/shared";
 
-export function Pricing() {
+export function Pricing({ tiers }: { tiers: Tier[] }) {
   // The same rows as the pricing page: live plans, or the authored ones until
   // the hosted service has some.
-  const paid = useTiers().filter((tier) => tier.kind !== "free");
+  const paid = tiers.filter((tier) => tier.kind !== "free");
   const monthly = paid.find((tier) => tier.per === "/ month");
 
   return (
@@ -99,12 +98,14 @@ function PlanRow({ tier, monthly }: { tier: Tier; monthly?: Tier }) {
   const yearly = tier.per === "/ year";
   const full = yearly && monthly ? monthly.amount * 12 : 0;
   const freeMonths = full > tier.amount ? Math.round((full - tier.amount) / monthly!.amount) : 0;
-  const note =
-    tier.kind === "one_time"
-      ? "one payment"
-      : freeMonths > 0
-        ? `free ${freeMonths} months`
-        : `billed ${yearly ? "yearly" : "monthly"}`;
+  // A live offer's own terms come first, as on the web app's billing cards.
+  let note: string;
+  if (tier.offer?.terms) note = tier.offer.terms;
+  else if (tier.kind === "one_time") note = "one payment";
+  else if (freeMonths > 0) note = `free ${freeMonths} months`;
+  else if (yearly) note = "billed yearly";
+  else note = "billed monthly";
+  const was = tier.offer?.was ?? (freeMonths > 0 ? full : 0);
 
   return (
     <li className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 py-4">
@@ -113,7 +114,7 @@ function PlanRow({ tier, monthly }: { tier: Tier; monthly?: Tier }) {
           {tier.kind === "one_time" ? "Lifetime" : yearly ? "Yearly" : "Monthly"}
         </span>
         <span
-          className={`whitespace-nowrap font-mono text-xs ${freeMonths > 0 ? "text-emerald-400 light:text-emerald-600" : "text-mist"}`}
+          className={`whitespace-nowrap font-mono text-xs ${tier.offer?.terms || freeMonths > 0 ? "text-emerald-400 light:text-emerald-600" : "text-mist"}`}
         >
           {note}
         </span>
@@ -121,11 +122,11 @@ function PlanRow({ tier, monthly }: { tier: Tier; monthly?: Tier }) {
       <div className="ml-auto flex items-center gap-3">
         <div className="flex flex-col items-end">
           <span className="whitespace-nowrap text-lg font-medium">
-            {formatAmount(tier.amount, "USD")}
+            {formatAmount(tier.offer?.amount ?? tier.amount, "USD")}
           </span>
-          {freeMonths > 0 ? (
+          {was > 0 ? (
             <span className="whitespace-nowrap font-mono text-xs text-mist">
-              was {formatAmount(full, "USD")}
+              was {formatAmount(was, "USD")}
             </span>
           ) : null}
         </div>

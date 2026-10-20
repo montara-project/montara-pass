@@ -1960,9 +1960,17 @@ input.range:active::-moz-range-thumb {
 
 .plan-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+.plan-chips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
 }
 
 .plan-chip {
@@ -1975,7 +1983,7 @@ input.range:active::-moz-range-thumb {
 }
 
 .plan-price,
-.plan-terms {
+.plan-notes {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-variant-numeric: tabular-nums;
 }
@@ -1991,13 +1999,35 @@ input.range:active::-moz-range-thumb {
 }
 
 .plan-price small,
+.plan-was,
 .plan-terms {
   color: var(--muted);
   font-size: 12px;
 }
 
-.plan-terms {
+/* What a marked-down plan cost before. */
+.plan-was {
+  font-weight: 400;
+  text-decoration-color: color-mix(in srgb, var(--muted) 70%, transparent);
+}
+
+/* Read aloud, not shown: what a struck-through price is. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* A discount's terms over the plan's, read together. */
+.plan-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   margin-bottom: 16px;
+  font-size: 12px;
 }
 
 /* The action sits at the foot of every card, however long its description. */

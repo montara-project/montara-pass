@@ -75,8 +75,6 @@ const ContactFormSchema = z.object(
   ) as Record<ContactField, ReturnType<typeof optionalString>>
 )
 
-export type ItemFormDto = z.infer<typeof ItemFormSchema>
-
 /**
  * The item form, with the switch that keeps a secure note blurred until
  * shown and a contact's fields.

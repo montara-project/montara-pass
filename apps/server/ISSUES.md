@@ -1,5 +1,88 @@
 # ISSUES — audit `apps/server`
 
+## Audit 3 — 2026-10-20, setelah TOTP, blokir IP, dan diskon Lemon Squeezy (`dev` @ `88935b5`)
+
+Scope: diff `14aa8e7..88935b5`. Bagian A adalah over-engineering (ponytail-audit). Bagian B
+adalah temuan keamanan, yang juga dicatat di `/ISSUES.md` dengan ID yang sama. Bagian C adalah
+correctness. B dan C di luar lingkup ponytail, tapi ketemu selama review.
+
+**Status (2026-10-20):** B.1, B.2, B.3 dan C.1 sudah diperbaiki (belum di-commit).
+`go test ./...`, integration test (`TEST_DB_DSN`, Postgres 18) dan `govulncheck` lolos.
+
+### A. Over-engineering
+
+Lean already. `staticcheck -checks U1000 ./...` (v0.8.2) tidak menemukan kode mati. Yang
+diperiksa dan sengaja dibiarkan:
+
+- Interface `keyValue` di `internal/middlewares/ip_block.go` punya dua implementasi (Redis lewat
+  `fiber.Storage`, dan `memoryKV` untuk satu instance). Fiber tidak mengekspor storage memorinya,
+  jadi `memoryKV` (±50 baris) lebih murah daripada dependency `gofiber/storage/memory`.
+- `addToResponse` di `cmd/api/authula.go` dipakai dua hook (token dan TOTP), bukan satu.
+- Client Lemon Squeezy (`Discounts`, `Paid`) tetap kecil dan hanya memakai bagian API yang
+  dibutuhkan billing.
+
+**net: −0 baris, −0 deps possible.**
+
+### B. Keamanan (detail di `/ISSUES.md`)
+
+1. **M-9 · Ganti email cukup dengan token.** `POST /auth/email-password/request-email-change`
+   tidak memakai `requirePassword`, padahal TOTP on/off dan `PUT /keys` memakainya. Konfirmasi
+   dikirim ke alamat baru, jadi token curian berujung ke reset password dan akun diambil alih.
+   Perbaikan: tambahkan path itu ke matcher `requirePassword` (`isTOTPToggle`). [cmd/api/authula.go:83-91, 236-267]
+   ✅ **Fixed:** `requirePassword` sekarang middleware Fiber di depan adapter Authula untuk
+   `passwordPaths`, dan membaca `c.Body()`. Sebagai hook Authula, ia menghabiskan body yang
+   kemudian dibaca handler ganti email (`422 EOF`). Identitas pemanggil diambil dari
+   `Middlewares.UserID` (baru, juga dipakai `Authorization`). Path ganti email ditambahkan ke
+   `guessPaths` blokir IP. Integration test: 403 tanpa password, 200 dengan password.
+2. **L-14 · TOTP dimatikan tanpa kode TOTP.** `/totp/disable` hanya meminta account password.
+   Perbaikan: minta juga kode TOTP atau backup code yang sah. [cmd/api/authula.go:241-267]
+   ✅ **Fixed:** `totpCodeMatches` menerima kode dari authenticator (6 digit, 30 detik, seperti
+   plugin TOTP) atau backup code yang belum terpakai. Backup code tidak perlu dikonsumsi, karena
+   disable menghapus record TOTP. Web app dan ekstensi meminta kodenya di form yang sama.
+   Integration test: tanpa kode, kode salah, dan backup code yang sudah dipakai ditolak 403.
+3. **M-6 (pembaruan) · Advisory Go.** `govulncheck` (v1.1.4): Go 1.27.1 (10 advisory stdlib,
+   perbaikan di 1.27.2), `golang.org/x/net` v0.59.0 (perbaikan di v0.60.0), dan
+   `github.com/rabbitmq/amqp091-go` v1.11.0 lewat Authula (perbaikan di v1.13.0/v1.14.0; hanya
+   terpakai dengan broker AMQP). Perbaikan: `go get golang.org/x/net@v0.60.0
+   github.com/rabbitmq/amqp091-go@v1.14.0`, `go mod tidy`, toolchain 1.27.2.
+   ✅ **Fixed:** ketiganya, plus `go 1.27.2` di `go.mod`. `govulncheck`: 0 kerentanan yang
+   terjangkau.
+
+Yang diperiksa dan aman:
+
+- Langkah TOTP berlaku di semua jalur sign-in yang menyalakan sesi. Sign-in email-password,
+  exchange magic link, dan callback OAuth2 menyetel `ContextAuthSuccess`, dan hook
+  `totp.intercept` (order 5) menghapusnya sebelum plugin session dan JWT mengeluarkan token.
+- Access token lama ditolak setelah reset password atau sign-out, baik di rute app
+  (`Authorization` memeriksa sesinya) maupun di rute Authula yang memakai `sessionAuth`.
+  Integration test `passwordResetFlow` membuktikannya untuk `/auth/me`. Catatan kecil: komentar
+  `bearerUserID` di `internal/middlewares/authorization.go` menyebut plugin JWT memeriksa sesi,
+  padahal `ValidateToken` hanya memeriksa tanda tangan, masa berlaku, dan blacklist `jti`.
+  Perilakunya benar karena middleware memeriksa sesi sendiri. ✅ Komentarnya sudah dibetulkan.
+- Percobaan kode TOTP dihitung per akun (10/jam) dari token pending, berapa pun token dan IP-nya,
+  dan 401/403-nya ikut dihitung blokir IP.
+- Webhook Lemon Squeezy: tanda tangan diperiksa sebelum body di-parse, order dicocokkan dengan
+  `order_id` buatan billing dan variant plannya, dan pengulangan tidak mengubah apa pun. Jumlah
+  yang dicatat sekarang diambil dari total order yang settle, dikurangi pajak.
+- Kode diskon privat tidak pernah keluar: hanya kode bertanda `[public]` yang disinkronkan, dan
+  `discount_code` tidak ikut di JSON (`json:"-"`).
+
+### C. Correctness (di luar lingkup ponytail)
+
+1. **Kode diskon basi bisa membuat checkout gagal.** `plan.DiscountCode` adalah salinan dari
+   sync terakhir (paling lama 15 menit). Kalau kode itu dihapus, di-unpublish, dibatasi ulang,
+   atau kuotanya habis di antara dua sync, dan Lemon Squeezy menolak `POST /checkouts` alih-alih
+   mengabaikan kodenya, setiap Subscribe/Buy untuk plan itu menjawab `errCheckout` sampai sync
+   berikutnya. Perilaku API itu belum diverifikasi di test mode. Perbaikan: kalau checkout gagal
+   sementara kode dikirim, coba sekali lagi tanpa kode dan simpan `plan.Amount` di baris
+   pending. Ditemukan oleh CodeRabbit (major). [internal/handlers/billing.go:454-490]
+   ✅ **Fixed:** checkout yang gagal dengan kode dibuka sekali lagi tanpa kode, dan baris
+   pending diberi harga penuh lewat `SetAmount` (yang juga menggantikan
+   `SetSubscriptionAmount`). Integration test: toko tiruan menolak kode, pembelian tercatat 30000
+   tanpa kode.
+
+---
+
 ## Audit 2 — 2026-10-16, setelah migrasi Lemon Squeezy (`dev` @ `14aa8e7`)
 
 Scope: over-engineering saja (ponytail-audit). Bug, keamanan, dan performa

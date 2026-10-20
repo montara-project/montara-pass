@@ -581,10 +581,24 @@ func totpFlow(
 		t.Fatalf("%d wrong codes were not limited", totpRateLimit)
 	}
 
-	if status, out := call(http.MethodPost, "/api/v1/auth/totp/disable", token, map[string]any{}); status != http.StatusForbidden {
+	// Turning it off takes the password and a code: from the app, or an
+	// unused backup code.
+	disable := func(body map[string]any) (int, map[string]any) {
+		t.Helper()
+		return call(http.MethodPost, "/api/v1/auth/totp/disable", token, body)
+	}
+	if status, out := call(http.MethodPost, "/api/v1/auth/totp/disable", "", map[string]any{"password": password, "code": codeFor(secret)}); status != http.StatusUnauthorized {
+		t.Fatalf("disable signed out: %d %v, want 401", status, out)
+	}
+	if status, out := disable(map[string]any{"code": codeFor(secret)}); status != http.StatusForbidden {
 		t.Fatalf("disable without the password: %d %v, want 403", status, out)
 	}
-	if status, out := call(http.MethodPost, "/api/v1/auth/totp/disable", token, map[string]any{"password": password}); status != http.StatusOK {
+	for _, code := range []string{"", "000000", codes[0].(string)} {
+		if status, out := disable(map[string]any{"password": password, "code": code}); status != http.StatusForbidden || out["message"] != "incorrect code" {
+			t.Fatalf("disable with code %q: %d %v, want 403", code, status, out)
+		}
+	}
+	if status, out := disable(map[string]any{"password": password, "code": codeFor(secret)}); status != http.StatusOK {
 		t.Fatalf("disable: %d %v", status, out)
 	}
 	if enabled := totpEnabled(token); enabled != false {
@@ -592,6 +606,17 @@ func totpFlow(
 	}
 	if out := signIn(); out["access_token"] == nil {
 		t.Fatalf("sign in after disabling: %v", out)
+	}
+
+	// Moving the account to another address takes the password too: its
+	// confirmation goes to the new one, where a password reset could follow.
+	move := map[string]any{"new_email": "moved-" + email}
+	if status, out := call(http.MethodPost, "/api/v1/auth/email-password/request-email-change", token, move); status != http.StatusForbidden {
+		t.Fatalf("email change without the password: %d %v, want 403", status, out)
+	}
+	move["password"] = password
+	if status, out := call(http.MethodPost, "/api/v1/auth/email-password/request-email-change", token, move); status != http.StatusOK {
+		t.Fatalf("email change: %d %v", status, out)
 	}
 }
 
@@ -869,6 +894,14 @@ type lemonStore struct {
 	mu        sync.Mutex
 	variants  []lemonVariant
 	customers map[string]string
+	// Discount codes, by id: their attributes, and the variants each is
+	// limited to.
+	discounts        map[string]map[string]any
+	discountVariants map[string][]string
+	// The code the last checkout was opened with, and whether a checkout
+	// with a code is refused, as for one taken off sale since the last sync.
+	checkoutDiscount string
+	refuseDiscounts  bool
 }
 
 func (l *lemonStore) set(variants ...lemonVariant) {
@@ -917,6 +950,18 @@ func (l *lemonStore) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		data(prices)
+	case path == "GET /discounts":
+		found := []any{}
+		for id, attributes := range l.discounts {
+			found = append(found, resource(id, attributes))
+		}
+		data(found)
+	case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/discounts/") && strings.HasSuffix(r.URL.Path, "/variants"):
+		variants := []any{}
+		for _, id := range l.discountVariants[strings.Split(r.URL.Path, "/")[2]] {
+			variants = append(variants, resource(id, map[string]any{}))
+		}
+		data(variants)
 	case path == "GET /customers":
 		found := []any{}
 		if id, ok := l.customers[q.Get("filter[email]")]; ok {
@@ -944,11 +989,21 @@ func (l *lemonStore) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						Custom struct {
 							OrderID string `json:"order_id"`
 						} `json:"custom"`
+						DiscountCode string `json:"discount_code"`
 					} `json:"checkout_data"`
 				} `json:"attributes"`
 			} `json:"data"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&body)
+		if l.refuseDiscounts && body.Data.Attributes.CheckoutData.DiscountCode != "" {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			_ = json.NewEncoder(w).Encode(map[string]any{"errors": []map[string]any{{
+				"detail": "The code is not valid.",
+				"source": map[string]string{"pointer": "/data/attributes/checkout_data/discount_code"},
+			}}})
+			return
+		}
+		l.checkoutDiscount = body.Data.Attributes.CheckoutData.DiscountCode
 		w.WriteHeader(http.StatusCreated)
 		data(map[string]any{"attributes": map[string]string{"url": "https://pay.example/" + body.Data.Attributes.CheckoutData.Custom.OrderID}})
 	case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/subscriptions/"):
@@ -1015,6 +1070,13 @@ func billingFlow(
 	store.set(monthlyV, lifetimeV, yearlyV,
 		lemonVariant{"103", "Pro", "Weekly", "published", "subscription", 100, "week"},
 		lemonVariant{"104", "Tip jar", "Default", "pending", "pwyw", 0, ""})
+	// A public code for the lifetime plan, filled in at its checkout, and a
+	// private one for everything, which is only typed in.
+	store.discounts = map[string]map[string]any{
+		"1": {"name": "Launch [public]", "code": "LAUNCH20", "amount": 20, "amount_type": "percent", "is_limited_to_products": true, "duration": "once", "status": "published"},
+		"2": {"name": "Friend", "code": "FRIEND", "amount": 90, "amount_type": "percent", "duration": "forever", "status": "published"},
+	}
+	store.discountVariants = map[string][]string{"1": {"102"}}
 
 	want(http.StatusForbidden, http.MethodPost, "/api/v1/plans/sync", userToken, nil)
 	if status, out := call(http.MethodPost, "/api/v1/plans/sync", superToken, nil); status != http.StatusOK || len(out["data"].([]any)) != 3 {
@@ -1042,6 +1104,10 @@ func billingFlow(
 		lifetime["name"] != "Pro forever" || lifetime["billing"] != "one_time" || lifetime["amount"] != float64(30000) {
 		t.Fatalf("synced plans: %v %v", plan, lifetime)
 	}
+	if _, shown := lifetime["discount_code"]; shown || lifetime["discount_amount"] != float64(6000) ||
+		lifetime["discount_payments"] != nil || plan["discount_amount"] != nil {
+		t.Fatalf("discounts: %v %v", plan, lifetime)
+	}
 	retired := byCode(superToken, "/api/v1/plans/all")["ls-105"]
 	if retired == nil || retired["active"] != false {
 		t.Fatalf("draft variant: %v", retired)
@@ -1067,7 +1133,7 @@ func billingFlow(
 
 	sub := want(http.StatusCreated, http.MethodPost, "/api/v1/billing/subscriptions", userToken, map[string]any{"plan_id": plan["id"]})
 	orderID := "sub-" + sub["id"].(string)
-	if sub["status"] != "pending" || sub["checkout_url"] != "https://pay.example/"+orderID {
+	if sub["status"] != "pending" || sub["checkout_url"] != "https://pay.example/"+orderID || store.checkoutDiscount != "" {
 		t.Fatalf("subscription: %v", sub)
 	}
 	// The checkout saved the account as a Lemon Squeezy customer.
@@ -1092,6 +1158,19 @@ func billingFlow(
 	}
 	wantWebhook("order_created", "", "1", map[string]any{"status": "paid"})
 	wantWebhook("order_created", orderID, "1", map[string]any{"status": "paid", "first_order_item": map[string]any{"variant_id": 101}})
+	// The first payment's order records what it settled at, less its tax.
+	firstOrder := func(total, tax int) any {
+		t.Helper()
+		wantWebhook("order_created", orderID, "1", map[string]any{"status": "paid", "first_order_item": map[string]any{"variant_id": 101}, "total": total, "tax": tax})
+		subscription, _ := overview()
+		return subscription["amount"]
+	}
+	if amount := firstOrder(250, 0); amount != float64(250) {
+		t.Fatalf("settled subscription: %v", amount)
+	}
+	if amount := firstOrder(330, 30); amount != float64(300) {
+		t.Fatalf("settled subscription, less tax: %v", amount)
+	}
 	for range 2 {
 		wantWebhook("subscription_created", orderID, "7001", active)
 	}
@@ -1134,6 +1213,10 @@ func billingFlow(
 	// A purchase: paid, bought only once, then refunded.
 	buy := want(http.StatusCreated, http.MethodPost, "/api/v1/billing/purchases", userToken, map[string]any{"plan_id": lifetime["id"]})
 	buyID := "buy-" + buy["id"].(string)
+	// At the public discount, filled in at checkout.
+	if buy["amount"] != float64(24000) || store.checkoutDiscount != "LAUNCH20" {
+		t.Fatalf("discounted purchase: %v, checkout code %q", buy["amount"], store.checkoutDiscount)
+	}
 	// A later checkout reuses the customer.
 	if id := customer(); *id != "9001" || len(store.customers) != 1 {
 		t.Fatalf("customer after a second checkout: %v, store %v", *id, store.customers)
@@ -1143,8 +1226,13 @@ func billingFlow(
 	if _, purchases := overview(); purchases[0].(map[string]any)["status"] != "pending" {
 		t.Fatalf("a pending order settled the purchase: %v", purchases)
 	}
+	// Lemon Squeezy did not take the code: the purchase records what it
+	// settled at, the full price, less its tax.
 	for range 2 {
-		wantWebhook("order_created", buyID, "2", map[string]any{"status": "paid", "first_order_item": item})
+		wantWebhook("order_created", buyID, "2", map[string]any{"status": "paid", "first_order_item": item, "total": 30600, "tax": 600})
+	}
+	if _, purchases := overview(); purchases[0].(map[string]any)["amount"] != float64(30000) {
+		t.Fatalf("settled purchase: %v", purchases[0])
 	}
 	want(http.StatusConflict, http.MethodPost, "/api/v1/billing/purchases", userToken, map[string]any{"plan_id": lifetime["id"]})
 	wantWebhook("order_refunded", buyID, "2", map[string]any{"status": "partial_refund", "refunded": false, "first_order_item": item})
@@ -1162,14 +1250,31 @@ func billingFlow(
 	if _, err := db.Exec(`UPDATE purchases SET created_at = now() - interval '2 hours' WHERE id = $1`, retry["id"]); err != nil {
 		t.Fatal(err)
 	}
-	if again := want(http.StatusCreated, http.MethodPost, "/api/v1/billing/purchases", userToken, map[string]any{"plan_id": lifetime["id"]}); again["id"] == retry["id"] {
+	// The code was taken off sale since the sync, and Lemon Squeezy refuses
+	// it: the checkout opens without it, at the full price.
+	store.refuseDiscounts = true
+	again := want(http.StatusCreated, http.MethodPost, "/api/v1/billing/purchases", userToken, map[string]any{"plan_id": lifetime["id"]})
+	store.refuseDiscounts = false
+	if again["id"] == retry["id"] {
 		t.Fatal("a lapsed checkout was resumed")
+	}
+	if again["amount"] != float64(30000) || store.checkoutDiscount != "" {
+		t.Fatalf("checkout after a refused code: %v, code %q", again["amount"], store.checkoutDiscount)
 	}
 
 	// The catalog changes: the monthly price goes up, the lifetime plan is
 	// withdrawn and the yearly one turns into a one-time sale. A sync
 	// follows: what was bought keeps what it was charged, and a plan never
 	// changes kind, so the yearly one stays off sale.
+	// Markdowns are set by hand and shown with the plan; a sync keeps one
+	// while the plan still costs less, and drops it once it does not.
+	if _, err := db.Exec(`UPDATE plans SET compare_at_amount = CASE code WHEN 'ls-101' THEN 350 ELSE 40000 END
+		WHERE code IN ('ls-101', 'ls-102')`); err != nil {
+		t.Fatal(err)
+	}
+	if marked := byCode("", "/api/v1/plans"); marked["ls-101"]["compare_at_amount"] != float64(350) {
+		t.Fatalf("markdown: %v", marked["ls-101"])
+	}
 	monthlyV.price = 400
 	yearlyV.status, yearlyV.category, yearlyV.interval = "published", "one_time", ""
 	store.set(monthlyV, yearlyV)
@@ -1178,6 +1283,9 @@ func billingFlow(
 	if all["ls-101"]["amount"] != float64(400) || all["ls-101"]["active"] != true ||
 		all["ls-102"]["active"] != false || all["ls-105"]["active"] != false || all["ls-105"]["billing"] != "recurring" {
 		t.Fatalf("plans after the catalog changed: %v", all)
+	}
+	if all["ls-101"]["compare_at_amount"] != nil || all["ls-102"]["compare_at_amount"] != float64(40000) {
+		t.Fatalf("markdowns after the catalog changed: %v %v", all["ls-101"], all["ls-102"])
 	}
 	if subscription, _ := overview(); subscription["amount"] != float64(300) {
 		t.Fatalf("the subscription took the new price: %v", subscription)

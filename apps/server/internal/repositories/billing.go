@@ -25,11 +25,13 @@ type BillingRepository struct {
 
 const planColumns = `
 	p.id, p.created_at, p.updated_at, p.code, p.name, p.description,
-	p.billing, p.billing_interval, p.amount, p.currency, p.active, p.variant_id`
+	p.billing, p.billing_interval, p.amount, p.compare_at_amount, p.currency, p.active, p.variant_id,
+	p.discount_code, p.discount_amount, p.discount_payments, p.discount_ends_at`
 
 func planDest(p *models.Plan) []any {
 	return []any{&p.ID, &p.CreatedAt, &p.UpdatedAt, &p.Code, &p.Name, &p.Description,
-		&p.Billing, &p.BillingInterval, &p.Amount, &p.Currency, &p.Active, &p.VariantID}
+		&p.Billing, &p.BillingInterval, &p.Amount, &p.CompareAtAmount, &p.Currency, &p.Active, &p.VariantID,
+		&p.DiscountCode, &p.DiscountAmount, &p.DiscountPayments, &p.DiscountEndsAt}
 }
 
 func scanPlan(row rowScanner) (models.Plan, error) {
@@ -59,22 +61,30 @@ func (r *BillingRepository) GetPlan(ctx context.Context, id uuid.UUID) (models.P
 // plans, found by its variant, is added or brought up to date, and every
 // other plan is taken off sale. A plan keeps its kind, which subscriptions
 // and purchases name: one whose variant changed kind is taken off sale too.
-// It returns the codes of those that did.
+// It returns the codes of those that did. A plan's compare_at_amount is
+// not Lemon Squeezy's and is kept, unless the new price meets it.
 func (r *BillingRepository) SyncPlans(ctx context.Context, plans []models.Plan) (changedKind []string, err error) {
 	err = lib.WithTransaction(ctx, r.DB, func(tx *sql.Tx) error {
 		kept := []string{}
 		for _, p := range plans {
 			var id uuid.UUID
 			err := tx.QueryRowContext(ctx, `
-				INSERT INTO plans (code, name, description, billing, billing_interval, amount, currency, active, variant_id)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+				INSERT INTO plans (code, name, description, billing, billing_interval, amount, currency, active, variant_id,
+				                   discount_code, discount_amount, discount_payments, discount_ends_at)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 				ON CONFLICT (variant_id) DO UPDATE
 				SET name = EXCLUDED.name, description = EXCLUDED.description,
 				    billing_interval = EXCLUDED.billing_interval, amount = EXCLUDED.amount,
-				    currency = EXCLUDED.currency, active = EXCLUDED.active, updated_at = now()
+				    currency = EXCLUDED.currency, active = EXCLUDED.active, updated_at = now(),
+				    discount_code = EXCLUDED.discount_code, discount_amount = EXCLUDED.discount_amount,
+				    discount_payments = EXCLUDED.discount_payments, discount_ends_at = EXCLUDED.discount_ends_at,
+				    -- Set by hand, not by Lemon Squeezy: kept while it is still a markdown.
+				    compare_at_amount = CASE WHEN plans.compare_at_amount > EXCLUDED.amount
+				                             THEN plans.compare_at_amount END
 				WHERE plans.billing = EXCLUDED.billing
 				RETURNING id`,
 				p.Code, p.Name, p.Description, p.Billing, p.BillingInterval, p.Amount, p.Currency, p.Active, p.VariantID,
+				p.DiscountCode, p.DiscountAmount, p.DiscountPayments, p.DiscountEndsAt,
 			).Scan(&id)
 			switch {
 			case errors.Is(err, sql.ErrNoRows):
@@ -223,14 +233,15 @@ func (r *BillingRepository) GetSubscription(ctx context.Context, id uuid.UUID) (
 	return scanSubscription(r.queryRowContext(ctx, query, id))
 }
 
-// InsertSubscription starts a pending subscription to plan at its current
-// price, its period a placeholder until it is paid. orderID is the payment's
-// order id. A live subscription already there is a conflict.
-func (r *BillingRepository) InsertSubscription(ctx context.Context, id, userID uuid.UUID, plan models.Plan, orderID string) error {
+// InsertSubscription starts a pending subscription to plan at amount, the
+// price its checkout asks, its period a placeholder until it is paid.
+// orderID is the payment's order id. A live subscription already there is a
+// conflict.
+func (r *BillingRepository) InsertSubscription(ctx context.Context, id, userID uuid.UUID, plan models.Plan, amount int64, orderID string) error {
 	_, err := r.execContext(ctx, `
 		INSERT INTO subscriptions (id, user_id, plan_id, status, current_period_start, current_period_end, amount, currency, provider_ref)
 		VALUES ($1, $2, $3, 'pending', now(), now() + ('1 ' || $4::text)::interval, $5, $6, $7)`,
-		id, userID, plan.ID, *plan.BillingInterval, plan.Amount, plan.Currency, orderID,
+		id, userID, plan.ID, *plan.BillingInterval, amount, plan.Currency, orderID,
 	)
 	if hasPgCode(err, pgUniqueViolation) {
 		return apperr.New(apperr.KindConflict, "you already have a subscription")
@@ -384,13 +395,14 @@ func (r *BillingRepository) GetPurchase(ctx context.Context, id uuid.UUID) (mode
 	return scanPurchase(r.queryRowContext(ctx, query, id))
 }
 
-// InsertPurchase starts a pending purchase of plan at its current price.
-// A pending or paid purchase of the same plan already there is a conflict.
-func (r *BillingRepository) InsertPurchase(ctx context.Context, id, userID uuid.UUID, plan models.Plan, orderID string) error {
+// InsertPurchase starts a pending purchase of plan at amount, the price its
+// checkout asks. A pending or paid purchase of the same plan already there
+// is a conflict.
+func (r *BillingRepository) InsertPurchase(ctx context.Context, id, userID uuid.UUID, plan models.Plan, amount int64, orderID string) error {
 	_, err := r.execContext(ctx, `
 		INSERT INTO purchases (id, user_id, plan_id, status, amount, currency, provider_ref)
 		VALUES ($1, $2, $3, 'pending', $4, $5, $6)`,
-		id, userID, plan.ID, plan.Amount, plan.Currency, orderID,
+		id, userID, plan.ID, amount, plan.Currency, orderID,
 	)
 	if hasPgCode(err, pgUniqueViolation) {
 		return apperr.New(apperr.KindConflict, "you already bought this plan")
@@ -399,15 +411,26 @@ func (r *BillingRepository) InsertPurchase(ctx context.Context, id, userID uuid.
 }
 
 // MovePurchase moves a purchase in status from to status to: pending to paid
-// or failed, paid to refunded. It reports whether it changed anything.
-func (r *BillingRepository) MovePurchase(ctx context.Context, id uuid.UUID, from, to string) (bool, error) {
+// or failed, paid to refunded. A non-nil amount is what was charged, as Lemon
+// Squeezy settled it, and replaces the price the checkout asked. It reports
+// whether it changed anything.
+func (r *BillingRepository) MovePurchase(ctx context.Context, id uuid.UUID, from, to string, amount *int64) (bool, error) {
 	res, err := r.execContext(ctx, `
 		UPDATE purchases
-		SET status = $3, checkout_url = NULL, updated_at = now(),
+		SET status = $3, checkout_url = NULL, updated_at = now(), amount = coalesce($4, amount),
 		    paid_at = CASE WHEN $3 = 'paid' THEN now() ELSE paid_at END
 		WHERE id = $1 AND status = $2`,
-		id, from, to,
+		id, from, to, amount,
 	)
+	return affected(res, err)
+}
+
+// SetAmount records another price for a subscription or purchase (table as
+// for SetCheckout): what Lemon Squeezy settled a subscription's first payment
+// at, or the full price of a checkout opened again without its discount. It
+// reports whether it changed anything.
+func (r *BillingRepository) SetAmount(ctx context.Context, table string, id uuid.UUID, amount int64) (bool, error) {
+	res, err := r.execContext(ctx, fmt.Sprintf(`UPDATE %s SET amount = $2, updated_at = now() WHERE id = $1 AND amount <> $2`, table), id, amount)
 	return affected(res, err)
 }
 

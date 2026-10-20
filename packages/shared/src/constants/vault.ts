@@ -39,8 +39,6 @@ export type ContactField = (typeof CONTACT_FIELDS)[number]['key']
 /** Roles an item can be shared with; the owner's own role is `owner`. */
 export const SHARE_ROLES = ['viewer', 'editor'] as const
 
-export type ShareRole = (typeof SHARE_ROLES)[number]
-
 export const ShareRoleOptions = SHARE_ROLES.map((role) => ({
   label: capitalizeFirstLetter(role),
   value: role,

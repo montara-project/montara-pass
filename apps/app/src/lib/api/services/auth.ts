@@ -10,7 +10,7 @@ const resources = (): AuthResources => ({
   me: () => api.get(`${AUTH_PATH}/me`),
   signOut: (body = {}) => api.post(`${AUTH_PATH}/sign-out`, body),
   totpEnable: (password) => api.post(`${AUTH_PATH}/totp/enable`, { password }),
-  totpDisable: (password) => api.post(`${AUTH_PATH}/totp/disable`, { password }),
+  totpDisable: (password, code) => api.post(`${AUTH_PATH}/totp/disable`, { password, code }),
   totpVerify: (totpToken, code) =>
     api.post(`${AUTH_PATH}/totp/verify`, { code }, { headers: { [TOTP_TOKEN_HEADER]: totpToken } }),
   totpVerifyBackupCode: (totpToken, code) =>

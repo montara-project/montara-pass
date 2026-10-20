@@ -8,6 +8,7 @@ import type { Models } from '@montara-pass/shared/api/models'
 
 import { isTotpCode, TOTP_CODE_REQUIRED, TOTP_TOKEN_HEADER } from '@montara-pass/shared/auth/totp'
 
+import { serverAllowed } from './site'
 import { clearTokens, getSettings, getTokens, saveTokens } from './storage'
 
 // A small fetch client for the routes the popup needs. The web app uses axios
@@ -53,6 +54,11 @@ async function send(
   idempotencyKey?: string
 ): Promise<Response> {
   const { apiUrl } = await getSettings()
+  // A server saved before https was required: nothing, tokens least of
+  // all, is sent to it until it is changed in settings.
+  if (!serverAllowed(apiUrl)) {
+    throw new ApiError(`${apiUrl} does not use https. Change the server in Server settings.`, 0)
+  }
 
   try {
     return await fetch(apiUrl + path, {
@@ -191,8 +197,12 @@ export async function confirmTotp(totpToken: string, code: string): Promise<void
   }).catch(() => {})
 }
 
-export async function disableTotp(password: string): Promise<void> {
-  await request(`${AUTH_PATH}/totp/disable`, { method: 'POST', body: JSON.stringify({ password }) })
+/** Turns TOTP off, with the account password and a code from the app or a backup code. */
+export async function disableTotp(password: string, code: string): Promise<void> {
+  await request(`${AUTH_PATH}/totp/disable`, {
+    method: 'POST',
+    body: JSON.stringify({ password, code }),
+  })
 }
 
 /** Ends the session on the server, best-effort, and forgets the tokens. */

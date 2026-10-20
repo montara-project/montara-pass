@@ -1,7 +1,15 @@
 import type { Models } from '@montara-pass/shared/api/models'
 
 import { formatPrice } from '@montara-pass/shared/money'
-import { isSandbox, planName, planPeriod, planTerms } from '@montara-pass/shared/plan'
+import {
+  BILLING_STATUS,
+  isSandbox,
+  planName,
+  planOffer,
+  planPeriod,
+  planSaving,
+  planTerms,
+} from '@montara-pass/shared/plan'
 import { useCallback, useEffect, useState } from 'react'
 
 import {
@@ -17,16 +25,6 @@ import { CreditCardIcon } from '../icons'
 interface BillingProps {
   /** The session ended underneath the page. */
   onSignedOut: () => void
-}
-
-const STATUS: Record<Models.Subscription['status'] | Models.Purchase['status'], string> = {
-  pending: 'Waiting for payment',
-  active: 'Active',
-  paid: 'Paid',
-  canceled: 'Canceled',
-  expired: 'Expired',
-  failed: 'Payment failed',
-  refunded: 'Refunded',
 }
 
 const DATE = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
@@ -143,7 +141,7 @@ export default function Billing({ onSignedOut }: BillingProps) {
                   <span className="item-text">
                     <span className="item-name">{planName(subscription.plan)}</span>
                     <span className="muted">
-                      {STATUS[subscription.status]}
+                      {BILLING_STATUS[subscription.status]}
                       {subscription.status === 'active' &&
                         `, ${subscription.canceled_at ? 'ends' : 'renews'} ${DATE.format(new Date(subscription.current_period_end))}`}
                     </span>
@@ -187,6 +185,8 @@ export default function Billing({ onSignedOut }: BillingProps) {
                   const purchase = plan.billing === 'one_time' ? owned(plan) : undefined
                   // One subscription at a time; another once this one has ended.
                   const subscribed = plan.billing === 'recurring' && subscription !== null
+                  const saving = planSaving(plan, plans)
+                  const offer = planOffer(plan, formatPrice(plan.amount, 'USD'))
                   return (
                     <li
                       key={plan.id}
@@ -195,12 +195,27 @@ export default function Billing({ onSignedOut }: BillingProps) {
                     >
                       <span className="plan-head">
                         <span className="item-name">{planName(plan)}</span>
-                        {isSandbox(plan) && <span className="plan-chip">sandbox</span>}
+                        <span className="plan-chips">
+                          {saving && saving.percent >= 1 && (
+                            <span className="billing-pill">Save {saving.percent}%</span>
+                          )}
+                          {isSandbox(plan) && <span className="plan-chip">sandbox</span>}
+                        </span>
                       </span>
                       <span className="plan-price">
-                        {formatPrice(plan.amount, 'USD')} <small>{planPeriod(plan)}</small>
+                        {formatPrice(saving?.amount ?? plan.amount, 'USD')}{' '}
+                        <small>{planPeriod(plan)}</small>
+                        {saving && (
+                          <s className="plan-was">
+                            <span className="visually-hidden">was </span>
+                            {formatPrice(saving.was, 'USD')}
+                          </s>
+                        )}
                       </span>
-                      <span className="plan-terms">{planTerms(plan)}</span>
+                      <span className="plan-notes">
+                        {offer && <span className="plan-offer">{offer}</span>}
+                        <span className="plan-terms">{planTerms(plan)}</span>
+                      </span>
                       {purchase?.status === 'paid' ? (
                         <span className="muted">You own this.</span>
                       ) : purchase?.checkout_url ? (
@@ -247,7 +262,7 @@ export default function Billing({ onSignedOut }: BillingProps) {
                   <li key={purchase.id}>
                     <span className="item-name">{planName(purchase.plan)}</span>
                     <span className="muted">
-                      {formatPrice(purchase.amount, 'USD')} · {STATUS[purchase.status]}
+                      {formatPrice(purchase.amount, 'USD')} · {BILLING_STATUS[purchase.status]}
                       {purchase.paid_at && ` · ${DATE.format(new Date(purchase.paid_at))}`}
                     </span>
                   </li>

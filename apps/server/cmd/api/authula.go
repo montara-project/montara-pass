@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -33,12 +34,14 @@ import (
 	totpplugin "github.com/Authula/authula/plugins/totp"
 	totpconstants "github.com/Authula/authula/plugins/totp/constants"
 	totprepository "github.com/Authula/authula/plugins/totp/repository"
+	totpservices "github.com/Authula/authula/plugins/totp/services"
 	totpplugintypes "github.com/Authula/authula/plugins/totp/types"
 	authulaservices "github.com/Authula/authula/services"
 
 	"montara-pass/server/internal/app"
 	"montara-pass/server/internal/config"
 	"montara-pass/server/internal/handlers"
+	"montara-pass/server/internal/lib/apperr"
 	"montara-pass/server/internal/lib/constant"
 	"montara-pass/server/internal/middlewares"
 	"montara-pass/server/internal/models"
@@ -232,38 +235,99 @@ func totpVerifyUser(auth *authula.Auth) func(fiber.Ctx) string {
 	}
 }
 
-// isTOTPToggle reports whether a request turns TOTP on or off.
-func isTOTPToggle(reqCtx *authulamodels.RequestContext) bool {
-	return reqCtx.Method == http.MethodPost &&
-		(reqCtx.Path == authBasePath+"/totp/enable" || reqCtx.Path == authBasePath+"/totp/disable")
+// passwordPaths are the account changes that take the account password:
+// turning TOTP on or off, and moving the account to another email address,
+// whose confirmation goes to the new one.
+var passwordPaths = []string{
+	authBasePath + "/totp/enable",
+	authBasePath + "/totp/disable",
+	authBasePath + "/email-password/request-email-change",
 }
 
-// requirePassword returns the hook that asks for the account password, as
-// {"password"} in the body, before TOTP is turned on or off: an access token
-// alone must not be enough to lock the owner out or to drop the second step.
+// requirePassword returns the middleware that asks for the account password,
+// as {"password"} in the body, before an account change (passwordPaths): an
+// access token alone must not be enough to lock the owner out, to drop the
+// second step, or to move the account where a password reset can follow it.
+// Turning TOTP off also takes {"code"}: a code from the authenticator app or
+// a backup code, so a phished password does not remove the step it guards.
 // It answers 403, not 401, which the clients would take for a dead session.
-func requirePassword(auth *authula.Auth) func(*authulamodels.RequestContext) error {
-	return func(reqCtx *authulamodels.RequestContext) error {
-		// The route itself refuses a caller nobody identified.
-		if reqCtx.Actor == nil {
-			return nil
+//
+// It runs in front of Authula, on the body Fiber keeps, because an Authula
+// hook that read the body would leave its handler none. A caller nobody
+// identified is refused here with 401, whatever Authula's route mapping says.
+//
+// ponytail: a wrong code here is counted by the IP block, not per account
+// as at sign-in; guessing it already takes the password and a live session.
+func requirePassword(auth *authula.Auth, m *middlewares.Middlewares) fiber.Handler {
+	totp := totprepository.NewTOTPRepository(auth.DB())
+
+	return func(c fiber.Ctx) error {
+		if c.Method() != fiber.MethodPost || !slices.Contains(passwordPaths, c.Path()) {
+			return c.Next()
+		}
+		userID := m.UserID(c)
+		if userID == "" {
+			return apperr.ErrUnauthorized
 		}
 
 		var body struct {
 			Password string `json:"password"`
+			Code     string `json:"code"`
 		}
-		_ = json.NewDecoder(reqCtx.Request.Body).Decode(&body)
+		_ = json.Unmarshal(c.Body(), &body)
 
-		ok, err := handlers.AccountPasswordMatches(reqCtx.Request.Context(), auth, reqCtx.Actor.ID, body.Password)
+		ok, err := handlers.AccountPasswordMatches(c.Context(), auth, userID, body.Password)
 		if err != nil {
 			return err
 		}
 		if !ok {
-			reqCtx.SetJSONResponse(http.StatusForbidden, map[string]any{"message": "incorrect password"})
-			reqCtx.Handled = true
+			return apperr.New(apperr.KindForbidden, "incorrect password")
 		}
-		return nil
+		if c.Path() == authBasePath+"/totp/disable" {
+			if ok, err = totpCodeMatches(c.Context(), auth, totp, userID, body.Code); err != nil {
+				return err
+			}
+			if !ok {
+				return apperr.New(apperr.KindForbidden, "incorrect code")
+			}
+		}
+		return c.Next()
 	}
+}
+
+// totpCodeMatches reports whether code is a current code from the user's
+// authenticator app or one of their backup codes. A user whose TOTP is not on
+// has none to give, and nothing for one to guard: that matches too.
+func totpCodeMatches(ctx context.Context, auth *authula.Auth, repo *totprepository.TOTPRepository, userID, code string) (bool, error) {
+	record, err := repo.GetByUserID(ctx, userID)
+	if err != nil {
+		return false, err
+	}
+	if record == nil || !record.Enabled {
+		return true, nil
+	}
+	code = strings.ReplaceAll(code, " ", "")
+	if code == "" {
+		return false, nil
+	}
+
+	tokens := auth.ServiceRegistry.Get(authulamodels.ServiceToken.String()).(authulaservices.TokenService)
+	secret, err := tokens.Decrypt(record.Secret)
+	if err != nil {
+		return false, err
+	}
+	// The totp plugin's own, which it does not let be configured.
+	if totpservices.NewTOTPService(6, 30).ValidateCode(secret, code, time.Now().UTC()) {
+		return true, nil
+	}
+
+	var hashed []string
+	if err := json.Unmarshal([]byte(record.BackupCodes), &hashed); err != nil {
+		return false, err
+	}
+	passwords := auth.ServiceRegistry.Get(authulamodels.ServicePassword.String()).(authulaservices.PasswordService)
+	_, ok := (&totpservices.BackupCodeService{PasswordService: passwords}).VerifyAndConsume(hashed, code)
+	return ok, nil
 }
 
 // addTOTPStatusToMe returns the hook that tells GET /me whether the user
@@ -592,13 +656,6 @@ func newAuth(cfg config.Config, mirror, customer func(*authulamodels.User) error
 		Stage:   authulamodels.HookBefore,
 		Matcher: isTOTPVerify,
 		Handler: totpTokenToCookie,
-	})
-	// Order 20 runs after the bearer and session checks (10) found the caller.
-	auth.RegisterHook(authulamodels.Hook{
-		Stage:   authulamodels.HookBefore,
-		Matcher: isTOTPToggle,
-		Handler: requirePassword(auth),
-		Order:   20,
 	})
 	auth.RegisterHook(authulamodels.Hook{
 		Stage:   authulamodels.HookAfter,

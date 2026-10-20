@@ -11,10 +11,20 @@ export interface Plan {
   billing: 'recurring' | 'one_time'
   billing_interval: 'month' | 'year' | null
   amount: number
+  /** What it is marked down from, above amount; set by hand, as Lemon Squeezy has no such price. */
+  compare_at_amount: number | null
   currency: string
   active: boolean
   /** The Lemon Squeezy variant it is synced from; null for a plan from before the sync. */
   variant_id: string | null
+  /**
+   * A public Lemon Squeezy discount code, filled in at its checkout: the
+   * amount it takes off, how many payments it takes it off (null: all of
+   * them), and when it ends (null: never). Null when there is none.
+   */
+  discount_amount: number | null
+  discount_payments: number | null
+  discount_ends_at: ISO8601DateString | null
   created_at: ISO8601DateString
   updated_at: ISO8601DateString
 }

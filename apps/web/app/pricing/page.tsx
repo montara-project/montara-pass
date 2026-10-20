@@ -1,11 +1,8 @@
 import type { Metadata } from "next";
 
-import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
-
+import { getTiers } from "@/components/pricing/offer";
 import { PricingPage } from "@/components/pricing/pricing-page";
-import { queries } from "@/lib/api/queries";
 import { pageMeta } from "@/lib/constants/meta";
-import { getQueryClient } from "@/lib/providers/query-client";
 
 export const metadata: Metadata = pageMeta({
   title: "Password Manager Pricing, Free or $3 a Month",
@@ -15,12 +12,5 @@ export const metadata: Metadata = pageMeta({
 });
 
 export default async function Page() {
-  const queryClient = getQueryClient();
-  await queryClient.prefetchQuery(queries.billing.plans());
-
-  return (
-    <HydrationBoundary state={dehydrate(queryClient)}>
-      <PricingPage />
-    </HydrationBoundary>
-  );
+  return <PricingPage tiers={await getTiers()} />;
 }

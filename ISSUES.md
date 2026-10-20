@@ -4,6 +4,9 @@ Hasil audit keamanan dan review kode `montara-pass`, diurutkan menurut tingkat k
 Diaudit pada 2026-10-11, branch `dev` (`b43e623`), versi 1.3.0.
 Audit lanjutan pada 2026-10-13, branch `feat/extension-passkeys` (`a7b4a30`), untuk
 `apps/extension` dan `apps/app`: menambah M-7, M-8, L-10 sampai L-13, dan bagian over-engineering.
+Audit lanjutan pada 2026-10-20, branch `dev` (`88935b5`), untuk perubahan sejak audit server
+terakhir (TOTP, blokir IP, billing Lemon Squeezy, clipboard, tipe contact): menambah M-9 dan
+L-14, memperbarui status M-4, M-6, L-1 dan L-7, dan menambah daftar over-engineering 2026-10-20.
 
 ## Ringkasan
 
@@ -11,8 +14,8 @@ Audit lanjutan pada 2026-10-13, branch `feat/extension-passkeys` (`a7b4a30`), un
 | -------- | ------ | --------------------------------------------------------------------- |
 | Critical | 0      | Isi vault bisa dibaca tanpa syarat                                    |
 | High     | 2      | Rahasia bocor atau pertahanan utama bisa dilewati, dengan syarat ringan |
-| Medium   | 8      | Memperbesar dampak serangan lain, atau melemahkan klaim zero-knowledge |
-| Low      | 13     | Pengerasan dan kebersihan                                             |
+| Medium   | 10     | Memperbesar dampak serangan lain, atau melemahkan klaim zero-knowledge |
+| Low      | 15     | Pengerasan dan kebersihan                                             |
 
 Tidak ada SQL injection, IDOR, atau kebocoran plaintext yang ditemukan: semua query memakai
 bind parameter, setiap akses item lewat `item_members`, dan error 500 tidak membocorkan detail.
@@ -26,16 +29,16 @@ bind parameter, setiap akses item lewat `item_members`, dan error 500 tidak memb
 | M-1 | Sebagian | CSP aktif. Token masih di cookie yang terbaca JavaScript |
 | M-2 | Diperbaiki | HSTS satu tahun di luar development |
 | M-3 | Terbuka | Butuh keputusan desain (fingerprint atau penyematan kunci) |
-| M-4 | Sebagian | Limiter per email 10/menit di rute auth. Minimum password masih 8 |
+| M-4 | Sebagian | Limiter per email 10/menit di rute auth, IP diblokir 1 jam setelah 20 kegagalan (`01cab11`), dan TOTP opsional (`1618cda`). Belum ada lockout per akun; minimum password masih 8 |
 | M-5 | Diperbaiki | Web app mengunci setelah 15 menit tanpa klik atau ketikan |
-| M-6 | Sebagian | `fflate` di-override ke 0.7.5. `braces` belum punya rilis perbaikan; `katex` belum disentuh |
-| L-1 | Terbuka | Butuh perubahan API dan klien |
+| M-6 | Sebagian | `fflate` bersih, `katex` di-override ke 0.18.10, modul Go bersih (`govulncheck`: 0 yang terjangkau). Tinggal `braces`: advisory menyebut 3.0.4, tapi versi itu belum terbit di npm |
+| L-1 | Sebagian | `PUT /keys` kini meminta account password (`8d1579a`), jadi sesi curian saja tidak cukup. Revisi dan salinan untuk pemulihan belum ada |
 | L-2 | Terbuka | Butuh format cipher baru dan migrasi |
 | L-3 | Diperbaiki | Event sintetis diabaikan |
 | L-4 | Diperbaiki | Login https tidak lagi ditawarkan di halaman http (kecuali localhost). Sufiks publik (`tldts`) tidak lagi dianggap induk |
 | L-5 | Diperbaiki | Klien menolak public key di bawah 3072-bit |
 | L-6 | Diperbaiki | `GET /keys/public` dibatasi 20/menit per IP |
-| L-7 | Terbuka | Menghapus clipboard bisa menimpa salinan lain, membacanya memunculkan izin browser |
+| L-7 | Diperbaiki | Web app dan ekstensi mengosongkan clipboard satu menit setelah menyalin (`135b912`, `db77a6a`). Isinya tidak dibaca dulu, jadi salinan lain dalam menit itu ikut terhapus |
 | L-8 | Terbuka | |
 | L-9 | Terbuka | |
 | M-7 | Diperbaiki | Tiap frame diberi token rahasia lewat `postMessage` dan content script hanya mendengar pesan yang membawanya. Diuji di Chromium; Firefox belum |
@@ -44,6 +47,10 @@ bind parameter, setiap akses item lewat `item_members`, dan error 500 tidak memb
 | L-11 | Diperbaiki | Item bukan milik sendiri diberi label "Shared with you" di menu inline dan prompt passkey |
 | L-12 | Diperbaiki | `setAccessLevel('TRUSTED_CONTEXTS')` di background. Efeknya belum diuji, dan browser tanpa API ini tetap terbuka |
 | L-13 | Sebagian | Didokumentasikan di README. Verifikasi ulang per permintaan butuh keputusan desain |
+| M-9 | Diperbaiki | `request-email-change` meminta account password (403 tanpanya); dicakup integration test |
+| L-14 | Diperbaiki | `/totp/disable` meminta kode dari authenticator atau backup code selain password; web app dan ekstensi menanyakannya |
+| M-10 | Diperbaiki | Ekstensi keluar dari server lama sebelum menyimpan alamat baru; diuji di Chromium dengan dua server tiruan |
+| L-15 | Diperbaiki | Build rilis ekstensi hanya menerima server https, dan tidak mengirim apa pun ke server http yang sudah tersimpan |
 
 Dari bagian over-engineering: `login-form.tsx` dihapus dan `routes.go` dirapikan; dua lainnya
 masih terbuka.
@@ -65,6 +72,13 @@ masih terbuka.
   (Playwright, API tiruan): simpan dan login passkey dengan verifikasi tanda tangan, jatuh ke
   browser saat belum sign in, salinan prompt yang dibingkai halaman, menu inline, dan prompt
   simpan. Firefox dan server sungguhan belum.
+- **Audit 2026-10-20:** diff `14aa8e7..88935b5` di `apps/server` dibaca penuh
+  (`cmd/api/authula.go`, `routes.go`, middleware `ip_block.go` dan `rate_limit.go`, handler
+  dan repository billing, client Lemon Squeezy), plus source plugin Authula yang dipakai: TOTP
+  (`hooks.go`), bearer, JWT `ValidateToken`, dan alur ganti email. Di klien: sink HTML dan
+  `href` di `apps/app` dan `apps/extension`, `linkOf`, clipboard, tombol Update ekstensi, dan
+  tipe contact. `pnpm audit --prod` dan `govulncheck` (v1.1.4) dijalankan. `apps/web` hanya
+  dibaca untuk over-engineering.
 - **Metode:** baca kode dan source dependency (Authula v1.46.0, Fiber v3.5.0) plus
   `pnpm audit --prod`. Tidak ada pengujian terhadap server yang berjalan, jadi setiap temuan
   berstatus "terbukti dari kode", belum dieksploitasi.
@@ -164,8 +178,28 @@ masih terbuka.
 - `fflate` <0.7.5 (moderate, infinite loop) lewat `@vercel/og` di `apps/web`.
 - `katex` <0.18.2 (low, prototype pollution) lewat `@milkdown/react` di `apps/app`, yaitu web
   app vault.
-- **Perbaikan:** naikkan `vinext` dan `@milkdown/*`, atau pakai `pnpm.overrides`. Modul Go belum
-  dipindai karena `govulncheck` tidak terpasang.
+- **Perbaikan:** naikkan `vinext` dan `@milkdown/*`, atau pakai `pnpm.overrides`.
+- **Pembaruan 2026-10-20:** `fflate` tidak lagi dilaporkan. Advisory `braces` menyebut versi
+  perbaikan ≥3.0.4, tapi rilis terbaru di npm masih 3.0.3, jadi belum bisa di-override.
+  `katex` masih <0.18.2.
+  `govulncheck ./...` di `apps/server` melaporkan tiga kelompok yang terjangkau dari kode:
+  - Go 1.27.1: 10 advisory standard library (`net/http`, HTTP/2, `crypto/tls`, `html/template`,
+    `net/textproto`), semua diperbaiki di 1.27.2. Image `golang:1.27-alpine` di Dockerfile
+    mengikuti rilis patch terbaru, jadi build ulang image sudah cukup. Toolchain lokal dan CI
+    perlu dinaikkan juga.
+  - `golang.org/x/net` v0.59.0 (indirect): empat advisory HTTP/2, diperbaiki di v0.60.0.
+    Fiber memakai fasthttp, jadi yang terdampak adalah klien HTTP (Resend, Lemon Squeezy),
+    bukan server API.
+  - `github.com/rabbitmq/amqp091-go` v1.11.0 (indirect, lewat `watermill-amqp` milik Authula):
+    sembilan advisory, diperbaiki di v1.13.0/v1.14.0. Hanya terpakai kalau event bus Authula
+    diarahkan ke broker AMQP, dan deploy ini tidak melakukannya.
+  - Perbaikan: `go get golang.org/x/net@v0.60.0 github.com/rabbitmq/amqp091-go@v1.14.0`, lalu
+    `go mod tidy`, dan naikkan toolchain ke 1.27.2.
+- **Diperbaiki 2026-10-20 (sebagian):** `golang.org/x/net` v0.60.0, `amqp091-go` v1.14.0, dan
+  `go 1.27.2` di `go.mod`; `govulncheck` tidak lagi menemukan kerentanan yang terjangkau.
+  `katex` di-override ke 0.18.10 di `pnpm-workspace.yaml`, versi yang sudah dipakai
+  `@milkdown/crepe` sendiri. `braces` tetap terbuka sampai 3.0.4 terbit; jalurnya hanya build
+  `apps/web`.
 
 ### M-7 · Klik di salinan tersembunyi menu inline dianggap klik di menu yang terlihat
 
@@ -205,6 +239,56 @@ masih terbuka.
 - **Perbaikan:** deploy `apps/app` sebelum merilis ekstensi. Untuk ekstensi lama yang sudah
   terpasang, satu-satunya penutup penuh adalah versi klien minimum yang ditolak server.
 
+### M-9 · Ganti email cukup dengan token, lalu akun bisa diambil alih lewat reset password
+
+- **Lokasi:** `apps/server/cmd/api/authula.go:83-91` (route mapping),
+  `apps/server/cmd/api/authula.go:236-239` (`isTOTPToggle`, matcher `requirePassword`),
+  Authula `plugins/email-password/usecases/request_email_change_usecase.go`
+- **Masalah:** `POST /auth/email-password/request-email-change` hanya meminta access token atau
+  sesi. Tautan konfirmasinya dikirim ke alamat baru, dan alamat lama baru diberi tahu setelah
+  perubahan terjadi. `requirePassword`, yang meminta account password sebelum TOTP dinyalakan
+  atau dimatikan supaya "an access token alone must not be enough to lock the owner out", tidak
+  dipasang di rute ini. `PUT /keys` juga meminta password, jadi ganti email
+  adalah satu-satunya tindakan akun yang cukup dengan token.
+- **Dampak:** siapa pun yang memegang token sesaat (lewat XSS, lihat M-1, perangkat yang
+  ditinggal, atau token ekstensi yang bocor, lihat L-12) bisa memindahkan email akun ke
+  alamatnya, lalu meminta reset password ke alamat itu. Reset mengakhiri semua sesi pemilik.
+  Untuk akun tanpa TOTP, akses sesaat itu menjadi akses permanen: penyerang masuk dengan
+  password barunya kapan saja. Isi vault tetap aman,
+  karena master password terpisah. Untuk akun dengan TOTP, penyerang tertahan di langkah TOTP,
+  tapi pemilik sudah kehilangan email dan password akunnya.
+- **Syarat:** token akses atau cookie sesi yang masih hidup.
+- **Perbaikan:** pasang `requirePassword` juga di rute ini, dengan menambah path
+  `/email-password/request-email-change` ke matcher-nya. Pertimbangkan juga meminta konfirmasi
+  dari alamat lama sebelum perubahan berlaku.
+- **Diperbaiki 2026-10-20:** `requirePassword` sekarang middleware Fiber di depan Authula untuk
+  `passwordPaths` (TOTP on/off dan ganti email), dan membaca body yang disimpan Fiber. Sebagai
+  hook Authula, ia menghabiskan body sehingga handler ganti email menerima body kosong
+  (`422 EOF`). Hook lama lolos hanya karena handler TOTP tidak membaca body. Password yang salah
+  di rute ini juga dihitung blokir IP. Konfirmasi dari alamat lama belum ditambahkan.
+
+### M-10 · Ganti server di ekstensi mengirim token server lama ke server baru
+
+- **Lokasi:** `apps/extension/src/popup/views/settings.tsx` (`onSubmit`),
+  `apps/extension/src/lib/api.ts` (`request`, `refreshAccessToken`)
+- **Masalah:** menyimpan alamat server baru hanya menulis settings lalu memuat ulang popup.
+  Token sesi dan kunci vault yang terbuka tetap disimpan. Request berikutnya, `GET /keys`,
+  pergi ke server baru dengan access token server lama di header `Authorization`. Server baru
+  menjawab 401, lalu ekstensi mengirim refresh token lama ke `/token/refresh` server baru. Baru
+  setelah itu token dihapus. Sesi di server lama tidak pernah diakhiri. Teks di form ("Changing
+  the server signs you in again") menjanjikan hal yang tidak dilakukan kode.
+- **Dampak:** siapa pun yang membujuk pengguna untuk "pindah ke server self-hosted" (atau
+  pengguna yang salah ketik alamat) menerima access token dan refresh token akun di server
+  lama. Refresh token tetap berlaku di server lama sampai kedaluwarsa, jadi bisa dipakai untuk
+  masuk ke akun itu. Isi vault tetap aman karena master password terpisah.
+- **Bukti:** diuji dengan build rilis di Chromium (Playwright) dan dua server https tiruan.
+  Sebelum perbaikan, server baru menerima `GET /api/v1/keys` dengan access token lama dan
+  `POST /api/v1/auth/token/refresh` dengan refresh token lama.
+- **Diperbaiki 2026-10-20:** kalau origin API berubah, settings mengunci vault (`lockVault`)
+  dan keluar dari server lama (`signOut`, yang mengakhiri sesi di sana dan menghapus token)
+  sebelum alamat baru disimpan. Uji yang sama sesudahnya: `POST /api/v1/auth/sign-out` ke
+  server lama, nol request ke server baru, token terhapus.
+
 ---
 
 ## Low
@@ -224,6 +308,8 @@ masih terbuka.
 | L-12 | Token sesi di `chrome.storage.local` terbuka untuk content script (bawaan browser), jadi proses halaman yang diretas bisa membacanya. Kunci vault tidak terdampak: ada di `storage.session` | `apps/extension/src/lib/storage.ts:24-44`, `apps/extension/src/background.ts` | `chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' })` di background; periksa dulu dukungan Firefox |
 | L-13 | Flag user-verified selalu diset pada passkey, tanpa verifikasi ulang per permintaan. Situs yang meminta `userVerification: 'required'` hanya mendapat "vault dibuka dengan master password dalam 15 menit terakhir" | `apps/extension/src/lib/passkey.ts:129-146` | Minta master password lagi untuk permintaan `required`, atau dokumentasikan |
 | L-9  | CI tidak menjalankan `go test`, lint, atau audit dependency; workflow hanya rilis dan react-doctor | `.github/workflows/` | Satu workflow untuk test, lint, `pnpm audit`, `govulncheck` |
+| L-15 | Ekstensi menerima server self-hosted lewat `http://` untuk alamat apa pun, jadi account password, token sesi dan kode TOTP lewat jaringan tanpa enkripsi (ciphertext vault tetap ciphertext) | `apps/extension/src/lib/schemas.ts` (`ServerFormSchema`), `apps/extension/src/lib/api.ts` (`send`) | Diperbaiki 2026-10-20: build rilis hanya menerima https (`serverAllowed` di `lib/site.ts`); server http yang sudah tersimpan tidak dikirimi apa pun, dan popup meminta alamatnya diganti. Build development tetap boleh `http://localhost` |
+| L-14 | TOTP bisa dimatikan dengan account password saja, tanpa kode dari authenticator. Token curian ditambah password yang di-phishing cukup untuk mencabut langkah kedua, sehingga akses tetap terbuka setelah token kedaluwarsa | `apps/server/cmd/api/authula.go:241-267` (`requirePassword`), `apps/server/cmd/api/routes.go` (`/totp/disable`) | Minta kode TOTP atau backup code yang sah untuk `/totp/disable`, selain password |
 
 Catatan untuk L-6 dan H-1: `users.email` di tabel mirror tidak unik dan baris pengguna yang
 dihapus di Authula dipertahankan, sedangkan `PublicKeyByEmail` memakai `LIMIT 1` tanpa urutan.
@@ -260,3 +346,33 @@ karena menyentuh puluhan komponen UI yang belum punya uji.
 `apps/extension` sendiri ramping: tiga dependency runtime (`tldts` ditambahkan untuk L-10), dan pengulangan yang ada (`usable()` di tiga tempat, konstanta di `background.ts` dan `lib/session.ts`) dipaksa oleh aturan bahwa content script dan fungsi yang disuntikkan tidak boleh mengimpor.
 
 net: ±-400 baris, -5 dependency mungkin (-6 dengan `zustand`).
+
+### Seluruh repo (2026-10-20)
+
+Diurutkan dari potongan terbesar. Daftar 2026-10-13 di atas yang belum selesai (axios, lucide,
+`nuqs`, `zustand`, sisa salinan shadcn) masih berlaku dan tidak diulang di sini.
+`apps/server` diperiksa dengan `staticcheck -checks U1000` (v0.8.2) dan tidak ada kode mati;
+lihat `apps/server/ISSUES.md` Audit 3.
+
+- (selesai) `native:` `apps/web` membungkus satu daftar plan dengan TanStack Query: provider,
+  query client per render, `prefetchQuery` dan `HydrationBoundary` di dua halaman, plus lapisan
+  `models`, `services`, `queries` dan `client-fetch`. Padahal datanya diambil sekali di server
+  dan tidak pernah di-fetch ulang di browser (`staleTime: Infinity`, CORS tertutup). Gantinya:
+  `getTiers()` di `components/pricing/offer.ts`, satu `fetch` dengan `revalidate: 300` yang
+  di-await halamannya, lalu tiers diteruskan sebagai props. Tipe plan tetap lokal (lima field);
+  `apps/web` tidak bergantung pada `packages/shared`. (±110 baris, -1 dependency)
+- (dibiarkan) `native:` `input-otp` di `apps/app` (`components/ui/input-otp.tsx`,
+  `components/block/form/otp-field.tsx`) dan `apps/extension` (`popup/form/fields.tsx`, ±20
+  aturan CSS) untuk kode 6 digit. Gantinya: `<input inputMode="numeric"
+  autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6}>`. Kotak per digit adalah
+  pilihan desain dari `4950692`, jadi potong hanya kalau kotak itu tidak dibutuhkan. (±150
+  baris, -1 dependency di tiap app)
+- (selesai) `shrink:` `linkOf` ditulis dua kali (`apps/app/src/components/block/vault/item-detail.tsx:59`,
+  `apps/extension/src/lib/site.ts:16`), begitu juga peta `STATUS` di kedua halaman billing
+  (`apps/app/.../billing/billing.tsx:26`, `apps/extension/.../views/billing.tsx:29`). Gantinya:
+  `linkOf` di `packages/shared/src/url.ts` dan `BILLING_STATUS` di `plan.ts`. (±25 baris)
+- (selesai) `delete:` ekspor yang tidak dipakai di mana pun: `ShareRole`
+  (`packages/shared/src/constants/vault.ts:42`) dan `ItemFormDto`
+  (`packages/shared/src/api/dtos/vault/schema.ts:78`). Gantinya: tidak ada. (2 baris)
+
+net: ±-290 baris, -2 dependency mungkin (-1 di `apps/web`, -1 per app untuk `input-otp`).

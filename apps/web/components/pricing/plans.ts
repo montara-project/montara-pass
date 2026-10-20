@@ -28,8 +28,18 @@ export type Tier = {
   name: string;
   /** What the tier is, in the product's own words. */
   terms: string;
-  /** In the currency's minor unit: cents for USD. 0 for the free rows. */
+  /**
+   * In the currency's minor unit: cents for USD. 0 for the free rows. What the
+   * plan costs, and what a recurring one renews at.
+   */
   amount: number;
+  /**
+   * A live plan marked down (its compare-at price) or under a public discount
+   * code: what its first payment costs, what that is down from, and the
+   * code's terms in a line, or null when it takes off every payment and never
+   * ends. Absent when neither applies.
+   */
+  offer?: { amount: number; was: number; terms: string | null };
   currency: string;
   kind: Kind;
   /** The line after the amount. */

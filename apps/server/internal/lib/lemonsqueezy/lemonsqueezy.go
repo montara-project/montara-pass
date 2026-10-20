@@ -1,5 +1,5 @@
 // Package lemonsqueezy is the small part of the Lemon Squeezy API billing
-// needs: the store's currency and catalog, its customers, a checkout per
+// needs: the store's currency, catalog and discount codes, its customers, a checkout per
 // payment, a subscription's customer portal, and the signed webhook that
 // reports what was paid.
 // https://docs.lemonsqueezy.com/api
@@ -12,11 +12,14 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -64,11 +67,49 @@ type document struct {
 	Meta struct {
 		Page struct {
 			LastPage int `json:"lastPage"`
+			Total    int `json:"total"`
 		} `json:"page"`
 	} `json:"meta"`
 	Errors []struct {
 		Detail string `json:"detail"`
+		Source struct {
+			Pointer string `json:"pointer"`
+		} `json:"source"`
 	} `json:"errors"`
+}
+
+// RequestError is an answer Lemon Squeezy gave with an error status: it got
+// the request and refused it, unlike a request that never reached it.
+type RequestError struct {
+	Method, Path string
+	Status       int
+	// What the JSON:API errors say, and the fields they point at.
+	Details, Pointers []string
+}
+
+func (e *RequestError) Error() string {
+	detail := ""
+	if len(e.Details) > 0 {
+		detail = e.Details[0]
+	}
+	return fmt.Sprintf("lemon squeezy: %s %s: status %d: %s", e.Method, e.Path, e.Status, detail)
+}
+
+// RefusedDiscount reports whether err is Lemon Squeezy refusing a request
+// over its discount code: a client error whose details or fields name it.
+// A request that did not get through, or failed on Lemon Squeezy's side, is
+// not one.
+func RefusedDiscount(err error) bool {
+	var re *RequestError
+	if !errors.As(err, &re) || re.Status < 400 || re.Status >= 500 {
+		return false
+	}
+	for _, s := range append(slices.Clone(re.Details), re.Pointers...) {
+		if strings.Contains(strings.ToLower(s), "discount") {
+			return true
+		}
+	}
+	return false
 }
 
 // send makes a JSON:API request and returns its answer.
@@ -101,11 +142,12 @@ func (c *Client) send(ctx context.Context, method, path string, body any) (docum
 		return doc, fmt.Errorf("lemon squeezy: %s %s: status %d: %w", method, path, res.StatusCode, err)
 	}
 	if res.StatusCode >= 300 {
-		detail := ""
-		if len(doc.Errors) > 0 {
-			detail = doc.Errors[0].Detail
+		re := &RequestError{Method: method, Path: path, Status: res.StatusCode}
+		for _, e := range doc.Errors {
+			re.Details = append(re.Details, e.Detail)
+			re.Pointers = append(re.Pointers, e.Source.Pointer)
 		}
-		return doc, fmt.Errorf("lemon squeezy: %s %s: status %d: %s", method, path, res.StatusCode, detail)
+		return doc, re
 	}
 	return doc, nil
 }
@@ -166,21 +208,27 @@ type Checkout struct {
 	OrderID string
 	// Where the browser goes once the payment is made.
 	RedirectURL string
+	// Filled in at checkout; empty for none.
+	DiscountCode string
 }
 
 // Checkout creates a checkout and returns the page the user pays on.
 func (c *Client) Checkout(ctx context.Context, ch Checkout) (string, error) {
+	checkoutData := map[string]any{
+		"email":  ch.Email,
+		"name":   ch.Name,
+		"custom": map[string]string{"order_id": ch.OrderID},
+	}
+	if ch.DiscountCode != "" {
+		checkoutData["discount_code"] = ch.DiscountCode
+	}
 	body := map[string]any{
 		"data": map[string]any{
 			"type": "checkouts",
 			"attributes": map[string]any{
 				"product_options": map[string]any{"redirect_url": ch.RedirectURL, "enabled_variants": []string{ch.VariantID}},
-				"checkout_data": map[string]any{
-					"email":  ch.Email,
-					"name":   ch.Name,
-					"custom": map[string]string{"order_id": ch.OrderID},
-				},
-				"expires_at": time.Now().Add(CheckoutLifetime).UTC().Format(time.RFC3339),
+				"checkout_data":   checkoutData,
+				"expires_at":      time.Now().Add(CheckoutLifetime).UTC().Format(time.RFC3339),
 			},
 			"relationships": map[string]any{
 				"store":   map[string]any{"data": map[string]string{"type": "stores", "id": c.storeID}},
@@ -201,6 +249,100 @@ func (c *Client) Checkout(ctx context.Context, ch Checkout) (string, error) {
 		return "", fmt.Errorf("lemon squeezy: checkout without a url")
 	}
 	return checkout.Attributes.URL, nil
+}
+
+// Discount is a published discount code of the store.
+type Discount struct {
+	ID         string
+	Name       string
+	Code       string
+	AmountType string // percent or fixed
+	// A percentage, or cents off, as AmountType says.
+	Amount   int64
+	StartsAt *time.Time
+	// Nil when it never expires.
+	ExpiresAt *time.Time
+	// once, repeating or forever: which of a subscription's payments it
+	// takes off, the first, those of the first DurationInMonths, or all.
+	Duration         string
+	DurationInMonths int
+	// Zero when it can be redeemed any number of times.
+	MaxRedemptions int
+	// The variants it is limited to; nil when it applies to all of them.
+	Variants []string
+}
+
+// Live reports whether the code is taken at now.
+func (d Discount) Live(now time.Time) bool {
+	return (d.StartsAt == nil || !now.Before(*d.StartsAt)) && (d.ExpiresAt == nil || now.Before(*d.ExpiresAt))
+}
+
+// Discounts reads the store's published discount codes. keep picks which
+// to read in full: those limited to some variants are asked for them, and
+// those limited in redemptions are left out once used up.
+func (c *Client) Discounts(ctx context.Context, keep func(Discount) bool) ([]Discount, error) {
+	type discount struct {
+		ID         string `json:"id"`
+		Attributes struct {
+			Name                 string     `json:"name"`
+			Code                 string     `json:"code"`
+			Amount               int64      `json:"amount"`
+			AmountType           string     `json:"amount_type"`
+			IsLimitedToProducts  bool       `json:"is_limited_to_products"`
+			IsLimitedRedemptions bool       `json:"is_limited_redemptions"`
+			MaxRedemptions       int        `json:"max_redemptions"`
+			StartsAt             *time.Time `json:"starts_at"`
+			ExpiresAt            *time.Time `json:"expires_at"`
+			Duration             string     `json:"duration"`
+			DurationInMonths     int        `json:"duration_in_months"`
+			Status               string     `json:"status"`
+		} `json:"attributes"`
+	}
+	type variant struct {
+		ID string `json:"id"`
+	}
+
+	found, err := list[discount](ctx, c, "/discounts", url.Values{"filter[store_id]": {c.storeID}})
+	if err != nil {
+		return nil, err
+	}
+	var out []Discount
+	for _, f := range found {
+		a := f.Attributes
+		d := Discount{
+			ID: f.ID, Name: a.Name, Code: a.Code, AmountType: a.AmountType, Amount: a.Amount,
+			StartsAt: a.StartsAt, ExpiresAt: a.ExpiresAt, Duration: a.Duration, DurationInMonths: a.DurationInMonths,
+		}
+		if a.IsLimitedRedemptions {
+			d.MaxRedemptions = a.MaxRedemptions
+		}
+		if a.Status != "published" || !keep(d) {
+			continue
+		}
+		if a.IsLimitedToProducts {
+			variants, err := list[variant](ctx, c, "/discounts/"+f.ID+"/variants", url.Values{})
+			if err != nil {
+				return nil, err
+			}
+			d.Variants = []string{}
+			for _, v := range variants {
+				d.Variants = append(d.Variants, v.ID)
+			}
+		}
+		if d.MaxRedemptions > 0 {
+			doc, err := c.send(ctx, http.MethodGet, "/discount-redemptions?"+url.Values{
+				"filter[discount_id]": {f.ID}, "page[size]": {"1"},
+			}.Encode(), nil)
+			if err != nil {
+				return nil, err
+			}
+			if doc.Meta.Page.Total >= d.MaxRedemptions {
+				continue
+			}
+		}
+		out = append(out, d)
+	}
+	return out, nil
 }
 
 // Variant is one thing the store sells, with what billing needs of its
@@ -390,6 +532,10 @@ type Attributes struct {
 	FirstOrderItem struct {
 		VariantID int64 `json:"variant_id"`
 	} `json:"first_order_item"`
+	// In cents: what the order cost, discount taken off and tax added, and
+	// its tax.
+	Total *int64 `json:"total"`
+	Tax   *int64 `json:"tax"`
 
 	// Subscriptions.
 	SubscriptionVariantID int64      `json:"variant_id"`
@@ -397,6 +543,19 @@ type Attributes struct {
 	RenewsAt              time.Time  `json:"renews_at"`
 	EndsAt                *time.Time `json:"ends_at"`
 	UpdatedAt             time.Time  `json:"updated_at"`
+}
+
+// Paid is what an order was charged less its tax, as billing records a
+// payment; nil when the event carries no total.
+func (a Attributes) Paid() *int64 {
+	if a.Total == nil {
+		return nil
+	}
+	paid := *a.Total
+	if a.Tax != nil {
+		paid -= *a.Tax
+	}
+	return &paid
 }
 
 // VariantID is the variant that was paid for, as the plans store it.

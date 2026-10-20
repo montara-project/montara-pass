@@ -2,7 +2,15 @@ import type { Models } from '@montara-pass/shared/api/models'
 
 import { formatDate } from '@montara-pass/shared/date'
 import { formatPrice } from '@montara-pass/shared/money'
-import { isSandbox, planName, planPeriod, planTerms } from '@montara-pass/shared/plan'
+import {
+  BILLING_STATUS,
+  isSandbox,
+  planName,
+  planOffer,
+  planPeriod,
+  planSaving,
+  planTerms,
+} from '@montara-pass/shared/plan'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { CreditCard } from 'lucide-react'
 import { useQueryState } from 'nuqs'
@@ -15,16 +23,6 @@ import { queries } from '@/lib/api/queries'
 import { cn } from '@/lib/utils'
 
 const label = 'text-muted-foreground pl-1 font-mono text-[11px] tracking-[0.12em] uppercase'
-
-const STATUS: Record<Models.Subscription['status'] | Models.Purchase['status'], string> = {
-  pending: 'Waiting for payment',
-  active: 'Active',
-  paid: 'Paid',
-  canceled: 'Canceled',
-  expired: 'Expired',
-  failed: 'Payment failed',
-  refunded: 'Refunded',
-}
 
 /**
  * Billing, Cloud Edition only: the subscription and purchases of the
@@ -96,7 +94,7 @@ export default function BillingBlock() {
               <div className="flex min-w-0 flex-col gap-0.5">
                 <span className="font-medium">{planName(subscription.plan)}</span>
                 <span className="text-muted-foreground text-[13px]">
-                  {STATUS[subscription.status]}
+                  {BILLING_STATUS[subscription.status]}
                   {subscription.status === 'active' &&
                     (subscription.canceled_at
                       ? `, ends ${formatDate(subscription.current_period_end)}`
@@ -148,6 +146,8 @@ export default function BillingBlock() {
               // One subscription at a time; another once this one has ended.
               const subscribed = plan.billing === 'recurring' && subscription !== null
               const marked = plan.id === featured?.id
+              const saving = planSaving(plan, plans.data)
+              const offer = planOffer(plan, formatPrice(plan.amount, 'USD'))
               return (
                 <li
                   key={plan.id}
@@ -159,21 +159,37 @@ export default function BillingBlock() {
                     marked && 'border-focus bg-hover'
                   )}
                 >
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="font-medium">{planName(plan)}</span>
-                    {isSandbox(plan) && (
-                      <span className="text-muted-foreground rounded-full border px-2.5 py-0.5 font-mono text-[11px]">
-                        sandbox
-                      </span>
-                    )}
+                    <span className="flex items-center gap-1.5 whitespace-nowrap">
+                      {saving && saving.percent >= 1 && (
+                        <span className="bg-focus/15 text-focus rounded-full px-2.5 py-0.5 text-xs font-medium tabular-nums">
+                          Save {saving.percent}%
+                        </span>
+                      )}
+                      {isSandbox(plan) && (
+                        <span className="text-muted-foreground rounded-full border px-2.5 py-0.5 font-mono text-[11px]">
+                          sandbox
+                        </span>
+                      )}
+                    </span>
                   </div>
-                  <p className="flex items-baseline gap-2 font-mono tabular-nums">
+                  <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1 font-mono tabular-nums">
                     <span className="text-[28px] leading-none font-medium">
-                      {formatPrice(plan.amount, 'USD')}
+                      {formatPrice(saving?.amount ?? plan.amount, 'USD')}
                     </span>
                     <span className="text-muted-foreground text-xs">{planPeriod(plan)}</span>
+                    {saving && (
+                      <s className="text-muted-foreground decoration-muted-foreground/70 text-xs">
+                        <span className="sr-only">was </span>
+                        {formatPrice(saving.was, 'USD')}
+                      </s>
+                    )}
                   </p>
-                  <p className="text-muted-foreground mb-4 font-mono text-xs">{planTerms(plan)}</p>
+                  <div className="mb-4 flex flex-col gap-1 font-mono text-xs">
+                    {offer && <p>{offer}</p>}
+                    <p className="text-muted-foreground">{planTerms(plan)}</p>
+                  </div>
                   {purchase?.status === 'paid' ? (
                     <span className="text-muted-foreground mt-auto pt-4 text-[13px]">
                       You own this.
@@ -217,7 +233,7 @@ export default function BillingBlock() {
               >
                 <span className="font-medium">{planName(purchase.plan)}</span>
                 <span className="text-muted-foreground text-[13px] tabular-nums">
-                  {formatPrice(purchase.amount, 'USD')} · {STATUS[purchase.status]}
+                  {formatPrice(purchase.amount, 'USD')} · {BILLING_STATUS[purchase.status]}
                   {purchase.paid_at && ` · ${formatDate(purchase.paid_at)}`}
                 </span>
               </li>

@@ -3,6 +3,7 @@ import type { VaultItem } from '@montara-pass/shared/types/vault'
 
 import { COMMUNITY } from '@montara-pass/shared/constants/edition'
 import { ITEM_TYPE_LABEL } from '@montara-pass/shared/constants/vault'
+import { linkOf } from '@montara-pass/shared/url'
 import {
   useEffect,
   useMemo,
@@ -15,7 +16,7 @@ import {
 import { markItemUsed, setItemPlacement, SignedOutError, trashItem } from '../../lib/api'
 import { fillLogin } from '../../lib/autofill'
 import { copySecret } from '../../lib/clipboard'
-import { fillsSite, hostOf, linkOf } from '../../lib/site'
+import { fillsSite, hostOf } from '../../lib/site'
 import { lastUsedLabel } from '../../lib/usage'
 import { maskUsername } from '../../lib/username'
 import {

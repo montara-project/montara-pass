@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 
-import { dehydrate, HydrationBoundary } from "@tanstack/react-query";
-
 import { Explainer } from "@/components/home/explainer";
 import { Faq } from "@/components/home/faq";
 import { FeatureMatrix } from "@/components/home/feature-matrix";
@@ -12,9 +10,8 @@ import { Pricing } from "@/components/home/pricing";
 import { Steps } from "@/components/home/steps";
 import { TrustStrip } from "@/components/home/trust-strip";
 import { REPO_URL } from "@/components/links";
-import { queries } from "@/lib/api/queries";
+import { getTiers } from "@/components/pricing/offer";
 import { META_IMAGE, META_URL, pageMeta } from "@/lib/constants/meta";
-import { getQueryClient } from "@/lib/providers/query-client";
 
 export const metadata: Metadata = pageMeta({ path: "/" });
 
@@ -41,8 +38,7 @@ const jsonLd = {
 };
 
 export default async function Home() {
-  const queryClient = getQueryClient();
-  await queryClient.prefetchQuery(queries.billing.plans());
+  const tiers = await getTiers();
 
   return (
     <main>
@@ -56,9 +52,7 @@ export default async function Home() {
       <FeatureMatrix />
       <Ownership />
       <Steps />
-      <HydrationBoundary state={dehydrate(queryClient)}>
-        <Pricing />
-      </HydrationBoundary>
+      <Pricing tiers={tiers} />
       <Faq />
       <FinalCta />
     </main>

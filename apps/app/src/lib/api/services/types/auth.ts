@@ -12,7 +12,7 @@ export type AuthResources = {
   signOut: (body?: { session_id?: string }) => Promise<AxiosResponse<unknown>>
   // Both take the account password.
   totpEnable: (password: string) => Promise<AxiosResponse<TotpSetup>>
-  totpDisable: (password: string) => Promise<AxiosResponse<unknown>>
+  totpDisable: (password: string, code: string) => Promise<AxiosResponse<unknown>>
   /** Answers the TOTP step with a code from the authenticator app. */
   totpVerify: (totpToken: string, code: string) => Promise<AxiosResponse<SignInData>>
   /** Answers the TOTP step with a backup code. */

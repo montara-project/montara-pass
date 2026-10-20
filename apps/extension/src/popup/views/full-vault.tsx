@@ -3,11 +3,11 @@ import type { VaultItem } from '@montara-pass/shared/types/vault'
 
 import { COMMUNITY } from '@montara-pass/shared/constants/edition'
 import { CONTACT_FIELDS, ITEM_TYPE_LABEL } from '@montara-pass/shared/constants/vault'
+import { linkOf } from '@montara-pass/shared/url'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 
 import { setItemPlacement, SignedOutError, trashItem } from '../../lib/api'
 import { copySecret } from '../../lib/clipboard'
-import { linkOf } from '../../lib/site'
 import { getSettings } from '../../lib/storage'
 import { lastUsedAgo } from '../../lib/usage'
 import { maskUsername } from '../../lib/username'
