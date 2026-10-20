@@ -14,8 +14,8 @@ L-14, memperbarui status M-4, M-6, L-1 dan L-7, dan menambah daftar over-enginee
 | -------- | ------ | --------------------------------------------------------------------- |
 | Critical | 0      | Isi vault bisa dibaca tanpa syarat                                    |
 | High     | 2      | Rahasia bocor atau pertahanan utama bisa dilewati, dengan syarat ringan |
-| Medium   | 9      | Memperbesar dampak serangan lain, atau melemahkan klaim zero-knowledge |
-| Low      | 14     | Pengerasan dan kebersihan                                             |
+| Medium   | 10     | Memperbesar dampak serangan lain, atau melemahkan klaim zero-knowledge |
+| Low      | 15     | Pengerasan dan kebersihan                                             |
 
 Tidak ada SQL injection, IDOR, atau kebocoran plaintext yang ditemukan: semua query memakai
 bind parameter, setiap akses item lewat `item_members`, dan error 500 tidak membocorkan detail.
@@ -49,6 +49,8 @@ bind parameter, setiap akses item lewat `item_members`, dan error 500 tidak memb
 | L-13 | Sebagian | Didokumentasikan di README. Verifikasi ulang per permintaan butuh keputusan desain |
 | M-9 | Diperbaiki | `request-email-change` meminta account password (403 tanpanya); dicakup integration test |
 | L-14 | Diperbaiki | `/totp/disable` meminta kode dari authenticator atau backup code selain password; web app dan ekstensi menanyakannya |
+| M-10 | Diperbaiki | Ekstensi keluar dari server lama sebelum menyimpan alamat baru; diuji di Chromium dengan dua server tiruan |
+| L-15 | Diperbaiki | Build rilis ekstensi hanya menerima server https, dan tidak mengirim apa pun ke server http yang sudah tersimpan |
 
 Dari bagian over-engineering: `login-form.tsx` dihapus dan `routes.go` dirapikan; dua lainnya
 masih terbuka.
@@ -265,6 +267,28 @@ masih terbuka.
   (`422 EOF`). Hook lama lolos hanya karena handler TOTP tidak membaca body. Password yang salah
   di rute ini juga dihitung blokir IP. Konfirmasi dari alamat lama belum ditambahkan.
 
+### M-10 · Ganti server di ekstensi mengirim token server lama ke server baru
+
+- **Lokasi:** `apps/extension/src/popup/views/settings.tsx` (`onSubmit`),
+  `apps/extension/src/lib/api.ts` (`request`, `refreshAccessToken`)
+- **Masalah:** menyimpan alamat server baru hanya menulis settings lalu memuat ulang popup.
+  Token sesi dan kunci vault yang terbuka tetap disimpan. Request berikutnya, `GET /keys`,
+  pergi ke server baru dengan access token server lama di header `Authorization`. Server baru
+  menjawab 401, lalu ekstensi mengirim refresh token lama ke `/token/refresh` server baru. Baru
+  setelah itu token dihapus. Sesi di server lama tidak pernah diakhiri. Teks di form ("Changing
+  the server signs you in again") menjanjikan hal yang tidak dilakukan kode.
+- **Dampak:** siapa pun yang membujuk pengguna untuk "pindah ke server self-hosted" (atau
+  pengguna yang salah ketik alamat) menerima access token dan refresh token akun di server
+  lama. Refresh token tetap berlaku di server lama sampai kedaluwarsa, jadi bisa dipakai untuk
+  masuk ke akun itu. Isi vault tetap aman karena master password terpisah.
+- **Bukti:** diuji dengan build rilis di Chromium (Playwright) dan dua server https tiruan.
+  Sebelum perbaikan, server baru menerima `GET /api/v1/keys` dengan access token lama dan
+  `POST /api/v1/auth/token/refresh` dengan refresh token lama.
+- **Diperbaiki 2026-10-20:** kalau origin API berubah, settings mengunci vault (`lockVault`)
+  dan keluar dari server lama (`signOut`, yang mengakhiri sesi di sana dan menghapus token)
+  sebelum alamat baru disimpan. Uji yang sama sesudahnya: `POST /api/v1/auth/sign-out` ke
+  server lama, nol request ke server baru, token terhapus.
+
 ---
 
 ## Low
@@ -284,6 +308,7 @@ masih terbuka.
 | L-12 | Token sesi di `chrome.storage.local` terbuka untuk content script (bawaan browser), jadi proses halaman yang diretas bisa membacanya. Kunci vault tidak terdampak: ada di `storage.session` | `apps/extension/src/lib/storage.ts:24-44`, `apps/extension/src/background.ts` | `chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' })` di background; periksa dulu dukungan Firefox |
 | L-13 | Flag user-verified selalu diset pada passkey, tanpa verifikasi ulang per permintaan. Situs yang meminta `userVerification: 'required'` hanya mendapat "vault dibuka dengan master password dalam 15 menit terakhir" | `apps/extension/src/lib/passkey.ts:129-146` | Minta master password lagi untuk permintaan `required`, atau dokumentasikan |
 | L-9  | CI tidak menjalankan `go test`, lint, atau audit dependency; workflow hanya rilis dan react-doctor | `.github/workflows/` | Satu workflow untuk test, lint, `pnpm audit`, `govulncheck` |
+| L-15 | Ekstensi menerima server self-hosted lewat `http://` untuk alamat apa pun, jadi account password, token sesi dan kode TOTP lewat jaringan tanpa enkripsi (ciphertext vault tetap ciphertext) | `apps/extension/src/lib/schemas.ts` (`ServerFormSchema`), `apps/extension/src/lib/api.ts` (`send`) | Diperbaiki 2026-10-20: build rilis hanya menerima https (`serverAllowed` di `lib/site.ts`); server http yang sudah tersimpan tidak dikirimi apa pun, dan popup meminta alamatnya diganti. Build development tetap boleh `http://localhost` |
 | L-14 | TOTP bisa dimatikan dengan account password saja, tanpa kode dari authenticator. Token curian ditambah password yang di-phishing cukup untuk mencabut langkah kedua, sehingga akses tetap terbuka setelah token kedaluwarsa | `apps/server/cmd/api/authula.go:241-267` (`requirePassword`), `apps/server/cmd/api/routes.go` (`/totp/disable`) | Minta kode TOTP atau backup code yang sah untuk `/totp/disable`, selain password |
 
 Catatan untuk L-6 dan H-1: `users.email` di tabel mirror tidak unik dan baris pengguna yang
