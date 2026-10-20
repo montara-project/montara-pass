@@ -3,6 +3,12 @@
 All notable changes to this project are documented in this file. Versions follow the git tags (`v*`); Docker images are published to ghcr.io with the same version.
 
 
+## [2.5.0](https://github.com/montara-project/montara-pass/compare/v2.4.0...v2.5.0) (2026-10-20)
+
+### Features
+
+* **server:** filter subscriptions and purchases by store mode ([2f975f2](https://github.com/montara-project/montara-pass/commit/2f975f269ea8c4f83cd45fdd5e28378a4b1ea78f))
+
 ## [2.4.0](https://github.com/montara-project/montara-pass/compare/v2.3.0...v2.4.0) (2026-10-20)
 
 ### Features
