@@ -280,3 +280,16 @@ func TestDiscounts(t *testing.T) {
 		t.Errorf("a checkout without a discount sent one: %v", checkout.Data.Attributes.CheckoutData)
 	}
 }
+
+func TestPaid(t *testing.T) {
+	total, tax := int64(30600), int64(600)
+	if paid := (Attributes{Total: &total, Tax: &tax}).Paid(); paid == nil || *paid != 30000 {
+		t.Errorf("paid less tax: %v", paid)
+	}
+	if paid := (Attributes{Total: &total}).Paid(); paid == nil || *paid != 30600 {
+		t.Errorf("paid without tax: %v", paid)
+	}
+	if paid := (Attributes{}).Paid(); paid != nil {
+		t.Errorf("an event without a total: %v", *paid)
+	}
+}

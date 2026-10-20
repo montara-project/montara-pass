@@ -1123,6 +1123,19 @@ func billingFlow(
 	}
 	wantWebhook("order_created", "", "1", map[string]any{"status": "paid"})
 	wantWebhook("order_created", orderID, "1", map[string]any{"status": "paid", "first_order_item": map[string]any{"variant_id": 101}})
+	// The first payment's order records what it settled at, less its tax.
+	firstOrder := func(total, tax int) any {
+		t.Helper()
+		wantWebhook("order_created", orderID, "1", map[string]any{"status": "paid", "first_order_item": map[string]any{"variant_id": 101}, "total": total, "tax": tax})
+		subscription, _ := overview()
+		return subscription["amount"]
+	}
+	if amount := firstOrder(250, 0); amount != float64(250) {
+		t.Fatalf("settled subscription: %v", amount)
+	}
+	if amount := firstOrder(330, 30); amount != float64(300) {
+		t.Fatalf("settled subscription, less tax: %v", amount)
+	}
 	for range 2 {
 		wantWebhook("subscription_created", orderID, "7001", active)
 	}
@@ -1178,8 +1191,13 @@ func billingFlow(
 	if _, purchases := overview(); purchases[0].(map[string]any)["status"] != "pending" {
 		t.Fatalf("a pending order settled the purchase: %v", purchases)
 	}
+	// Lemon Squeezy did not take the code: the purchase records what it
+	// settled at, the full price, less its tax.
 	for range 2 {
-		wantWebhook("order_created", buyID, "2", map[string]any{"status": "paid", "first_order_item": item})
+		wantWebhook("order_created", buyID, "2", map[string]any{"status": "paid", "first_order_item": item, "total": 30600, "tax": 600})
+	}
+	if _, purchases := overview(); purchases[0].(map[string]any)["amount"] != float64(30000) {
+		t.Fatalf("settled purchase: %v", purchases[0])
 	}
 	want(http.StatusConflict, http.MethodPost, "/api/v1/billing/purchases", userToken, map[string]any{"plan_id": lifetime["id"]})
 	wantWebhook("order_refunded", buyID, "2", map[string]any{"status": "partial_refund", "refunded": false, "first_order_item": item})

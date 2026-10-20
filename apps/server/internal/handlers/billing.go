@@ -453,7 +453,7 @@ func (h *billingHandler) customer(c fiber.Ctx, kind string) (models.User, models
 // free to try again.
 func startCheckout[T any](
 	h *billingHandler, c fiber.Ctx, user models.User, plan models.Plan, order, table string,
-	insert func(context.Context, uuid.UUID, uuid.UUID, models.Plan, string) error,
+	insert func(context.Context, uuid.UUID, uuid.UUID, models.Plan, int64, string) error,
 	get func(context.Context, uuid.UUID) (T, error),
 	message string,
 ) error {
@@ -467,11 +467,13 @@ func startCheckout[T any](
 		h.app.Logger.Error("save lemon squeezy customer", "user", user.ID, "error", err)
 		return errCheckout
 	}
-	if err := insert(c.Context(), id, user.ID, plan, orderID); err != nil {
+	// The row and the checkout take one reading of the discount, so the
+	// price recorded is the one asked.
+	discount, amount := plan.Discount(time.Now())
+	if err := insert(c.Context(), id, user.ID, plan, amount, orderID); err != nil {
 		return err
 	}
 
-	discount, _ := plan.Discount(time.Now())
 	url, err := h.app.Payments.Checkout(c.Context(), lemonsqueezy.Checkout{
 		VariantID:    *plan.VariantID,
 		Email:        user.Email,
@@ -591,7 +593,8 @@ const (
 // no-op. Events it sends that billing does not use are answered 200, so they
 // are not repeated.
 //
-// The webhook needs order_created, order_refunded, subscription_created and
+// The webhook needs order_created (a purchase's payment, and a
+// subscription's first), order_refunded, subscription_created and
 // subscription_updated, which follows every other change to a subscription.
 func (h *billingHandler) LemonSqueezyWebhook(c fiber.Ctx) error {
 	if h.app.Payments == nil {
@@ -628,6 +631,21 @@ func (h *billingHandler) LemonSqueezyWebhook(c fiber.Ctx) error {
 			return err
 		}
 
+	// A subscription's first payment is an order too, sent alongside
+	// subscription_created: what it settled at is recorded. Renewals are
+	// not orders.
+	case kind == orderSubscription && event == "order_created" && a.Status == orderPaid && a.Paid() != nil:
+		s, err := h.repo().GetSubscription(c.Context(), id)
+		if err != nil {
+			return err
+		}
+		if !sameVariant(s.Plan, a) {
+			return apperr.New(apperr.KindBadRequest, "variant does not match the order")
+		}
+		if changed, err = h.repo().SetSubscriptionAmount(c.Context(), id, *a.Paid()); err != nil {
+			return err
+		}
+
 	case kind == orderPurchase && (event == "order_created" || event == "order_refunded"):
 		b, err := h.repo().GetPurchase(c.Context(), id)
 		if err != nil {
@@ -638,16 +656,18 @@ func (h *billingHandler) LemonSqueezyWebhook(c fiber.Ctx) error {
 		}
 		switch {
 		case event == "order_refunded" && a.Refunded:
-			changed, err = h.repo().MovePurchase(c.Context(), id, models.PurchasePaid, models.PurchaseRefunded)
+			changed, err = h.repo().MovePurchase(c.Context(), id, models.PurchasePaid, models.PurchaseRefunded, nil)
 		case event == "order_created" && a.Status == orderPaid:
-			changed, err = h.repo().MovePurchase(c.Context(), id, models.PurchasePending, models.PurchasePaid)
+			// At what Lemon Squeezy settled: the discount code may not have
+			// been taken.
+			changed, err = h.repo().MovePurchase(c.Context(), id, models.PurchasePending, models.PurchasePaid, a.Paid())
 			// A payment that arrives for an order no longer pending needs a
 			// person: it is logged, not applied.
 			if err == nil && !changed {
 				h.app.Logger.Warn("lemon squeezy payment for an order that is not pending", "order_id", orderID)
 			}
 		case event == "order_created" && (a.Status == orderFailed || a.Status == orderFraudulent):
-			changed, err = h.repo().MovePurchase(c.Context(), id, models.PurchasePending, models.PurchaseFailed)
+			changed, err = h.repo().MovePurchase(c.Context(), id, models.PurchasePending, models.PurchaseFailed, nil)
 		}
 		if err != nil {
 			return err

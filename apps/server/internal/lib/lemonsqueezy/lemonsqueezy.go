@@ -491,6 +491,10 @@ type Attributes struct {
 	FirstOrderItem struct {
 		VariantID int64 `json:"variant_id"`
 	} `json:"first_order_item"`
+	// In cents: what the order cost, discount taken off and tax added, and
+	// its tax.
+	Total *int64 `json:"total"`
+	Tax   *int64 `json:"tax"`
 
 	// Subscriptions.
 	SubscriptionVariantID int64      `json:"variant_id"`
@@ -498,6 +502,19 @@ type Attributes struct {
 	RenewsAt              time.Time  `json:"renews_at"`
 	EndsAt                *time.Time `json:"ends_at"`
 	UpdatedAt             time.Time  `json:"updated_at"`
+}
+
+// Paid is what an order was charged less its tax, as billing records a
+// payment; nil when the event carries no total.
+func (a Attributes) Paid() *int64 {
+	if a.Total == nil {
+		return nil
+	}
+	paid := *a.Total
+	if a.Tax != nil {
+		paid -= *a.Tax
+	}
+	return &paid
 }
 
 // VariantID is the variant that was paid for, as the plans store it.
