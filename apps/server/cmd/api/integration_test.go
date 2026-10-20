@@ -895,8 +895,10 @@ type lemonStore struct {
 	// limited to.
 	discounts        map[string]map[string]any
 	discountVariants map[string][]string
-	// The code the last checkout was opened with.
+	// The code the last checkout was opened with, and whether a checkout
+	// with a code is refused, as for one taken off sale since the last sync.
 	checkoutDiscount string
+	refuseDiscounts  bool
 }
 
 func (l *lemonStore) set(variants ...lemonVariant) {
@@ -990,6 +992,11 @@ func (l *lemonStore) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			} `json:"data"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&body)
+		if l.refuseDiscounts && body.Data.Attributes.CheckoutData.DiscountCode != "" {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			_ = json.NewEncoder(w).Encode(map[string]any{"errors": []map[string]string{{"detail": "The discount code is not valid."}}})
+			return
+		}
 		l.checkoutDiscount = body.Data.Attributes.CheckoutData.DiscountCode
 		w.WriteHeader(http.StatusCreated)
 		data(map[string]any{"attributes": map[string]string{"url": "https://pay.example/" + body.Data.Attributes.CheckoutData.Custom.OrderID}})
@@ -1237,8 +1244,16 @@ func billingFlow(
 	if _, err := db.Exec(`UPDATE purchases SET created_at = now() - interval '2 hours' WHERE id = $1`, retry["id"]); err != nil {
 		t.Fatal(err)
 	}
-	if again := want(http.StatusCreated, http.MethodPost, "/api/v1/billing/purchases", userToken, map[string]any{"plan_id": lifetime["id"]}); again["id"] == retry["id"] {
+	// The code was taken off sale since the sync, and Lemon Squeezy refuses
+	// it: the checkout opens without it, at the full price.
+	store.refuseDiscounts = true
+	again := want(http.StatusCreated, http.MethodPost, "/api/v1/billing/purchases", userToken, map[string]any{"plan_id": lifetime["id"]})
+	store.refuseDiscounts = false
+	if again["id"] == retry["id"] {
 		t.Fatal("a lapsed checkout was resumed")
+	}
+	if again["amount"] != float64(30000) || store.checkoutDiscount != "" {
+		t.Fatalf("checkout after a refused code: %v, code %q", again["amount"], store.checkoutDiscount)
 	}
 
 	// The catalog changes: the monthly price goes up, the lifetime plan is

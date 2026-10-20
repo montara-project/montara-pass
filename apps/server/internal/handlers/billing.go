@@ -474,14 +474,25 @@ func startCheckout[T any](
 		return err
 	}
 
-	url, err := h.app.Payments.Checkout(c.Context(), lemonsqueezy.Checkout{
+	checkout := lemonsqueezy.Checkout{
 		VariantID:    *plan.VariantID,
 		Email:        user.Email,
 		Name:         user.Name,
 		OrderID:      orderID,
 		RedirectURL:  h.app.Config.Auth.BaseURL + "/billing?checkout=done",
 		DiscountCode: discount,
-	})
+	}
+	url, err := h.app.Payments.Checkout(c.Context(), checkout)
+	// The code is as of the last catalog sync: one deleted, rescoped or used
+	// up since may get the checkout refused. It is opened once more without
+	// it, at the full price.
+	if err != nil && discount != "" {
+		h.app.Logger.Warn("lemon squeezy checkout with a discount failed, trying without it", "order_id", orderID, "code", discount, "error", err)
+		if _, err = h.repo().SetAmount(c.Context(), table, id, plan.Amount); err == nil {
+			checkout.DiscountCode = ""
+			url, err = h.app.Payments.Checkout(c.Context(), checkout)
+		}
+	}
 	if err != nil {
 		h.app.Logger.Error("lemon squeezy checkout failed", "order_id", orderID, "error", err)
 		if derr := h.repo().DeletePending(c.Context(), table, id); derr != nil {
@@ -642,7 +653,7 @@ func (h *billingHandler) LemonSqueezyWebhook(c fiber.Ctx) error {
 		if !sameVariant(s.Plan, a) {
 			return apperr.New(apperr.KindBadRequest, "variant does not match the order")
 		}
-		if changed, err = h.repo().SetSubscriptionAmount(c.Context(), id, *a.Paid()); err != nil {
+		if changed, err = h.repo().SetAmount(c.Context(), "subscriptions", id, *a.Paid()); err != nil {
 			return err
 		}
 

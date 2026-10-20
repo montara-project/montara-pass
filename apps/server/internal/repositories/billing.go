@@ -425,13 +425,12 @@ func (r *BillingRepository) MovePurchase(ctx context.Context, id uuid.UUID, from
 	return affected(res, err)
 }
 
-// SetSubscriptionAmount records what a subscription's first payment was
-// charged, as Lemon Squeezy settled it, in place of the price its checkout
-// asked. It reports whether it changed anything.
-func (r *BillingRepository) SetSubscriptionAmount(ctx context.Context, id uuid.UUID, amount int64) (bool, error) {
-	res, err := r.execContext(ctx, `
-		UPDATE subscriptions SET amount = $2, updated_at = now()
-		WHERE id = $1 AND amount <> $2`, id, amount)
+// SetAmount records another price for a subscription or purchase (table as
+// for SetCheckout): what Lemon Squeezy settled a subscription's first payment
+// at, or the full price of a checkout opened again without its discount. It
+// reports whether it changed anything.
+func (r *BillingRepository) SetAmount(ctx context.Context, table string, id uuid.UUID, amount int64) (bool, error) {
+	res, err := r.execContext(ctx, fmt.Sprintf(`UPDATE %s SET amount = $2, updated_at = now() WHERE id = $1 AND amount <> $2`, table), id, amount)
 	return affected(res, err)
 }
 
