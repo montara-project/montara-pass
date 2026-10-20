@@ -39,10 +39,28 @@ type Plan struct {
 	Billing         string  `db:"billing" json:"billing"`
 	BillingInterval *string `db:"billing_interval" json:"billing_interval"`
 	Amount          int64   `db:"amount" json:"amount"`
-	Currency        string  `db:"currency" json:"currency"`
-	Active          bool    `db:"active" json:"active"`
+	// What it is marked down from; set by hand, above Amount, or nil.
+	CompareAtAmount *int64 `db:"compare_at_amount" json:"compare_at_amount"`
+	Currency        string `db:"currency" json:"currency"`
+	Active          bool   `db:"active" json:"active"`
 	// The Lemon Squeezy variant it is sold as; without one it cannot be bought.
 	VariantID *string `db:"variant_id" json:"variant_id"`
+	// The public discount code filled in at its checkout, from the catalog
+	// sync: the cents it takes off Amount, how many payments it takes them
+	// off (nil: all of them), and when it ends (nil: never).
+	DiscountCode     *string    `db:"discount_code" json:"-"`
+	DiscountAmount   *int64     `db:"discount_amount" json:"discount_amount"`
+	DiscountPayments *int       `db:"discount_payments" json:"discount_payments"`
+	DiscountEndsAt   *time.Time `db:"discount_ends_at" json:"discount_ends_at"`
+}
+
+// Discount returns the discount code taken at now, empty for none, and what
+// the plan's first payment then costs.
+func (p Plan) Discount(now time.Time) (code string, amount int64) {
+	if p.DiscountCode == nil || p.DiscountAmount == nil || (p.DiscountEndsAt != nil && !now.Before(*p.DiscountEndsAt)) {
+		return "", p.Amount
+	}
+	return *p.DiscountCode, p.Amount - *p.DiscountAmount
 }
 
 // Customer is who a subscription or purchase belongs to. Only the super

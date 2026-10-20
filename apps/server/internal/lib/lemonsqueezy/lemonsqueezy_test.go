@@ -204,3 +204,79 @@ func TestClient(t *testing.T) {
 		t.Error("a wrong key loaded the store")
 	}
 }
+
+func TestDiscounts(t *testing.T) {
+	var checkout struct {
+		Data struct {
+			Attributes struct {
+				CheckoutData map[string]any `json:"checkout_data"`
+			} `json:"attributes"`
+		} `json:"data"`
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method + " " + r.URL.Path {
+		case "GET /discounts":
+			if r.URL.Query().Get("filter[store_id]") != "1" {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			_, _ = w.Write([]byte(`{"meta":{"page":{"lastPage":1}},"data":[
+				{"id":"1","attributes":{"name":"Launch [public]","code":"LAUNCH20","amount":20,"amount_type":"percent","is_limited_to_products":true,"duration":"repeating","duration_in_months":3,"status":"published","expires_at":"2026-12-01T00:00:00Z"}},
+				{"id":"2","attributes":{"name":"Draft [public]","code":"DRAFT","amount":50,"amount_type":"percent","status":"draft"}},
+				{"id":"3","attributes":{"name":"Friend","code":"FRIEND","amount":90,"amount_type":"percent","status":"published"}},
+				{"id":"4","attributes":{"name":"First 10 [public]","code":"FIRST10","amount":500,"amount_type":"fixed","is_limited_redemptions":true,"max_redemptions":10,"status":"published"}},
+				{"id":"5","attributes":{"name":"First 99 [public]","code":"FIRST99","amount":100,"amount_type":"fixed","is_limited_redemptions":true,"max_redemptions":99,"duration":"forever","status":"published"}}]}`))
+		case "GET /discounts/1/variants":
+			_, _ = w.Write([]byte(`{"meta":{"page":{"lastPage":1}},"data":[{"id":"42"},{"id":"43"}]}`))
+		case "GET /discount-redemptions":
+			total := map[string]string{"4": "10", "5": "3"}[r.URL.Query().Get("filter[discount_id]")]
+			_, _ = w.Write([]byte(`{"meta":{"page":{"lastPage":1,"total":` + total + `}},"data":[]}`))
+		case "POST /checkouts":
+			_ = json.NewDecoder(r.Body).Decode(&checkout)
+			_, _ = w.Write([]byte(`{"data":{"attributes":{"url":"https://pay.example/x"}}}`))
+		default:
+			t.Errorf("unexpected %s %s", r.Method, r.URL)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	c := New("key", "1", "whsec")
+	c.BaseURL = srv.URL
+	ctx := context.Background()
+
+	// Only the public ones are read in full; FRIEND is never asked about.
+	got, err := c.Discounts(ctx, func(d Discount) bool { return d.Code != "FRIEND" })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].Code != "LAUNCH20" || got[1].Code != "FIRST99" {
+		t.Fatalf("discounts: %+v", got)
+	}
+	launch, first := got[0], got[1]
+	if launch.AmountType != "percent" || launch.Amount != 20 || launch.Duration != "repeating" || launch.DurationInMonths != 3 ||
+		len(launch.Variants) != 2 || launch.Variants[1] != "43" || launch.ExpiresAt == nil {
+		t.Errorf("limited to variants: %+v", launch)
+	}
+	if first.Variants != nil || first.MaxRedemptions != 99 {
+		t.Errorf("for every variant: %+v", first)
+	}
+	day := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	if !launch.Live(day) || launch.Live(day.AddDate(0, 1, 0)) {
+		t.Error("a discount is live until it expires, and not after")
+	}
+
+	if _, err := c.Checkout(ctx, Checkout{VariantID: "42", OrderID: "buy-x", DiscountCode: "LAUNCH20"}); err != nil {
+		t.Fatal(err)
+	}
+	if checkout.Data.Attributes.CheckoutData["discount_code"] != "LAUNCH20" {
+		t.Errorf("checkout data: %v", checkout.Data.Attributes.CheckoutData)
+	}
+	checkout.Data.Attributes.CheckoutData = nil
+	if _, err := c.Checkout(ctx, Checkout{VariantID: "42", OrderID: "buy-y"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := checkout.Data.Attributes.CheckoutData["discount_code"]; ok {
+		t.Errorf("a checkout without a discount sent one: %v", checkout.Data.Attributes.CheckoutData)
+	}
+}

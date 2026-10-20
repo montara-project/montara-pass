@@ -6,7 +6,9 @@ import (
 	"errors"
 	"html"
 	"regexp"
+	"slices"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
@@ -90,9 +92,18 @@ func (h *billingHandler) SyncPlans(c fiber.Ctx) error {
 // per variant, named after its product, at the variant's current price, on
 // offer while both are published. A variant billing cannot sell (free, pay
 // what you want, or renewing other than every month or year) is left out
-// with a warning, and a plan whose variant is gone is taken off sale.
+// with a warning, and a plan whose variant is gone is taken off sale. Each
+// plan takes the best of the store's live public discount codes for it.
 func SyncCatalog(ctx context.Context, app *app.Application) error {
 	variants, err := app.Payments.Catalog(ctx)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+	discounts, err := app.Payments.Discounts(ctx, func(d lemonsqueezy.Discount) bool {
+		return strings.Contains(strings.ToLower(d.Name), publicDiscount) && d.Live(now)
+	})
 	if err != nil {
 		return err
 	}
@@ -104,6 +115,7 @@ func SyncCatalog(ctx context.Context, app *app.Application) error {
 			app.Logger.Warn("lemon squeezy variant not sold", "variant", v.ID, "product", v.ProductName, "reason", reason)
 			continue
 		}
+		applyDiscount(&plan, discounts)
 		plans = append(plans, plan)
 	}
 
@@ -116,6 +128,57 @@ func SyncCatalog(ctx context.Context, app *app.Application) error {
 	}
 	app.Logger.Info("lemon squeezy catalog synced", "plans", len(plans)-len(changedKind))
 	return nil
+}
+
+// publicDiscount, in a discount's name, marks a code billing offers on the
+// plans it applies to and fills in at their checkout; any other code stays
+// the store's to hand out.
+const publicDiscount = "[public]"
+
+// applyDiscount gives plan the public discount that takes the most off its
+// first payment.
+// ponytail: a percentage is rounded down to the cent, so the price shown is
+// never below Lemon Squeezy's, which may round the other way by a cent.
+func applyDiscount(plan *models.Plan, discounts []lemonsqueezy.Discount) {
+	for _, d := range discounts {
+		if d.Variants != nil && !slices.Contains(d.Variants, *plan.VariantID) {
+			continue
+		}
+		off := d.Amount
+		if d.AmountType == "percent" {
+			off = plan.Amount * d.Amount / 100
+		}
+		off = min(off, plan.Amount)
+		if off <= 0 || (plan.DiscountAmount != nil && off <= *plan.DiscountAmount) {
+			continue
+		}
+		code := d.Code
+		plan.DiscountCode, plan.DiscountAmount, plan.DiscountEndsAt = &code, &off, d.ExpiresAt
+		plan.DiscountPayments = discountPayments(*plan, d)
+	}
+}
+
+// discountPayments is how many of a recurring plan's payments d takes off:
+// nil for every one, and for a plan paid once. A repeating discount takes
+// off those within its months.
+func discountPayments(plan models.Plan, d lemonsqueezy.Discount) *int {
+	if plan.Billing != models.PlanRecurring {
+		return nil
+	}
+	var n int
+	switch d.Duration {
+	case "once":
+		n = 1
+	case "repeating":
+		months := 1
+		if *plan.BillingInterval == "year" {
+			months = 12
+		}
+		n = (max(d.DurationInMonths, 1) + months - 1) / months
+	default:
+		return nil
+	}
+	return &n
 }
 
 // Bounds of the plans table (migrations/cloud/000001).
@@ -408,12 +471,14 @@ func startCheckout[T any](
 		return err
 	}
 
+	discount, _ := plan.Discount(time.Now())
 	url, err := h.app.Payments.Checkout(c.Context(), lemonsqueezy.Checkout{
-		VariantID:   *plan.VariantID,
-		Email:       user.Email,
-		Name:        user.Name,
-		OrderID:     orderID,
-		RedirectURL: h.app.Config.Auth.BaseURL + "/billing?checkout=done",
+		VariantID:    *plan.VariantID,
+		Email:        user.Email,
+		Name:         user.Name,
+		OrderID:      orderID,
+		RedirectURL:  h.app.Config.Auth.BaseURL + "/billing?checkout=done",
+		DiscountCode: discount,
 	})
 	if err != nil {
 		h.app.Logger.Error("lemon squeezy checkout failed", "order_id", orderID, "error", err)
