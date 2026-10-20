@@ -205,7 +205,9 @@ export default function Billing({ onSignedOut }: BillingProps) {
                       <span className="plan-head">
                         <span className="item-name">{planName(plan)}</span>
                         <span className="plan-chips">
-                          {saving && <span className="billing-pill">Save {saving.percent}%</span>}
+                          {saving && saving.percent >= 1 && (
+                            <span className="billing-pill">Save {saving.percent}%</span>
+                          )}
                           {isSandbox(plan) && <span className="plan-chip">sandbox</span>}
                         </span>
                       </span>

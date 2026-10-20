@@ -43,29 +43,31 @@ function discountOff(plan: Models.Plan) {
 
 /**
  * What a plan costs now, after its discount code, against what it is marked
- * down from, and the share saved, rounded down so it never claims more. It is
- * marked down from its compare-at price, or else, for a yearly plan, twelve
- * months of the monthly one in the same family (or the only monthly one); and
- * a discount code at least from its own price. Null when it costs no less.
+ * down from, and the share saved, rounded down so it never claims more (0
+ * under 1%, too little to name). It is marked down from its compare-at price,
+ * or else, for a yearly plan, twelve months of the monthly one of the same
+ * family and store mode; and a discount code at least from its own price.
+ * Null when it costs no less.
  */
 export function planSaving(plan: Models.Plan, plans: Models.Plan[]) {
   const off = discountOff(plan)
   const amount = plan.amount - off
   let was = plan.compare_at_amount
   if (was === null && plan.billing_interval === 'year') {
-    const monthly = plans.filter(
-      (p) => p.billing_interval === 'month' && p.currency === plan.currency
+    const match = plans.find(
+      (p) =>
+        p.billing_interval === 'month' &&
+        p.currency === plan.currency &&
+        family(p) === family(plan) &&
+        isSandbox(p) === isSandbox(plan)
     )
-    const match =
-      monthly.find((p) => family(p) === family(plan)) ??
-      (monthly.length === 1 ? monthly[0] : undefined)
     if (match) was = match.amount * 12
   }
   if (off) was = Math.max(was ?? 0, plan.amount)
   if (was === null || was <= amount) return null
   // In whole cents, so 20% off reads 20, not 19.999….
   const percent = Math.floor(((was - amount) * 100) / was)
-  return percent < 1 ? null : { amount, was, percent }
+  return { amount, was, percent }
 }
 
 /**

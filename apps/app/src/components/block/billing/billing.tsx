@@ -171,7 +171,7 @@ export default function BillingBlock() {
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="font-medium">{planName(plan)}</span>
                     <span className="flex items-center gap-1.5 whitespace-nowrap">
-                      {saving && (
+                      {saving && saving.percent >= 1 && (
                         <span className="bg-focus/15 text-focus rounded-full px-2.5 py-0.5 text-xs font-medium tabular-nums">
                           Save {saving.percent}%
                         </span>
