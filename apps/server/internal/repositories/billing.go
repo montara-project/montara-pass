@@ -132,12 +132,23 @@ var (
 	purchaseSortColumns     = map[string]string{"created_at": "b.created_at", "amount": "b.amount", "paid_at": "b.paid_at"}
 )
 
+// sandboxPlan holds for a plan synced from Lemon Squeezy's test mode, whose
+// names end in " - Sandbox" (packages/shared isSandbox reads them alike).
+const sandboxPlan = `p.name ~* '\s+-\s+sandbox$'`
+
 // customerFilters narrows a super user's list by status (of the row aliased
-// alias) and by a search over the customer and the plan.
-func customerFilters(alias string, p ListParams, status string) *whereBuilder {
+// alias), by store mode ("live" or "test", of its plan) and by a search over
+// the customer and the plan.
+func customerFilters(alias string, p ListParams, status, mode string) *whereBuilder {
 	w := newWhere(`TRUE`)
 	if status != "" {
 		w.add(alias+".status = $%d", status)
+	}
+	switch mode {
+	case "test":
+		w.conds = append(w.conds, sandboxPlan)
+	case "live":
+		w.conds = append(w.conds, "NOT "+sandboxPlan)
 	}
 	w.search(p.Search, "u.email", "u.name", "p.name", "p.code")
 	return w
@@ -152,8 +163,8 @@ func scanSubscriptionWithUser(row rowScanner) (models.Subscription, error) {
 
 // ListSubscriptions returns one page of every customer's subscriptions,
 // newest first unless p.Sorted says otherwise.
-func (r *BillingRepository) ListSubscriptions(ctx context.Context, p ListParams, status string) ([]models.Subscription, error) {
-	where, args, limit, offset := customerFilters("s", p, status).page(p)
+func (r *BillingRepository) ListSubscriptions(ctx context.Context, p ListParams, status, mode string) ([]models.Subscription, error) {
+	where, args, limit, offset := customerFilters("s", p, status, mode).page(p)
 	query := fmt.Sprintf(`
 		SELECT %s, u.name, u.email FROM %s
 		WHERE %s ORDER BY %s LIMIT $%d OFFSET $%d`,
@@ -167,8 +178,8 @@ func (r *BillingRepository) ListSubscriptions(ctx context.Context, p ListParams,
 }
 
 // CountSubscriptions counts what ListSubscriptions pages through.
-func (r *BillingRepository) CountSubscriptions(ctx context.Context, p ListParams, status string) (int64, error) {
-	return r.countRows(ctx, subscriptionsWithUser, customerFilters("s", p, status))
+func (r *BillingRepository) CountSubscriptions(ctx context.Context, p ListParams, status, mode string) (int64, error) {
+	return r.countRows(ctx, subscriptionsWithUser, customerFilters("s", p, status, mode))
 }
 
 // ExpireEnded marks the active subscriptions whose period is over as
@@ -348,8 +359,8 @@ func scanPurchaseWithUser(row rowScanner) (models.Purchase, error) {
 
 // ListAllPurchases returns one page of every customer's purchases, newest
 // first unless p.Sorted says otherwise.
-func (r *BillingRepository) ListAllPurchases(ctx context.Context, p ListParams, status string) ([]models.Purchase, error) {
-	where, args, limit, offset := customerFilters("b", p, status).page(p)
+func (r *BillingRepository) ListAllPurchases(ctx context.Context, p ListParams, status, mode string) ([]models.Purchase, error) {
+	where, args, limit, offset := customerFilters("b", p, status, mode).page(p)
 	query := fmt.Sprintf(`
 		SELECT %s, u.name, u.email FROM %s
 		WHERE %s ORDER BY %s LIMIT $%d OFFSET $%d`,
@@ -363,8 +374,8 @@ func (r *BillingRepository) ListAllPurchases(ctx context.Context, p ListParams, 
 }
 
 // CountAllPurchases counts what ListAllPurchases pages through.
-func (r *BillingRepository) CountAllPurchases(ctx context.Context, p ListParams, status string) (int64, error) {
-	return r.countRows(ctx, purchasesWithUser, customerFilters("b", p, status))
+func (r *BillingRepository) CountAllPurchases(ctx context.Context, p ListParams, status, mode string) (int64, error) {
+	return r.countRows(ctx, purchasesWithUser, customerFilters("b", p, status, mode))
 }
 
 // ListPurchases returns a user's purchases, newest first.

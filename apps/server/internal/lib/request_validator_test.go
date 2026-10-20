@@ -87,6 +87,14 @@ func TestValidateRequestQuery_ValidParamsPass(t *testing.T) {
 	}
 }
 
+func TestValidateRequestQuery_BillingMode(t *testing.T) {
+	q := &dtos.BillingListQuery{}
+	if err := runQuery(t, "/t?mode=test", q); err != nil || q.Mode != "test" {
+		t.Fatalf("mode=test should bind, got %v (%+v)", err, q)
+	}
+	validationErr(t, runQuery(t, "/t?mode=sandbox", &dtos.BillingListQuery{}))
+}
+
 func TestValidateRequestQuery_EmptyParamTreatedAsAbsent(t *testing.T) {
 	q := &dtos.BillingListQuery{}
 	if err := runQuery(t, "/t?offset=", q); err != nil {
