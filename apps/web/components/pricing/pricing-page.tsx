@@ -81,9 +81,21 @@ export function PricingPage({ tiers }: { tiers: Tier[] }) {
                       ) : null}
                     </span>
                     <span className="tape-terms">{tier.terms}</span>
+                    {tier.offer?.terms ? (
+                      <span className="tape-terms text-emerald-400 light:text-emerald-700">
+                        {tier.offer.terms}
+                      </span>
+                    ) : null}
                   </span>
                   <span className="tape-amount">
-                    {formatAmount(tier.amount, currency)} <small>{tier.per}</small>
+                    {tier.offer ? (
+                      <s className="tape-was">
+                        <span className="sr-only">was </span>
+                        {formatAmount(tier.offer.was, currency)}
+                      </s>
+                    ) : null}
+                    {formatAmount(tier.offer?.amount ?? tier.amount, currency)}{" "}
+                    <small>{tier.per}</small>
                   </span>
                 </label>
               );
