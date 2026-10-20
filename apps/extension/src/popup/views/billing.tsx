@@ -1,7 +1,14 @@
 import type { Models } from '@montara-pass/shared/api/models'
 
 import { formatPrice } from '@montara-pass/shared/money'
-import { isSandbox, planName, planPeriod, planTerms } from '@montara-pass/shared/plan'
+import {
+  isSandbox,
+  planName,
+  planOffer,
+  planPeriod,
+  planSaving,
+  planTerms,
+} from '@montara-pass/shared/plan'
 import { useCallback, useEffect, useState } from 'react'
 
 import {
@@ -187,6 +194,8 @@ export default function Billing({ onSignedOut }: BillingProps) {
                   const purchase = plan.billing === 'one_time' ? owned(plan) : undefined
                   // One subscription at a time; another once this one has ended.
                   const subscribed = plan.billing === 'recurring' && subscription !== null
+                  const saving = planSaving(plan, plans)
+                  const offer = planOffer(plan, formatPrice(plan.amount, 'USD'))
                   return (
                     <li
                       key={plan.id}
@@ -195,12 +204,25 @@ export default function Billing({ onSignedOut }: BillingProps) {
                     >
                       <span className="plan-head">
                         <span className="item-name">{planName(plan)}</span>
-                        {isSandbox(plan) && <span className="plan-chip">sandbox</span>}
+                        <span className="plan-chips">
+                          {saving && <span className="billing-pill">Save {saving.percent}%</span>}
+                          {isSandbox(plan) && <span className="plan-chip">sandbox</span>}
+                        </span>
                       </span>
                       <span className="plan-price">
-                        {formatPrice(plan.amount, 'USD')} <small>{planPeriod(plan)}</small>
+                        {formatPrice(saving?.amount ?? plan.amount, 'USD')}{' '}
+                        <small>{planPeriod(plan)}</small>
+                        {saving && (
+                          <s className="plan-was">
+                            <span className="visually-hidden">was </span>
+                            {formatPrice(saving.was, 'USD')}
+                          </s>
+                        )}
                       </span>
-                      <span className="plan-terms">{planTerms(plan)}</span>
+                      <span className="plan-notes">
+                        {offer && <span className="plan-offer">{offer}</span>}
+                        <span className="plan-terms">{planTerms(plan)}</span>
+                      </span>
                       {purchase?.status === 'paid' ? (
                         <span className="muted">You own this.</span>
                       ) : purchase?.checkout_url ? (
