@@ -3,6 +3,26 @@
 All notable changes to this project are documented in this file. Versions follow the git tags (`v*`); Docker images are published to ghcr.io with the same version.
 
 
+## [2.4.0](https://github.com/montara-project/montara-pass/compare/v2.3.0...v2.4.0) (2026-10-20)
+
+### Features
+
+* **app:** show discounts on billing plan cards ([d07b17e](https://github.com/montara-project/montara-pass/commit/d07b17eb0f169413759af552138b32956788d7da))
+* **extension:** show discounts on billing plan cards ([f1c2ac1](https://github.com/montara-project/montara-pass/commit/f1c2ac1a208eb31e339358716f79bc28f1f2395e))
+* **server:** sync public Lemon Squeezy discounts and markdowns onto plans ([03c0367](https://github.com/montara-project/montara-pass/commit/03c03672a574c9dee04eda287d2fc1b5fd5a9d28))
+* **shared:** add plan saving and discount offer helpers ([c17c555](https://github.com/montara-project/montara-pass/commit/c17c5558ea0a8527a8b3bc87dfb9e036c75c270f))
+* **web:** show plan discounts on the pricing pages ([d11cd17](https://github.com/montara-project/montara-pass/commit/d11cd17feebbecb9d150e514385c7a944bc5c96c))
+
+### Bug Fixes
+
+* **auth:** require the account password to change the email and a code to turn TOTP off ([dde3dfc](https://github.com/montara-project/montara-pass/commit/dde3dfc95e90afc6d4a70308583ee71b5985a36d))
+* **billing:** open a checkout again without a refused discount code ([35ca602](https://github.com/montara-project/montara-pass/commit/35ca602de2f8c8ddbfc77742d6083f3ebcfcc280))
+* **deps:** patch Go, golang.org/x/net, amqp091-go and katex advisories ([5e792ea](https://github.com/montara-project/montara-pass/commit/5e792ea89c08644f354cc75c5e316cfbb9a26343))
+* **extension:** sign out of the old server when switching, and require https ([de54b98](https://github.com/montara-project/montara-pass/commit/de54b9862d8980a8637e7d4e4c818a23e59fa318))
+* price small discounts and match yearly plans by family and mode ([88935b5](https://github.com/montara-project/montara-pass/commit/88935b5e87bb0a506ea9eadb0ba13ec36f2d9af9))
+* **server:** record what Lemon Squeezy settled a payment at ([274298c](https://github.com/montara-project/montara-pass/commit/274298cf141cb0c8ae180e6b146df9fcb781e2f5))
+* **server:** refuse unidentified account changes and retry checkout only for a refused code ([0a1302b](https://github.com/montara-project/montara-pass/commit/0a1302b83433e29ec7f7a32af5611074ea4562b3))
+
 ## [2.3.0](https://github.com/montara-project/montara-pass/compare/v2.2.2...v2.3.0) (2026-10-19)
 
 ### Features
