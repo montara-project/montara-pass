@@ -3,6 +3,17 @@
 All notable changes to this project are documented in this file. Versions follow the git tags (`v*`); Docker images are published to ghcr.io with the same version.
 
 
+## [2.7.0](https://github.com/montara-project/montara-pass/compare/v2.6.0...v2.7.0) (2026-10-21)
+
+### Bug Fixes
+
+* **extension:** refuse a billing overview in an unexpected form ([8a6df67](https://github.com/montara-project/montara-pass/commit/8a6df677945bd720a24ecb36eec07afa20e35e61))
+
+### Performance Improvements
+
+* **app:** start decrypting the vault for search on focus ([9e5a926](https://github.com/montara-project/montara-pass/commit/9e5a9264f9889d17c3dd90af8ab835aeee4c1b9b))
+* **extension:** keep the vault mounted behind the settings ([f06df4e](https://github.com/montara-project/montara-pass/commit/f06df4e93029cdf0ac7188ff0fe5dcd34864ad01))
+
 ## [2.6.0](https://github.com/montara-project/montara-pass/compare/v2.5.0...v2.6.0) (2026-10-21)
 
 ### Features
