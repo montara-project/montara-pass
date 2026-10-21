@@ -4,8 +4,8 @@ import { useState } from 'react'
 
 import { createItem, SignedOutError } from '../../lib/api'
 import { fetchIcon } from '../../lib/icon'
+import { hostOf } from '../../lib/origin'
 import { AddLoginFormSchema, type AddLoginFormDto } from '../../lib/schemas'
-import { hostOf } from '../../lib/site'
 import { checked, submit, useAppForm } from '../form'
 import { ArrowLeftIcon } from '../icons'
 

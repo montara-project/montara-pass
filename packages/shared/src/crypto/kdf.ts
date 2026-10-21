@@ -1,5 +1,3 @@
-import { argon2id } from 'hash-wasm'
-
 import { importAesKey } from './symmetric'
 
 /** Argon2id parameters, stored next to the salt so they can be raised later. */
@@ -31,6 +29,9 @@ export async function deriveMasterKey(
   salt: Uint8Array,
   params: KDFParams
 ): Promise<CryptoKey> {
+  // Argon2id is the largest thing a client loads, and only unlocking or
+  // setting a master password needs it: fetched then, not with every page.
+  const { argon2id } = await import('hash-wasm')
   const raw = await argon2id({
     // Normalized so the same password typed on another keyboard or OS
     // produces the same key.

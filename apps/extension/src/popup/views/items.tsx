@@ -15,7 +15,8 @@ import {
 
 import { markItemUsed, setItemPlacement, trashItem } from '../../lib/api'
 import { fillLogin } from '../../lib/autofill'
-import { fillsSite, hostOf } from '../../lib/site'
+import { hostOf } from '../../lib/origin'
+import { fillsSite } from '../../lib/site'
 import { lastUsedLabel } from '../../lib/usage'
 import { maskUsername } from '../../lib/username'
 import {

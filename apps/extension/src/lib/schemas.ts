@@ -2,7 +2,7 @@ import { ItemFormSchema } from '@montara-pass/shared/api/dtos/vault/schema'
 import { optionalString } from '@montara-pass/shared/validation'
 import z from 'zod'
 
-import { originOf, serverAllowed } from './site'
+import { originOf, serverAllowed } from './origin'
 
 // The schemas of the extension's own forms. Sign-in, unlock, sharing and the
 // item form use the web app's, so both check the same things in the same

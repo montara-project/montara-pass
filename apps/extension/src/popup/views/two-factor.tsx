@@ -5,7 +5,8 @@ import {
   TotpCodeSchema,
   TotpDisableSchema,
 } from '@montara-pass/shared/api/dtos/auth/schema'
-import { totpQrCode, totpSecret } from '@montara-pass/shared/auth/totp'
+import { totpSecret } from '@montara-pass/shared/auth/totp'
+import { totpQrCode } from '@montara-pass/shared/auth/totp-qr'
 import { errorMessage } from '@montara-pass/shared/string'
 import { useState } from 'react'
 import z from 'zod'

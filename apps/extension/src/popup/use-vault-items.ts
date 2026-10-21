@@ -15,7 +15,7 @@ import type { FolderOption } from './views/item-form'
 import { getProfile, listFolders, listItems, SignedOutError, updateItem } from '../lib/api'
 import { copySecret } from '../lib/clipboard'
 import { fetchIcon } from '../lib/icon'
-import { hostOf } from '../lib/site'
+import { hostOf } from '../lib/origin'
 
 export interface VaultUser {
   name: string

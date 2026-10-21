@@ -5,7 +5,8 @@ import {
   TotpCodeSchema,
   TotpDisableSchema,
 } from '@montara-pass/shared/api/dtos/auth/schema'
-import { totpQrCode, totpSecret } from '@montara-pass/shared/auth/totp'
+import { totpSecret } from '@montara-pass/shared/auth/totp'
+import { totpQrCode } from '@montara-pass/shared/auth/totp-qr'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { toast } from 'sonner'

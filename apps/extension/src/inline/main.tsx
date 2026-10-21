@@ -11,6 +11,7 @@ import { createRoot } from 'react-dom/client'
 import { createItem, markItemUsed, SignedOutError } from '../lib/api'
 import { fillLogin, fillNewPassword } from '../lib/autofill'
 import { fetchIcon } from '../lib/icon'
+import { hostOf, originOf } from '../lib/origin'
 import {
   assertPasskey,
   createPasskey,
@@ -27,7 +28,7 @@ import {
   storePendingLogin,
   type PendingLogin,
 } from '../lib/session'
-import { fillsSite, hostOf, matchesSite, originOf } from '../lib/site'
+import { fillsSite, matchesSite } from '../lib/site'
 import { getSettings, getTokens } from '../lib/storage'
 import { lastUsedLabel } from '../lib/usage'
 import { maskUsername } from '../lib/username'
