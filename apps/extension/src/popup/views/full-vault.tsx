@@ -2,7 +2,8 @@ import type { VaultKeys } from '@montara-pass/shared/crypto/vault'
 import type { VaultItem } from '@montara-pass/shared/types/vault'
 
 import { COMMUNITY } from '@montara-pass/shared/constants/edition'
-import { CONTACT_FIELDS, ITEM_TYPE_LABEL } from '@montara-pass/shared/constants/vault'
+import { CARD_FIELDS, CONTACT_FIELDS, ITEM_TYPE_LABEL } from '@montara-pass/shared/constants/vault'
+import { cardEnding } from '@montara-pass/shared/crypto/vault'
 import { linkOf } from '@montara-pass/shared/url'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -13,10 +14,12 @@ import { lastUsedAgo } from '../../lib/usage'
 import { maskUsername } from '../../lib/username'
 import {
   ArrowLeftIcon,
+  CardIcon,
   CopyIcon,
   ExternalLinkIcon,
   EyeIcon,
   EyeOffIcon,
+  FilterIcon,
   GridIcon,
   KeyholeIcon,
   KeyIcon,
@@ -27,7 +30,6 @@ import {
   RefreshIcon,
   SearchIcon,
   ShareIcon,
-  FilterIcon,
   StarIcon,
   TrashIcon,
   UserIcon,
@@ -50,7 +52,7 @@ interface FullVaultProps {
   onSettings: () => void
 }
 
-type Filter = 'all' | 'login' | 'secure_note' | 'contact' | 'favorite'
+type Filter = 'all' | 'login' | 'secure_note' | 'card' | 'contact' | 'favorite'
 type Sort = 'name' | 'updated'
 /** What the detail pane shows. */
 type Pane =
@@ -63,6 +65,7 @@ const FILTERS: { value: Filter; label: string; icon: typeof GridIcon }[] = [
   { value: 'all', label: 'All items', icon: GridIcon },
   { value: 'login', label: 'Logins', icon: KeyIcon },
   { value: 'secure_note', label: 'Secure notes', icon: NoteIcon },
+  { value: 'card', label: 'Cards', icon: CardIcon },
   { value: 'contact', label: 'Contacts', icon: UserIcon },
   { value: 'favorite', label: 'Favorites', icon: StarIcon },
 ]
@@ -121,6 +124,7 @@ export default function FullVault({
       all: readable.length,
       login: readable.filter((item) => item.type === 'login').length,
       secure_note: readable.filter((item) => item.type === 'secure_note').length,
+      card: readable.filter((item) => item.type === 'card').length,
       contact: readable.filter((item) => item.type === 'contact').length,
       favorite: readable.filter((item) => item.favorite).length,
     }),
@@ -295,14 +299,7 @@ export default function FullVault({
                         <ItemTile item={item} />
                         <span className="item-text">
                           <span className="item-name">{item.secret!.name}</span>
-                          <span className="muted">
-                            {item.type === 'login'
-                              ? item.secret!.username
-                                ? maskUsername(item.secret!.username)
-                                : 'No username'
-                              : (item.type === 'contact' && item.secret!.contact?.email) ||
-                                ITEM_TYPE_LABEL[item.type]}
-                          </span>
+                          <span className="muted">{itemSubtitle(item)}</span>
                         </span>
                         <span className="col muted">
                           {folderNames.get(item.folder_id ?? '') ?? '—'}
@@ -394,6 +391,15 @@ export default function FullVault({
 }
 
 /** When something happened to an item, to the minute: the seconds say nothing. */
+/** A row's second line: the masked username, email or card ending, else the item's type. */
+function itemSubtitle(item: VaultItem) {
+  const secret = item.secret!
+  if (item.type === 'login') return secret.username ? maskUsername(secret.username) : 'No username'
+  if (item.type === 'contact' && secret.contact?.email) return secret.contact.email
+  if (item.type === 'card') return cardEnding(secret.card?.number) ?? ITEM_TYPE_LABEL.card
+  return ITEM_TYPE_LABEL[item.type]
+}
+
 const WHEN = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 
 function When({ at }: { at: string }) {
@@ -627,6 +633,53 @@ function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: Item
               <div key={key} className="field">
                 <dt>{label}</dt>
                 <dd>{value || <span className="muted">None</span>}</dd>
+                {value && (
+                  <button
+                    className="icon-button"
+                    aria-label={`Copy ${label.toLowerCase()}`}
+                    title={`Copy ${label.toLowerCase()}`}
+                    onClick={() => onCopy(value, label.toLowerCase())}
+                  >
+                    <CopyIcon />
+                  </button>
+                )}
+              </div>
+            )
+          })}
+
+        {item.type === 'card' &&
+          CARD_FIELDS.map((cardField) => {
+            const { key, label } = cardField
+            const value = secret.card?.[key]
+            const isSecret = 'secret' in cardField
+            return (
+              <div key={key} className="field">
+                <dt>{label}</dt>
+                <dd className={value && isSecret ? 'mono' : undefined}>
+                  {/* Hidden, a card number still shows its last four digits. */}
+                  {value ? (
+                    isSecret && !revealed ? (
+                      (key === 'number' && cardEnding(value)) || MASK
+                    ) : (
+                      value
+                    )
+                  ) : (
+                    <span className="muted">None</span>
+                  )}
+                </dd>
+                {value && isSecret && (
+                  <button
+                    className="icon-button"
+                    aria-label={
+                      revealed ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`
+                    }
+                    aria-pressed={revealed}
+                    title={revealed ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
+                    onClick={() => setRevealed((shown) => !shown)}
+                  >
+                    {revealed ? <EyeOffIcon /> : <EyeIcon />}
+                  </button>
+                )}
                 {value && (
                   <button
                     className="icon-button"

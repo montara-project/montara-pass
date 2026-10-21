@@ -1,6 +1,7 @@
 import type { VaultFolder, VaultItem } from '@montara-pass/shared/types/vault'
 
 import { ITEM_TYPE_LABEL, ItemTypeOptions } from '@montara-pass/shared/constants/vault'
+import { cardEnding } from '@montara-pass/shared/crypto/vault'
 import { formatDate } from '@montara-pass/shared/date'
 import {
   IconChevronLeft,
@@ -305,6 +306,15 @@ interface ItemRowProps {
   onSelect: () => void
 }
 
+/** A row's second line: the username, email or card ending, else the item's type. */
+function itemSubtitle(item: VaultItem) {
+  if (item.type === 'login') return item.secret?.username || 'No username'
+  if (!item.secret) return ''
+  if (item.type === 'contact' && item.secret.contact?.email) return item.secret.contact.email
+  if (item.type === 'card') return cardEnding(item.secret.card?.number) ?? ITEM_TYPE_LABEL.card
+  return ITEM_TYPE_LABEL[item.type]
+}
+
 /** Here the whole row is the control. */
 function ItemRow({ item, folders, selected, onSelect }: ItemRowProps) {
   const folder = folders.find((f) => f.id === item.folder_id)
@@ -335,14 +345,7 @@ function ItemRow({ item, folders, selected, onSelect }: ItemRowProps) {
             />
           )}
         </span>
-        <span className="text-muted-foreground truncate text-[13px]">
-          {item.type === 'login'
-            ? item.secret?.username || 'No username'
-            : item.secret
-              ? (item.type === 'contact' && item.secret.contact?.email) ||
-                ITEM_TYPE_LABEL[item.type]
-              : ''}
-        </span>
+        <span className="text-muted-foreground truncate text-[13px]">{itemSubtitle(item)}</span>
       </span>
       <span className="text-muted-foreground truncate pl-3 text-[13px] @max-[560px]/list:hidden">
         {folder?.name ?? '—'}

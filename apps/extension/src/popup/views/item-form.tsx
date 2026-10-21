@@ -1,15 +1,18 @@
 import type { VaultItem } from '@montara-pass/shared/types/vault'
 
 import {
+  CARD_FIELDS,
   CONTACT_FIELDS,
   ItemTypeOptions,
   type ItemType,
 } from '@montara-pass/shared/constants/vault'
 import {
+  cardFields,
   contactFields,
   encryptItemUpdate,
   encryptNewItem,
   keepUnedited,
+  toCard,
   toContact,
   type ItemSecret,
   type VaultKeys,
@@ -36,6 +39,9 @@ function toSecret(value: ItemEditFormDto): ItemSecret {
   }
   if (value.type === 'contact') {
     return { name: value.name, contact: toContact(value.contact), notes: value.notes }
+  }
+  if (value.type === 'card') {
+    return { name: value.name, card: toCard(value.card), notes: value.notes }
   }
   return {
     name: value.name,
@@ -85,6 +91,7 @@ export default function ItemForm({
     // A secure note may be kept blurred in the item's detail until revealed.
     visible: item?.secret?.visible !== false,
     contact: contactFields(item?.secret?.contact),
+    card: cardFields(item?.secret?.card),
   }
 
   const form = useAppForm({
@@ -243,6 +250,25 @@ export default function ItemForm({
                 children={(field) => (
                   <field.TextField label={contactField.label} autoComplete="off" />
                 )}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {type === 'card' && (
+        <div className="form-grid">
+          {CARD_FIELDS.map((cardField) => (
+            <div key={cardField.key} className={'wide' in cardField ? 'form-wide' : undefined}>
+              <form.AppField
+                name={`card.${cardField.key}`}
+                children={(field) =>
+                  'secret' in cardField ? (
+                    <field.PasswordField label={cardField.label} autoComplete="off" />
+                  ) : (
+                    <field.TextField label={cardField.label} autoComplete="off" />
+                  )
+                }
               />
             </div>
           ))}

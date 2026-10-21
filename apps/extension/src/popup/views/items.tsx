@@ -3,6 +3,7 @@ import type { VaultItem } from '@montara-pass/shared/types/vault'
 
 import { COMMUNITY } from '@montara-pass/shared/constants/edition'
 import { ITEM_TYPE_LABEL } from '@montara-pass/shared/constants/vault'
+import { cardEnding } from '@montara-pass/shared/crypto/vault'
 import { linkOf } from '@montara-pass/shared/url'
 import {
   useEffect,
@@ -21,6 +22,7 @@ import { lastUsedLabel } from '../../lib/usage'
 import { maskUsername } from '../../lib/username'
 import {
   ArrowLeftIcon,
+  CardIcon,
   CheckIcon,
   ChevronRightIcon,
   CopyIcon,
@@ -475,6 +477,7 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
                         ? maskUsername(item.secret!.username)
                         : 'No username'
                       : (item.type === 'contact' && item.secret!.contact?.email) ||
+                        (item.type === 'card' && cardEnding(item.secret!.card?.number)) ||
                         ITEM_TYPE_LABEL[item.type]}
                   </span>
                 </div>
@@ -574,6 +577,18 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
                     Copy password
                   </button>
                 </>
+              ) : menuItem.type === 'card' ? (
+                <button
+                  role="menuitem"
+                  className="menu-item"
+                  onClick={() => {
+                    setRowMenu(null)
+                    void copy(menuItem.secret!.card?.number, 'card number')
+                  }}
+                >
+                  <CardIcon />
+                  Copy card number
+                </button>
               ) : menuItem.type === 'contact' ? (
                 <button
                   role="menuitem"

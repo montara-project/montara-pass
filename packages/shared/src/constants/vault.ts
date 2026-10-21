@@ -1,7 +1,7 @@
 import { capitalizeFirstLetter } from '../string'
 
-/** Item types this app can create and edit; the API also knows card and identity. */
-export const ITEM_TYPES = ['login', 'secure_note', 'contact'] as const
+/** Item types this app can create and edit; the API also knows identity. */
+export const ITEM_TYPES = ['login', 'secure_note', 'card', 'contact'] as const
 
 export type ItemType = (typeof ITEM_TYPES)[number]
 
@@ -14,6 +14,7 @@ export const ItemTypeOptions = ITEM_TYPES.map((type) => ({
 export const ITEM_TYPE_LABEL: Record<string, string> = {
   login: 'Login',
   secure_note: 'Secure note',
+  card: 'Card',
   contact: 'Contact',
 }
 
@@ -35,6 +36,19 @@ export const CONTACT_FIELDS = [
 ] as const
 
 export type ContactField = (typeof CONTACT_FIELDS)[number]['key']
+
+/**
+ * A payment card's fields, in the order the forms and the detail show them. A
+ * secret one is masked until revealed, like a password.
+ */
+export const CARD_FIELDS = [
+  { key: 'cardholder', label: 'Cardholder name', wide: true },
+  { key: 'number', label: 'Card number', wide: true, secret: true },
+  { key: 'expiry', label: 'Expiry (MM/YY)' },
+  { key: 'code', label: 'Security code', secret: true },
+] as const
+
+export type CardField = (typeof CARD_FIELDS)[number]['key']
 
 /** Roles an item can be shared with; the owner's own role is `owner`. */
 export const SHARE_ROLES = ['viewer', 'editor'] as const

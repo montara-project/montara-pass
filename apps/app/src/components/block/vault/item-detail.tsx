@@ -2,10 +2,12 @@ import type { VaultFolder, VaultItem } from '@montara-pass/shared/types/vault'
 
 import { COMMUNITY } from '@montara-pass/shared/constants/edition'
 import {
+  CARD_FIELDS,
   CONTACT_FIELDS,
   ITEM_ROLE_OWNER,
   ITEM_TYPE_LABEL,
 } from '@montara-pass/shared/constants/vault'
+import { cardEnding } from '@montara-pass/shared/crypto/vault'
 import { linkOf } from '@montara-pass/shared/url'
 import {
   IconArrowLeft,
@@ -358,6 +360,52 @@ export default function ItemDetail({ item, folders, onClose }: ItemDetailProps) 
                   }
                 >
                   {value || none}
+                </Field>
+              )
+            })}
+
+          {item.type === 'card' &&
+            CARD_FIELDS.map((cardField) => {
+              const { key, label } = cardField
+              const value = secret.card?.[key]
+              const masked = 'secret' in cardField && !revealed
+              return (
+                <Field
+                  key={key}
+                  label={label}
+                  mono={!!value && 'secret' in cardField}
+                  actions={
+                    value && (
+                      <>
+                        {'secret' in cardField && (
+                          <IconAction
+                            label={
+                              revealed
+                                ? `Hide ${label.toLowerCase()}`
+                                : `Show ${label.toLowerCase()}`
+                            }
+                            pressed={revealed}
+                            onClick={() => setRevealed((shown) => !shown)}
+                          >
+                            {revealed ? <IconEyeOff /> : <IconEye />}
+                          </IconAction>
+                        )}
+                        <IconAction
+                          label={`Copy ${label.toLowerCase()}`}
+                          onClick={() => void copy(value, label.toLowerCase())}
+                        >
+                          <IconCopy />
+                        </IconAction>
+                      </>
+                    )
+                  }
+                >
+                  {/* Hidden, a card number still shows its last four digits. */}
+                  {value
+                    ? masked
+                      ? (key === 'number' && cardEnding(value)) || MASK
+                      : value
+                    : none}
                 </Field>
               )
             })}
