@@ -34,12 +34,9 @@ const DOCS_URL = 'https://docs.montarapass.com/docs'
  */
 function originsOf(value: { selfHosted: boolean; apiUrl: string; appUrl: string }) {
   const apiOrigin = DEV || value.selfHosted ? originOf(value.apiUrl)! : DEFAULT_SETTINGS.apiUrl
-  const appOrigin = DEV
-    ? originOf(value.appUrl)!
-    : value.selfHosted
-      ? apiOrigin
-      : DEFAULT_SETTINGS.appUrl
-  return { apiOrigin, appOrigin }
+  if (DEV) return { apiOrigin, appOrigin: originOf(value.appUrl)! }
+  if (value.selfHosted) return { apiOrigin, appOrigin: apiOrigin }
+  return { apiOrigin, appOrigin: DEFAULT_SETTINGS.appUrl }
 }
 
 /** One line on the user's plan: the subscription, else what they own. */

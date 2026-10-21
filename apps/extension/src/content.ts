@@ -536,16 +536,12 @@
     // the page hid under something else would otherwise have its click
     // vouched for by the one in plain sight.
     const channel = String(message?.type).split(':')[0]
-    const speaker =
-      channel === 'inline'
-        ? frame
-        : channel === 'save'
-          ? saveFrame
-          : channel === 'passkey'
-            ? passkeyFrame
-            : channel === 'offer'
-              ? offerFrame
-              : null
+    const speaker = new Map([
+      ['inline', frame],
+      ['save', saveFrame],
+      ['passkey', passkeyFrame],
+      ['offer', offerFrame],
+    ]).get(channel)
     if (!speaker || typeof message.token !== 'string' || tokens.get(speaker) !== message.token) {
       return
     }

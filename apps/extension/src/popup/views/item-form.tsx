@@ -140,13 +140,13 @@ export default function ItemForm({
           onSignedOut()
           return
         }
-        setError(
-          err instanceof ApiError && err.status === 409
-            ? 'This item was changed somewhere else. Refresh the vault and try again.'
-            : err instanceof Error
-              ? err.message
-              : 'Could not save the item'
-        )
+        if (err instanceof ApiError && err.status === 409) {
+          setError('This item was changed somewhere else. Refresh the vault and try again.')
+        } else if (err instanceof Error) {
+          setError(err.message)
+        } else {
+          setError('Could not save the item')
+        }
       }
     },
   })

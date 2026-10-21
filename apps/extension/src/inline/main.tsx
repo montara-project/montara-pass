@@ -62,8 +62,14 @@ const AUTO = FLAGS.has('auto')
 const PASSKEY = FLAGS.has('passkey')
 /** The page asks for a login: the ones saved for it are offered in its corner. */
 const OFFER = FLAGS.has('offer')
+function channelOf() {
+  if (SAVE) return 'save'
+  if (PASSKEY) return 'passkey'
+  if (OFFER) return 'offer'
+  return 'inline'
+}
 /** The content script tells its frames apart by the prefix. */
-const CHANNEL = SAVE ? 'save' : PASSKEY ? 'passkey' : OFFER ? 'offer' : 'inline'
+const CHANNEL = channelOf()
 
 /** The tab this frame sits in, as the browser reports it. */
 interface Page {

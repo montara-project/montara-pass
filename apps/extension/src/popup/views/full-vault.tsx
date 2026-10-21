@@ -34,7 +34,7 @@ import {
   TrashIcon,
   UserIcon,
 } from '../icons'
-import { ItemTile } from '../item-tile'
+import { itemSubtitle, ItemTile } from '../item-tile'
 import { useFolders, useVaultItems } from '../use-vault-items'
 import { VaultSidebar, type Tool } from '../vault-sidebar'
 import Billing from './billing'
@@ -69,6 +69,12 @@ const FILTERS: { value: Filter; label: string; icon: typeof GridIcon }[] = [
   { value: 'contact', label: 'Contacts', icon: UserIcon },
   { value: 'favorite', label: 'Favorites', icon: StarIcon },
 ]
+
+function inFilter(item: VaultItem, filter: Filter) {
+  if (filter === 'all') return true
+  if (filter === 'favorite') return item.favorite
+  return item.type === filter
+}
 
 const SORT_LABEL: Record<Sort, string> = {
   name: 'Sort by name',
@@ -135,9 +141,7 @@ export default function FullVault({
     const term = search.trim().toLowerCase()
 
     return readable
-      .filter((item) =>
-        filter === 'all' ? true : filter === 'favorite' ? item.favorite : item.type === filter
-      )
+      .filter((item) => inFilter(item, filter))
       .filter((item) =>
         // A decrypted secret is not checked, and a shared one is someone else's.
         [item.secret?.name, item.secret?.username, item.secret?.url, item.secret?.contact?.email]
@@ -391,15 +395,6 @@ export default function FullVault({
 }
 
 /** When something happened to an item, to the minute: the seconds say nothing. */
-/** A row's second line: the masked username, email or card ending, else the item's type. */
-function itemSubtitle(item: VaultItem) {
-  const secret = item.secret!
-  if (item.type === 'login') return secret.username ? maskUsername(secret.username) : 'No username'
-  if (item.type === 'contact' && secret.contact?.email) return secret.contact.email
-  if (item.type === 'card') return cardEnding(secret.card?.number) ?? ITEM_TYPE_LABEL.card
-  return ITEM_TYPE_LABEL[item.type]
-}
-
 const WHEN = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' })
 
 function When({ at }: { at: string }) {

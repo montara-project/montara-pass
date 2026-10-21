@@ -187,6 +187,7 @@ export default function Billing({ onSignedOut }: BillingProps) {
                   const subscribed = plan.billing === 'recurring' && subscription !== null
                   const saving = planSaving(plan, plans)
                   const offer = planOffer(plan, formatPrice(plan.amount, 'USD'))
+                  const action = plan.billing === 'recurring' ? 'Subscribe' : 'Buy once'
                   return (
                     <li
                       key={plan.id}
@@ -234,11 +235,7 @@ export default function Billing({ onSignedOut }: BillingProps) {
                             )
                           }
                         >
-                          {busy === plan.id
-                            ? 'Opening…'
-                            : plan.billing === 'recurring'
-                              ? 'Subscribe'
-                              : 'Buy once'}
+                          {busy === plan.id ? 'Opening…' : action}
                         </button>
                       )}
                     </li>

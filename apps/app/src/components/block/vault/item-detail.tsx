@@ -123,6 +123,13 @@ function IconAction({
 
 const none = <span className="text-muted-foreground">None</span>
 
+/** A card field as shown: a hidden one is masked, a hidden number down to its last four digits. */
+function cardFieldText(key: string, value: string, masked: boolean) {
+  if (!masked) return value
+  if (key === 'number') return cardEnding(value) ?? MASK
+  return MASK
+}
+
 interface ItemDetailProps {
   item: VaultItem
   folders: VaultFolder[]
@@ -401,11 +408,7 @@ export default function ItemDetail({ item, folders, onClose }: ItemDetailProps) 
                   }
                 >
                   {/* Hidden, a card number still shows its last four digits. */}
-                  {value
-                    ? masked
-                      ? (key === 'number' && cardEnding(value)) || MASK
-                      : value
-                    : none}
+                  {value ? cardFieldText(key, value, masked) : none}
                 </Field>
               )
             })}

@@ -2,8 +2,6 @@ import type { VaultKeys } from '@montara-pass/shared/crypto/vault'
 import type { VaultItem } from '@montara-pass/shared/types/vault'
 
 import { COMMUNITY } from '@montara-pass/shared/constants/edition'
-import { ITEM_TYPE_LABEL } from '@montara-pass/shared/constants/vault'
-import { cardEnding } from '@montara-pass/shared/crypto/vault'
 import { linkOf } from '@montara-pass/shared/url'
 import {
   useEffect,
@@ -44,7 +42,7 @@ import {
   TrashIcon,
   UserIcon,
 } from '../icons'
-import { ItemTile } from '../item-tile'
+import { itemSubtitle, ItemTile } from '../item-tile'
 import { initials, openFullScreen } from '../layout'
 import { UpdateButton } from '../update-button'
 import { useFolders, useVaultItems } from '../use-vault-items'
@@ -471,15 +469,7 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
 
                 <div className="item-text">
                   <span className="item-name">{name}</span>
-                  <span className="muted">
-                    {isLogin
-                      ? item.secret!.username
-                        ? maskUsername(item.secret!.username)
-                        : 'No username'
-                      : (item.type === 'contact' && item.secret!.contact?.email) ||
-                        (item.type === 'card' && cardEnding(item.secret!.card?.number)) ||
-                        ITEM_TYPE_LABEL[item.type]}
-                  </span>
+                  <span className="muted">{itemSubtitle(item)}</span>
                 </div>
 
                 {/* Shown on hover and on keyboard focus; always there to a screen reader. */}

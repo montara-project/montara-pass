@@ -78,13 +78,13 @@ export default function ShareItem({ keys, item, onDone, onSignedOut, onNotice }:
           onSignedOut()
           return
         }
-        setError(
-          err instanceof ApiError && err.status === 409
-            ? 'They already have access to this item.'
-            : err instanceof Error
-              ? err.message
-              : 'Could not share the item'
-        )
+        if (err instanceof ApiError && err.status === 409) {
+          setError('They already have access to this item.')
+        } else if (err instanceof Error) {
+          setError(err.message)
+        } else {
+          setError('Could not share the item')
+        }
       } finally {
         sharing.current = false
       }

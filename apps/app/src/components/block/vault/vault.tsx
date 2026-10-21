@@ -175,7 +175,7 @@ export default function Vault() {
               onSelect={(value) => filter(() => void setType(value === ALL ? null : value))}
             />
             <span className="text-muted-foreground ml-auto text-xs tabular-nums">
-              {isLoading ? '' : total === 1 ? '1 item' : `${total} items`}
+              {!isLoading && `${total} ${total === 1 ? 'item' : 'items'}`}
             </span>
           </div>
 
