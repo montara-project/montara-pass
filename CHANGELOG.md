@@ -3,6 +3,17 @@
 All notable changes to this project are documented in this file. Versions follow the git tags (`v*`); Docker images are published to ghcr.io with the same version.
 
 
+## [2.6.0](https://github.com/montara-project/montara-pass/compare/v2.5.0...v2.6.0) (2026-10-21)
+
+### Features
+
+* **vault:** add card item type for payment cards ([b2ddb95](https://github.com/montara-project/montara-pass/commit/b2ddb95c53e7e03bcd6c486dd0f057859fd0294a))
+
+### Performance Improvements
+
+* **app:** load the notes editor only where a form shows it ([c462cf5](https://github.com/montara-project/montara-pass/commit/c462cf5076c984de651a8dfecfb0eed366783014))
+* **extension:** split sign-in and full-screen bundles ([681e13b](https://github.com/montara-project/montara-pass/commit/681e13be80bdcf2fb22724a8ed901ee0b4021609))
+
 ## [2.5.0](https://github.com/montara-project/montara-pass/compare/v2.4.0...v2.5.0) (2026-10-20)
 
 ### Features
