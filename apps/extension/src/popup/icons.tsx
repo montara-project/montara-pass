@@ -74,6 +74,14 @@ export const UserIcon = icon(
   </>
 )
 
+export const CardIcon = icon(
+  <>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <path d="M3 10h18" />
+    <path d="M7 15h3" />
+  </>
+)
+
 export const KeyIcon = icon(
   <>
     <circle cx="8" cy="15" r="4" />

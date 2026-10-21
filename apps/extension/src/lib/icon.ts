@@ -1,4 +1,4 @@
-import { hostOf } from './site'
+import { hostOf } from './origin'
 
 // A login keeps the icon of its site inside its encrypted content, so every
 // client can show it without asking anyone. The icon is fetched here, once,

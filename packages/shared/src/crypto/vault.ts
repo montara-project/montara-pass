@@ -1,7 +1,7 @@
 import type { ItemRotateKeyRequest, KDFRequest, UserKeysRequest } from '../api/dtos/vault/schema'
 import type { Models } from '../api/models'
 
-import { CONTACT_FIELDS, type ContactField } from '../constants/vault'
+import { CARD_FIELDS, CONTACT_FIELDS, type CardField, type ContactField } from '../constants/vault'
 import {
   generateKeyPair,
   importPrivateKey,
@@ -68,22 +68,58 @@ export interface ItemSecret {
   passkey?: Passkey
   /** A contact's details; only the fields filled in are kept. */
   contact?: Contact
+  /** A payment card's details; only the fields filled in are kept. */
+  card?: Card
 }
 
 export type Contact = Partial<Record<ContactField, string>>
 
-/** Every field of a contact, '' where it has none: what a form starts from. */
-export function contactFields(contact: Contact | undefined): Record<ContactField, string> {
-  return Object.fromEntries(CONTACT_FIELDS.map(({ key }) => [key, contact?.[key] ?? ''])) as Record<
-    ContactField,
+export type Card = Partial<Record<CardField, string>>
+
+/** Every field of a group, '' where it has none: what a form starts from. */
+function formFields<K extends string>(
+  fields: readonly { key: K }[],
+  values: Partial<Record<K, string>> | undefined
+): Record<K, string> {
+  return Object.fromEntries(fields.map(({ key }) => [key, values?.[key] ?? ''])) as Record<
+    K,
     string
   >
 }
 
-/** The filled fields of a contact form, or undefined when none is. */
-export function toContact(fields: Contact | undefined): Contact | undefined {
+/** The filled fields of a group, or undefined when none is. */
+function filledFields<T extends Partial<Record<string, string>>>(
+  fields: T | undefined
+): T | undefined {
   const filled = Object.entries(fields ?? {}).filter(([, value]) => value?.trim())
-  return filled.length ? Object.fromEntries(filled) : undefined
+  return filled.length ? (Object.fromEntries(filled) as T) : undefined
+}
+
+export const contactFields = (contact: Contact | undefined) => formFields(CONTACT_FIELDS, contact)
+
+export const toContact = (fields: Contact | undefined) => filledFields(fields)
+
+export const cardFields = (card: Card | undefined) => formFields(CARD_FIELDS, card)
+
+export const toCard = (fields: Card | undefined) => filledFields(fields)
+
+/** A card number as lists show it, its last four digits only; undefined without them. */
+export function cardEnding(number: unknown): string | undefined {
+  // Decrypted JSON is only typed, not checked: a field may not be a string.
+  const digits = typeof number === 'string' ? number.replace(/\D/g, '') : ''
+  return digits.length >= 4 ? `•••• ${digits.slice(-4)}` : undefined
+}
+
+/**
+ * Whether a lowercased search term is in an item's name, username, website or
+ * email: what a search looks in, in the web app and the extension alike.
+ */
+export function matchesSearch(secret: ItemSecret | null | undefined, term: string): boolean {
+  // Decrypted JSON is only typed, not checked, and a shared item's was written
+  // by someone else: a field may not be a string.
+  return [secret?.name, secret?.username, secret?.url, secret?.contact?.email].some(
+    (value: unknown) => typeof value === 'string' && value.toLowerCase().includes(term)
+  )
 }
 
 /**

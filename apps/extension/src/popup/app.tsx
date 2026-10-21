@@ -1,17 +1,22 @@
 import type { Models } from '@montara-pass/shared/api/models'
 import type { VaultKeys } from '@montara-pass/shared/crypto/vault'
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react'
+import { errorMessage } from '@montara-pass/shared/string'
+import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react'
 
 import { getUserKeys, SignedOutError, signOut } from '../lib/api'
 import { loadVault, lockVault } from '../lib/session'
 import { getSettings, getTokens } from '../lib/storage'
 import { isFullScreen } from './layout'
-import FullVault from './views/full-vault'
-import Items from './views/items'
-import Settings from './views/settings'
 import SignIn from './views/sign-in'
-import Unlock from './views/unlock'
+
+// Signing in is the first screen and comes with the popup. Every other one is
+// fetched when it is shown, so the sign-in screen does not load the vault's
+// views, the sidebar, site matching or Argon2id.
+const FullVault = lazy(() => import('./views/full-vault'))
+const Items = lazy(() => import('./views/items'))
+const Settings = lazy(() => import('./views/settings'))
+const Unlock = lazy(() => import('./views/unlock'))
 
 type Stage =
   | { name: 'loading' }
@@ -40,11 +45,7 @@ async function resolveStage(): Promise<Stage> {
       : { name: 'no-vault', appUrl: (await getSettings()).appUrl }
   } catch (error) {
     if (error instanceof SignedOutError) return { name: 'signed-out' }
-    return {
-      name: 'error',
-      message: error instanceof Error ? error.message : String(error),
-      signedIn,
-    }
+    return { name: 'error', message: errorMessage(error, String(error)), signedIn }
   }
 }
 
@@ -53,6 +54,34 @@ async function resolveStage(): Promise<Stage> {
  * working out where the user left off: signed out, locked, or unlocked.
  */
 export default function App() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <Stages />
+    </Suspense>
+  )
+}
+
+/** What the popup shows while it works out the stage or fetches a screen. */
+function Loading() {
+  return framed(
+    <p className="center muted" role="status">
+      Loading…
+    </p>
+  )
+}
+
+// In a tab, the popup-sized forms sit in a centered card.
+function framed(node: ReactNode) {
+  return isFullScreen ? (
+    <div className="full-center">
+      <div className="full-card">{node}</div>
+    </div>
+  ) : (
+    node
+  )
+}
+
+function Stages() {
   const [stage, setStage] = useState<Stage>({ name: 'loading' })
   const [showSettings, setShowSettings] = useState(false)
 
@@ -88,16 +117,6 @@ export default function App() {
     setStage({ name: 'signed-out' })
   }
 
-  // In a tab, the popup-sized forms sit in a centered card.
-  const framed = (node: ReactNode) =>
-    isFullScreen ? (
-      <div className="full-center">
-        <div className="full-card">{node}</div>
-      </div>
-    ) : (
-      node
-    )
-
   if (showSettings) {
     const leaving = (act: () => Promise<void>) => () => {
       setShowSettings(false)
@@ -123,11 +142,7 @@ export default function App() {
 
   switch (stage.name) {
     case 'loading':
-      return framed(
-        <p className="center muted" role="status">
-          Loading…
-        </p>
-      )
+      return <Loading />
 
     case 'error':
       return framed(

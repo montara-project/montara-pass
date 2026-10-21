@@ -27,6 +27,27 @@ export const BILLING_STATUS: Record<
   refunded: 'Refunded',
 }
 
+/** A plan's purchase that is paid or still being paid, if there is one. */
+export function ownedPurchase(purchases: Models.Purchase[], plan: Models.Plan) {
+  return purchases.find(
+    (purchase) =>
+      purchase.plan_id === plan.id && (purchase.status === 'paid' || purchase.status === 'pending')
+  )
+}
+
+/** Whether something was bought outright, which takes the user past the free tier. */
+export function hasPaidPurchase(purchases: Models.Purchase[]) {
+  return purchases.some((purchase) => purchase.status === 'paid')
+}
+
+/** A payment Lemon Squeezy has not confirmed yet: the billing pages poll until it has. */
+export function paymentPending(overview: Models.BillingOverview | null | undefined) {
+  return (
+    overview?.subscription?.status === 'pending' ||
+    !!overview?.purchases.some((purchase) => purchase.status === 'pending')
+  )
+}
+
 /** A plan synced from Lemon Squeezy's test mode, which takes no real money. */
 export const isSandbox = (plan: Models.Plan) => /\s+-\s+sandbox$/i.test(plan.name)
 

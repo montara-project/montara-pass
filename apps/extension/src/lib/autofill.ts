@@ -24,7 +24,8 @@ export function fillNewPassword(password: string): number {
   // password, which asks for the old one first.
   // ponytail: by position; a page with a sign-in and a sign-up form side by
   // side gets both filled. Fill only the focused field's form if that shows up.
-  const targets = marked.length > 0 ? marked : passwords.slice(passwords.length > 2 ? 1 : 0)
+  const unmarked = passwords.length > 2 ? passwords.slice(1) : passwords
+  const targets = marked.length > 0 ? marked : unmarked
 
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
   for (const el of targets) {

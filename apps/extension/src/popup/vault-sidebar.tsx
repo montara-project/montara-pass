@@ -3,6 +3,7 @@ import './sidebar.css'
 import type { ReactNode } from 'react'
 
 import { COMMUNITY } from '@montara-pass/shared/constants/edition'
+import { initials } from '@montara-pass/shared/string'
 
 import {
   Breadcrumb,
@@ -48,7 +49,6 @@ import {
   ShieldIcon,
   SortIcon,
 } from './icons'
-import { initials } from './layout'
 import { UpdateButton } from './update-button'
 
 type Icon = typeof KeyIcon

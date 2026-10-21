@@ -1,19 +1,23 @@
 import type { VaultItem } from '@montara-pass/shared/types/vault'
 
 import {
+  CARD_FIELDS,
   CONTACT_FIELDS,
   ItemTypeOptions,
   type ItemType,
 } from '@montara-pass/shared/constants/vault'
 import {
+  cardFields,
   contactFields,
   encryptItemUpdate,
   encryptNewItem,
   keepUnedited,
+  toCard,
   toContact,
   type ItemSecret,
   type VaultKeys,
 } from '@montara-pass/shared/crypto/vault'
+import { errorMessage } from '@montara-pass/shared/string'
 import { useStore } from '@tanstack/react-form'
 import { useState } from 'react'
 
@@ -36,6 +40,9 @@ function toSecret(value: ItemEditFormDto): ItemSecret {
   }
   if (value.type === 'contact') {
     return { name: value.name, contact: toContact(value.contact), notes: value.notes }
+  }
+  if (value.type === 'card') {
+    return { name: value.name, card: toCard(value.card), notes: value.notes }
   }
   return {
     name: value.name,
@@ -85,6 +92,7 @@ export default function ItemForm({
     // A secure note may be kept blurred in the item's detail until revealed.
     visible: item?.secret?.visible !== false,
     contact: contactFields(item?.secret?.contact),
+    card: cardFields(item?.secret?.card),
   }
 
   const form = useAppForm({
@@ -133,13 +141,11 @@ export default function ItemForm({
           onSignedOut()
           return
         }
-        setError(
-          err instanceof ApiError && err.status === 409
-            ? 'This item was changed somewhere else. Refresh the vault and try again.'
-            : err instanceof Error
-              ? err.message
-              : 'Could not save the item'
-        )
+        if (err instanceof ApiError && err.status === 409) {
+          setError('This item was changed somewhere else. Refresh the vault and try again.')
+        } else {
+          setError(errorMessage(err, 'Could not save the item'))
+        }
       }
     },
   })
@@ -243,6 +249,25 @@ export default function ItemForm({
                 children={(field) => (
                   <field.TextField label={contactField.label} autoComplete="off" />
                 )}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {type === 'card' && (
+        <div className="form-grid">
+          {CARD_FIELDS.map((cardField) => (
+            <div key={cardField.key} className={'wide' in cardField ? 'form-wide' : undefined}>
+              <form.AppField
+                name={`card.${cardField.key}`}
+                children={(field) =>
+                  'secret' in cardField ? (
+                    <field.PasswordField label={cardField.label} autoComplete="off" />
+                  ) : (
+                    <field.TextField label={cardField.label} autoComplete="off" />
+                  )
+                }
               />
             </div>
           ))}

@@ -2,21 +2,23 @@ import type { VaultKeys } from '@montara-pass/shared/crypto/vault'
 import type { VaultItem } from '@montara-pass/shared/types/vault'
 
 import { COMMUNITY } from '@montara-pass/shared/constants/edition'
-import { CONTACT_FIELDS, ITEM_TYPE_LABEL } from '@montara-pass/shared/constants/vault'
+import { CARD_FIELDS, CONTACT_FIELDS, ITEM_TYPE_LABEL } from '@montara-pass/shared/constants/vault'
+import { cardEnding } from '@montara-pass/shared/crypto/vault'
 import { linkOf } from '@montara-pass/shared/url'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 
-import { setItemPlacement, SignedOutError, trashItem } from '../../lib/api'
-import { copySecret } from '../../lib/clipboard'
+import { setItemPlacement, trashItem } from '../../lib/api'
 import { getSettings } from '../../lib/storage'
 import { lastUsedAgo } from '../../lib/usage'
 import { maskUsername } from '../../lib/username'
 import {
   ArrowLeftIcon,
+  CardIcon,
   CopyIcon,
   ExternalLinkIcon,
   EyeIcon,
   EyeOffIcon,
+  FilterIcon,
   GridIcon,
   KeyholeIcon,
   KeyIcon,
@@ -27,13 +29,20 @@ import {
   RefreshIcon,
   SearchIcon,
   ShareIcon,
-  FilterIcon,
   StarIcon,
   TrashIcon,
   UserIcon,
 } from '../icons'
-import { ItemTile } from '../item-tile'
-import { useFolders, useVaultItems } from '../use-vault-items'
+import { itemSubtitle, ItemTile } from '../item-tile'
+import { useDismiss } from '../use-dismiss'
+import {
+  searchAndSort,
+  SORT_LABEL,
+  useFolders,
+  useVaultActions,
+  useVaultItems,
+  type Sort,
+} from '../use-vault-items'
 import { VaultSidebar, type Tool } from '../vault-sidebar'
 import Billing from './billing'
 import ItemForm from './item-form'
@@ -50,8 +59,7 @@ interface FullVaultProps {
   onSettings: () => void
 }
 
-type Filter = 'all' | 'login' | 'secure_note' | 'contact' | 'favorite'
-type Sort = 'name' | 'updated'
+type Filter = 'all' | 'login' | 'secure_note' | 'card' | 'contact' | 'favorite'
 /** What the detail pane shows. */
 type Pane =
   | { mode: 'view'; id: string | null }
@@ -63,13 +71,15 @@ const FILTERS: { value: Filter; label: string; icon: typeof GridIcon }[] = [
   { value: 'all', label: 'All items', icon: GridIcon },
   { value: 'login', label: 'Logins', icon: KeyIcon },
   { value: 'secure_note', label: 'Secure notes', icon: NoteIcon },
+  { value: 'card', label: 'Cards', icon: CardIcon },
   { value: 'contact', label: 'Contacts', icon: UserIcon },
   { value: 'favorite', label: 'Favorites', icon: StarIcon },
 ]
 
-const SORT_LABEL: Record<Sort, string> = {
-  name: 'Sort by name',
-  updated: 'Sort by last updated',
+function inFilter(item: VaultItem, filter: Filter) {
+  if (filter === 'all') return true
+  if (filter === 'favorite') return item.favorite
+  return item.type === filter
 }
 
 // Fetched when an item with notes is opened, so it stays out of the first load.
@@ -92,6 +102,7 @@ export default function FullVault({
   onSettings,
 }: FullVaultProps) {
   const { items, user, error, load } = useVaultItems(keys, onSignedOut)
+  const { notice, setNotice, refreshing, refresh, act, copy } = useVaultActions(load, onSignedOut)
 
   const [filter, setFilter] = useState<Filter>('all')
   const [sort, setSort] = useState<Sort>('name')
@@ -99,20 +110,11 @@ export default function FullVault({
   const [pane, setPane] = useState<Pane>({ mode: 'view', id: null })
   // A tool takes the place of the list and the item beside it.
   const [tool, setTool] = useState<Tool | null>(null)
-  const [notice, setNotice] = useState('')
-  const [refreshing, setRefreshing] = useState(false)
   const [appUrl, setAppUrl] = useState('')
   const folders = useFolders(keys)
   useEffect(() => {
     void getSettings().then((settings) => setAppUrl(settings.appUrl))
   }, [])
-
-  // A notice says what just happened, then gets out of the way.
-  useEffect(() => {
-    if (!notice) return
-    const timer = setTimeout(() => setNotice(''), 2500)
-    return () => clearTimeout(timer)
-  }, [notice])
 
   const readable = useMemo(() => (items ?? []).filter((item) => item.secret !== null), [items])
 
@@ -121,64 +123,28 @@ export default function FullVault({
       all: readable.length,
       login: readable.filter((item) => item.type === 'login').length,
       secure_note: readable.filter((item) => item.type === 'secure_note').length,
+      card: readable.filter((item) => item.type === 'card').length,
       contact: readable.filter((item) => item.type === 'contact').length,
       favorite: readable.filter((item) => item.favorite).length,
     }),
     [readable]
   )
 
-  const visible = useMemo(() => {
-    const term = search.trim().toLowerCase()
-
-    return readable
-      .filter((item) =>
-        filter === 'all' ? true : filter === 'favorite' ? item.favorite : item.type === filter
-      )
-      .filter((item) =>
-        // A decrypted secret is not checked, and a shared one is someone else's.
-        [item.secret?.name, item.secret?.username, item.secret?.url, item.secret?.contact?.email]
-          .filter((value): value is string => typeof value === 'string')
-          .some((value) => value.toLowerCase().includes(term))
-      )
-      .sort((a, b) =>
-        sort === 'updated'
-          ? b.updated_at.localeCompare(a.updated_at)
-          : a.secret!.name.localeCompare(b.secret!.name)
-      )
-  }, [readable, filter, search, sort])
+  const visible = useMemo(
+    () =>
+      searchAndSort(
+        readable.filter((item) => inFilter(item, filter)),
+        search,
+        sort
+      ),
+    [readable, filter, search, sort]
+  )
 
   const selectedId = pane.mode === 'new' ? null : pane.id
   const folderNames = useMemo(() => new Map(folders.map((f) => [f.id, f.name])), [folders])
   const selected = readable.find((item) => item.id === selectedId) ?? null
   // On a narrow window the pane covers the list, so it needs to know when it is in use.
   const paneOpen = pane.mode !== 'view' || selected !== null
-
-  const refresh = async () => {
-    setRefreshing(true)
-    await load()
-    setRefreshing(false)
-  }
-
-  /** Runs a choice that changes the vault, then says how it went. */
-  const act = async (change: () => Promise<void>, done: string) => {
-    try {
-      await change()
-      setNotice(done)
-      await load()
-    } catch (err) {
-      if (err instanceof SignedOutError) onSignedOut()
-      else setNotice(err instanceof Error ? err.message : 'That did not work')
-    }
-  }
-
-  const copy = async (value: string | undefined, label: string) => {
-    if (!value) {
-      setNotice(`This item has no ${label}`)
-      return
-    }
-    await copySecret(value)
-    setNotice(`${label[0].toUpperCase()}${label.slice(1)} copied`)
-  }
 
   return (
     <VaultSidebar
@@ -295,14 +261,7 @@ export default function FullVault({
                         <ItemTile item={item} />
                         <span className="item-text">
                           <span className="item-name">{item.secret!.name}</span>
-                          <span className="muted">
-                            {item.type === 'login'
-                              ? item.secret!.username
-                                ? maskUsername(item.secret!.username)
-                                : 'No username'
-                              : (item.type === 'contact' && item.secret!.contact?.email) ||
-                                ITEM_TYPE_LABEL[item.type]}
-                          </span>
+                          <span className="muted">{itemSubtitle(item)}</span>
                         </span>
                         <span className="col muted">
                           {folderNames.get(item.folder_id ?? '') ?? '—'}
@@ -419,20 +378,9 @@ function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: Item
 
   // The menu closes on Escape and on a click anywhere else; opening it puts
   // focus on its first choice.
+  useDismiss(menuOpen, [menuRef], () => setMenuOpen(false))
   useEffect(() => {
-    if (!menuOpen) return
-    menuRef.current?.querySelector<HTMLButtonElement>('[role=menuitem]')?.focus()
-
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false)
-    const onClick = (e: MouseEvent) => {
-      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false)
-    }
-    document.addEventListener('keydown', onKey)
-    document.addEventListener('mousedown', onClick)
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.removeEventListener('mousedown', onClick)
-    }
+    if (menuOpen) menuRef.current?.querySelector<HTMLButtonElement>('[role=menuitem]')?.focus()
   }, [menuOpen])
 
   const secret = item.secret!
@@ -627,6 +575,53 @@ function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: Item
               <div key={key} className="field">
                 <dt>{label}</dt>
                 <dd>{value || <span className="muted">None</span>}</dd>
+                {value && (
+                  <button
+                    className="icon-button"
+                    aria-label={`Copy ${label.toLowerCase()}`}
+                    title={`Copy ${label.toLowerCase()}`}
+                    onClick={() => onCopy(value, label.toLowerCase())}
+                  >
+                    <CopyIcon />
+                  </button>
+                )}
+              </div>
+            )
+          })}
+
+        {item.type === 'card' &&
+          CARD_FIELDS.map((cardField) => {
+            const { key, label } = cardField
+            const value = secret.card?.[key]
+            const isSecret = 'secret' in cardField
+            return (
+              <div key={key} className="field">
+                <dt>{label}</dt>
+                <dd className={value && isSecret ? 'mono' : undefined}>
+                  {/* Hidden, a card number still shows its last four digits. */}
+                  {value ? (
+                    isSecret && !revealed ? (
+                      (key === 'number' && cardEnding(value)) || MASK
+                    ) : (
+                      value
+                    )
+                  ) : (
+                    <span className="muted">None</span>
+                  )}
+                </dd>
+                {value && isSecret && (
+                  <button
+                    className="icon-button"
+                    aria-label={
+                      revealed ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`
+                    }
+                    aria-pressed={revealed}
+                    title={revealed ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
+                    onClick={() => setRevealed((shown) => !shown)}
+                  >
+                    {revealed ? <EyeOffIcon /> : <EyeIcon />}
+                  </button>
+                )}
                 {value && (
                   <button
                     className="icon-button"

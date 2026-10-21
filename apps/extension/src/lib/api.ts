@@ -8,7 +8,7 @@ import type { Models } from '@montara-pass/shared/api/models'
 
 import { isTotpCode, TOTP_CODE_REQUIRED, TOTP_TOKEN_HEADER } from '@montara-pass/shared/auth/totp'
 
-import { serverAllowed } from './site'
+import { serverAllowed } from './origin'
 import { clearTokens, getSettings, getTokens, saveTokens } from './storage'
 
 // A small fetch client for the routes the popup needs. The web app uses axios

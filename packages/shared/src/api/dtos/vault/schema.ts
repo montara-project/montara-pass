@@ -4,6 +4,7 @@ import {
   CONTACT_FIELDS,
   ITEM_TYPES,
   SHARE_ROLES,
+  type CardField,
   type ContactField,
 } from '../../../constants/vault'
 import { optionalString, requiredEnum, requiredString } from '../../../validation'
@@ -75,13 +76,28 @@ const ContactFormSchema = z.object(
   ) as Record<ContactField, ReturnType<typeof optionalString>>
 )
 
+/** A field that is either empty or matches `pattern` once spaces and dashes are gone. */
+const optionalPattern = (attribute: string, pattern: RegExp, message: string) =>
+  optionalString(attribute).refine((value) => !value || pattern.test(value.replace(/[\s-]/g, '')), {
+    message,
+  })
+
+/** A card's fields, all optional, under `card.` in the item form. */
+const CardFormSchema = z.object({
+  cardholder: optionalString('cardholder name'),
+  number: optionalPattern('card number', /^\d{12,19}$/, 'The card number must be 12 to 19 digits.'),
+  expiry: optionalPattern('expiry', /^(0[1-9]|1[0-2])\/\d{2}$/, 'The expiry must be MM/YY.'),
+  code: optionalPattern('security code', /^\d{3,4}$/, 'The security code must be 3 or 4 digits.'),
+} satisfies Record<CardField, z.ZodType>)
+
 /**
  * The item form, with the switch that keeps a secure note blurred until
- * shown and a contact's fields.
+ * shown, a contact's fields and a card's.
  */
 export const ItemEditFormSchema = ItemFormSchema.extend({
   visible: z.boolean(),
   contact: ContactFormSchema,
+  card: CardFormSchema,
 })
 
 export type ItemEditFormDto = z.infer<typeof ItemEditFormSchema>

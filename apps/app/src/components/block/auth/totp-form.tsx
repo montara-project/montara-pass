@@ -1,4 +1,5 @@
 import { TotpCodeSchema } from '@montara-pass/shared/api/dtos/auth/schema'
+import { errorMessage } from '@montara-pass/shared/string'
 import { useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 
@@ -35,7 +36,7 @@ export default function TotpForm({ totpToken, onBack }: TotpFormProps) {
         await verifyTotp(totpToken, value.code.replace(/\s/g, ''))
         await navigate({ to: HOME_PATH, replace: true })
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Verification failed')
+        setError(errorMessage(err, 'Verification failed'))
       }
     },
   })

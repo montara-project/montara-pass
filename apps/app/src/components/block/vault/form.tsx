@@ -6,15 +6,18 @@ import {
   type ItemEditFormDto,
 } from '@montara-pass/shared/api/dtos/vault/schema'
 import {
+  CARD_FIELDS,
   CONTACT_FIELDS,
   ItemTypeOptions,
   type ItemType,
 } from '@montara-pass/shared/constants/vault'
 import {
+  cardFields,
   contactFields,
   encryptItemUpdate,
   encryptNewItem,
   keepUnedited,
+  toCard,
   toContact,
 } from '@montara-pass/shared/crypto/vault'
 import { useSelector } from '@tanstack/react-form'
@@ -42,6 +45,9 @@ function toSecret(value: ItemEditFormDto): ItemSecret {
   }
   if (value.type === 'contact') {
     return { name: value.name, contact: toContact(value.contact), notes: value.notes }
+  }
+  if (value.type === 'card') {
+    return { name: value.name, card: toCard(value.card), notes: value.notes }
   }
   return {
     name: value.name,
@@ -217,6 +223,33 @@ function ItemFieldsForm({
         </div>
       )}
 
+      {type === 'card' && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {CARD_FIELDS.map((cardField) => (
+            <div key={cardField.key} className={'wide' in cardField ? 'sm:col-span-2' : undefined}>
+              <form.AppField
+                name={`card.${cardField.key}`}
+                children={(field) =>
+                  'secret' in cardField ? (
+                    <field.PasswordField
+                      label={cardField.label}
+                      autoComplete="off"
+                      disabled={readOnly}
+                    />
+                  ) : (
+                    <field.TextField
+                      label={cardField.label}
+                      autoComplete="off"
+                      disabled={readOnly}
+                    />
+                  )
+                }
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
       <form.AppField
         name="notes"
         children={(field) => (
@@ -272,6 +305,7 @@ export function AddItemForm({ open, onOpenChange, folderId }: AddItemFormProps) 
         folder_id: folderId ?? NO_FOLDER,
         visible: true,
         contact: contactFields(undefined),
+        card: cardFields(undefined),
       }}
       loading={mutation.isPending}
       onSave={async (value) => {
@@ -318,6 +352,7 @@ export function EditItemForm({ open, onOpenChange, record }: EditItemFormProps) 
         // A secure note may be kept blurred in the item's detail until revealed.
         visible: secret?.visible !== false,
         contact: contactFields(secret?.contact),
+        card: cardFields(secret?.card),
       }}
       loading={updateMutation.isPending || placementMutation.isPending}
       readOnly={readOnly}

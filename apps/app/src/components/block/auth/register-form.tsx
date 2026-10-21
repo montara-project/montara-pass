@@ -1,4 +1,5 @@
 import { SignUpSchema } from '@montara-pass/shared/api/dtos/auth/schema'
+import { errorMessage } from '@montara-pass/shared/string'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 
@@ -35,7 +36,7 @@ export default function RegisterForm() {
         // the user comes back from their inbox.
         setSentTo(email)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'The account could not be created')
+        setError(errorMessage(err, 'The account could not be created'))
       }
     },
   })

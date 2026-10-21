@@ -1,10 +1,11 @@
-import type { Models } from '@montara-pass/shared/api/models'
-
 import { formatDate } from '@montara-pass/shared/date'
 import { formatPrice } from '@montara-pass/shared/money'
 import {
   BILLING_STATUS,
+  hasPaidPurchase,
   isSandbox,
+  ownedPurchase,
+  paymentPending,
   planName,
   planOffer,
   planPeriod,
@@ -40,13 +41,7 @@ export default function BillingBlock() {
   const plans = useQuery(queries.billing.plans())
   const overview = useQuery({
     ...queries.billing.overview(),
-    refetchInterval: (query) => {
-      const data = query.state.data
-      const pending =
-        data?.subscription?.status === 'pending' ||
-        data?.purchases.some((purchase) => purchase.status === 'pending')
-      return pending ? 5000 : false
-    },
+    refetchInterval: (query) => (paymentPending(query.state.data) ? 5000 : false),
   })
   const subscribe = useMutation({ ...queries.billing.subscribe(), onError: toastAxiosError })
   const buy = useMutation({ ...queries.billing.buy(), onError: toastAxiosError })
@@ -55,13 +50,7 @@ export default function BillingBlock() {
 
   const subscription = overview.data?.subscription ?? null
   const purchases = overview.data?.purchases ?? []
-  const owned = (plan: Models.Plan) =>
-    purchases.find(
-      (purchase) =>
-        purchase.plan_id === plan.id &&
-        (purchase.status === 'paid' || purchase.status === 'pending')
-    )
-  const lifetime = purchases.some((purchase) => purchase.status === 'paid')
+  const lifetime = hasPaidPurchase(purchases)
   // The plan marked out: the one the website sent the user here for, or else
   // the yearly one.
   const featured =
@@ -142,7 +131,8 @@ export default function BillingBlock() {
         ) : (
           <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2 lg:grid-cols-3">
             {plans.data.map((plan) => {
-              const purchase = plan.billing === 'one_time' ? owned(plan) : undefined
+              const purchase =
+                plan.billing === 'one_time' ? ownedPurchase(purchases, plan) : undefined
               // One subscription at a time; another once this one has ended.
               const subscribed = plan.billing === 'recurring' && subscription !== null
               const marked = plan.id === featured?.id

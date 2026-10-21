@@ -11,13 +11,3 @@ export const isFullScreen =
 export async function openFullScreen(): Promise<void> {
   await chrome.tabs.create({ url: chrome.runtime.getURL('popup.html?view=full') })
 }
-
-export function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  return (
-    parts
-      .slice(0, 2)
-      .map((part) => part[0].toUpperCase())
-      .join('') || '?'
-  )
-}

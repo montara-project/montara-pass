@@ -1,10 +1,11 @@
 import { encryptNewItem, type VaultKeys } from '@montara-pass/shared/crypto/vault'
+import { errorMessage } from '@montara-pass/shared/string'
 import { useState } from 'react'
 
 import { createItem, SignedOutError } from '../../lib/api'
 import { fetchIcon } from '../../lib/icon'
+import { hostOf } from '../../lib/origin'
 import { AddLoginFormSchema, type AddLoginFormDto } from '../../lib/schemas'
-import { hostOf } from '../../lib/site'
 import { checked, submit, useAppForm } from '../form'
 import { ArrowLeftIcon } from '../icons'
 
@@ -56,7 +57,7 @@ export default function AddItem({ keys, tab, onSaved, onCancel, onSignedOut }: A
           onSignedOut()
           return
         }
-        setError(err instanceof Error ? err.message : 'Could not save the login')
+        setError(errorMessage(err, 'Could not save the login'))
       }
     },
   })

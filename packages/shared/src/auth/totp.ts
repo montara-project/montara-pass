@@ -1,5 +1,3 @@
-import { renderSVG } from 'uqr'
-
 /**
  * Two-step sign-in with an authenticator app (TOTP). Shared with the
  * extension, which imports the web app's lib.
@@ -22,9 +20,4 @@ export const TOTP_CODE_REQUIRED = 'Enter the 6-digit code from your authenticato
 /** The secret of an otpauth:// URI, for typing into an app that cannot scan. */
 export function totpSecret(uri: string): string {
   return new URL(uri).searchParams.get('secret') ?? ''
-}
-
-/** The URI as a QR code for an authenticator app to scan, as an image source. */
-export function totpQrCode(uri: string): string {
-  return `data:image/svg+xml;utf8,${encodeURIComponent(renderSVG(uri))}`
 }
