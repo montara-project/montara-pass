@@ -3,13 +3,17 @@ import type { Models } from '@montara-pass/shared/api/models'
 import { formatPrice } from '@montara-pass/shared/money'
 import {
   BILLING_STATUS,
+  hasPaidPurchase,
   isSandbox,
+  ownedPurchase,
+  paymentPending,
   planName,
   planOffer,
   planPeriod,
   planSaving,
   planTerms,
 } from '@montara-pass/shared/plan'
+import { errorMessage } from '@montara-pass/shared/string'
 import { useCallback, useEffect, useState } from 'react'
 
 import {
@@ -56,7 +60,7 @@ export default function Billing({ onSignedOut }: BillingProps) {
       setError('')
     } catch (err) {
       if (err instanceof SignedOutError) onSignedOut()
-      else setError(err instanceof Error ? err.message : 'Billing could not be read')
+      else setError(errorMessage(err, 'Billing could not be read'))
     }
   }, [onSignedOut])
 
@@ -71,9 +75,7 @@ export default function Billing({ onSignedOut }: BillingProps) {
 
   const subscription = overview?.subscription ?? null
   const purchases = overview?.purchases ?? []
-  const pending =
-    subscription?.status === 'pending' ||
-    purchases.some((purchase) => purchase.status === 'pending')
+  const pending = paymentPending(overview)
 
   useEffect(() => {
     if (!pending) return
@@ -90,19 +92,13 @@ export default function Billing({ onSignedOut }: BillingProps) {
       await load()
     } catch (err) {
       if (err instanceof SignedOutError) onSignedOut()
-      else setError(err instanceof Error ? err.message : 'That did not work')
+      else setError(errorMessage(err, 'That did not work'))
     } finally {
       setBusy(null)
     }
   }
 
-  const owned = (plan: Models.Plan) =>
-    purchases.find(
-      (purchase) =>
-        purchase.plan_id === plan.id &&
-        (purchase.status === 'paid' || purchase.status === 'pending')
-    )
-  const lifetime = purchases.some((purchase) => purchase.status === 'paid')
+  const lifetime = hasPaidPurchase(purchases)
   // The plan marked out, as on the web app's billing page: the yearly one.
   const featured = plans.find((plan) => plan.billing_interval === 'year')
   const currency = plans[0]?.currency
@@ -182,7 +178,8 @@ export default function Billing({ onSignedOut }: BillingProps) {
             ) : (
               <ul className="plan-grid">
                 {plans.map((plan) => {
-                  const purchase = plan.billing === 'one_time' ? owned(plan) : undefined
+                  const purchase =
+                    plan.billing === 'one_time' ? ownedPurchase(purchases, plan) : undefined
                   // One subscription at a time; another once this one has ended.
                   const subscribed = plan.billing === 'recurring' && subscription !== null
                   const saving = planSaving(plan, plans)

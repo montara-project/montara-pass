@@ -1,5 +1,6 @@
 import type { AxiosError } from 'axios'
 
+import { errorMessage } from '@montara-pass/shared/string'
 import { toast } from 'sonner'
 
 import type { ApiErrorResponse } from '@/types/api'
@@ -21,7 +22,7 @@ export function axiosErrorMessage(error: unknown): string {
     return body?.message || error.message || 'An error unknown occurred'
   }
 
-  return error instanceof Error ? error.message : 'An error occurred'
+  return errorMessage(error, 'An error occurred')
 }
 
 /** Narrow an unknown error to an axios error without importing the class value. */

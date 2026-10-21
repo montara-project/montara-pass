@@ -1,5 +1,6 @@
 import { SignInSchema } from '@montara-pass/shared/api/dtos/auth/schema'
 import { COMMUNITY } from '@montara-pass/shared/constants/edition'
+import { errorMessage } from '@montara-pass/shared/string'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 
@@ -34,7 +35,7 @@ export default function LoginForm() {
         }
         await navigate({ to: HOME_PATH, replace: true })
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Sign-in failed')
+        setError(errorMessage(err, 'Sign-in failed'))
       }
     },
   })

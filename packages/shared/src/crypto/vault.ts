@@ -111,6 +111,18 @@ export function cardEnding(number: unknown): string | undefined {
 }
 
 /**
+ * Whether a lowercased search term is in an item's name, username, website or
+ * email: what a search looks in, in the web app and the extension alike.
+ */
+export function matchesSearch(secret: ItemSecret | null | undefined, term: string): boolean {
+  // Decrypted JSON is only typed, not checked, and a shared item's was written
+  // by someone else: a field may not be a string.
+  return [secret?.name, secret?.username, secret?.url, secret?.contact?.email].some(
+    (value: unknown) => typeof value === 'string' && value.toLowerCase().includes(term)
+  )
+}
+
+/**
  * The icon to show for an item, or null. Only a PNG data URL is accepted: a
  * shared item comes from someone else, and an address there would make this
  * client call it.

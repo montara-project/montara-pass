@@ -4,6 +4,7 @@ import type { VaultItem } from '@montara-pass/shared/types/vault'
 
 import { encryptNewItem, type VaultKeys } from '@montara-pass/shared/crypto/vault'
 import { generatePassword } from '@montara-pass/shared/password'
+import { errorMessage } from '@montara-pass/shared/string'
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 
@@ -70,6 +71,10 @@ function channelOf() {
 }
 /** The content script tells its frames apart by the prefix. */
 const CHANNEL = channelOf()
+
+/** The account signed in with last comes first. */
+const byLastUsed = (a: VaultItem, b: VaultItem) =>
+  (b.last_used_at ?? '').localeCompare(a.last_used_at ?? '')
 
 /** The tab this frame sits in, as the browser reports it. */
 interface Page {
@@ -186,8 +191,7 @@ function Logins({
     () =>
       (items ?? [])
         .filter((item) => item.type === 'login' && fillsSite(item.secret, page.url))
-        // The account signed in with last comes first.
-        .sort((a, b) => (b.last_used_at ?? '').localeCompare(a.last_used_at ?? '')),
+        .sort(byLastUsed),
     [items, page.url]
   )
 
@@ -340,7 +344,7 @@ function SaveLogin({
             onLocked()
             return
           }
-          setError(err instanceof Error ? err.message : 'Could not save the login')
+          setError(errorMessage(err, 'Could not save the login'))
         }
       } finally {
         saving.current = false
@@ -481,7 +485,7 @@ function PasskeyChoice({
             (!creating && request.ids.length === 0) || request.ids.includes(passkey.credentialId)
           )
         })
-        .sort((a, b) => (b.last_used_at ?? '').localeCompare(a.last_used_at ?? '')),
+        .sort(byLastUsed),
     [items, rpId, creating, request.ids]
   )
 
@@ -542,7 +546,7 @@ function PasskeyChoice({
         onLocked()
         return
       }
-      setFailure(err instanceof Error ? err.message : 'Could not use the passkey')
+      setFailure(errorMessage(err, 'Could not use the passkey'))
     } finally {
       working.current = false
       onWorking(false)

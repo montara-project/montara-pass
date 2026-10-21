@@ -14,6 +14,11 @@ export function capitalizeFirstLetter(str: string): string {
     .join(' ')
 }
 
+/** What a caught error says, or the fallback when it is not an Error. */
+export function errorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error ? err.message : fallback
+}
+
 /** The first letters of up to two words of a name, for an avatar. */
 export function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)

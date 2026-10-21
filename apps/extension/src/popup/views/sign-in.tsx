@@ -1,5 +1,6 @@
 import { SignInSchema, TotpCodeSchema } from '@montara-pass/shared/api/dtos/auth/schema'
 import { COMMUNITY } from '@montara-pass/shared/constants/edition'
+import { errorMessage } from '@montara-pass/shared/string'
 import { useEffect, useState } from 'react'
 
 import { signIn, verifyTotp } from '../../lib/api'
@@ -40,7 +41,7 @@ export default function SignIn({ onSignedIn, onSettings }: SignInProps) {
         }
         onSignedIn()
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Sign-in failed')
+        setError(errorMessage(err, 'Sign-in failed'))
       }
     },
   })
@@ -133,7 +134,7 @@ function TotpStep({ totpToken, onSignedIn, onBack }: TotpStepProps) {
         await verifyTotp(totpToken, value.code.replace(/\s/g, ''))
         onSignedIn()
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Verification failed')
+        setError(errorMessage(err, 'Verification failed'))
       }
     },
   })

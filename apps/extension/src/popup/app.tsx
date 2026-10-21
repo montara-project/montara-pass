@@ -1,6 +1,7 @@
 import type { Models } from '@montara-pass/shared/api/models'
 import type { VaultKeys } from '@montara-pass/shared/crypto/vault'
 
+import { errorMessage } from '@montara-pass/shared/string'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 
 import { getUserKeys, SignedOutError, signOut } from '../lib/api'
@@ -40,11 +41,7 @@ async function resolveStage(): Promise<Stage> {
       : { name: 'no-vault', appUrl: (await getSettings()).appUrl }
   } catch (error) {
     if (error instanceof SignedOutError) return { name: 'signed-out' }
-    return {
-      name: 'error',
-      message: error instanceof Error ? error.message : String(error),
-      signedIn,
-    }
+    return { name: 'error', message: errorMessage(error, String(error)), signedIn }
   }
 }
 

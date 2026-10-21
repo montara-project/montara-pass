@@ -6,6 +6,7 @@ import {
   TotpDisableSchema,
 } from '@montara-pass/shared/api/dtos/auth/schema'
 import { totpQrCode, totpSecret } from '@montara-pass/shared/auth/totp'
+import { errorMessage } from '@montara-pass/shared/string'
 import { useState } from 'react'
 import z from 'zod'
 
@@ -20,8 +21,6 @@ interface TwoFactorProps {
 
 // Turning it on takes the password alone; the code field is not shown.
 const PasswordSchema = SignInSchema.pick({ password: true }).extend({ code: z.string() })
-
-const messageOf = (err: unknown) => (err instanceof Error ? err.message : 'Request failed')
 
 /**
  * The rows of the Security card that turn optional TOTP on and off, as the
@@ -53,7 +52,7 @@ export default function TwoFactor({ enabled, onChange }: TwoFactorProps) {
         setAsking(false)
         passwordForm.reset()
       } catch (err) {
-        setError(messageOf(err))
+        setError(errorMessage(err, 'Request failed'))
       }
     },
   })
@@ -70,7 +69,7 @@ export default function TwoFactor({ enabled, onChange }: TwoFactorProps) {
         setSetup(null)
         onChange(true)
       } catch (err) {
-        setError(messageOf(err))
+        setError(errorMessage(err, 'Request failed'))
       }
     },
   })

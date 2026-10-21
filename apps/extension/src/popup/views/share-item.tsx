@@ -4,12 +4,12 @@ import type { VaultItem } from '@montara-pass/shared/types/vault'
 import { ShareFormSchema, type ShareFormDto } from '@montara-pass/shared/api/dtos/vault/schema'
 import { SHARE_ROLES } from '@montara-pass/shared/constants/vault'
 import { wrapItemKeyFor, type VaultKeys } from '@montara-pass/shared/crypto/vault'
+import { errorMessage, initials } from '@montara-pass/shared/string'
 import { useEffect, useRef, useState } from 'react'
 
 import { ApiError, getPublicKey, listItemMembers, shareItem, SignedOutError } from '../../lib/api'
 import { checked, submit, useAppForm } from '../form'
 import { ItemTile } from '../item-tile'
-import { initials } from '../layout'
 
 interface ShareItemProps {
   keys: VaultKeys
@@ -80,10 +80,8 @@ export default function ShareItem({ keys, item, onDone, onSignedOut, onNotice }:
         }
         if (err instanceof ApiError && err.status === 409) {
           setError('They already have access to this item.')
-        } else if (err instanceof Error) {
-          setError(err.message)
         } else {
-          setError('Could not share the item')
+          setError(errorMessage(err, 'Could not share the item'))
         }
       } finally {
         sharing.current = false

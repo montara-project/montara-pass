@@ -2,6 +2,7 @@ import type { VaultKeys } from '@montara-pass/shared/crypto/vault'
 import type { VaultItem } from '@montara-pass/shared/types/vault'
 
 import { COMMUNITY } from '@montara-pass/shared/constants/edition'
+import { initials } from '@montara-pass/shared/string'
 import { linkOf } from '@montara-pass/shared/url'
 import {
   useEffect,
@@ -12,9 +13,8 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react'
 
-import { markItemUsed, setItemPlacement, SignedOutError, trashItem } from '../../lib/api'
+import { markItemUsed, setItemPlacement, trashItem } from '../../lib/api'
 import { fillLogin } from '../../lib/autofill'
-import { copySecret } from '../../lib/clipboard'
 import { fillsSite, hostOf } from '../../lib/site'
 import { lastUsedLabel } from '../../lib/usage'
 import { maskUsername } from '../../lib/username'
@@ -43,19 +43,20 @@ import {
   UserIcon,
 } from '../icons'
 import { itemSubtitle, ItemTile } from '../item-tile'
-import { initials, openFullScreen } from '../layout'
+import { openFullScreen } from '../layout'
 import { UpdateButton } from '../update-button'
-import { useFolders, useVaultItems } from '../use-vault-items'
+import { useDismiss } from '../use-dismiss'
+import {
+  searchAndSort,
+  SORT_LABEL,
+  useFolders,
+  useVaultActions,
+  useVaultItems,
+  type Sort,
+} from '../use-vault-items'
 import AddItem from './add-item'
 import ItemForm from './item-form'
 import ShareItem from './share-item'
-
-type Sort = 'name' | 'updated'
-
-const SORT_LABEL: Record<Sort, string> = {
-  name: 'Sort by name',
-  updated: 'Sort by last updated',
-}
 
 /** The open menu of a row: whose it is, where it hangs, and which of its two pages shows. */
 interface RowMenu {
@@ -75,19 +76,18 @@ interface ItemsProps {
 
 export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings }: ItemsProps) {
   const { items, user, error, load } = useVaultItems(keys, onSignedOut)
+  const {
+    notice,
+    setNotice,
+    refreshing,
+    refresh,
+    act: actOnVault,
+    copy,
+  } = useVaultActions(load, onSignedOut)
   const [tab, setTab] = useState<chrome.tabs.Tab | null>(null)
   const [search, setSearch] = useState('')
-  const [notice, setNotice] = useState('')
-
-  // A notice says what just happened, then gets out of the way.
-  useEffect(() => {
-    if (!notice) return
-    const timer = setTimeout(() => setNotice(''), 2500)
-    return () => clearTimeout(timer)
-  }, [notice])
   const [adding, setAdding] = useState(false)
   const [sort, setSort] = useState<Sort>('name')
-  const [refreshing, setRefreshing] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const folders = useFolders(keys)
@@ -98,28 +98,12 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
   /** The More button the menu was opened from: focus goes back to it. */
   const openerRef = useRef<HTMLButtonElement | null>(null)
 
-  // A row's menu closes on Escape and on a click anywhere else.
-  useEffect(() => {
-    if (!rowMenu) return
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
-      setRowMenu(null)
-      openerRef.current?.focus()
-    }
-    const onClick = (e: MouseEvent) => {
-      const target = e.target as Node
-      // Its own button closes it by itself, on the click that follows.
-      if (rowMenuRef.current?.contains(target) || openerRef.current?.contains(target)) return
-      setRowMenu(null)
-    }
-    document.addEventListener('keydown', onKey)
-    document.addEventListener('mousedown', onClick)
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.removeEventListener('mousedown', onClick)
-    }
-  }, [rowMenu])
+  // A row's menu closes on Escape and on a click anywhere else. Its own
+  // button closes it by itself, on the click that follows.
+  useDismiss(rowMenu !== null, [rowMenuRef, openerRef], (by) => {
+    setRowMenu(null)
+    if (by === 'escape') openerRef.current?.focus()
+  })
 
   // Opening the menu, or turning its page, puts focus on the first choice.
   const menuId = rowMenu?.id
@@ -136,40 +120,19 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
   }, [])
 
   // The account menu closes on Escape and on a click anywhere else.
-  useEffect(() => {
-    if (!menuOpen) return
-
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false)
-    const onClick = (e: MouseEvent) => {
-      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false)
-    }
-    document.addEventListener('keydown', onKey)
-    document.addEventListener('mousedown', onClick)
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.removeEventListener('mousedown', onClick)
-    }
-  }, [menuOpen])
+  useDismiss(menuOpen, [menuRef], () => setMenuOpen(false))
 
   const pageHost = hostOf(tab?.url)
 
-  const visible = useMemo(() => {
-    const term = search.trim().toLowerCase()
-
-    return (items ?? [])
-      .filter((item) => item.secret !== null)
-      .filter((item) =>
-        // A decrypted secret is not checked, and a shared one is someone else's.
-        [item.secret?.name, item.secret?.username, item.secret?.url, item.secret?.contact?.email]
-          .filter((value): value is string => typeof value === 'string')
-          .some((value) => value.toLowerCase().includes(term))
-      )
-      .sort((a, b) =>
-        sort === 'updated'
-          ? b.updated_at.localeCompare(a.updated_at)
-          : a.secret!.name.localeCompare(b.secret!.name)
-      )
-  }, [items, search, sort])
+  const visible = useMemo(
+    () =>
+      searchAndSort(
+        (items ?? []).filter((item) => item.secret !== null),
+        search,
+        sort
+      ),
+    [items, search, sort]
+  )
 
   // Logins saved for the page in the active tab: the only ones Fill is offered
   // for, so a look-alike domain is never one click away from a real password.
@@ -178,24 +141,9 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
     [items, tab]
   )
 
-  const refresh = async () => {
-    setRefreshing(true)
-    await load()
-    setRefreshing(false)
-  }
-
   const handleFullScreen = async () => {
     await openFullScreen()
     window.close()
-  }
-
-  const copy = async (value: string | undefined, label: string) => {
-    if (!value) {
-      setNotice(`This item has no ${label}`)
-      return
-    }
-    await copySecret(value)
-    setNotice(`${label[0].toUpperCase()}${label.slice(1)} copied`)
   }
 
   const fill = async (item: VaultItem) => {
@@ -260,17 +208,9 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
   }
 
   /** Runs a menu choice that changes the vault, then says how it went. */
-  const act = async (change: () => Promise<void>, done: string) => {
+  const act = (change: () => Promise<void>, done: string) => {
     setRowMenu(null)
-
-    try {
-      await change()
-      setNotice(done)
-      await load()
-    } catch (err) {
-      if (err instanceof SignedOutError) onSignedOut()
-      else setNotice(err instanceof Error ? err.message : 'That did not work')
-    }
+    return actOnVault(change, done)
   }
 
   const place = (item: VaultItem, folderId: string | null, done: string) =>

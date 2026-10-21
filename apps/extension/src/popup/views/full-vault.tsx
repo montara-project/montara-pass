@@ -7,8 +7,7 @@ import { cardEnding } from '@montara-pass/shared/crypto/vault'
 import { linkOf } from '@montara-pass/shared/url'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 
-import { setItemPlacement, SignedOutError, trashItem } from '../../lib/api'
-import { copySecret } from '../../lib/clipboard'
+import { setItemPlacement, trashItem } from '../../lib/api'
 import { getSettings } from '../../lib/storage'
 import { lastUsedAgo } from '../../lib/usage'
 import { maskUsername } from '../../lib/username'
@@ -35,7 +34,15 @@ import {
   UserIcon,
 } from '../icons'
 import { itemSubtitle, ItemTile } from '../item-tile'
-import { useFolders, useVaultItems } from '../use-vault-items'
+import { useDismiss } from '../use-dismiss'
+import {
+  searchAndSort,
+  SORT_LABEL,
+  useFolders,
+  useVaultActions,
+  useVaultItems,
+  type Sort,
+} from '../use-vault-items'
 import { VaultSidebar, type Tool } from '../vault-sidebar'
 import Billing from './billing'
 import ItemForm from './item-form'
@@ -53,7 +60,6 @@ interface FullVaultProps {
 }
 
 type Filter = 'all' | 'login' | 'secure_note' | 'card' | 'contact' | 'favorite'
-type Sort = 'name' | 'updated'
 /** What the detail pane shows. */
 type Pane =
   | { mode: 'view'; id: string | null }
@@ -76,11 +82,6 @@ function inFilter(item: VaultItem, filter: Filter) {
   return item.type === filter
 }
 
-const SORT_LABEL: Record<Sort, string> = {
-  name: 'Sort by name',
-  updated: 'Sort by last updated',
-}
-
 // Fetched when an item with notes is opened, so it stays out of the first load.
 const NotesView = lazy(() =>
   import('../notes-editor').then((module) => ({ default: module.NotesView }))
@@ -101,6 +102,7 @@ export default function FullVault({
   onSettings,
 }: FullVaultProps) {
   const { items, user, error, load } = useVaultItems(keys, onSignedOut)
+  const { notice, setNotice, refreshing, refresh, act, copy } = useVaultActions(load, onSignedOut)
 
   const [filter, setFilter] = useState<Filter>('all')
   const [sort, setSort] = useState<Sort>('name')
@@ -108,20 +110,11 @@ export default function FullVault({
   const [pane, setPane] = useState<Pane>({ mode: 'view', id: null })
   // A tool takes the place of the list and the item beside it.
   const [tool, setTool] = useState<Tool | null>(null)
-  const [notice, setNotice] = useState('')
-  const [refreshing, setRefreshing] = useState(false)
   const [appUrl, setAppUrl] = useState('')
   const folders = useFolders(keys)
   useEffect(() => {
     void getSettings().then((settings) => setAppUrl(settings.appUrl))
   }, [])
-
-  // A notice says what just happened, then gets out of the way.
-  useEffect(() => {
-    if (!notice) return
-    const timer = setTimeout(() => setNotice(''), 2500)
-    return () => clearTimeout(timer)
-  }, [notice])
 
   const readable = useMemo(() => (items ?? []).filter((item) => item.secret !== null), [items])
 
@@ -137,56 +130,21 @@ export default function FullVault({
     [readable]
   )
 
-  const visible = useMemo(() => {
-    const term = search.trim().toLowerCase()
-
-    return readable
-      .filter((item) => inFilter(item, filter))
-      .filter((item) =>
-        // A decrypted secret is not checked, and a shared one is someone else's.
-        [item.secret?.name, item.secret?.username, item.secret?.url, item.secret?.contact?.email]
-          .filter((value): value is string => typeof value === 'string')
-          .some((value) => value.toLowerCase().includes(term))
-      )
-      .sort((a, b) =>
-        sort === 'updated'
-          ? b.updated_at.localeCompare(a.updated_at)
-          : a.secret!.name.localeCompare(b.secret!.name)
-      )
-  }, [readable, filter, search, sort])
+  const visible = useMemo(
+    () =>
+      searchAndSort(
+        readable.filter((item) => inFilter(item, filter)),
+        search,
+        sort
+      ),
+    [readable, filter, search, sort]
+  )
 
   const selectedId = pane.mode === 'new' ? null : pane.id
   const folderNames = useMemo(() => new Map(folders.map((f) => [f.id, f.name])), [folders])
   const selected = readable.find((item) => item.id === selectedId) ?? null
   // On a narrow window the pane covers the list, so it needs to know when it is in use.
   const paneOpen = pane.mode !== 'view' || selected !== null
-
-  const refresh = async () => {
-    setRefreshing(true)
-    await load()
-    setRefreshing(false)
-  }
-
-  /** Runs a choice that changes the vault, then says how it went. */
-  const act = async (change: () => Promise<void>, done: string) => {
-    try {
-      await change()
-      setNotice(done)
-      await load()
-    } catch (err) {
-      if (err instanceof SignedOutError) onSignedOut()
-      else setNotice(err instanceof Error ? err.message : 'That did not work')
-    }
-  }
-
-  const copy = async (value: string | undefined, label: string) => {
-    if (!value) {
-      setNotice(`This item has no ${label}`)
-      return
-    }
-    await copySecret(value)
-    setNotice(`${label[0].toUpperCase()}${label.slice(1)} copied`)
-  }
 
   return (
     <VaultSidebar
@@ -420,20 +378,9 @@ function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: Item
 
   // The menu closes on Escape and on a click anywhere else; opening it puts
   // focus on its first choice.
+  useDismiss(menuOpen, [menuRef], () => setMenuOpen(false))
   useEffect(() => {
-    if (!menuOpen) return
-    menuRef.current?.querySelector<HTMLButtonElement>('[role=menuitem]')?.focus()
-
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false)
-    const onClick = (e: MouseEvent) => {
-      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false)
-    }
-    document.addEventListener('keydown', onKey)
-    document.addEventListener('mousedown', onClick)
-    return () => {
-      document.removeEventListener('keydown', onKey)
-      document.removeEventListener('mousedown', onClick)
-    }
+    if (menuOpen) menuRef.current?.querySelector<HTMLButtonElement>('[role=menuitem]')?.focus()
   }, [menuOpen])
 
   const secret = item.secret!

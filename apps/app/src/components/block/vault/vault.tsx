@@ -1,7 +1,7 @@
 import type { VaultFolder, VaultItem } from '@montara-pass/shared/types/vault'
 
 import { ITEM_TYPE_LABEL, ItemTypeOptions } from '@montara-pass/shared/constants/vault'
-import { cardEnding } from '@montara-pass/shared/crypto/vault'
+import { cardEnding, matchesSearch } from '@montara-pass/shared/crypto/vault'
 import { formatDate } from '@montara-pass/shared/date'
 import {
   IconChevronLeft,
@@ -33,17 +33,6 @@ const ALL = 'all'
 
 /** Items to a page. The server cannot sort or search, so the list is paged as it comes. */
 const PAGE_SIZE = 25
-
-/** What a search looks in: the same fields as the extension's. */
-function matches(item: VaultItem, term: string) {
-  // Decrypted JSON is only typed, not checked: a field may not be a string.
-  return [
-    item.secret?.name,
-    item.secret?.username,
-    item.secret?.url,
-    item.secret?.contact?.email,
-  ].some((value: unknown) => typeof value === 'string' && value.toLowerCase().includes(term))
-}
 
 /**
  * The vault: the list on one side and the item it has selected on the other.
@@ -83,7 +72,7 @@ export default function Vault() {
         (item) =>
           (!folderId || item.folder_id === folderId) &&
           (!type || item.type === type) &&
-          matches(item, term)
+          matchesSearch(item.secret, term)
       ),
     [everything.data, folderId, type, term]
   )

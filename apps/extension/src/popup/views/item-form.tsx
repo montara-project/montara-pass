@@ -17,6 +17,7 @@ import {
   type ItemSecret,
   type VaultKeys,
 } from '@montara-pass/shared/crypto/vault'
+import { errorMessage } from '@montara-pass/shared/string'
 import { useStore } from '@tanstack/react-form'
 import { useState } from 'react'
 
@@ -142,10 +143,8 @@ export default function ItemForm({
         }
         if (err instanceof ApiError && err.status === 409) {
           setError('This item was changed somewhere else. Refresh the vault and try again.')
-        } else if (err instanceof Error) {
-          setError(err.message)
         } else {
-          setError('Could not save the item')
+          setError(errorMessage(err, 'Could not save the item'))
         }
       }
     },
