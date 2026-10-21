@@ -49,6 +49,10 @@ export default function Vault() {
   // otherwise land in the browser's history.
   const [search, setSearch] = useState('')
   const term = search.trim().toLowerCase()
+  // Reading the whole vault starts as the search field takes focus, not at the
+  // first letter: it is one RSA unwrap per item, and the moment it takes to
+  // start typing is spent on it.
+  const [searchFocused, setSearchFocused] = useState(false)
 
   const params = useMemo(
     () => ({
@@ -64,7 +68,7 @@ export default function Vault() {
   // The server cannot search ciphertext, so a search reads the whole vault,
   // decrypted, and filters and pages it here. Without one, the server pages.
   const paged = useItems(params)
-  const everything = useAllItems({ enabled: Boolean(term) })
+  const everything = useAllItems({ enabled: Boolean(term) || searchFocused })
   const { isLoading, isError, error, refetch } = term ? everything : paged
   const found = useMemo(
     () =>
@@ -142,6 +146,7 @@ export default function Vault() {
                 placeholder="Search items"
                 aria-label="Search items by name, username or URL"
                 value={search}
+                onFocus={() => setSearchFocused(true)}
                 onChange={(event) => filter(() => setSearch(event.target.value))}
                 // The selects beside it set the field look; the input takes it too.
                 className="bg-field border-field-border rounded-control hover:border-muted-foreground focus-visible:border-focus focus-visible:ring-focus h-9 pl-9 shadow-none focus-visible:ring-1 dark:bg-field"
