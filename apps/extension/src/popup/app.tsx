@@ -2,7 +2,7 @@ import type { Models } from '@montara-pass/shared/api/models'
 import type { VaultKeys } from '@montara-pass/shared/crypto/vault'
 
 import { errorMessage } from '@montara-pass/shared/string'
-import { lazy, Suspense, useCallback, useEffect, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { getUserKeys, SignedOutError, signOut } from '../lib/api'
 import { loadVault, lockVault } from '../lib/session'
@@ -84,6 +84,7 @@ function framed(node: ReactNode) {
 function Stages() {
   const [stage, setStage] = useState<Stage>({ name: 'loading' })
   const [showSettings, setShowSettings] = useState(false)
+  const vaultRef = useRef<HTMLDivElement>(null)
 
   // The initial stage is already 'loading'; state is only set once the async
   // lookup resolves, and dropped if the popup unmounts first.
@@ -117,6 +118,7 @@ function Stages() {
     setStage({ name: 'signed-out' })
   }
 
+  let settings: ReactNode = null
   if (showSettings) {
     const leaving = (act: () => Promise<void>) => () => {
       setShowSettings(false)
@@ -128,16 +130,24 @@ function Stages() {
         ? stage.signedIn
         : ['no-vault', 'locked', 'unlocked'].includes(stage.name)
 
-    return (
+    settings = (
       <Settings
-        onClose={() => {
+        onClose={(saved) => {
           setShowSettings(false)
-          boot()
+          // A new server, or a stage that may have moved on outside the
+          // extension, is worked out again. An unlocked vault left as it was
+          // is shown as it was: focus goes back to its search.
+          if (saved || stage.name !== 'unlocked') boot()
+          else
+            requestAnimationFrame(() =>
+              vaultRef.current?.querySelector<HTMLInputElement>('input[type=search]')?.focus()
+            )
         }}
         onLock={stage.name === 'unlocked' ? leaving(handleLock) : undefined}
         onSignOut={signedIn ? leaving(handleSignOut) : undefined}
       />
     )
+    if (stage.name !== 'unlocked') return settings
   }
 
   switch (stage.name) {
@@ -186,13 +196,20 @@ function Stages() {
     case 'unlocked': {
       const Vault = isFullScreen ? FullVault : Items
       return (
-        <Vault
-          keys={stage.keys}
-          onLock={() => void handleLock()}
-          onSignOut={() => void handleSignOut()}
-          onSignedOut={handleSignedOut}
-          onSettings={() => setShowSettings(true)}
-        />
+        <>
+          {settings}
+          {/* Kept, out of sight, while the settings are open: mounted again,
+              it would fetch and decrypt the whole vault once more. */}
+          <div ref={vaultRef} style={{ display: settings ? 'none' : 'contents' }}>
+            <Vault
+              keys={stage.keys}
+              onLock={() => void handleLock()}
+              onSignOut={() => void handleSignOut()}
+              onSignedOut={handleSignedOut}
+              onSettings={() => setShowSettings(true)}
+            />
+          </div>
+        </>
       )
     }
   }

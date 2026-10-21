@@ -85,18 +85,27 @@ export function useAllItems({ enabled = true }: { enabled?: boolean } = {}) {
     // Under the items key, so saving an item refreshes it.
     queryKey: [ITEM_QUERY_KEY, 'all', 'decrypted'],
     queryFn: async (): Promise<VaultItem[]> => {
-      const rows: VaultItem[] = []
+      // The first page says how many there are; the rest are asked for at
+      // once, so a large vault costs two round trips rather than one a page,
+      // and the items are decrypted alongside each other.
+      const { data: first } = await services.items.list({ limit: PAGE_SIZE, offset: 0 })
+      const total = first.metadata.total ?? first.data.length
+      const offsets: number[] = []
+      for (let offset = PAGE_SIZE; offset < total; offset += PAGE_SIZE) offsets.push(offset)
+      const rest = await Promise.all(
+        offsets.map(async (offset) => {
+          const { data: page } = await services.items.list({ limit: PAGE_SIZE, offset })
+          return page.data
+        })
+      )
 
-      for (let seen = 0; ;) {
-        const { data: page } = await services.items.list({ limit: PAGE_SIZE, offset: seen })
-        seen += page.data.length
-
-        for (const item of page.data) {
-          const secret = await decryptItem(keys, item).catch(() => null)
-          if (secret) rows.push({ ...item, secret })
-        }
-        if (page.data.length < PAGE_SIZE || seen >= (page.metadata.total ?? 0)) return rows
-      }
+      const rows = await Promise.all(
+        [first.data, ...rest].flat().map(async (item) => ({
+          ...item,
+          secret: await decryptItem(keys, item).catch(() => null),
+        }))
+      )
+      return rows.filter((row) => row.secret !== null)
     },
   })
 }

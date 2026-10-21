@@ -7,6 +7,7 @@ import type {
 import type { Models } from '@montara-pass/shared/api/models'
 
 import { isTotpCode, TOTP_CODE_REQUIRED, TOTP_TOKEN_HEADER } from '@montara-pass/shared/auth/totp'
+import z from 'zod'
 
 import { serverAllowed } from './origin'
 import { clearTokens, getSettings, getTokens, saveTokens } from './storage'
@@ -231,6 +232,19 @@ export async function getUserKeys(): Promise<Models.UserKeys | null> {
   }
 }
 
+/** A plan as the billing overview has to have it: by name. */
+const BillingPlan = z.looseObject({ name: z.string() })
+
+/**
+ * What the views read of a billing overview. The rest of it is only shown,
+ * so it is let through as it comes; a server that answers in another form is
+ * refused here rather than breaking the page that shows it.
+ */
+const BillingOverviewShape = z.looseObject({
+  subscription: z.looseObject({ status: z.string(), plan: BillingPlan }).nullish(),
+  purchases: z.array(z.looseObject({ status: z.string(), plan: BillingPlan })),
+})
+
 /**
  * The user's subscription and purchases, or null where the server has no
  * billing: a Community Edition one, or one from before billing.
@@ -238,6 +252,9 @@ export async function getUserKeys(): Promise<Models.UserKeys | null> {
 export async function getBilling(): Promise<Models.BillingOverview | null> {
   try {
     const res = await request<Envelope<Models.BillingOverview>>('/api/v1/billing')
+    if (!BillingOverviewShape.safeParse(res?.data).success) {
+      throw new Error('The server sent billing in a form this extension cannot read.')
+    }
     return res.data
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) return null

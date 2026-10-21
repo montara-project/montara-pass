@@ -15,7 +15,8 @@ import { ArrowLeftIcon, ExternalLinkIcon, LockIcon } from '../icons'
 import TwoFactor from './two-factor'
 
 interface SettingsProps {
-  onClose: () => void
+  /** `saved` when a server was saved, which can end the session. */
+  onClose: (saved?: boolean) => void
   /** Given while the vault is unlocked. */
   onLock?: () => void
   /** Given while someone is signed in. */
@@ -93,7 +94,7 @@ export default function Settings({ onClose, onLock, onSignOut }: SettingsProps) 
         await signOut()
       }
       await saveSettings({ apiUrl: apiOrigin, appUrl: appOrigin })
-      onClose()
+      onClose(true)
     },
   })
 
@@ -150,7 +151,7 @@ export default function Settings({ onClose, onLock, onSignOut }: SettingsProps) 
   return (
     <div className="settings">
       <header className="set-head">
-        <button type="button" className="icon-button" aria-label="Back" onClick={onClose}>
+        <button type="button" className="icon-button" aria-label="Back" onClick={() => onClose()}>
           <ArrowLeftIcon />
         </button>
         <h1>Settings</h1>
