@@ -7,6 +7,12 @@ export type AuthResources = {
   signIn: (body: SignInDto) => Promise<AxiosResponse<SignInData>>
   // callback_url: where the verification link sends the browser once accepted.
   signUp: (body: SignUpDto & { callback_url?: string }) => Promise<AxiosResponse<SignInData>>
+  // callback_url: where the reset link sends the browser, with the token added.
+  requestPasswordReset: (body: {
+    email: string
+    callback_url: string
+  }) => Promise<AxiosResponse<unknown>>
+  resetPassword: (body: { token: string; password: string }) => Promise<AxiosResponse<unknown>>
   me: () => Promise<AxiosResponse<Profile>>
   // session_id ends that session of the caller's instead of the current one.
   signOut: (body?: { session_id?: string }) => Promise<AxiosResponse<unknown>>

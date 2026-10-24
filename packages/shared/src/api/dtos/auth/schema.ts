@@ -27,3 +27,9 @@ export const SignUpSchema = z.object({
 })
 
 export type SignUpDto = z.infer<typeof SignUpSchema>
+
+/** Asking for a password reset link. */
+export const ForgotPasswordSchema = SignUpSchema.pick({ email: true })
+
+/** The new account password, chosen from the reset link. */
+export const ResetPasswordSchema = SignUpSchema.pick({ password: true })

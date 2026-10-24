@@ -7,7 +7,7 @@ import { env } from '@/config/env'
 
 import { throwAxiosError } from '../api/axios-error'
 import { services } from '../api/services'
-import { VERIFY_EMAIL_PATH } from '../constants/auth'
+import { RESET_PASSWORD_PATH, VERIFY_EMAIL_PATH } from '../constants/auth'
 import { useVaultStore } from '../stores/vault'
 import { clearAuthTokens, setAuthTokens } from './token-storage'
 
@@ -75,23 +75,29 @@ export async function confirmTotp(totpToken: string, code: string) {
 }
 
 /**
+ * Where a link in an auth email sends the browser once the API accepts it.
+ * The link opens on the API's origin. A relative path needs no trusted origin
+ * there; only a split-origin setup (which lists this app in the API's
+ * CORS_ALLOWED_ORIGINS anyway) needs the absolute address. In dev the API's
+ * origin is the Go server behind Vite's proxy, not this page, so the address
+ * is always absolute.
+ */
+function emailLinkCallback(path: string): string {
+  return !import.meta.env.DEV && env.VITE_API_URL === window.location.origin
+    ? path
+    : window.location.origin + path
+}
+
+/**
  * Create an account. The API signs the new user in only once their email is
  * verified, so `signedIn` tells the caller whether to continue or to send the
  * user to their inbox.
  */
 export async function signUpWithEmail(body: SignUpDto): Promise<{ signedIn: boolean }> {
   try {
-    // The link opens on the API's origin. A relative path needs no trusted
-    // origin there; only a split-origin setup (which lists this app in the
-    // API's CORS_ALLOWED_ORIGINS anyway) needs the absolute address. In dev the
-    // API's origin is the Go server behind Vite's proxy, not this page, so the
-    // address is always absolute. The API redirects only once the link is
-    // accepted, so `verified=1` tells the page the address is confirmed.
-    const callbackPath = `${VERIFY_EMAIL_PATH}?verified=1`
-    const callback_url =
-      !import.meta.env.DEV && env.VITE_API_URL === window.location.origin
-        ? callbackPath
-        : window.location.origin + callbackPath
+    // The API redirects only once the link is accepted, so `verified=1` tells
+    // the page the address is confirmed.
+    const callback_url = emailLinkCallback(`${VERIFY_EMAIL_PATH}?verified=1`)
     const res = await services.auth.signUp({ ...body, callback_url })
 
     if (!res.data.access_token) {
@@ -103,6 +109,36 @@ export async function signUpWithEmail(body: SignUpDto): Promise<{ signedIn: bool
   } catch (error) {
     throwAxiosError(error)
   }
+}
+
+/**
+ * Email a reset link for the account password. The API answers alike whether
+ * or not the address has an account, so nobody learns which ones do.
+ */
+export async function requestPasswordReset(email: string) {
+  try {
+    await services.auth.requestPasswordReset({
+      email,
+      callback_url: emailLinkCallback(RESET_PASSWORD_PATH),
+    })
+  } catch (error) {
+    throwAxiosError(error)
+  }
+}
+
+/**
+ * Set a new account password with the token from the reset link. The API
+ * ends every session of the account, so the stored tokens are dropped too.
+ * The master password, and so the vault, is untouched.
+ */
+export async function resetPassword(token: string, password: string) {
+  try {
+    await services.auth.resetPassword({ token, password })
+  } catch (error) {
+    throwAxiosError(error)
+  }
+  clearAuthTokens()
+  useVaultStore.getState().lock()
 }
 
 /**
