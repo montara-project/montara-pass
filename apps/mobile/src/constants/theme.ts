@@ -1,65 +1,35 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://unistyl.es/), etc.
+ * Montara Pass mobile palette, taken from the vault design mockup: hot pink on
+ * light lavender, with a dark plum hero behind the home screen.
  */
 
-import '@/global.css'
-
-import { Platform } from 'react-native'
-
-export const Colors = {
-  light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
-  },
-  dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
-  },
+export const colors = {
+  actionTile: '#FFE9F1',
+  background: '#F1EFF7',
+  card: '#FFFFFF',
+  coral: '#FF5E57',
+  gradientEnd: '#FF8A65',
+  heartOff: '#D8D6E2',
+  heroBottom: '#160B1C',
+  heroTop: '#3B0F36',
+  muted: '#9B99AB',
+  navy: '#191A3E',
+  pink: '#FF2D78',
+  pinkSoft: '#FFE4EE',
+  ringTrack: 'rgba(255,255,255,0.28)',
 } as const
 
-export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark
-
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
-  },
-})
-
-export const Spacing = {
-  half: 2,
-  one: 4,
-  two: 8,
-  three: 16,
-  four: 24,
-  five: 32,
-  six: 64,
+export const font = {
+  bold: 'Nunito_700Bold',
+  extraBold: 'Nunito_800ExtraBold',
+  regular: 'Nunito_400Regular',
+  semiBold: 'Nunito_600SemiBold',
 } as const
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0
-export const MaxContentWidth = 800
+export const shadow = {
+  elevation: 4,
+  shadowColor: '#6F6C8F',
+  shadowOffset: { height: 10, width: 0 },
+  shadowOpacity: 0.12,
+  shadowRadius: 20,
+} as const
