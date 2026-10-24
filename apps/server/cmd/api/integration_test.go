@@ -375,7 +375,7 @@ func TestIntegration(t *testing.T) {
 	}
 
 	ipBlockFlow(t, application)
-	passwordResetFlow(t, call, auth, user.ID, userEmail, userPass)
+	passwordResetFlow(t, server, call, auth, user.ID, userEmail, userPass)
 
 	// Signing out revokes the access token.
 	if status, out := call(http.MethodPost, "/api/v1/auth/sign-out", superToken, map[string]any{}); status != http.StatusOK {
@@ -391,6 +391,7 @@ func TestIntegration(t *testing.T) {
 // the user had: their access and refresh tokens stop working.
 func passwordResetFlow(
 	t *testing.T,
+	server *fiber.App,
 	call func(method, path, token string, body any, headers ...string) (int, map[string]any),
 	auth *authula.Auth,
 	userID, email, password string,
@@ -412,6 +413,19 @@ func passwordResetFlow(
 	if _, err := services.VerificationService.Create(context.Background(), userID, services.TokenService.Hash(token), authulamodels.TypePasswordResetRequest, email, time.Hour); err != nil {
 		t.Fatal(err)
 	}
+
+	// The emailed link sends the browser to the web app's page with the
+	// token, as the callback_url the web app asked for (apps/app email-auth.ts).
+	link := "/api/v1/auth/email-password/verify-email?" + url.Values{"token": {token}, "callback_url": {"/reset-password"}}.Encode()
+	res, err := server.Test(httptest.NewRequest(http.MethodGet, link, nil), fiber.TestConfig{Timeout: 30 * time.Second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if want := "/reset-password?token=" + url.QueryEscape(token); res.StatusCode != http.StatusFound || res.Header.Get("Location") != want {
+		t.Fatalf("reset link: %d to %q, want 302 to %q", res.StatusCode, res.Header.Get("Location"), want)
+	}
+
 	const newPassword = "a-brand-new-password"
 	if status, out := call(http.MethodPost, "/api/v1/auth/email-password/change-password", "", map[string]string{"token": token, "password": newPassword}); status != http.StatusOK {
 		t.Fatalf("reset: %d %v", status, out)
