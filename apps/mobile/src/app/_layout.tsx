@@ -1,3 +1,5 @@
+import '@/lib/polyfills'
+
 import {
   Nunito_400Regular,
   Nunito_600SemiBold,

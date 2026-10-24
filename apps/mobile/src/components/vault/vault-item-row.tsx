@@ -1,38 +1,74 @@
+import type { VaultItem } from '@montara-pass/shared/types/vault'
+
 import { Ionicons } from '@expo/vector-icons'
+import { ITEM_TYPE_LABEL } from '@montara-pass/shared/constants/vault'
+import { itemIcon } from '@montara-pass/shared/crypto/vault'
+import { Image } from 'expo-image'
 import { useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
-import type { VaultItem } from '@/data/vaults'
-
 import { colors, font, shadow } from '@/constants/theme'
+import { markItemUsed } from '@/lib/api'
 
 type VaultItemRowProps = {
   item: VaultItem
   onDelete?: () => void
+  onToggleFavorite?: (favorite: boolean) => void
 }
 
-export function VaultItemRow({ item, onDelete }: VaultItemRowProps) {
+export function VaultItemRow({ item, onDelete, onToggleFavorite }: VaultItemRowProps) {
   const [favorite, setFavorite] = useState(item.favorite)
   const [revealed, setRevealed] = useState(false)
   const [showActions, setShowActions] = useState(false)
+  const secret = item.secret
+  const icon = itemIcon(secret)
+  const password = secret?.password
 
   return (
     <View style={[styles.card, shadow]}>
-      <Pressable onLongPress={() => setShowActions((value) => !value)} style={styles.row}>
+      <Pressable
+        onLongPress={onDelete ? () => setShowActions((value) => !value) : undefined}
+        style={styles.row}
+      >
         <View style={styles.logo}>
-          <Text style={[styles.logoLetter, { color: item.letterColor }]}>{item.letter}</Text>
+          {icon ? (
+            <Image source={{ uri: icon }} style={styles.logoImage} />
+          ) : (
+            <Text style={styles.logoLetter}>{(secret?.name ?? '?').charAt(0).toUpperCase()}</Text>
+          )}
         </View>
         <View style={styles.details}>
-          <Text style={styles.name}>{item.name}</Text>
-          <Text style={styles.email}>{item.email}</Text>
-          <View style={styles.secretRow}>
-            <Text style={styles.secret}>{revealed ? '12345678' : '••••••••'}</Text>
-            <Pressable hitSlop={8} onPress={() => setRevealed((value) => !value)}>
-              <Ionicons color={colors.navy} name={revealed ? 'eye' : 'eye-outline'} size={15} />
-            </Pressable>
-          </View>
+          <Text numberOfLines={1} style={styles.name}>
+            {secret?.name ?? '(unreadable)'}
+          </Text>
+          <Text numberOfLines={1} style={styles.subtitle}>
+            {secret?.username || ITEM_TYPE_LABEL[item.type] || item.type}
+          </Text>
+          {password ? (
+            <View style={styles.secretRow}>
+              <Text style={styles.secret} numberOfLines={1}>
+                {revealed ? password : '••••••••'}
+              </Text>
+              <Pressable
+                hitSlop={8}
+                onPress={() => {
+                  if (!revealed) void markItemUsed(item.id)
+                  setRevealed((value) => !value)
+                }}
+              >
+                <Ionicons color={colors.navy} name={revealed ? 'eye' : 'eye-outline'} size={15} />
+              </Pressable>
+            </View>
+          ) : null}
         </View>
-        <Pressable hitSlop={8} onPress={() => setFavorite((value) => !value)}>
+        <Pressable
+          hitSlop={8}
+          onPress={() => {
+            const next = !favorite
+            setFavorite(next)
+            onToggleFavorite?.(next)
+          }}
+        >
           <Ionicons
             color={favorite ? colors.pink : colors.heartOff}
             name={favorite ? 'heart' : 'heart-outline'}
@@ -40,15 +76,9 @@ export function VaultItemRow({ item, onDelete }: VaultItemRowProps) {
           />
         </Pressable>
       </Pressable>
-      {showActions ? (
+      {showActions && onDelete ? (
         <View style={styles.actions}>
-          <Pressable
-            onPress={() => setShowActions(false)}
-            style={[styles.actionButton, styles.editAction]}
-          >
-            <Ionicons color="#FFFFFF" name="pencil" size={16} />
-          </Pressable>
-          <Pressable onPress={onDelete} style={[styles.actionButton, styles.deleteAction]}>
+          <Pressable onPress={onDelete} style={styles.actionButton}>
             <Ionicons color="#FFFFFF" name="trash-outline" size={16} />
           </Pressable>
         </View>
@@ -60,6 +90,7 @@ export function VaultItemRow({ item, onDelete }: VaultItemRowProps) {
 const styles = StyleSheet.create({
   actionButton: {
     alignItems: 'center',
+    backgroundColor: colors.pink,
     borderRadius: 999,
     height: 38,
     justifyContent: 'center',
@@ -79,21 +110,10 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 12,
   },
-  deleteAction: {
-    backgroundColor: colors.pink,
-  },
   details: {
     flex: 1,
     gap: 2,
     marginLeft: 12,
-  },
-  editAction: {
-    backgroundColor: '#1B1D4D',
-  },
-  email: {
-    color: colors.muted,
-    fontFamily: font.regular,
-    fontSize: 12,
   },
   logo: {
     alignItems: 'center',
@@ -108,7 +128,13 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     width: 46,
   },
+  logoImage: {
+    borderRadius: 8,
+    height: 32,
+    width: 32,
+  },
   logoLetter: {
+    color: colors.navy,
     fontFamily: font.extraBold,
     fontSize: 22,
   },
@@ -123,6 +149,7 @@ const styles = StyleSheet.create({
   },
   secret: {
     color: '#3A3C55',
+    flexShrink: 1,
     fontFamily: font.bold,
     fontSize: 12,
     letterSpacing: 2,
@@ -132,5 +159,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 6,
     marginTop: 2,
+  },
+  subtitle: {
+    color: colors.muted,
+    fontFamily: font.regular,
+    fontSize: 12,
   },
 })

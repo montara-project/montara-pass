@@ -1,9 +1,13 @@
 import { Ionicons } from '@expo/vector-icons'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
-import type { VaultCategory } from '@/data/vaults'
-
 import { colors, font, shadow } from '@/constants/theme'
+
+export type VaultCategory = {
+  count: number
+  icon: 'card-outline' | 'document-text-outline' | 'globe-outline'
+  label: string
+}
 
 type CategoryCardProps = VaultCategory & {
   onPress?: () => void

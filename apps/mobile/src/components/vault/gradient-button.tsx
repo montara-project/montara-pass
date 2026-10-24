@@ -4,26 +4,33 @@ import { Pressable, StyleSheet, Text } from 'react-native'
 import { colors, font, shadow } from '@/constants/theme'
 
 type GradientButtonProps = {
+  busy?: boolean
   label: string
   onPress?: () => void
 }
 
-export function GradientButton({ label, onPress }: GradientButtonProps) {
+export function GradientButton({ busy, label, onPress }: GradientButtonProps) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [pressed && styles.pressed]}>
+    <Pressable
+      onPress={busy ? undefined : onPress}
+      style={({ pressed }) => [pressed && !busy && styles.pressed, busy && styles.busy]}
+    >
       <LinearGradient
         colors={[colors.pink, colors.coral]}
         end={{ x: 1, y: 0.5 }}
         start={{ x: 0, y: 0.5 }}
         style={[styles.button, shadow]}
       >
-        <Text style={styles.label}>{label}</Text>
+        <Text style={styles.label}>{busy ? `${label}…` : label}</Text>
       </LinearGradient>
     </Pressable>
   )
 }
 
 const styles = StyleSheet.create({
+  busy: {
+    opacity: 0.6,
+  },
   button: {
     alignItems: 'center',
     borderRadius: 999,
