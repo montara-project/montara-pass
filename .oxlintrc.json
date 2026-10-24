@@ -33,6 +33,7 @@
   },
   "ignorePatterns": [
     "**/routeTree.gen.ts",
+    ".trail/",
     "**/node_modules/",
     "**/dist/",
     "**/.next/",

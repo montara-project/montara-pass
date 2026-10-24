@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "pnpm -r --parallel run dev",
     "dev:app": "pnpm --filter @montara-pass/app run dev",
+    "dev:mobile": "pnpm --filter @montara-pass/mobile run dev",
     "dev:web": "pnpm --filter @montara-pass/web run dev",
     "dev:server": "pnpm --filter @montara-pass/server run dev",
     "dev:docs": "pnpm --filter @montara-pass/docs run dev",

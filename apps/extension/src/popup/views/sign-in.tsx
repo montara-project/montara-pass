@@ -102,6 +102,15 @@ export default function SignIn({ onSignedIn, onSettings }: SignInProps) {
       )}
 
       <div className="auth-foot">
+        {/* The reset link in the email opens the web app, so the reset starts there too. */}
+        <a
+          className="auth-link"
+          href={`${appUrl}/forgot-password`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Forgot your password?
+        </a>
         <button type="button" className="auth-link" onClick={onSettings}>
           Server settings
         </button>

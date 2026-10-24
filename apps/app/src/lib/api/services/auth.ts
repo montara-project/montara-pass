@@ -7,6 +7,9 @@ import { api, AUTH_PATH } from '../client-fetch'
 const resources = (): AuthResources => ({
   signIn: (body) => api.post(`${AUTH_PATH}/email-password/sign-in`, body),
   signUp: (body) => api.post(`${AUTH_PATH}/email-password/sign-up`, body),
+  requestPasswordReset: (body) =>
+    api.post(`${AUTH_PATH}/email-password/request-password-reset`, body),
+  resetPassword: (body) => api.post(`${AUTH_PATH}/email-password/change-password`, body),
   me: () => api.get(`${AUTH_PATH}/me`),
   signOut: (body = {}) => api.post(`${AUTH_PATH}/sign-out`, body),
   totpEnable: (password) => api.post(`${AUTH_PATH}/totp/enable`, { password }),
