@@ -11,6 +11,21 @@ headings and no HTML, so a `##` line would show literally. It holds 3000
 characters. AMO shows what is pasted there on the add-on's Version history
 page, and Firefox shows it in the Release Notes tab of `about:addons`.
 
+## 2.8.0 (2026-10-25)
+
+**New**
+
+- **Forgot your password?** The sign-in screen links to the web app's
+  password reset. Enter your email there, follow the link it sends, and choose
+  a new account password; every signed-in session ends, so sign in again with
+  it. The link opens the web app named in **Server settings**.
+
+**Also**
+
+- The form validation library is updated to a version with security fixes.
+- The permissions the add-on asks for are unchanged, so updating does not ask
+  again.
+
 ## 2.2.0 (2026-10-18)
 
 **New**
