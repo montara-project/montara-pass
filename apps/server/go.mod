@@ -1,6 +1,6 @@
 module montara-pass/server
 
-go 1.27.2
+go 1.27.3
 
 require (
 	github.com/Authula/authula v1.46.0
