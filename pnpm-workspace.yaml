@@ -34,3 +34,13 @@ overrides:
   # GHSA-238p-pmpm-9mq7: micromark-extension-math (via @milkdown/crepe) asks
   # for 0.16; crepe itself already runs on 0.18.
   'katex@<0.18.2': 0.18.10
+  # Next.js RCE/DoS advisories (fixed in 16.4.1); vinext pulls next for app/web.
+  'next@>=16.0.0 <16.4.1': 16.4.3
+  # DOMPurify SAFE_FOR_TEMPLATES / IN_PLACE bypasses, via @milkdown.
+  'dompurify@<3.4.17': 3.4.17
+  # Zod oversized-collection DoS; v4 only, @expo/cli's zod v3 has no fix.
+  'zod@>=4.0.0 <4.6.6': 4.6.7
+  # undici DoS / SRI bypass, via vinext.
+  'undici@>=7.0.0 <7.30.1': 7.30.1
+  # fast-uri scheme/host confusion, via Expo's webpack toolchain.
+  'fast-uri@>=3.0.0 <3.1.9': 3.1.9
