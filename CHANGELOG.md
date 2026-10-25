@@ -3,6 +3,26 @@
 All notable changes to this project are documented in this file. Versions follow the git tags (`v*`); Docker images are published to ghcr.io with the same version.
 
 
+## [2.8.0](https://github.com/montara-project/montara-pass/compare/v2.7.0...v2.8.0) (2026-10-25)
+
+### Features
+
+* **app:** reset the account password by email ([95ec7e0](https://github.com/montara-project/montara-pass/commit/95ec7e01e0e7aae79d5b8fcadee9069ee7b18f03))
+* **extension:** link sign-in to the web app's password reset ([64ed980](https://github.com/montara-project/montara-pass/commit/64ed980bcae776dd3339d6d8197e55f7c4cc9605))
+* **mobile:** add the Expo app with routes mirroring the web app ([d618299](https://github.com/montara-project/montara-pass/commit/d618299e6194066db2ec16047c53d94e270b52e4))
+* **mobile:** implement the vault design on the home, vaults and create screens ([53c5087](https://github.com/montara-project/montara-pass/commit/53c50876a1c53e4940bff9739f2db4c447232169))
+* **mobile:** sign in, verify TOTP and list the real vault ([7faf393](https://github.com/montara-project/montara-pass/commit/7faf39311c7c6cfa5d7001655fcdcabb55982886))
+
+### Bug Fixes
+
+* **deps:** override @expo/cli's zod v3 to patched 4.6.7 ([bcae29b](https://github.com/montara-project/montara-pass/commit/bcae29b96eaed072bb7193627aca7c17aa487b49))
+* **deps:** patch vulnerable next, zod, dompurify, undici and fast-uri ([f0590da](https://github.com/montara-project/montara-pass/commit/f0590da575eecc5aa3802add3ee12b6bd0024d3b))
+* **mobile:** guard the web theme hook and move stack options into group layouts ([32a5192](https://github.com/montara-project/montara-pass/commit/32a519256d150c82a6fda7d047c3db7d03fe1831))
+* **server:** bump Go to 1.27.3 for crypto/x509 vulnerability ([cd23048](https://github.com/montara-project/montara-pass/commit/cd230485e60599d2e489f9f36add2662a2d503de))
+* update claude skills ([30d0872](https://github.com/montara-project/montara-pass/commit/30d08725badb45fd07c1f3c51e9a62d0ebd8935f))
+* update github workflows ([91a450d](https://github.com/montara-project/montara-pass/commit/91a450d3365f0582332a2c0dae708945844a55c2))
+* update license ([3653f9d](https://github.com/montara-project/montara-pass/commit/3653f9d2768e5a58acb7979b59db2124c41f2d10))
+
 ## [2.7.0](https://github.com/montara-project/montara-pass/compare/v2.6.0...v2.7.0) (2026-10-21)
 
 ### Bug Fixes
