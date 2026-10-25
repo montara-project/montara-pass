@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { flushSync } from "react-dom";
 
 import { CloseIcon, LogoMark, MenuIcon, MonitorIcon, MoonIcon, SunIcon } from "./icons";
 import { docsUrl } from "./links";
@@ -16,11 +17,63 @@ const navLinks = [
 
 type Theme = "light" | "dark" | "system";
 
-function applyTheme(theme: Theme) {
-  const light =
+function isLight(theme: Theme) {
+  return (
     theme === "light" ||
-    (theme === "system" && window.matchMedia("(prefers-color-scheme: light)").matches);
-  document.documentElement.classList.toggle("light", light);
+    (theme === "system" && window.matchMedia("(prefers-color-scheme: light)").matches)
+  );
+}
+
+function applyTheme(theme: Theme) {
+  document.documentElement.classList.toggle("light", isLight(theme));
+}
+
+/**
+ * Runs `change` inside a view transition and reveals the new theme as a circle
+ * growing from `origin`, after Magic UI's animated theme toggler. Falls back to
+ * an instant switch without the API, under reduced motion, or when the page
+ * would look the same (system resolving to the current theme).
+ */
+function revealTheme(origin: HTMLElement, next: Theme, change: () => void) {
+  const root = document.documentElement;
+  if (
+    typeof document.startViewTransition !== "function" ||
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+    isLight(next) === root.classList.contains("light")
+  ) {
+    change();
+    return;
+  }
+
+  const { top, left, width, height } = origin.getBoundingClientRect();
+  const x = left + width / 2;
+  const y = top + height / 2;
+  // Percentages of the snapshot box: px clip-paths land off-target on
+  // fractional display scales in Chrome (magicuidesign/magicui#989).
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const at = `at ${(x / w) * 100}% ${(y / h) * 100}%`;
+  const radius = Math.hypot(Math.max(x, w - x), Math.max(y, h - y));
+  // circle() percentages resolve against hypot(w, h) / √2.
+  const to = `circle(${(radius / (Math.hypot(w, h) / Math.SQRT2)) * 100}% ${at})`;
+  const from = `circle(0% ${at})`;
+
+  root.style.setProperty("--theme-reveal-from", from);
+  const transition = document.startViewTransition(() => flushSync(change));
+  transition.ready
+    .then(() =>
+      root.animate(
+        { clipPath: [from, to] },
+        {
+          duration: 450,
+          easing: "cubic-bezier(0.16, 1, 0.3, 1)",
+          fill: "forwards",
+          pseudoElement: "::view-transition-new(root)",
+        }
+      )
+    )
+    .catch(() => {});
+  transition.finished.finally(() => root.style.removeProperty("--theme-reveal-from"));
 }
 
 function ThemeToggle() {
@@ -61,9 +114,8 @@ function ThemeToggle() {
             ? "Theme: dark — follow system"
             : "Theme: system — switch to light"
       }
-      onClick={() => {
+      onClick={(event) => {
         const next: Theme = theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
-        setTheme(next);
         try {
           if (next === "system") {
             localStorage.removeItem("theme");
@@ -73,7 +125,10 @@ function ThemeToggle() {
         } catch {
           /* storage can throw in private modes */
         }
-        applyTheme(next);
+        revealTheme(event.currentTarget, next, () => {
+          setTheme(next);
+          applyTheme(next);
+        });
       }}
       className="flex size-9 cursor-pointer items-center justify-center rounded-lg text-mist transition-colors duration-200 hover:bg-card hover:text-fg"
     >
