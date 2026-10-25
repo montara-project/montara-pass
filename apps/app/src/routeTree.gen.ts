@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as appRouteRouteImport } from './routes/(app)/route'
 import { Route as authRouteRouteImport } from './routes/(auth)/route'
+import { Route as ResetPasswordIndexRouteImport } from './routes/reset-password/index'
 import { Route as appBillingIndexRouteImport } from './routes/(app)/billing/index'
 import { Route as appFoldersIndexRouteImport } from './routes/(app)/folders/index'
 import { Route as appGeneratorIndexRouteImport } from './routes/(app)/generator/index'
@@ -19,6 +20,7 @@ import { Route as appHealthIndexRouteImport } from './routes/(app)/health/index'
 import { Route as appProfileIndexRouteImport } from './routes/(app)/profile/index'
 import { Route as appTrashIndexRouteImport } from './routes/(app)/trash/index'
 import { Route as appVaultIndexRouteImport } from './routes/(app)/vault/index'
+import { Route as authForgotPasswordIndexRouteImport } from './routes/(auth)/forgot-password/index'
 import { Route as authSignInIndexRouteImport } from './routes/(auth)/sign-in/index'
 import { Route as authSignUpIndexRouteImport } from './routes/(auth)/sign-up/index'
 import { Route as authVerifyEmailIndexRouteImport } from './routes/(auth)/verify-email/index'
@@ -34,6 +36,11 @@ const appRouteRoute = appRouteRouteImport.update({
 } as any)
 const authRouteRoute = authRouteRouteImport.update({
   id: '/(auth)',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordIndexRoute = ResetPasswordIndexRouteImport.update({
+  id: '/reset-password/',
+  path: '/reset-password/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const appBillingIndexRoute = appBillingIndexRouteImport.update({
@@ -71,6 +78,11 @@ const appVaultIndexRoute = appVaultIndexRouteImport.update({
   path: '/vault/',
   getParentRoute: () => appRouteRoute,
 } as any)
+const authForgotPasswordIndexRoute = authForgotPasswordIndexRouteImport.update({
+  id: '/forgot-password/',
+  path: '/forgot-password/',
+  getParentRoute: () => authRouteRoute,
+} as any)
 const authSignInIndexRoute = authSignInIndexRouteImport.update({
   id: '/sign-in/',
   path: '/sign-in/',
@@ -89,6 +101,7 @@ const authVerifyEmailIndexRoute = authVerifyEmailIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/reset-password/': typeof ResetPasswordIndexRoute
   '/billing/': typeof appBillingIndexRoute
   '/folders/': typeof appFoldersIndexRoute
   '/generator/': typeof appGeneratorIndexRoute
@@ -96,12 +109,14 @@ export interface FileRoutesByFullPath {
   '/profile/': typeof appProfileIndexRoute
   '/trash/': typeof appTrashIndexRoute
   '/vault/': typeof appVaultIndexRoute
+  '/forgot-password/': typeof authForgotPasswordIndexRoute
   '/sign-in/': typeof authSignInIndexRoute
   '/sign-up/': typeof authSignUpIndexRoute
   '/verify-email/': typeof authVerifyEmailIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/reset-password': typeof ResetPasswordIndexRoute
   '/billing': typeof appBillingIndexRoute
   '/folders': typeof appFoldersIndexRoute
   '/generator': typeof appGeneratorIndexRoute
@@ -109,6 +124,7 @@ export interface FileRoutesByTo {
   '/profile': typeof appProfileIndexRoute
   '/trash': typeof appTrashIndexRoute
   '/vault': typeof appVaultIndexRoute
+  '/forgot-password': typeof authForgotPasswordIndexRoute
   '/sign-in': typeof authSignInIndexRoute
   '/sign-up': typeof authSignUpIndexRoute
   '/verify-email': typeof authVerifyEmailIndexRoute
@@ -118,6 +134,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/(app)': typeof appRouteRouteWithChildren
   '/(auth)': typeof authRouteRouteWithChildren
+  '/reset-password/': typeof ResetPasswordIndexRoute
   '/(app)/billing/': typeof appBillingIndexRoute
   '/(app)/folders/': typeof appFoldersIndexRoute
   '/(app)/generator/': typeof appGeneratorIndexRoute
@@ -125,6 +142,7 @@ export interface FileRoutesById {
   '/(app)/profile/': typeof appProfileIndexRoute
   '/(app)/trash/': typeof appTrashIndexRoute
   '/(app)/vault/': typeof appVaultIndexRoute
+  '/(auth)/forgot-password/': typeof authForgotPasswordIndexRoute
   '/(auth)/sign-in/': typeof authSignInIndexRoute
   '/(auth)/sign-up/': typeof authSignUpIndexRoute
   '/(auth)/verify-email/': typeof authVerifyEmailIndexRoute
@@ -133,6 +151,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/reset-password/'
     | '/billing/'
     | '/folders/'
     | '/generator/'
@@ -140,12 +159,14 @@ export interface FileRouteTypes {
     | '/profile/'
     | '/trash/'
     | '/vault/'
+    | '/forgot-password/'
     | '/sign-in/'
     | '/sign-up/'
     | '/verify-email/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/reset-password'
     | '/billing'
     | '/folders'
     | '/generator'
@@ -153,6 +174,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/trash'
     | '/vault'
+    | '/forgot-password'
     | '/sign-in'
     | '/sign-up'
     | '/verify-email'
@@ -161,6 +183,7 @@ export interface FileRouteTypes {
     | '/'
     | '/(app)'
     | '/(auth)'
+    | '/reset-password/'
     | '/(app)/billing/'
     | '/(app)/folders/'
     | '/(app)/generator/'
@@ -168,6 +191,7 @@ export interface FileRouteTypes {
     | '/(app)/profile/'
     | '/(app)/trash/'
     | '/(app)/vault/'
+    | '/(auth)/forgot-password/'
     | '/(auth)/sign-in/'
     | '/(auth)/sign-up/'
     | '/(auth)/verify-email/'
@@ -177,6 +201,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   appRouteRoute: typeof appRouteRouteWithChildren
   authRouteRoute: typeof authRouteRouteWithChildren
+  ResetPasswordIndexRoute: typeof ResetPasswordIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -200,6 +225,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: ''
       preLoaderRoute: typeof authRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password/': {
+      id: '/reset-password/'
+      path: '/reset-password'
+      fullPath: '/reset-password/'
+      preLoaderRoute: typeof ResetPasswordIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(app)/billing/': {
@@ -251,6 +283,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appVaultIndexRouteImport
       parentRoute: typeof appRouteRoute
     }
+    '/(auth)/forgot-password/': {
+      id: '/(auth)/forgot-password/'
+      path: '/forgot-password'
+      fullPath: '/forgot-password/'
+      preLoaderRoute: typeof authForgotPasswordIndexRouteImport
+      parentRoute: typeof authRouteRoute
+    }
     '/(auth)/sign-in/': {
       id: '/(auth)/sign-in/'
       path: '/sign-in'
@@ -300,12 +339,14 @@ const appRouteRouteWithChildren = appRouteRoute._addFileChildren(
 )
 
 interface authRouteRouteChildren {
+  authForgotPasswordIndexRoute: typeof authForgotPasswordIndexRoute
   authSignInIndexRoute: typeof authSignInIndexRoute
   authSignUpIndexRoute: typeof authSignUpIndexRoute
   authVerifyEmailIndexRoute: typeof authVerifyEmailIndexRoute
 }
 
 const authRouteRouteChildren: authRouteRouteChildren = {
+  authForgotPasswordIndexRoute: authForgotPasswordIndexRoute,
   authSignInIndexRoute: authSignInIndexRoute,
   authSignUpIndexRoute: authSignUpIndexRoute,
   authVerifyEmailIndexRoute: authVerifyEmailIndexRoute,
@@ -319,6 +360,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   appRouteRoute: appRouteRouteWithChildren,
   authRouteRoute: authRouteRouteWithChildren,
+  ResetPasswordIndexRoute: ResetPasswordIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

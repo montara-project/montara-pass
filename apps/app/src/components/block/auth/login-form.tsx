@@ -7,9 +7,9 @@ import { useState } from 'react'
 import { checked, useAppForm } from '@/hooks/form'
 import { submitForm } from '@/hooks/submit-form'
 import { signInWithEmail } from '@/lib/auth/email-auth'
-import { HOME_PATH } from '@/lib/constants/auth'
+import { FORGOT_PASSWORD_PATH, HOME_PATH } from '@/lib/constants/auth'
 
-import AuthShell, { authLinkStrong } from './auth-shell'
+import AuthShell, { authLink, authLinkStrong } from './auth-shell'
 import TotpForm from './totp-form'
 
 export default function LoginForm() {
@@ -45,7 +45,15 @@ export default function LoginForm() {
   }
 
   return (
-    <AuthShell title="Sign in" note="Sign in with your account password.">
+    <AuthShell
+      title="Sign in"
+      note="Sign in with your account password."
+      foot={
+        <Link to={FORGOT_PASSWORD_PATH} className={authLink}>
+          Forgot your password?
+        </Link>
+      }
+    >
       <form
         className="flex flex-col gap-3.5"
         noValidate
