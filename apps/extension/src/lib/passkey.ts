@@ -5,7 +5,7 @@ import { getDomain } from 'tldts'
 // The authenticator side of WebAuthn: what a security key or the operating
 // system does elsewhere. It runs in the prompt (src/inline/main.tsx), an
 // extension page, and decides what is signed and for which site; the page
-// that asked (src/passkey-page.ts) only carries the answer back.
+// that asked (src/entrypoints/passkey-page.content.ts) only carries the answer back.
 // The self-check is src/lib/passkey.check.ts.
 
 type Bytes = Uint8Array<ArrayBuffer>
@@ -13,7 +13,7 @@ type Bytes = Uint8Array<ArrayBuffer>
 /** The one algorithm offered: ECDSA on P-256 with SHA-256, which every site takes. */
 export const ES256 = -7
 
-/** What a page asked navigator.credentials for, as src/passkey-page.ts describes it. */
+/** What a page asked navigator.credentials for, as passkey-page.content.ts describes it. */
 export interface PasskeyRequest {
   id: string
   kind: 'create' | 'get'

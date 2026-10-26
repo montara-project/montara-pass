@@ -4,16 +4,19 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "watch": "TARGET=chrome vite build --watch --mode development",
+    "watch": "wxt",
+    "watch:firefox": "wxt -b firefox",
     "build": "pnpm run build:chrome && pnpm run build:firefox",
-    "build:chrome": "TARGET=chrome vite build",
-    "build:firefox": "TARGET=firefox vite build",
+    "build:chrome": "wxt build -b chrome",
+    "build:firefox": "wxt build -b firefox",
     "build:ce": "VITE_EDITION=community pnpm run build",
     "clean": "rimraf dist",
-    "zip": "pnpm run clean && pnpm run zip:chrome && pnpm run zip:firefox",
-    "zip:chrome": "pnpm run build:chrome && cd dist/chrome && zip -r -FS ../montarapass-chrome.zip . -x \"*.git*\" \"node_modules/*\"",
-    "zip:firefox": "pnpm run build:firefox && cd dist/firefox && zip -r -FS ../montarapass-firefox.zip . -x \"*.git*\" \"node_modules/*\"",
-    "typecheck": "tsc --noEmit"
+    "prezip": "pnpm run clean && pnpm run build",
+    "zip": "pnpm run zip:chrome && pnpm run zip:firefox",
+    "zip:chrome": "wxt zip -b chrome",
+    "zip:firefox": "wxt zip -b firefox",
+    "typecheck": "tsc --noEmit",
+    "postinstall": "wxt prepare"
   },
   "dependencies": {
     "@montara-pass/shared": "workspace:*",
@@ -30,10 +33,12 @@
     "@types/node": "26.6.4",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
-    "@vitejs/plugin-react": "6.1.2",
+    "@wxt-dev/module-react": "1.2.2",
     "rimraf": "6.0.1",
     "tailwindcss": "4.3.3",
     "typescript": "7.0.2",
-    "vite": "8.3.4"
+    "vite": "8.3.4",
+    "web-ext": "10.8.0",
+    "wxt": "0.21.4"
   }
 }

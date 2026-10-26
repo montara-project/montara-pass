@@ -38,7 +38,7 @@ import { ItemTile } from '../popup/item-tile'
 import { openFullScreen } from '../popup/layout'
 import { useVaultItems } from '../popup/use-vault-items'
 
-// The inline menu: an extension page that src/content.ts frames under a login
+// The inline menu: an extension page that src/entrypoints/content.ts frames under a login
 // field. It lists the logins saved for the page around it and fills the one
 // that is picked. Opened as inline.html#save it is the save prompt instead: it
 // offers to keep the login the page just submitted, unless the vault has it.
@@ -46,7 +46,7 @@ import { useVaultItems } from '../popup/use-vault-items'
 // it offers to make one, or to sign in with one the vault holds.
 // Opened as inline.html#offer it sits in the corner of a page that asks for a
 // login and lists the ones saved for it, without waiting for a field.
-// Keep the message names in sync with src/content.ts.
+// Keep the message names in sync with src/entrypoints/content.ts.
 
 document.documentElement.dataset.view = 'inline'
 
@@ -60,7 +60,7 @@ const NEW = FLAGS.has('new')
  * until the menu asks to be shown, and goes away when it has no login to offer.
  */
 const AUTO = FLAGS.has('auto')
-/** The page asked navigator.credentials for a passkey (src/passkey-page.ts). */
+/** The page asked navigator.credentials for a passkey (src/entrypoints/passkey-page.content.ts). */
 const PASSKEY = FLAGS.has('passkey')
 /** The page asks for a login: the ones saved for it are offered in its corner. */
 const OFFER = FLAGS.has('offer')

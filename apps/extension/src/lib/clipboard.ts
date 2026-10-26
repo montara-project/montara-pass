@@ -2,7 +2,7 @@
 // The popup is usually closed by then, so the background script does it
 // when the alarm fires.
 
-/** Keep in sync with src/background.ts. */
+/** Keep in sync with src/entrypoints/background.ts. */
 const CLEAR_CLIPBOARD_ALARM = 'clear-clipboard'
 
 /** Minutes a copied secret stays on the clipboard. */
