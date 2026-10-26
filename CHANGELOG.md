@@ -3,6 +3,8 @@
 All notable changes to this project are documented in this file. Versions follow the git tags (`v*`); Docker images are published to ghcr.io with the same version.
 
 
+## [2.9.0](https://github.com/montara-project/montara-pass/compare/v2.8.1...v2.9.0) (2026-10-26)
+
 ## [2.8.1](https://github.com/montara-project/montara-pass/compare/v2.8.0...v2.8.1) (2026-10-25)
 
 ### Features
