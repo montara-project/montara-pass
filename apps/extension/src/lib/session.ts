@@ -9,7 +9,7 @@ import {
 // never written to disk, cleared when the browser closes, and not readable by
 // web pages or content scripts.
 
-/** Keep in sync with src/background.ts. */
+/** Keep in sync with src/entrypoints/background.ts. */
 const VAULT_SESSION_KEY = 'vault'
 const AUTO_LOCK_ALARM = 'auto-lock'
 
@@ -42,7 +42,7 @@ export async function lockVault(): Promise<void> {
   await chrome.alarms.clear(AUTO_LOCK_ALARM)
 }
 
-/** A login a page just submitted, held by src/background.ts for the save prompt. */
+/** A login a page just submitted, held by src/entrypoints/background.ts for the save prompt. */
 export interface PendingLogin {
   username: string
   password: string
@@ -52,7 +52,7 @@ export interface PendingLogin {
 
 /**
  * The key a tab's pending login is stored under, and the name of the alarm
- * that drops it. Keep both in sync with src/background.ts.
+ * that drops it. Keep both in sync with src/entrypoints/background.ts.
  */
 const pendingKey = (tabId: number) => `pending:${tabId}`
 const PENDING_TTL_MINUTES = 5

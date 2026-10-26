@@ -5,5 +5,5 @@ export const APP_URL = "https://app.montarapass.com";
 
 /** A page of the documentation site; no argument gives its home. */
 export function docsUrl(page = "") {
-  return `https://docs.montarapass.com/docs${page && `/${page}`}`;
+  return `https://docs.montarapass.com${page && `/${page}`}`;
 }

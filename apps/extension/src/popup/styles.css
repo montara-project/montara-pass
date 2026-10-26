@@ -846,7 +846,7 @@ a.icon-button {
 .inline {
   display: flex;
   flex-direction: column;
-  /* Keep in sync with MAX_HEIGHT in src/content.ts. */
+  /* Keep in sync with MAX_HEIGHT in src/entrypoints/content.ts. */
   max-height: 320px;
 }
 

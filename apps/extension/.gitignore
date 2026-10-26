@@ -1,4 +1,7 @@
 node_modules
 dist
+.wxt
+web-ext.config.ts
 .env*
 !.env.example
+.migrate/

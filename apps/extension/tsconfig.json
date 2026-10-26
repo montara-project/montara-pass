@@ -1,23 +1,17 @@
 {
+  "extends": "./.wxt/tsconfig.json",
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "module": "ESNext",
-    "moduleResolution": "bundler",
-    "moduleDetection": "force",
     "jsx": "react-jsx",
     "types": ["vite/client", "chrome", "node"],
-    "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "isolatedModules": true,
-    "skipLibCheck": true,
-    "noEmit": true,
-    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
-    "paths": {
-      "@/*": ["../app/src/*"]
-    }
+    "noUncheckedIndexedAccess": false,
+    "verbatimModuleSyntax": false
   },
-  "include": ["src", "vite.config.ts"]
+  "include": ["src", "wxt.config.ts", ".wxt/wxt.d.ts"]
 }
