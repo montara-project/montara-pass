@@ -3,10 +3,12 @@ import type { Models } from '@montara-pass/shared/api/models'
 import { formatPrice } from '@montara-pass/shared/money'
 import {
   BILLING_STATUS,
+  BILLING_TERMS,
   hasPaidPurchase,
   isSandbox,
   ownedPurchase,
   paymentPending,
+  PLAN_INCLUDES,
   planName,
   planOffer,
   planPeriod,
@@ -24,7 +26,7 @@ import {
   SignedOutError,
   subscribe,
 } from '../../lib/api'
-import { CreditCardIcon } from '../icons'
+import { CheckIcon, CreditCardIcon } from '../icons'
 
 interface BillingProps {
   /** The session ended underneath the page. */
@@ -245,6 +247,27 @@ export default function Billing({ onSignedOut }: BillingProps) {
               through.
             </p>
           </section>
+
+          <div className="billing-facts">
+            {[
+              { id: 'billing-includes', title: 'Every plan includes', items: PLAN_INCLUDES },
+              { id: 'billing-how', title: 'How billing works', items: BILLING_TERMS },
+            ].map(({ id, title, items }) => (
+              <section key={id} className="stack billing-section" aria-labelledby={id}>
+                <h3 id={id} className="billing-title">
+                  {title}
+                </h3>
+                <ul className="billing-checks">
+                  {items.map((item) => (
+                    <li key={item}>
+                      <CheckIcon />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
 
           {purchases.length > 0 && (
             <section className="stack billing-section" aria-labelledby="billing-purchases">

@@ -2063,6 +2063,42 @@ input.range:active::-moz-range-thumb {
   font-variant-numeric: tabular-nums;
 }
 
+/* What every plan includes and how billing works: two ticked lists, side by
+   side in a full tab, stacked in the popup. */
+.billing-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 24px 48px;
+}
+
+.billing-checks {
+  margin: 0;
+  padding: 0;
+  border-block: 1px solid var(--border);
+  list-style: none;
+}
+
+.billing-checks li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.billing-checks li + li {
+  border-top: 1px solid var(--border);
+}
+
+.billing-checks svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 1px;
+  color: var(--focus);
+}
+
 /* Grouped rows: one card, divided by hairlines rather than gaps. */
 .health-list {
   gap: 0;
