@@ -192,7 +192,7 @@ create it in the web app first.
 [Fumadocs](https://www.fumadocs.dev), pages as MDX under `content/docs`.
 
 ```sh
-pnpm dev:docs       # http://localhost:3001/docs
+pnpm dev:docs       # http://localhost:3001
 ```
 
 ## Docker

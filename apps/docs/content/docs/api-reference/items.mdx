@@ -37,7 +37,7 @@ GET /api/v1/items?folder_id=&type=&trashed=&offset=&limit=
 | `folder_id` | Only items the caller filed in this folder |
 | `type` | `login`, `secure_note`, `contact`, `card` or `identity` |
 | `trashed` | `true` lists the trash instead of the vault |
-| `offset`, `limit` | See [pagination](/docs/api-reference#pagination) |
+| `offset`, `limit` | See [pagination](/api-reference#pagination) |
 
 There is no search and no sort: the server cannot read what it stores.
 
@@ -129,4 +129,4 @@ PUT /api/v1/items/:id/key
 
 Owner only. `member_keys` must name every current member of the item and
 nobody else, 1 to 100 entries; otherwise the answer is `409`. See
-[revoking access](/docs/architecture/sharing#revoking-access).
+[revoking access](/architecture/sharing#revoking-access).

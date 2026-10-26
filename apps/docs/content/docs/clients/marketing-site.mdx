@@ -16,7 +16,7 @@ does not call the API.
 <Callout title="The contact form is not wired up" type="warn">
   The contact form validates its fields and then only simulates a submission;
   it sends nothing yet. The header's **Log in** button links to the
-  [web app](/docs/clients/web-app) at `https://app.montarapass.com`.
+  [web app](/clients/web-app) at `https://app.montarapass.com`.
 </Callout>
 
 The site follows the system theme and has a light, dark and system switch in
@@ -42,7 +42,7 @@ pnpm deploy:web
 
 `pnpm deploy:web` builds and then deploys with Cloudflare's `cf` CLI. In CI
 the same command runs with `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`;
-see [Releases](/docs/operations/releases).
+see [Releases](/operations/releases).
 
 <Callout type="warn">
   `cf` and `@cloudflare/vite-plugin` 2 are beta releases.

@@ -27,7 +27,7 @@ interface SettingsProps {
 const DEV = import.meta.env.MODE === 'development'
 
 const SITE_URL = 'https://montarapass.com'
-const DOCS_URL = 'https://docs.montarapass.com/docs'
+const DOCS_URL = 'https://docs.montarapass.com'
 
 /**
  * The two origins a valid server form stands for. A released build knows one
