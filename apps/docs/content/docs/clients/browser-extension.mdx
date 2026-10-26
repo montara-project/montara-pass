@@ -41,8 +41,10 @@ while signed in signs out of the old one first: its session is ended there,
 and its tokens and the unlocked vault keys are forgotten before the new
 address is saved, so they never reach the new server.
 
-`pnpm --filter @montara-pass/extension watch` builds in development mode,
-where the API and the web app run on separate ports. That build points at
+`pnpm --filter @montara-pass/extension watch` runs [WXT](https://wxt.dev)'s
+development mode: it opens Chrome with the extension loaded and reloads it on
+each change (`watch:firefox` does the same in Firefox). In development mode
+the API and the web app run on separate ports. That build points at
 `http://localhost:8080` and `http://localhost:5173`, and its settings show
 both as **API server** and **Web app**. `apps/extension/.env` overrides the
 defaults of either build (`VITE_DEFAULT_API_URL` and `VITE_DEFAULT_APP_URL`).

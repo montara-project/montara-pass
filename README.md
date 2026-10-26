@@ -6,7 +6,7 @@ pnpm monorepo.
 | ------------- | -------------------------------------- | --------------------------- |
 | `apps/app`    | Vite SPA, TanStack Router, React 19    | Served by the API (built into its image) |
 | `apps/server` | Go, Fiber v3, PostgreSQL, golang-migrate | Docker (`apps/server/Dockerfile`), with the web app inside |
-| `apps/extension` | Browser extension (Manifest V3), Vite + React | Load `dist/chrome` or `dist/firefox` |
+| `apps/extension` | Browser extension (Manifest V3), WXT + React | Load `dist/chrome` or `dist/firefox` |
 | `apps/web`    | vinext on Cloudflare Workers           | `cf` / `vinext-cloudflare deploy` |
 | `apps/docs`   | Next.js, Fumadocs                      | Docker (`apps/docs/Dockerfile`) |
 | `apps/mobile` | Expo (React Native), expo-router       | EAS Build (not set up yet) |
@@ -182,8 +182,9 @@ create it in the web app first.
   schemas where it has one and by `src/lib/schemas.ts` otherwise.
 - The build points at `https://app.montarapass.com`; Settings → Server →
   Self-hosted takes the URL of another server.
-  `pnpm --filter @montara-pass/extension watch` builds against the local servers instead
-  (`apps/extension/.env.example`).
+  `pnpm --filter @montara-pass/extension watch` runs it against the local servers instead
+  (`apps/extension/.env.example`), in a Chrome that WXT opens with the extension loaded
+  and reloads on each change (`watch:firefox` for Firefox).
 
 ## Docs
 
