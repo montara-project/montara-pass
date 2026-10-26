@@ -11,6 +11,21 @@ headings and no HTML, so a `##` line would show literally. It holds 3000
 characters. AMO shows what is pasted there on the add-on's Version history
 page, and Firefox shows it in the Release Notes tab of `about:addons`.
 
+## 2.9.0 (2026-10-26)
+
+**Improved**
+
+- **Documentation** in **Settings** opens the docs at their new address,
+  `docs.montarapass.com`. Links to the old address still lead to the same
+  pages.
+
+**Also**
+
+- The add-on is built with a new tool, WXT. The popup, the menu under a login
+  field, the save prompt and passkeys work as before.
+- The permissions the add-on asks for are unchanged, so updating does not ask
+  again.
+
 ## 2.8.0 (2026-10-25)
 
 **New**
