@@ -31,7 +31,7 @@ bind parameter, setiap akses item lewat `item_members`, dan error 500 tidak memb
 | M-3 | Terbuka | Butuh keputusan desain (fingerprint atau penyematan kunci) |
 | M-4 | Sebagian | Limiter per email 10/menit di rute auth, IP diblokir 1 jam setelah 20 kegagalan (`01cab11`), dan TOTP opsional (`1618cda`). Belum ada lockout per akun; minimum password masih 8 |
 | M-5 | Diperbaiki | Web app mengunci setelah 15 menit tanpa klik atau ketikan |
-| M-6 | Sebagian | `fflate` bersih, `katex` di-override ke 0.18.10, modul Go bersih (`govulncheck`: 0 yang terjangkau). Tinggal `braces`: advisory menyebut 3.0.4, tapi versi itu belum terbit di npm |
+| M-6 | Sebagian | `fflate` bersih, `katex` di-override ke 0.18.10, modul Go bersih (`govulncheck`: 0 yang terjangkau). 2026-10-30: `seroval` dan `node-forge` di-override; tinggal `deepmerge` (low), versi perbaikannya belum terbit di npm |
 | L-1 | Sebagian | `PUT /keys` kini meminta account password (`8d1579a`), jadi sesi curian saja tidak cukup. Revisi dan salinan untuk pemulihan belum ada |
 | L-2 | Terbuka | Butuh format cipher baru dan migrasi |
 | L-3 | Diperbaiki | Event sintetis diabaikan |
@@ -200,6 +200,20 @@ masih terbuka.
   `katex` di-override ke 0.18.10 di `pnpm-workspace.yaml`, versi yang sudah dipakai
   `@milkdown/crepe` sendiri. `braces` tetap terbuka sampai 3.0.4 terbit; jalurnya hanya build
   `apps/web`.
+- **Pembaruan 2026-10-30:** `pnpm audit --prod` di `dev` (`61c2c5a`) melaporkan empat; `braces`
+  tidak lagi dilaporkan.
+  - (diperbaiki) `node-forge` 1.4.0 (high, GHSA-86w9-cpqp-85rv: verifikasi tanda tangan RSA
+    PKCS#1 v1.5) lewat Expo (`apps/mobile`) dan `web-ext` (build ekstensi). Override
+    `'node-forge@<1.4.1': 1.4.2`.
+  - (diperbaiki) `seroval` 1.6.9 (moderate, GHSA-9wx9-5pv9-3349 dan GHSA-f86p-h4j2-7qgj: injeksi
+    script lewat output serialisasi) lewat `@tanstack/router-core` di `apps/app` dan
+    `apps/docs`. Override `'seroval@>=1.5.5 <1.6.11': 1.6.12`, masih di dalam rentang `^1.6.7`
+    milik router.
+  - (terbuka) `deepmerge` 4.3.1 (low, GHSA-gcqx-w48m-w2h4: prototype pollution) lewat
+    `@expo/config` di `apps/mobile`. Advisory menyebut ≥4.3.2, tapi rilis terbaru di npm masih
+    4.3.1, jadi belum bisa di-override. Jalurnya tooling Expo, bukan runtime app.
+  - Verifikasi: audit tinggal 1 low; typecheck dan build app, ekstensi dan docs lolos; preview
+    docs (SSR, hidrasi, navigasi, pencarian) dan routing app dicek di browser.
 
 ### M-7 · Klik di salinan tersembunyi menu inline dianggap klik di menu yang terlihat
 
