@@ -3,6 +3,19 @@
 All notable changes to this project are documented in this file. Versions follow the git tags (`v*`); Docker images are published to ghcr.io with the same version.
 
 
+## [2.10.0](https://github.com/montara-project/montara-pass/compare/v2.9.0...v2.10.0) (2026-10-30)
+
+### Features
+
+* **billing:** list what every plan includes and how billing works ([6366ca6](https://github.com/montara-project/montara-pass/commit/6366ca62984ed8d736dfbf275d940ab1c3f19df9))
+* **docs:** migrate docs to TanStack Start on Cloudflare Workers ([1badd90](https://github.com/montara-project/montara-pass/commit/1badd908dc7fcb96c677747850eba0078460db93))
+* **docs:** serve docs at the root of docs.montarapass.com via cf CLI ([b9b9e89](https://github.com/montara-project/montara-pass/commit/b9b9e89801c8ee37cfb720ff6834262b5d02e7f9))
+
+### Bug Fixes
+
+* **deps:** override seroval and node-forge to patched versions ([58afad6](https://github.com/montara-project/montara-pass/commit/58afad63c72ca35ac22d39d288d3354a85ba91d2))
+* update minor ([e92c6bf](https://github.com/montara-project/montara-pass/commit/e92c6bf3e9ebc767c227e1d9507fc54978b5e16d))
+
 ## [2.9.0](https://github.com/montara-project/montara-pass/compare/v2.8.1...v2.9.0) (2026-10-26)
 
 ## [2.8.1](https://github.com/montara-project/montara-pass/compare/v2.8.0...v2.8.1) (2026-10-25)
