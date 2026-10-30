@@ -10,7 +10,7 @@ import { toast } from 'sonner'
 import type { AppColumnDef, BaseColumnProps } from '@/types/column'
 
 import { Button } from '@/components/ui/button'
-import { toastAxiosError } from '@/lib/api/axios-error'
+import { toastApiError } from '@/lib/api/api-error'
 import { queries } from '@/lib/api/queries'
 
 import CellItem from '../common/cell-item'
@@ -81,7 +81,7 @@ function ActionCell({ record }: ActionCellProps) {
       await restoreMutation.mutateAsync(record.id)
       toast.success('Item restored')
     } catch (error) {
-      toastAxiosError(error)
+      toastApiError(error)
     }
   }
 
@@ -91,7 +91,7 @@ function ActionCell({ record }: ActionCellProps) {
       toast.success('Item permanently deleted')
       setOpenDelete(false)
     } catch (error) {
-      toastAxiosError(error)
+      toastApiError(error)
     }
   }
 

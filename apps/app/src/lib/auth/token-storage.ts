@@ -6,7 +6,7 @@ const isBrowser = typeof window !== 'undefined'
 const DEFAULT_ACCESS_TOKEN_MAX_AGE = 15 * 60
 const REFRESH_TOKEN_MAX_AGE = 60 * 60 * 24
 
-export interface AuthTokens {
+interface AuthTokens {
   accessToken: string
   refreshToken?: string
 }
@@ -48,7 +48,7 @@ function secondsUntilExpiry(jwt: string): number {
 }
 
 /**
- * Persist backend-issued auth tokens in cookies. The axios interceptor in
+ * Persist backend-issued auth tokens in cookies. `request()` in
  * `client-fetch.ts` reads the access token from here and sends it as a Bearer
  * header, which is what lets the UI talk to an API on another origin.
  */

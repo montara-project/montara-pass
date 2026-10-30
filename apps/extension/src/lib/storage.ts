@@ -1,14 +1,14 @@
 // What the extension keeps on disk (chrome.storage.local): where the API is
 // and the session tokens. Nothing here can decrypt the vault.
 
-export interface Settings {
+interface Settings {
   /** Origin of the Go API (apps/server). */
   apiUrl: string
   /** Origin of the web app, for the links the popup cannot handle itself. */
   appUrl: string
 }
 
-export interface Tokens {
+interface Tokens {
   accessToken: string
   refreshToken: string
 }

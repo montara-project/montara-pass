@@ -1,6 +1,6 @@
 import type { VaultKeys } from '@montara-pass/shared/crypto/vault'
 
-import { create } from 'zustand'
+import { useSyncExternalStore } from 'react'
 
 interface VaultStore {
   /** The unlocked keys, or null while the vault is locked. */
@@ -12,16 +12,33 @@ interface VaultStore {
 /** Minutes without a click or a key after which the vault locks itself. */
 export const AUTO_LOCK_MINUTES = 15
 
+const listeners = new Set<() => void>()
+
+const state: VaultStore = {
+  keys: null,
+  unlock: (keys) => setKeys(keys),
+  lock: () => setKeys(null),
+}
+
+function setKeys(keys: VaultKeys | null) {
+  state.keys = keys
+  for (const listener of listeners) listener()
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
 /**
  * The unlocked vault keys. Deliberately not persisted: a reload or a new tab
  * starts locked and asks for the master password again. Left unlocked and
  * unused, it locks itself.
  */
-export const useVaultStore = create<VaultStore>()((set) => ({
-  keys: null,
-  unlock: (keys) => set({ keys }),
-  lock: () => set({ keys: null }),
-}))
+export function useVaultStore<T>(selector: (state: VaultStore) => T): T {
+  return useSyncExternalStore(subscribe, () => selector(state))
+}
+useVaultStore.getState = () => state
 
 let autoLock: ReturnType<typeof setTimeout> | undefined
 let lockAt = 0
@@ -44,7 +61,7 @@ function restartAutoLock() {
 }
 
 if (typeof window !== 'undefined') {
-  useVaultStore.subscribe(restartAutoLock)
+  subscribe(restartAutoLock)
   for (const event of ['pointerdown', 'keydown']) {
     window.addEventListener(event, restartAutoLock, { capture: true, passive: true })
   }

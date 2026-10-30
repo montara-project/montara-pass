@@ -41,11 +41,6 @@ func List(c fiber.Ctx, data any, meta Metadata) error {
 	return Response(c, fiber.StatusOK, data, meta, "data has been retrieved")
 }
 
-// Get renders the single-resource envelope {data}.
-func Get(c fiber.Ctx, data any) error {
-	return Response(c, fiber.StatusOK, data, nil, "data has been retrieved")
-}
-
 // Message renders the bare {message} envelope (accepted for updates that return no payload).
 func Message(c fiber.Ctx, status int, message string) error {
 	return Response(c, status, nil, nil, message)

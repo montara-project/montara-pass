@@ -36,7 +36,7 @@ export function useFolders() {
       const res = await services.folders.list()
 
       const folders = await Promise.all(
-        res.data.data.map(async (folder) => ({
+        res.data.map(async (folder) => ({
           ...folder,
           name: await decryptFolderName(keys, folder.encrypted_name).catch(() => '(unreadable)'),
         }))
@@ -59,12 +59,12 @@ export function useItems(params: ItemListParams) {
       const res = await services.items.list(params)
 
       const data = await Promise.all(
-        res.data.data.map(async (item) => ({
+        res.data.map(async (item) => ({
           ...item,
           secret: await decryptItem(keys, item).catch(() => null),
         }))
       )
-      return { ...res.data, data }
+      return { ...res, data }
     },
   })
 }
@@ -88,13 +88,13 @@ export function useAllItems({ enabled = true }: { enabled?: boolean } = {}) {
       // The first page says how many there are; the rest are asked for at
       // once, so a large vault costs two round trips rather than one a page,
       // and the items are decrypted alongside each other.
-      const { data: first } = await services.items.list({ limit: PAGE_SIZE, offset: 0 })
+      const first = await services.items.list({ limit: PAGE_SIZE, offset: 0 })
       const total = first.metadata.total ?? first.data.length
       const offsets: number[] = []
       for (let offset = PAGE_SIZE; offset < total; offset += PAGE_SIZE) offsets.push(offset)
       const rest = await Promise.all(
         offsets.map(async (offset) => {
-          const { data: page } = await services.items.list({ limit: PAGE_SIZE, offset })
+          const page = await services.items.list({ limit: PAGE_SIZE, offset })
           return page.data
         })
       )

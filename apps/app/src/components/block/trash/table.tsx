@@ -7,7 +7,7 @@ import SectionCard from '@/components/block/common/section-card'
 import { RowsSkeleton } from '@/components/layout/page-skeleton'
 import { usePaginationQuery } from '@/hooks/use-pagination-query'
 import { useItems } from '@/hooks/use-vault'
-import { toastAxiosError } from '@/lib/api/axios-error'
+import { toastApiError } from '@/lib/api/api-error'
 
 import { TrashColumn } from './column'
 
@@ -22,7 +22,7 @@ export default function TrashTable() {
   const items = data?.data ?? []
 
   useEffect(() => {
-    if (isError) toastAxiosError(error)
+    if (isError) toastApiError(error)
   }, [isError, error])
 
   const columns = TrashColumn({ loading })

@@ -14,7 +14,7 @@ import z from 'zod'
 
 import { Button } from '@/components/ui/button'
 import { checked, useAppForm } from '@/hooks/form'
-import { toastAxiosError } from '@/lib/api/axios-error'
+import { toastApiError } from '@/lib/api/api-error'
 import { queries } from '@/lib/api/queries'
 import { PROFILE_QUERY_KEY } from '@/lib/api/queries/auth'
 import { services } from '@/lib/api/services'
@@ -51,12 +51,12 @@ export default function TwoFactor() {
           toast.success('Two-step verification is off')
           await refresh()
         } else {
-          setSetup((await services.auth.totpEnable(value.password)).data)
+          setSetup(await services.auth.totpEnable(value.password))
         }
         setAsking(false)
         passwordForm.reset()
       } catch (error) {
-        toastAxiosError(error)
+        toastApiError(error)
       }
     },
   })
@@ -74,7 +74,7 @@ export default function TwoFactor() {
         codeForm.reset()
         await refresh()
       } catch (error) {
-        toastAxiosError(error)
+        toastApiError(error)
       }
     },
   })

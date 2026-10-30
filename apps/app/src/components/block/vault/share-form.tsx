@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAppForm } from '@/hooks/form'
 import { useVaultKeys } from '@/hooks/use-vault'
-import { axiosErrorMessage, isForbidden, isNotFound, toastAxiosError } from '@/lib/api/axios-error'
+import { apiErrorMessage, isForbidden, isNotFound, toastApiError } from '@/lib/api/api-error'
 import { parseDto } from '@/lib/api/dtos/parse'
 import { queries } from '@/lib/api/queries'
 import { services } from '@/lib/api/services'
@@ -23,8 +23,7 @@ import { services } from '@/lib/api/services'
 /** The public key of a user with a vault, or a readable error when there is none. */
 async function lookupPublicKey(email: string): Promise<Models.PublicKey> {
   try {
-    const res = await services.keys.publicKey(email)
-    return res.data.data
+    return (await services.keys.publicKey(email)).data
   } catch (error) {
     if (isNotFound(error)) {
       throw new Error(`${email} has no vault yet. They need to sign up and create one first.`)
@@ -82,10 +81,10 @@ export function ShareItemForm({ open, onOpenChange, record }: ShareItemFormProps
         form.reset()
       } catch (error) {
         if (isForbidden(error)) {
-          setRefusal(axiosErrorMessage(error))
+          setRefusal(apiErrorMessage(error))
           return
         }
-        toastAxiosError(error)
+        toastApiError(error)
       }
     },
   })
@@ -95,7 +94,7 @@ export function ShareItemForm({ open, onOpenChange, record }: ShareItemFormProps
       await roleMutation.mutateAsync({ userId: member.user_id, role })
       toast.success(`${member.name || member.email} is now ${role}`)
     } catch (error) {
-      toastAxiosError(error)
+      toastApiError(error)
     }
   }
 
@@ -106,7 +105,7 @@ export function ShareItemForm({ open, onOpenChange, record }: ShareItemFormProps
     try {
       await removeMutation.mutateAsync(member.user_id)
     } catch (error) {
-      toastAxiosError(error)
+      toastApiError(error)
       return
     }
 

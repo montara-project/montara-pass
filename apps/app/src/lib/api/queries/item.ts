@@ -19,7 +19,7 @@ export const LIST_ITEM_QUERY_KEY = (params?: ItemListParams) => {
   return [ITEM_QUERY_KEY, 'list', params]
 }
 
-export const ITEM_MEMBERS_QUERY_KEY = (id: string) => {
+const ITEM_MEMBERS_QUERY_KEY = (id: string) => {
   return [ITEM_QUERY_KEY, 'members', id]
 }
 
@@ -28,8 +28,7 @@ const list = (params?: ItemListParams) =>
   queryOptions({
     queryKey: LIST_ITEM_QUERY_KEY(params),
     queryFn: async () => {
-      const res = await services.items.list(params)
-      return res.data
+      return services.items.list(params)
     },
   })
 
@@ -37,8 +36,7 @@ const members = (id: string) =>
   queryOptions({
     queryKey: ITEM_MEMBERS_QUERY_KEY(id),
     queryFn: async () => {
-      const res = await services.items.members(id)
-      return res.data
+      return services.items.members(id)
     },
   })
 
@@ -56,63 +54,53 @@ function itemMutation<TVariables, TData>(mutationFn: (variables: TVariables) => 
 
 const create = () =>
   itemMutation(async (reqBody: ItemCreateRequest) => {
-    const res = await services.items.store(reqBody)
-    return res.data
+    return services.items.store(reqBody)
   })
 
 const update = (id: string) =>
   itemMutation(async (reqBody: ItemUpdateRequest) => {
-    const res = await services.items.update(id, reqBody)
-    return res.data
+    return services.items.update(id, reqBody)
   })
 
 const setPlacement = (id: string) =>
   itemMutation(async (reqBody: ItemPlacementRequest) => {
-    const res = await services.items.setPlacement(id, reqBody)
-    return res.data
+    return services.items.setPlacement(id, reqBody)
   })
 
 const rotateKey = (id: string) =>
   itemMutation(async (reqBody: ItemRotateKeyRequest) => {
-    const res = await services.items.rotateKey(id, reqBody)
-    return res.data
+    return services.items.rotateKey(id, reqBody)
   })
 
 /** Move to the trash. */
 const del = () =>
   itemMutation(async (id: string) => {
-    const res = await services.items.delete(id)
-    return res.data
+    return services.items.delete(id)
   })
 
 const restore = () =>
   itemMutation(async (id: string) => {
-    const res = await services.items.restore(id)
-    return res.data
+    return services.items.restore(id)
   })
 
 const forceDelete = () =>
   itemMutation(async (id: string) => {
-    const res = await services.items.forceDelete(id)
-    return res.data
+    return services.items.forceDelete(id)
   })
 
 const share = (id: string) =>
   itemMutation(async (reqBody: ItemShareRequest) => {
-    const res = await services.items.share(id, reqBody)
-    return res.data
+    return services.items.share(id, reqBody)
   })
 
 const setMemberRole = (id: string) =>
   itemMutation(async ({ userId, role }: { userId: string; role: string }) => {
-    const res = await services.items.setMemberRole(id, userId, role)
-    return res.data
+    return services.items.setMemberRole(id, userId, role)
   })
 
 const removeMember = (id: string) =>
   itemMutation(async (userId: string) => {
-    const res = await services.items.removeMember(id, userId)
-    return res.data
+    return services.items.removeMember(id, userId)
   })
 
 export const itemQueries = {

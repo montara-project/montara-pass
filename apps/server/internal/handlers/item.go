@@ -87,7 +87,7 @@ func (h *itemHandler) Get(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return dtos.Get(c, item)
+	return dtos.OK(c, item)
 }
 
 func (h *itemHandler) Create(c fiber.Ctx) error {

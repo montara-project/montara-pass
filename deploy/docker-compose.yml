@@ -6,9 +6,6 @@
 # Environment tab and fill it in, then add a domain for the `server` service on
 # port 8080. Dokploy attaches the service to its Traefik network when a domain
 # is added, so no ports are published and no labels are written here.
-#
-# The docs site is opt-in: add COMPOSE_PROFILES=docs to the environment and
-# give the `docs` service a domain on port 3000.
 
 services:
   postgres:
@@ -94,15 +91,6 @@ services:
       start_period: 15s
     expose:
       - '8080'
-
-  docs:
-    profiles: ['docs']
-    build:
-      context: ..
-      dockerfile: apps/docs/Dockerfile
-    restart: unless-stopped
-    expose:
-      - '3000'
 
 volumes:
   postgres-data:

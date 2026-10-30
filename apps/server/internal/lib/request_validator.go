@@ -105,28 +105,11 @@ type FieldError struct {
 	Param   string `json:"param"`
 }
 
-// WrapValidationError renders a MessageRecord into the validation error
-// envelope: {"message": "validation failed", "errors": [FieldError...]}.
-func WrapValidationError(mr validator.MessageRecord) map[string]interface{} {
-	return map[string]interface{}{
-		"message": "validation failed",
-		"errors":  FieldErrorsFromRecord(mr),
-	}
-}
-
-// FieldErrorsFromRecord flattens the field → messages record into the array
-// shape the web UI consumes.
-func FieldErrorsFromRecord(mr validator.MessageRecord) []FieldError {
-	out := make([]FieldError, 0, len(mr))
-	for field, messages := range mr {
-		for _, message := range messages {
-			out = append(out, FieldError{
-				Code:    "validation",
-				Field:   field,
-				Message: message,
-				Param:   field,
-			})
-		}
+// Fields flattens the record into the array shape the web UI consumes.
+func (e ErrValidationFailed) Fields() []FieldError {
+	out := make([]FieldError, 0, len(e.MessageRecord))
+	for field, message := range e.MessageRecord {
+		out = append(out, FieldError{Code: "validation", Field: field, Message: message, Param: field})
 	}
 	return out
 }

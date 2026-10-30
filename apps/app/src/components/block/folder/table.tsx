@@ -7,7 +7,7 @@ import SectionCard from '@/components/block/common/section-card'
 import { RowsSkeleton } from '@/components/layout/page-skeleton'
 import { Button } from '@/components/ui/button'
 import { useFolders } from '@/hooks/use-vault'
-import { toastAxiosError } from '@/lib/api/axios-error'
+import { toastApiError } from '@/lib/api/api-error'
 
 import { FolderColumn } from './column'
 import { AddFolderForm } from './form'
@@ -20,7 +20,7 @@ export default function FolderTable() {
   const folders = data ?? []
 
   useEffect(() => {
-    if (isError) toastAxiosError(error)
+    if (isError) toastApiError(error)
   }, [isError, error])
 
   const columns = FolderColumn({ loading })

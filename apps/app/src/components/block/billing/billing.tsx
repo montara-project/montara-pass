@@ -2,24 +2,26 @@ import { formatDate } from '@montara-pass/shared/date'
 import { formatPrice } from '@montara-pass/shared/money'
 import {
   BILLING_STATUS,
+  BILLING_TERMS,
   hasPaidPurchase,
   isSandbox,
   ownedPurchase,
   paymentPending,
+  PLAN_INCLUDES,
   planName,
   planOffer,
   planPeriod,
   planSaving,
   planTerms,
 } from '@montara-pass/shared/plan'
+import { IconCheck, IconCreditCard } from '@tabler/icons-react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { CreditCard } from 'lucide-react'
-import { useQueryState } from 'nuqs'
+import { useSearch } from '@tanstack/react-router'
 
 import Page from '@/components/layout/page'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { toastAxiosError } from '@/lib/api/axios-error'
+import { toastApiError } from '@/lib/api/api-error'
 import { queries } from '@/lib/api/queries'
 import { cn } from '@/lib/utils'
 
@@ -33,19 +35,16 @@ const label = 'text-muted-foreground pl-1 font-mono text-[11px] tracking-[0.12em
  * renews by itself and is cancelled in Lemon Squeezy's customer portal.
  */
 export default function BillingBlock() {
-  // ?plan= names the plan the website sent the user here for.
-  const [chosen] = useQueryState('plan')
-  // The checkout sends the browser back with ?checkout=done.
-  const [returned] = useQueryState('checkout')
+  const { plan: chosen, checkout: returned } = useSearch({ from: '/(app)/billing/' })
 
   const plans = useQuery(queries.billing.plans())
   const overview = useQuery({
     ...queries.billing.overview(),
     refetchInterval: (query) => (paymentPending(query.state.data) ? 5000 : false),
   })
-  const subscribe = useMutation({ ...queries.billing.subscribe(), onError: toastAxiosError })
-  const buy = useMutation({ ...queries.billing.buy(), onError: toastAxiosError })
-  const portal = useMutation({ ...queries.billing.portal(), onError: toastAxiosError })
+  const subscribe = useMutation({ ...queries.billing.subscribe(), onError: toastApiError })
+  const buy = useMutation({ ...queries.billing.buy(), onError: toastApiError })
+  const portal = useMutation({ ...queries.billing.portal(), onError: toastApiError })
   const busy = subscribe.isPending || buy.isPending
 
   const subscription = overview.data?.subscription ?? null
@@ -61,7 +60,7 @@ export default function BillingBlock() {
   return (
     <Page
       title="Billing"
-      icon={CreditCard}
+      icon={IconCreditCard}
       description={`Your plan, and what you have bought.${currency ? ` Prices in ${currency}.` : ''}`}
       width="wide"
     >
@@ -209,6 +208,27 @@ export default function BillingBlock() {
           </ul>
         )}
       </section>
+
+      <div className="grid gap-x-12 gap-y-8 sm:grid-cols-2">
+        {[
+          { id: 'includes', title: 'Every plan includes', items: PLAN_INCLUDES },
+          { id: 'how', title: 'How billing works', items: BILLING_TERMS },
+        ].map(({ id, title, items }) => (
+          <section key={id} aria-labelledby={id} className="flex flex-col gap-2">
+            <h2 id={id} className={label}>
+              {title}
+            </h2>
+            <ul className="m-0 list-none divide-y border-y p-0">
+              {items.map((item) => (
+                <li key={item} className="flex items-start gap-3 py-3 pl-1 text-[13px]">
+                  <IconCheck aria-hidden className="text-focus mt-0.5 size-4 shrink-0" />
+                  <span className="text-muted-foreground">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
 
       {purchases.length > 0 && (
         <section aria-labelledby="purchases" className="flex flex-col gap-2">

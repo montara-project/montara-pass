@@ -17,7 +17,7 @@ import { copySecret } from '../lib/clipboard'
 import { fetchIcon } from '../lib/icon'
 import { hostOf } from '../lib/origin'
 
-export interface VaultUser {
+interface VaultUser {
   name: string
   email: string
 }

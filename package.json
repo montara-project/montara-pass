@@ -16,6 +16,7 @@
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "deploy:web": "pnpm --filter @montara-pass/web run deploy",
+    "deploy:docs": "pnpm --filter @montara-pass/docs run deploy",
     "db:up": "docker compose up -d postgres",
     "migrate:up": "pnpm --filter @montara-pass/server run migrate:up",
     "migrate:down": "pnpm --filter @montara-pass/server run migrate:down",

@@ -8,7 +8,7 @@ pnpm monorepo.
 | `apps/server` | Go, Fiber v3, PostgreSQL, golang-migrate | Docker (`apps/server/Dockerfile`), with the web app inside |
 | `apps/extension` | Browser extension (Manifest V3), WXT + React | Load `dist/chrome` or `dist/firefox` |
 | `apps/web`    | vinext on Cloudflare Workers           | `cf` / `vinext-cloudflare deploy` |
-| `apps/docs`   | Next.js, Fumadocs                      | Docker (`apps/docs/Dockerfile`) |
+| `apps/docs`   | TanStack Start, Fumadocs on Cloudflare Workers | `cf deploy` |
 | `apps/mobile` | Expo (React Native), expo-router       | EAS Build (not set up yet) |
 
 ## Requirements
@@ -113,7 +113,7 @@ API, and in production the API serves the built app itself from `./public`,
 with a fallback to `index.html` for client routes. `CORS_ALLOWED_ORIGINS` is
 only needed when the app is hosted somewhere else (`VITE_API_URL`).
 
-- `lib/api`: one axios client (`client-fetch.ts`, refreshes the access token
+- `lib/api`: one `fetch` client (`client-fetch.ts`, refreshes the access token
   on a 401), then `services` (HTTP) and `queries` (TanStack Query options).
 - `@montara-pass/shared` (`packages/shared`): the code the app and the
   extension share. `api/models` and `api/dtos` (zod), and `crypto`, the
@@ -188,7 +188,7 @@ create it in the web app first.
 
 ## Docs
 
-`apps/docs` is the documentation site: Next.js with
+`apps/docs` is the documentation site: TanStack Start with
 [Fumadocs](https://www.fumadocs.dev), pages as MDX under `content/docs`.
 
 ```sh
@@ -213,7 +213,7 @@ sign-up and no sharing, so it needs `SEED_ON_BOOT=true` and `SUPER_USER`.
 from this repository. In Dokploy, create a Compose service, set the compose
 path to `./deploy/docker-compose.yml`, paste `deploy/.env.example` into the
 Environment tab and fill it in, then add a domain for the `server` service on
-port 8080. Adding `COMPOSE_PROFILES=docs` also runs the docs site (port 3000).
+port 8080.
 
 ## Deploy web (Cloudflare Workers)
 
@@ -228,6 +228,18 @@ pnpm deploy:web                                      # builds, then deploys
 pnpm --filter @montara-pass/web run start            # serve the build locally
 ```
 
+## Deploy docs (Cloudflare Workers)
+
+The Worker is described in `apps/docs/cloudflare.config.ts` (name, entrypoint,
+compatibility date, the `docs.montarapass.com` domain) and deployed with the `cf`
+CLI, like `apps/web`; every page is at the root.
+
+```sh
+pnpm --filter @montara-pass/docs exec cf auth login
+pnpm deploy:docs                                     # builds, then deploys
+pnpm --filter @montara-pass/docs run preview         # serve the build locally
+```
+
 ## Releases
 
 Versions follow conventional commits and are cut from `main` by three
@@ -238,8 +250,8 @@ workflows in `.github/workflows`:
 2. **Release Publish** runs when that PR merges: it tags the commit, creates
    the GitHub release and starts the Release workflow.
 3. **Release** pushes `ghcr.io/montara-project/montara-pass/cloud` and
-   `montara-pass/community` (the API with the web app inside, per edition) and
-   `montara-pass/docs`, and deploys `apps/web` to Cloudflare Workers.
+   `montara-pass/community` (the API with the web app inside, per edition),
+   and deploys `apps/web` and `apps/docs` to Cloudflare Workers.
 
 It needs the repository secrets `CLOUDFLARE_API_TOKEN` and
 `CLOUDFLARE_ACCOUNT_ID`. The repository variable `VITE_API_URL` is optional:

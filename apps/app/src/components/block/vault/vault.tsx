@@ -12,8 +12,10 @@ import {
   IconSearch,
   IconStarFilled,
 } from '@tabler/icons-react'
-import { parseAsInteger, useQueryState } from 'nuqs'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
+
+import type { VaultSearch } from '@/routes/(app)/vault'
 
 import EmptyState from '@/components/block/common/empty-state'
 import SelectInput from '@/components/block/common/select-input'
@@ -21,7 +23,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAllItems, useFolders, useItems } from '@/hooks/use-vault'
-import { axiosErrorMessage } from '@/lib/api/axios-error'
+import { apiErrorMessage } from '@/lib/api/api-error'
 import { cn } from '@/lib/utils'
 
 import { AddItemForm } from './form'
@@ -41,10 +43,15 @@ const PAGE_SIZE = 25
 export default function Vault() {
   const [openAdd, setOpenAdd] = useState(false)
 
-  const [folderId, setFolderId] = useQueryState('folder')
-  const [type, setType] = useQueryState('type')
-  const [page, setPage] = useQueryState('page', parseAsInteger.withDefault(0))
-  const [selectedId, setSelectedId] = useQueryState('item')
+  const {
+    folder: folderId,
+    type,
+    page = 0,
+    item: selectedId,
+  } = useSearch({ from: '/(app)/vault/' })
+  const navigate = useNavigate({ from: '/vault/' })
+  const setUrl = (next: VaultSearch) =>
+    void navigate({ search: (prev) => ({ ...prev, ...next }), replace: true })
   // Kept out of the URL: what someone searches their vault for would
   // otherwise land in the browser's history.
   const [search, setSearch] = useState('')
@@ -93,16 +100,9 @@ export default function Vault() {
   const to = Math.min(params.offset + items.length, total)
 
   // A filter starts the list over, and what was open may not be in it.
-  const filter = (set: () => void) => {
-    set()
-    void setPage(null)
-    void setSelectedId(null)
-  }
+  const filter = (next: VaultSearch) => setUrl({ ...next, page: undefined, item: undefined })
 
-  const turn = (next: number) => {
-    void setPage(next === 0 ? null : next)
-    void setSelectedId(null)
-  }
+  const turn = (next: number) => setUrl({ page: next === 0 ? undefined : next, item: undefined })
 
   const folderOptions = [
     { label: 'All folders', value: ALL },
@@ -147,7 +147,10 @@ export default function Vault() {
                 aria-label="Search items by name, username or URL"
                 value={search}
                 onFocus={() => setSearchFocused(true)}
-                onChange={(event) => filter(() => setSearch(event.target.value))}
+                onChange={(event) => {
+                  setSearch(event.target.value)
+                  filter({})
+                }}
                 // The selects beside it set the field look; the input takes it too.
                 className="bg-field border-field-border rounded-control hover:border-muted-foreground focus-visible:border-focus focus-visible:ring-focus h-9 pl-9 shadow-none focus-visible:ring-1 dark:bg-field"
               />
@@ -159,14 +162,14 @@ export default function Vault() {
               placeholder="All folders"
               options={folderOptions}
               defaultValue={folderId ?? ALL}
-              onSelect={(value) => filter(() => void setFolderId(value === ALL ? null : value))}
+              onSelect={(value) => filter({ folder: value === ALL ? undefined : value })}
             />
             <SelectInput
               className="h-9 w-36"
               placeholder="All types"
               options={typeOptions}
               defaultValue={type ?? ALL}
-              onSelect={(value) => filter(() => void setType(value === ALL ? null : value))}
+              onSelect={(value) => filter({ type: value === ALL ? undefined : value })}
             />
             <span className="text-muted-foreground ml-auto text-xs tabular-nums">
               {!isLoading && `${total} ${total === 1 ? 'item' : 'items'}`}
@@ -200,7 +203,7 @@ export default function Vault() {
             ) : isError ? (
               <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
                 <p role="alert" className="text-danger text-[13px] whitespace-pre-line">
-                  {axiosErrorMessage(error)}
+                  {apiErrorMessage(error)}
                 </p>
                 <Button variant="outline" size="sm" onClick={() => void refetch()}>
                   Try again
@@ -226,7 +229,7 @@ export default function Vault() {
                       item={item}
                       folders={folderList}
                       selected={item.id === selectedId}
-                      onSelect={() => void setSelectedId(item.id)}
+                      onSelect={() => setUrl({ item: item.id })}
                     />
                   </li>
                 ))}
@@ -273,7 +276,7 @@ export default function Vault() {
               key={selected.id}
               item={selected}
               folders={folderList}
-              onClose={() => void setSelectedId(null)}
+              onClose={() => setUrl({ item: undefined })}
             />
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-4 p-8 text-center">

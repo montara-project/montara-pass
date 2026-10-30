@@ -31,7 +31,7 @@ bind parameter, setiap akses item lewat `item_members`, dan error 500 tidak memb
 | M-3 | Terbuka | Butuh keputusan desain (fingerprint atau penyematan kunci) |
 | M-4 | Sebagian | Limiter per email 10/menit di rute auth, IP diblokir 1 jam setelah 20 kegagalan (`01cab11`), dan TOTP opsional (`1618cda`). Belum ada lockout per akun; minimum password masih 8 |
 | M-5 | Diperbaiki | Web app mengunci setelah 15 menit tanpa klik atau ketikan |
-| M-6 | Sebagian | `fflate` bersih, `katex` di-override ke 0.18.10, modul Go bersih (`govulncheck`: 0 yang terjangkau). Tinggal `braces`: advisory menyebut 3.0.4, tapi versi itu belum terbit di npm |
+| M-6 | Sebagian | `fflate` bersih, `katex` di-override ke 0.18.10, modul Go bersih (`govulncheck`: 0 yang terjangkau). 2026-10-30: `seroval` dan `node-forge` di-override; tinggal `deepmerge` (low), versi perbaikannya belum terbit di npm |
 | L-1 | Sebagian | `PUT /keys` kini meminta account password (`8d1579a`), jadi sesi curian saja tidak cukup. Revisi dan salinan untuk pemulihan belum ada |
 | L-2 | Terbuka | Butuh format cipher baru dan migrasi |
 | L-3 | Diperbaiki | Event sintetis diabaikan |
@@ -200,6 +200,20 @@ masih terbuka.
   `katex` di-override ke 0.18.10 di `pnpm-workspace.yaml`, versi yang sudah dipakai
   `@milkdown/crepe` sendiri. `braces` tetap terbuka sampai 3.0.4 terbit; jalurnya hanya build
   `apps/web`.
+- **Pembaruan 2026-10-30:** `pnpm audit --prod` di `dev` (`61c2c5a`) melaporkan empat; `braces`
+  tidak lagi dilaporkan.
+  - (diperbaiki) `node-forge` 1.4.0 (high, GHSA-86w9-cpqp-85rv: verifikasi tanda tangan RSA
+    PKCS#1 v1.5) lewat Expo (`apps/mobile`) dan `web-ext` (build ekstensi). Override
+    `'node-forge@<1.4.1': 1.4.2`.
+  - (diperbaiki) `seroval` 1.6.9 (moderate, GHSA-9wx9-5pv9-3349 dan GHSA-f86p-h4j2-7qgj: injeksi
+    script lewat output serialisasi) lewat `@tanstack/router-core` di `apps/app` dan
+    `apps/docs`. Override `'seroval@>=1.5.5 <1.6.11': 1.6.12`, masih di dalam rentang `^1.6.7`
+    milik router.
+  - (terbuka) `deepmerge` 4.3.1 (low, GHSA-gcqx-w48m-w2h4: prototype pollution) lewat
+    `@expo/config` di `apps/mobile`. Advisory menyebut ≥4.3.2, tapi rilis terbaru di npm masih
+    4.3.1, jadi belum bisa di-override. Jalurnya tooling Expo, bukan runtime app.
+  - Verifikasi: audit tinggal 1 low; typecheck dan build app, ekstensi dan docs lolos; preview
+    docs (SSR, hidrasi, navigasi, pencarian) dan routing app dicek di browser.
 
 ### M-7 · Klik di salinan tersembunyi menu inline dianggap klik di menu yang terlihat
 
@@ -333,15 +347,15 @@ net: ±-300 baris, -0 dependency.
 Diurutkan dari potongan terbesar. Yang bertanda (selesai) sudah diterapkan; sisanya terbuka
 karena menyentuh puluhan komponen UI yang belum punya uji.
 
-- `native:` dua klien HTTP untuk API yang sama dengan aturan refresh-401 yang sama: axios di `apps/app/src/lib/api/client-fetch.ts`, `resource.ts` dan `axios-error.ts`, lalu `fetch` di `apps/extension/src/lib/api.ts`. Gantinya: satu klien `fetch` yang dipakai keduanya; ekstensi sudah mengimpor dari `@/`. (±250 baris, -1 dependency)
-- `yagni:` dua pustaka ikon di `apps/app`: `@tabler/icons-react` (20 file) dan `lucide-react` (12 file, hampir semuanya di `components/ui`). Gantinya: tabler saja. (-1 dependency)
-- `native:` `nuqs` dipakai di 4 file untuk state halaman dan pencarian di URL. Gantinya: `validateSearch` dan `useSearch` milik TanStack Router, yang sudah terpasang. (-1 dependency)
+- (selesai 2026-10-30) `native:` dua klien HTTP untuk API yang sama dengan aturan refresh-401 yang sama: axios di `apps/app/src/lib/api/client-fetch.ts`, `resource.ts` dan `axios-error.ts`, lalu `fetch` di `apps/extension/src/lib/api.ts`. Gantinya: satu klien `fetch` yang dipakai keduanya; ekstensi sudah mengimpor dari `@/`. (±250 baris, -1 dependency)
+- (selesai 2026-10-30) `yagni:` dua pustaka ikon di `apps/app`: `@tabler/icons-react` (20 file) dan `lucide-react` (12 file, hampir semuanya di `components/ui`). Gantinya: tabler saja. (-1 dependency)
+- (selesai 2026-10-30) `native:` `nuqs` dipakai di 4 file untuk state halaman dan pencarian di URL. Gantinya: `validateSearch` dan `useSearch` milik TanStack Router, yang sudah terpasang. (-1 dependency)
 - (selesai) `delete:` `apps/app/src/components/ui/tabs.tsx` dan `ui/pagination.tsx` tidak diimpor di mana pun. Gantinya: tidak ada. (99 baris)
 - (selesai) `stdlib:` `date-fns` dipakai satu file, `apps/app/src/lib/date.ts`, untuk dua format tetap. Gantinya: `new Intl.DateTimeFormat('en-GB', { dateStyle: 'short', timeStyle: 'medium' })`. (-1 dependency)
 - (selesai) `yagni:` `@t3-oss/env-core` di `apps/app/src/config/env.ts` memvalidasi dua variabel opsional yang sama-sama punya nilai bawaan. Gantinya: `import.meta.env.VITE_API_URL || window.location.origin`. (-1 dependency, ±10 baris)
 - (selesai) `delete:` ekspor yang tidak dirujuk di mana pun: `getTotal` (`lib/constants/paginate.ts`), `requiredNonNegativeInteger` (`lib/validation.ts`), `IncludeParam` (`lib/api/dtos/paginate.ts`), `ResourceProps` (`types/api.ts`), `SetupVaultFormDto` dan `UnlockFormDto` (`lib/api/dtos/vault/schema.ts`), `DataGridApiFetchParams`, `DataGridApiResponse` dan `DataGridRequestParams` (`ui/data-grid.tsx`), `BadgeProps`, `BadgeButtonProps` dan `BadgeDotProps` (`ui/badge.tsx`). Gantinya: tidak ada. (±40 baris)
 - `delete:` bagian komponen `components/ui` yang tidak dipakai di luar filenya, antara lain `DropdownMenuSub*`, `DropdownMenuCheckboxItem`, `DropdownMenuRadio*`, `SidebarInput`, `SidebarMenuSkeleton`, `SelectGroup`, `SheetFooter`, `FieldSet`, `BadgeButton`, `CardTable`. Ini salinan shadcn, jadi baru layak dipotong kalau filenya memang disentuh. Belum dihitung.
-- `yagni:` `zustand` untuk satu store berisi satu nilai (`apps/app/src/lib/stores/vault.ts`). Gantinya: variabel modul dengan `useSyncExternalStore`. Paling kecil untungnya; biarkan kalau store kedua sudah direncanakan. (-1 dependency)
+- (selesai 2026-10-30) `yagni:` `zustand` untuk satu store berisi satu nilai (`apps/app/src/lib/stores/vault.ts`). Gantinya: variabel modul dengan `useSyncExternalStore`. Paling kecil untungnya; biarkan kalau store kedua sudah direncanakan. (-1 dependency)
 
 `apps/extension` sendiri ramping: tiga dependency runtime (`tldts` ditambahkan untuk L-10), dan pengulangan yang ada (`usable()` di tiga tempat, konstanta di `background.ts` dan `lib/session.ts`) dipaksa oleh aturan bahwa content script dan fungsi yang disuntikkan tidak boleh mengimpor.
 
@@ -376,3 +390,45 @@ lihat `apps/server/ISSUES.md` Audit 3.
   (`packages/shared/src/api/dtos/vault/schema.ts:78`). Gantinya: tidak ada. (2 baris)
 
 net: ±-290 baris, -2 dependency mungkin (-1 di `apps/web`, -1 per app untuk `input-otp`).
+
+### `apps/server`, `apps/app` dan `apps/extension` (2026-10-30)
+
+ponytail-audit di `dev` (`1badd90`). Semua butir sudah diterapkan. `apps/server` lolos
+`deadcode` (golang.org/x/tools), `apps/app` dan `apps/extension` diperiksa dengan `knip`.
+Verifikasi: `go test ./...` termasuk integration test (`TEST_DB_DSN`), typecheck dan build
+app dan ekstensi, lalu uji browser pada app Community Edition: sign-in, buat vault, folder,
+item, filter di URL, trash, kunci dan buka vault, refresh token setelah 401, dan redirect ke
+sign-in saat refresh token mati.
+
+- (selesai) `yagni:` factory CRUD generik `apps/app/src/lib/api/resource.ts` dengan enum
+  `HTTP_METHOD`, `API_METHOD_MAP`, `Resources`/`ResourceMethods` dan `services/types/*`,
+  dipakai dua service. Gantinya: objek `request()` biasa per service, tipe di tempat. (±200 baris)
+- (selesai) `native:` axios di `apps/app`. Gantinya: `request<T>()` berbasis `fetch` di
+  `client-fetch.ts` (Bearer, `Idempotency-Key`, satu refresh untuk 401 serentak, timeout 60
+  detik) dan `ApiError`; `axios-error.ts` menjadi `api-error.ts`. (-1 dependency)
+- (selesai) `native:` `nuqs`. Gantinya: `validateSearch` di rute vault, billing, folders dan
+  trash, plus `useSearch`/`useNavigate`; `DecorationProvider` dihapus. (-1 dependency)
+- (selesai) `delete:` `lucide-react` di 10 file. Gantinya: `@tabler/icons-react`;
+  `components.json` memakai `iconLibrary: "tabler"`. (-1 dependency)
+- (selesai) `delete:` `hooks/use-debounce.ts`, `lib/api/dtos/paginate.ts` dan
+  `lib/constants/paginate.ts` tidak dipakai. (42 baris)
+- (selesai) `shrink:` `RateLimit` dan `RateLimitEmail` di
+  `apps/server/internal/middlewares/rate_limit.go` menyalin config `RateLimitKey`. Gantinya:
+  keduanya memanggil `RateLimitKey`. (±25 baris)
+- (selesai) `shrink:` pola `const resources = () => ({...}); export const x = resources()` di
+  5 service. Gantinya: `export const x = {...}`.
+- (selesai) `yagni:` `WrapValidationError` dan `FieldErrorsFromRecord` satu pemanggil, dan
+  `MessageRecord` `map[string][]string` yang selalu berisi satu pesan. Gantinya:
+  `ErrValidationFailed.Fields()` dipanggil `ErrorHandler`, `map[string]string`.
+- (selesai) `shrink:` `dtos.Get` sama dengan `dtos.OK` kecuali `message`. Gantinya: `dtos.OK`;
+  GET satu resource tidak lagi membawa `"message": "data has been retrieved"`.
+- (selesai) `native:` `zustand` untuk satu store. Gantinya: `useSyncExternalStore` di
+  `lib/stores/vault.ts`, API `useVaultStore(selector)` dan `.getState()` tetap. (-1 dependency)
+- (selesai) `delete:` ekspor yang hanya dipakai di filenya sendiri: tiga query key,
+  `CLIPBOARD_CLEAR_MS`, `CLIPBOARD_CLEAR_MINUTES`, `AuthTokens`, `Settings`, `Tokens`,
+  `VaultUser`, `RouterContext`.
+
+Sisa yang dibiarkan: ekspor salinan shadcn/reui di `components/ui` (lihat daftar 2026-10-13)
+dan tipe `MarkdownEditorActive`/`MarkdownEditorOptions`.
+
+net: ±-290 baris, -4 dependency.

@@ -35,7 +35,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { toastAxiosError } from '@/lib/api/axios-error'
+import { toastApiError } from '@/lib/api/api-error'
 import { queries } from '@/lib/api/queries'
 import { copySecret } from '@/lib/clipboard'
 import { cn } from '@/lib/utils'
@@ -166,7 +166,7 @@ export default function ItemDetail({ item, folders, onClose }: ItemDetailProps) 
     try {
       await placement.mutateAsync({ folder_id: item.folder_id, favorite: !item.favorite })
     } catch (error) {
-      toastAxiosError(error)
+      toastApiError(error)
     }
   }
 
@@ -176,7 +176,7 @@ export default function ItemDetail({ item, folders, onClose }: ItemDetailProps) 
       toast('Item moved to trash')
       onClose()
     } catch (error) {
-      toastAxiosError(error)
+      toastApiError(error)
     }
   }
 
@@ -188,7 +188,7 @@ export default function ItemDetail({ item, folders, onClose }: ItemDetailProps) 
       toast('You no longer have access to this item')
       onClose()
     } catch (error) {
-      toastAxiosError(error)
+      toastApiError(error)
     }
   }
 

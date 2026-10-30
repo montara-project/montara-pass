@@ -14,8 +14,7 @@ const list = () =>
   queryOptions({
     queryKey: [FOLDER_QUERY_KEY, 'list'],
     queryFn: async () => {
-      const res = await services.folders.list()
-      return res.data
+      return services.folders.list()
     },
   })
 
@@ -24,8 +23,7 @@ const create = () => {
 
   return mutationOptions({
     mutationFn: async (reqBody: FolderRequest) => {
-      const res = await services.folders.store(reqBody)
-      return res.data
+      return services.folders.store(reqBody)
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [FOLDER_QUERY_KEY] })
@@ -38,8 +36,7 @@ const update = (id: string) => {
 
   return mutationOptions({
     mutationFn: async (reqBody: FolderRequest) => {
-      const res = await services.folders.update(id, reqBody)
-      return res.data
+      return services.folders.update(id, reqBody)
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [FOLDER_QUERY_KEY] })
@@ -52,8 +49,7 @@ const del = () => {
 
   return mutationOptions({
     mutationFn: async (id: string) => {
-      const res = await services.folders.delete(id)
-      return res.data
+      return services.folders.delete(id)
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [FOLDER_QUERY_KEY] })

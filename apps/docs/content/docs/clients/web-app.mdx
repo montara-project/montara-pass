@@ -47,7 +47,7 @@ Every page under the app shell sits behind a gate with three states:
 2. **Locked**: the user enters the master password to unlock.
 3. **Unlocked**: the pages render.
 
-The unlocked keys live in a zustand store that is not persisted. Reloading the
+The unlocked keys live in a module store (`lib/stores/vault.ts`) that is not persisted. Reloading the
 page, or closing the tab, locks the vault.
 
 ## Clipboard

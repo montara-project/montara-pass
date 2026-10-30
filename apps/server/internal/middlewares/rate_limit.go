@@ -17,20 +17,13 @@ import (
 // RateLimit allows each client IP max requests a minute. name keeps this
 // limiter's counts apart from another's in a shared store.
 func RateLimit(name string, max int, exemptLoopback bool, exemptIPs []string, store Store) fiber.Handler {
-	return limiter.New(limiter.Config{
-		Storage: store.storage,
-		KeyGenerator: func(c fiber.Ctx) string {
-			return "ratelimit:" + name + ":" + c.IP()
-		},
-		Next: func(c fiber.Ctx) bool {
-			return slices.Contains(exemptIPs, c.IP()) || (exemptLoopback && (c.IP() == "127.0.0.1" || c.IP() == "::1"))
-		},
-		Max:        max,
-		Expiration: time.Minute,
-		LimitReached: func(c fiber.Ctx) error {
-			return apperr.ErrTooManyRequests
-		},
-	})
+	return RateLimitKey(name, max, time.Minute, func(c fiber.Ctx) string {
+		ip := c.IP()
+		if slices.Contains(exemptIPs, ip) || (exemptLoopback && (ip == "127.0.0.1" || ip == "::1")) {
+			return ""
+		}
+		return ip
+	}, store)
 }
 
 // RateLimitKey allows max requests per window for each key that key returns,
@@ -60,22 +53,15 @@ func RateLimitKey(name string, max int, window time.Duration, key func(fiber.Ctx
 // ponytail: someone flooding an address also slows its owner's sign-in while
 // the flood lasts. A lockout that tells the two apart needs a second factor.
 func RateLimitEmail(name string, max int, store Store) fiber.Handler {
-	return limiter.New(limiter.Config{
-		Storage: store.storage,
-		KeyGenerator: func(c fiber.Ctx) string {
-			// Hashed, so a body cannot choose the length of the key.
-			sum := sha256.Sum256([]byte(bodyEmail(c)))
-			return "ratelimit:" + name + ":" + hex.EncodeToString(sum[:])
-		},
-		Next: func(c fiber.Ctx) bool {
-			return bodyEmail(c) == ""
-		},
-		Max:        max,
-		Expiration: time.Minute,
-		LimitReached: func(c fiber.Ctx) error {
-			return apperr.ErrTooManyRequests
-		},
-	})
+	return RateLimitKey(name, max, time.Minute, func(c fiber.Ctx) string {
+		email := bodyEmail(c)
+		if email == "" {
+			return ""
+		}
+		// Hashed, so a body cannot choose the length of the key.
+		sum := sha256.Sum256([]byte(email))
+		return hex.EncodeToString(sum[:])
+	}, store)
 }
 
 // bodyEmail is the "email" of a JSON body, as one account spells it.

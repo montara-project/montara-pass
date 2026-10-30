@@ -45,7 +45,7 @@ func TestRules(t *testing.T) {
 		if pass && len(mr) != 0 {
 			t.Errorf("%s: passing validation returned messages %v", tc.name, mr)
 		}
-		if !pass && len(mr["f"]) == 0 {
+		if !pass && mr["f"] == "" {
 			t.Errorf("%s: failing validation returned no message for f", tc.name)
 		}
 	}
@@ -60,10 +60,10 @@ func TestValidate_CollectsPerFieldMessages(t *testing.T) {
 	if pass {
 		t.Fatal("expected validation to fail")
 	}
-	if len(mr["name"]) != 1 || mr["name"][0] != "name is required" {
+	if mr["name"] != "name is required" {
 		t.Fatalf("expected name required message, got %v", mr["name"])
 	}
-	if len(mr["role"]) != 1 {
+	if mr["role"] == "" {
 		t.Fatalf("expected one role message, got %v", mr["role"])
 	}
 }
@@ -73,7 +73,7 @@ func TestFieldValidator_StopsAtFirstFailure(t *testing.T) {
 	v.Field("role").Required().Regex(`^admin$`)
 
 	mr, pass := v.Validate(map[string]interface{}{})
-	if pass || len(mr["role"]) != 1 || mr["role"][0] != "role is required" {
+	if pass || mr["role"] != "role is required" {
 		t.Fatalf("expected only the required message, got %v", mr)
 	}
 }

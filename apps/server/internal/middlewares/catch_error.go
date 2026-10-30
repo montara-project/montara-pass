@@ -17,7 +17,7 @@ func ErrorHandler(logger *slog.Logger) fiber.ErrorHandler {
 	return func(c fiber.Ctx, err error) error {
 		var ve *lib.ErrValidationFailed
 		if errors.As(err, &ve) {
-			return c.Status(fiber.StatusUnprocessableEntity).JSON(lib.WrapValidationError(ve.MessageRecord))
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"message": "validation failed", "errors": ve.Fields()})
 		}
 
 		var fe *fiber.Error
