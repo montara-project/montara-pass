@@ -3,3 +3,4 @@ dist/
 .source/
 .tanstack/
 .wrangler/
+.cloudflare/

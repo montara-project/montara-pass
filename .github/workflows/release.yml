@@ -154,8 +154,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --filter @montara-pass/docs...
 
-      # Vite builds the TanStack Start Worker, then wrangler deploys it as
-      # described in apps/docs/wrangler.jsonc.
+      # cf builds the TanStack Start Worker with Vite, then deploys it as
+      # described in apps/docs/cloudflare.config.ts.
       - name: Build & Deploy
         run: pnpm deploy:docs
         env:

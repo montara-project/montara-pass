@@ -8,7 +8,7 @@ pnpm monorepo.
 | `apps/server` | Go, Fiber v3, PostgreSQL, golang-migrate | Docker (`apps/server/Dockerfile`), with the web app inside |
 | `apps/extension` | Browser extension (Manifest V3), WXT + React | Load `dist/chrome` or `dist/firefox` |
 | `apps/web`    | vinext on Cloudflare Workers           | `cf` / `vinext-cloudflare deploy` |
-| `apps/docs`   | TanStack Start, Fumadocs on Cloudflare Workers | `wrangler deploy` |
+| `apps/docs`   | TanStack Start, Fumadocs on Cloudflare Workers | `cf deploy` |
 | `apps/mobile` | Expo (React Native), expo-router       | EAS Build (not set up yet) |
 
 ## Requirements
@@ -230,11 +230,12 @@ pnpm --filter @montara-pass/web run start            # serve the build locally
 
 ## Deploy docs (Cloudflare Workers)
 
-The Worker is described in `apps/docs/wrangler.jsonc` and deployed with
-`wrangler`. The docs answer `/docs/*` with a `308` to the same path at the root.
+The Worker is described in `apps/docs/cloudflare.config.ts` (name, entrypoint,
+compatibility date, the `docs.montarapass.com` domain) and deployed with the `cf`
+CLI, like `apps/web`; every page is at the root.
 
 ```sh
-pnpm --filter @montara-pass/docs exec wrangler login
+pnpm --filter @montara-pass/docs exec cf auth login
 pnpm deploy:docs                                     # builds, then deploys
 pnpm --filter @montara-pass/docs run preview         # serve the build locally
 ```

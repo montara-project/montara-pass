@@ -21,6 +21,13 @@ export const Route = createRootRoute({
       { rel: 'icon', href: '/logo-32.png' },
       { rel: 'apple-touch-icon', href: '/logo-128.png' },
     ],
+    scripts: [
+      {
+        src: 'https://analytics.masb0ymas.com/script.js',
+        defer: true,
+        'data-website-id': '74be8335-96de-44b2-b98b-6e35863e1cf5',
+      },
+    ],
   }),
   shellComponent: RootDocument,
   component: Outlet,
