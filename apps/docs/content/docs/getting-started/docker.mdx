@@ -1,10 +1,11 @@
 ---
 title: Docker
-description: Build and run the API with its web app, and these docs, as containers.
+description: Build and run the API with its web app as a container.
 ---
 
-There are two images. Releases publish the same images
-to GitHub Container Registry; see [Releases](/operations/releases).
+Releases publish the same image to GitHub Container Registry; see
+[Releases](/operations/releases). These docs are not an image: they run on
+Cloudflare Workers.
 
 ## API and web app
 
@@ -79,13 +80,3 @@ emails and the Google callback are built from it.
 Requests reach the server through Dokploy's Traefik, so the stack sets
 `TRUSTED_PROXIES` to the private Docker ranges. Without it every visitor would
 share the proxy's address, and with it one rate limit.
-
-To run this documentation site in the same stack, add `COMPOSE_PROFILES=docs`
-to the environment and give the `docs` service a domain on port `3000`.
-
-## Docs
-
-```sh
-docker build -f apps/docs/Dockerfile -t montara-pass/docs .
-docker run --rm -p 3000:3000 montara-pass/docs
-```

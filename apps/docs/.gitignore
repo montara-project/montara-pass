@@ -1,5 +1,5 @@
 node_modules
-.next/
+dist/
 .source/
-next-env.d.ts
-*.tsbuildinfo
+.tanstack/
+.wrangler/
