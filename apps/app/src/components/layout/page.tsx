@@ -1,11 +1,11 @@
-import type { LucideIcon } from 'lucide-react'
+import type { Icon } from '@tabler/icons-react'
 
 import { cn } from '@/lib/utils'
 
 interface PageProps {
   title: string
   /** A mark before the title, in the focus color. */
-  icon?: LucideIcon
+  icon?: Icon
   description?: string
   /** The page's own actions, at the far end of its heading. */
   actions?: React.ReactNode

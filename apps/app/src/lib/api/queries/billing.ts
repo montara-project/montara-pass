@@ -2,18 +2,18 @@ import { mutationOptions, queryOptions } from '@tanstack/react-query'
 
 import { services } from '../services'
 
-export const BILLING_QUERY_KEY = 'billing'
+const BILLING_QUERY_KEY = 'billing'
 
 const plans = () =>
   queryOptions({
     queryKey: [BILLING_QUERY_KEY, 'plans'],
-    queryFn: async () => (await services.billing.plans()).data.data,
+    queryFn: async () => (await services.billing.plans()).data,
   })
 
 const overview = () =>
   queryOptions({
     queryKey: [BILLING_QUERY_KEY, 'overview'],
-    queryFn: async () => (await services.billing.overview()).data.data,
+    queryFn: async () => (await services.billing.overview()).data,
   })
 
 /**
@@ -29,15 +29,14 @@ const checkout = (start: (planId: string) => Promise<{ checkout_url: string | nu
     },
   })
 
-const subscribe = () =>
-  checkout(async (planId) => (await services.billing.subscribe(planId)).data.data)
+const subscribe = () => checkout(async (planId) => (await services.billing.subscribe(planId)).data)
 
-const buy = () => checkout(async (planId) => (await services.billing.buy(planId)).data.data)
+const buy = () => checkout(async (planId) => (await services.billing.buy(planId)).data)
 
 /** Opens the customer portal; its link is signed for a short while, so it is asked for on click. */
 const portal = () =>
   mutationOptions({
-    mutationFn: async () => (await services.billing.portal()).data.data,
+    mutationFn: async () => (await services.billing.portal()).data,
     onSuccess: ({ url }) => window.location.assign(url),
   })
 

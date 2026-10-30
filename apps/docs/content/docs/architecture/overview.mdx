@@ -66,7 +66,7 @@ Everything lives under `apps/app/src`.
 | Path | Role |
 | --- | --- |
 | `src/routes` | File-based routes for TanStack Router; `(auth)` and `(app)` are groups that add no URL segment |
-| `lib/api` | One axios client that refreshes the access token on a 401, then `services` and `queries` (TanStack Query) |
+| `lib/api` | One `fetch` client that refreshes the access token on a 401, then `services` and `queries` (TanStack Query) |
 | `lib/stores/vault.ts` | The unlocked keys, in memory only |
 | `components/{ui,block,layout}` | Primitives, feature blocks and page chrome |
 | `config/env.ts` | The `VITE_*` variables, validated once |

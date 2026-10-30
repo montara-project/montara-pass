@@ -15,7 +15,7 @@ import type { BaseAbstractForm } from '@/types/form'
 import SimpleAlertScrollableDialogForm from '@/components/block/common/simple-alert-scrollable-dialog-form'
 import { useAppForm } from '@/hooks/form'
 import { useVaultKeys } from '@/hooks/use-vault'
-import { toastAxiosError } from '@/lib/api/axios-error'
+import { toastApiError } from '@/lib/api/api-error'
 import { parseDto } from '@/lib/api/dtos/parse'
 import { queries } from '@/lib/api/queries'
 
@@ -54,7 +54,7 @@ function AbstractForm({
         onOpenChange(false)
         form.reset()
       } catch (error) {
-        toastAxiosError(error)
+        toastApiError(error)
       }
     },
   })

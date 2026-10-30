@@ -1,5 +1,5 @@
 /** How long a copied username or password stays on the clipboard. */
-export const CLIPBOARD_CLEAR_MS = 60_000
+const CLIPBOARD_CLEAR_MS = 60_000
 
 let timer: ReturnType<typeof setTimeout> | undefined
 

@@ -33,7 +33,7 @@ func (h *keyHandler) Get(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return dtos.Get(c, keys)
+	return dtos.OK(c, keys)
 }
 
 // Create sets up the caller's vault, once.
@@ -105,7 +105,7 @@ func (h *keyHandler) PublicKey(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return dtos.Get(c, key)
+	return dtos.OK(c, key)
 }
 
 func kdfKeys(uid uuid.UUID, body dtos.KDFBody) models.UserKeys {

@@ -1,5 +1,5 @@
+import { IconCheck, IconChevronDown, IconChevronUp } from '@tabler/icons-react'
 import { cva, type VariantProps } from 'class-variance-authority'
-import { Check, ChevronDown, ChevronUp } from 'lucide-react'
 import { Select as SelectPrimitive } from 'radix-ui'
 import * as React from 'react'
 import { isValidElement, type ReactNode } from 'react'
@@ -77,7 +77,7 @@ function SelectTrigger({ className, children, size, ...props }: SelectTriggerPro
     >
       {children}
       <SelectPrimitive.Icon asChild>
-        <ChevronDown className="text-muted-foreground -me-0.5 h-4 w-4" />
+        <IconChevronDown className="text-muted-foreground -me-0.5 h-4 w-4" />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   )
@@ -93,7 +93,7 @@ function SelectScrollUpButton({
       className={cn('flex cursor-default items-center justify-center py-1', className)}
       {...props}
     >
-      <ChevronUp className="h-4 w-4" />
+      <IconChevronUp className="h-4 w-4" />
     </SelectPrimitive.ScrollUpButton>
   )
 }
@@ -108,7 +108,7 @@ function SelectScrollDownButton({
       className={cn('flex cursor-default items-center justify-center py-1', className)}
       {...props}
     >
-      <ChevronDown className="h-4 w-4" />
+      <IconChevronDown className="h-4 w-4" />
     </SelectPrimitive.ScrollDownButton>
   )
 }
@@ -186,7 +186,7 @@ function SelectItem({
             )}
           >
             <SelectPrimitive.ItemIndicator>
-              <Check className="text-primary h-4 w-4" />
+              <IconCheck className="text-primary h-4 w-4" />
             </SelectPrimitive.ItemIndicator>
           </span>
         ))}

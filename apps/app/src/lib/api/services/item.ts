@@ -1,33 +1,38 @@
+import type {
+  ItemCreateRequest,
+  ItemListParams,
+  ItemPlacementRequest,
+  ItemRotateKeyRequest,
+  ItemShareRequest,
+  ItemUpdateRequest,
+} from '@montara-pass/shared/api/dtos/vault/schema'
 import type { Models } from '@montara-pass/shared/api/models'
 
-import { HTTP_METHOD } from '@/types/api'
+import type { ApiDeleteResponse, ApiItemResponse, ApiListResponse } from '@/types/api'
 
-import type { ItemMethods, ItemResources } from './types/item'
-
-import { api } from '../client-fetch'
-import { clientResource } from '../resource'
+import { request } from '../client-fetch'
 
 const path = '/api/v1/items'
 
-const methods: ItemMethods = [
-  HTTP_METHOD.GET,
-  HTTP_METHOD.POST,
-  HTTP_METHOD.PUT,
-  HTTP_METHOD.DELETE,
-]
-
-const resources = (): ItemResources => {
-  return {
-    ...clientResource<string, ItemMethods, Models.Item>(path, methods),
-    restore: (id) => api.put(`${path}/${id}/restore`),
-    forceDelete: (id) => api.delete(`${path}/${id}/force`),
-    setPlacement: (id, body) => api.put(`${path}/${id}/placement`, body),
-    rotateKey: (id, body) => api.put(`${path}/${id}/key`, body),
-    members: (id) => api.get(`${path}/${id}/members`),
-    share: (id, body) => api.post(`${path}/${id}/members`, body),
-    setMemberRole: (id, userId, role) => api.put(`${path}/${id}/members/${userId}`, { role }),
-    removeMember: (id, userId) => api.delete(`${path}/${id}/members/${userId}`),
-  }
+/** The CRUD routes, plus the ones that hang off one item. `delete` moves to the trash. */
+export const itemServices = {
+  list: (params?: ItemListParams) => request<ApiListResponse<Models.Item>>('GET', path, { params }),
+  store: (body: ItemCreateRequest) => request<ApiItemResponse<Models.Item>>('POST', path, { body }),
+  update: (id: string, body: ItemUpdateRequest) =>
+    request<ApiItemResponse<Models.Item>>('PUT', `${path}/${id}`, { body }),
+  delete: (id: string) => request<ApiDeleteResponse>('DELETE', `${path}/${id}`),
+  restore: (id: string) => request<ApiDeleteResponse>('PUT', `${path}/${id}/restore`),
+  forceDelete: (id: string) => request<ApiDeleteResponse>('DELETE', `${path}/${id}/force`),
+  setPlacement: (id: string, body: ItemPlacementRequest) =>
+    request<ApiItemResponse<Models.Item>>('PUT', `${path}/${id}/placement`, { body }),
+  rotateKey: (id: string, body: ItemRotateKeyRequest) =>
+    request<ApiItemResponse<Models.Item>>('PUT', `${path}/${id}/key`, { body }),
+  members: (id: string) =>
+    request<ApiListResponse<Models.ItemMember>>('GET', `${path}/${id}/members`),
+  share: (id: string, body: ItemShareRequest) =>
+    request<ApiDeleteResponse>('POST', `${path}/${id}/members`, { body }),
+  setMemberRole: (id: string, userId: string, role: string) =>
+    request<ApiDeleteResponse>('PUT', `${path}/${id}/members/${userId}`, { body: { role } }),
+  removeMember: (id: string, userId: string) =>
+    request<ApiDeleteResponse>('DELETE', `${path}/${id}/members/${userId}`),
 }
-
-export const itemServices = resources()

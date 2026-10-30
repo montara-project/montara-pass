@@ -4,10 +4,10 @@ import { mutationOptions, queryOptions } from '@tanstack/react-query'
 
 import { getQueryClient } from '@/lib/providers/react-query'
 
-import { isNotFound } from '../axios-error'
+import { isNotFound } from '../api-error'
 import { services } from '../services'
 
-export const KEY_QUERY_KEY = 'keys'
+const KEY_QUERY_KEY = 'keys'
 
 /**
  * The signed-in user's key set, or null when they have not set up a vault
@@ -18,8 +18,7 @@ const get = () =>
     queryKey: [KEY_QUERY_KEY],
     queryFn: async () => {
       try {
-        const res = await services.keys.get()
-        return res.data.data
+        return (await services.keys.get()).data
       } catch (error) {
         if (isNotFound(error)) return null
         throw error
@@ -32,8 +31,7 @@ const create = () => {
 
   return mutationOptions({
     mutationFn: async (reqBody: UserKeysRequest) => {
-      const res = await services.keys.create(reqBody)
-      return res.data
+      return services.keys.create(reqBody)
     },
     onSuccess: (res) => {
       qc.setQueryData([KEY_QUERY_KEY], res.data)
@@ -46,8 +44,7 @@ const updateKDF = () => {
 
   return mutationOptions({
     mutationFn: async (reqBody: KDFUpdateRequest) => {
-      const res = await services.keys.updateKDF(reqBody)
-      return res.data
+      return services.keys.updateKDF(reqBody)
     },
     onSuccess: (res) => {
       qc.setQueryData([KEY_QUERY_KEY], res.data)

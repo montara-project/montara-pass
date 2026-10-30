@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { useAppForm } from '@/hooks/form'
-import { toastAxiosError } from '@/lib/api/axios-error'
+import { toastApiError } from '@/lib/api/api-error'
 import { parseDto } from '@/lib/api/dtos/parse'
 import { queries } from '@/lib/api/queries'
 
@@ -47,7 +47,7 @@ export default function ChangeMasterPasswordForm() {
         toast.success('Master password changed')
         form.reset()
       } catch (error) {
-        toastAxiosError(error)
+        toastApiError(error)
       } finally {
         setIsLoading(false)
       }

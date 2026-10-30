@@ -113,7 +113,7 @@ API, and in production the API serves the built app itself from `./public`,
 with a fallback to `index.html` for client routes. `CORS_ALLOWED_ORIGINS` is
 only needed when the app is hosted somewhere else (`VITE_API_URL`).
 
-- `lib/api`: one axios client (`client-fetch.ts`, refreshes the access token
+- `lib/api`: one `fetch` client (`client-fetch.ts`, refreshes the access token
   on a 401), then `services` (HTTP) and `queries` (TanStack Query options).
 - `@montara-pass/shared` (`packages/shared`): the code the app and the
   extension share. `api/models` and `api/dtos` (zod), and `crypto`, the

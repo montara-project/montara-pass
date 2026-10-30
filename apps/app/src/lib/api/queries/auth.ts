@@ -11,8 +11,7 @@ const profile = () =>
     // A 401 means "not signed in"; retrying only delays the redirect.
     retry: false,
     queryFn: async () => {
-      const res = await services.auth.me()
-      return res.data
+      return services.auth.me()
     },
   })
 

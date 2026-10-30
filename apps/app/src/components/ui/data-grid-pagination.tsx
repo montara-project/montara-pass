@@ -1,6 +1,9 @@
-import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
-import { useQueryState } from 'nuqs'
-import { type ReactNode, useMemo } from 'react'
+import type { ReactNode } from 'react'
+
+import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react'
+import { useNavigate, useSearch } from '@tanstack/react-router'
+
+import type { PaginationSearch } from '@/hooks/use-pagination-query'
 
 import { Button } from '@/components/ui/button'
 import { useDataGrid } from '@/components/ui/data-grid'
@@ -42,18 +45,13 @@ function DataGridPagination({
 }: DataGridPaginationProps) {
   const { recordCount, isLoading } = useDataGrid()
 
-  const [queryPage, setQueryPage] = useQueryState('page')
-  const [queryPageSize, setQueryPageSize] = useQueryState('pageSize')
+  const search: PaginationSearch = useSearch({ strict: false })
+  const navigate = useNavigate()
+  const setSearch = (next: PaginationSearch) =>
+    void navigate({ to: '.', search: (prev) => ({ ...prev, ...next }), replace: true })
 
-  const newPageIndex = useMemo(() => {
-    if (queryPage) return Number(queryPage)
-    return pageIndex
-  }, [queryPage, pageIndex])
-
-  const newPageSize = useMemo(() => {
-    if (queryPageSize) return Number(queryPageSize)
-    return pageSize
-  }, [queryPageSize, pageSize])
+  const newPageIndex = search.page ?? pageIndex
+  const newPageSize = search.pageSize ?? pageSize
 
   const defaultProps: Partial<DataGridPaginationProps> = {
     sizes: [5, 10, 25, 50, 100],
@@ -109,7 +107,7 @@ function DataGridPagination({
           onClick={() => {
             if (newPageIndex !== i) {
               onPageChange?.(i)
-              setQueryPage(i.toString())
+              setSearch({ page: i })
             }
           }}
         >
@@ -132,7 +130,7 @@ function DataGridPagination({
           onClick={() => {
             const result = currentGroupStart - 1
             onPageChange?.(result)
-            setQueryPage(result.toString())
+            setSearch({ page: result })
           }}
         >
           ...
@@ -153,7 +151,7 @@ function DataGridPagination({
           mode="icon"
           onClick={() => {
             onPageChange?.(currentGroupEnd)
-            setQueryPage(currentGroupEnd.toString())
+            setSearch({ page: currentGroupEnd })
           }}
         >
           ...
@@ -183,7 +181,7 @@ function DataGridPagination({
               onValueChange={(value) => {
                 const result = Number(value)
                 onPageSizeChange?.(result)
-                setQueryPageSize(result.toString())
+                setSearch({ pageSize: result })
               }}
             >
               <SelectTrigger className="w-fit" size="sm">
@@ -218,12 +216,12 @@ function DataGridPagination({
                   onClick={() => {
                     const result = newPageIndex - 1
                     onPageChange?.(result)
-                    setQueryPage(result.toString())
+                    setSearch({ page: result })
                   }}
                   disabled={currentPage === 1}
                 >
                   <span className="sr-only">Go to previous page</span>
-                  <ChevronLeftIcon className="size-4" />
+                  <IconChevronLeft className="size-4" />
                 </Button>
 
                 {renderEllipsisPrevButton()}
@@ -240,12 +238,12 @@ function DataGridPagination({
                   onClick={() => {
                     const result = newPageIndex + 1
                     onPageChange?.(result)
-                    setQueryPage(result.toString())
+                    setSearch({ page: result })
                   }}
                   disabled={currentPage >= pageCount}
                 >
                   <span className="sr-only">Go to next page</span>
-                  <ChevronRightIcon className="size-4" />
+                  <IconChevronRight className="size-4" />
                 </Button>
               </div>
             )}

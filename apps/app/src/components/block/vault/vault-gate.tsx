@@ -19,7 +19,7 @@ import { Button } from '@/components/ui/button'
 import { checked, useAppForm } from '@/hooks/form'
 import { submitForm } from '@/hooks/submit-form'
 import { useSignOut } from '@/hooks/use-sign-out'
-import { axiosErrorMessage } from '@/lib/api/axios-error'
+import { apiErrorMessage } from '@/lib/api/api-error'
 import { queries } from '@/lib/api/queries'
 import { FOLDER_QUERY_KEY } from '@/lib/api/queries/folder'
 import { ITEM_QUERY_KEY } from '@/lib/api/queries/item'
@@ -66,7 +66,7 @@ export default function VaultGate({ children }: VaultGateProps) {
     return (
       <AuthShell title="Couldn't load your vault" foot={<Account />}>
         <p role="alert" className="text-danger text-center text-[13px] whitespace-pre-line">
-          {axiosErrorMessage(error)}
+          {apiErrorMessage(error)}
         </p>
         <Button size="lg" className="mt-1.5 w-full" onClick={() => void refetch()}>
           Try again
@@ -192,7 +192,7 @@ function SetupForm() {
         await mutation.mutateAsync(request)
         unlock(keys)
       } catch (err) {
-        setError(axiosErrorMessage(err))
+        setError(apiErrorMessage(err))
       }
     },
   })

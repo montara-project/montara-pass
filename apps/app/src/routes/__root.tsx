@@ -4,7 +4,6 @@ import { createRootRouteWithContext, Outlet } from '@tanstack/react-router'
 
 import EmptyState from '@/components/block/common/empty-state'
 import { Toaster } from '@/components/ui/sonner'
-import DecorationProvider from '@/lib/providers/decoration'
 
 /**
  * The root layout around every route.
@@ -16,13 +15,13 @@ import DecorationProvider from '@/lib/providers/decoration'
  * @see https://tanstack.com/router/latest/docs/framework/react/routing/routing-concepts
  */
 const RootLayout = () => (
-  <DecorationProvider>
+  <>
     <Outlet />
     <Toaster position="bottom-center" />
-  </DecorationProvider>
+  </>
 )
 
-export interface RouterContext {
+interface RouterContext {
   queryClient: QueryClient
 }
 

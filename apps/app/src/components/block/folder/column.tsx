@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 
 import type { AppColumnDef, BaseColumnProps } from '@/types/column'
 
-import { toastAxiosError } from '@/lib/api/axios-error'
+import { toastApiError } from '@/lib/api/api-error'
 import { queries } from '@/lib/api/queries'
 
 import CellItem from '../common/cell-item'
@@ -77,7 +77,7 @@ function ActionCell({ record }: ActionCellProps) {
       toast.success('Folder deleted successfully')
       setOpenDelete(false)
     } catch (error) {
-      toastAxiosError(error as Error)
+      toastApiError(error as Error)
     }
   }
 

@@ -1,7 +1,7 @@
 package validator
 
-// MessageRecord maps a field to its failure messages.
-type MessageRecord map[string][]string
+// MessageRecord maps a field to its first failure message.
+type MessageRecord map[string]string
 
 type MapValidator struct {
 	fvs map[string]*FieldValidator
@@ -16,7 +16,7 @@ func (v *MapValidator) Validate(dict map[string]interface{}) (MessageRecord, boo
 	mr := make(MessageRecord)
 	for key, fv := range v.fvs {
 		if msg := fv.Validate(dict[key]); msg != "" {
-			mr[key] = []string{msg}
+			mr[key] = msg
 		}
 	}
 	return mr, len(mr) == 0

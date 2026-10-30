@@ -54,7 +54,7 @@ func (h *billingHandler) ListPlans(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return dtos.Get(c, plans)
+	return dtos.OK(c, plans)
 }
 
 // ListAllPlans answers every plan, retired ones included, for a super user.
@@ -63,7 +63,7 @@ func (h *billingHandler) ListAllPlans(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return dtos.Get(c, plans)
+	return dtos.OK(c, plans)
 }
 
 // Stats answers the counts of a super user's overview.
@@ -72,7 +72,7 @@ func (h *billingHandler) Stats(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return dtos.Get(c, stats)
+	return dtos.OK(c, stats)
 }
 
 // SyncPlans reads the Lemon Squeezy catalog now, for a super user who just

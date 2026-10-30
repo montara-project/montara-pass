@@ -5,7 +5,7 @@ import { isTotpCode, TOTP_CODE_REQUIRED } from '@montara-pass/shared/auth/totp'
 
 import { env } from '@/config/env'
 
-import { throwAxiosError } from '../api/axios-error'
+import { throwApiError } from '../api/api-error'
 import { services } from '../api/services'
 import { RESET_PASSWORD_PATH, VERIFY_EMAIL_PATH } from '../constants/auth'
 import { useVaultStore } from '../stores/vault'
@@ -21,20 +21,20 @@ function storeSignIn(data: SignInData) {
 /**
  * Authenticate against the Go API with email + password. On success the
  * returned tokens are stored and attached to subsequent API requests by the
- * axios interceptor in `client-fetch.ts`. A user who turned TOTP on gets no
+ * `request()` in `client-fetch.ts`. A user who turned TOTP on gets no
  * tokens yet but a `totpToken`, for {@link verifyTotp}.
  */
 export async function signInWithEmail(body: SignInDto): Promise<{ totpToken?: string }> {
   try {
     const res = await services.auth.signIn(body)
-    if (res.data.totp_token) {
-      return { totpToken: res.data.totp_token }
+    if (res.totp_token) {
+      return { totpToken: res.totp_token }
     }
 
-    storeSignIn(res.data)
+    storeSignIn(res)
     return {}
   } catch (error) {
-    throwAxiosError(error)
+    throwApiError(error)
   }
 }
 
@@ -48,9 +48,9 @@ export async function verifyTotp(totpToken: string, code: string) {
     const res = isTotpCode(code)
       ? await services.auth.totpVerify(totpToken, code)
       : await services.auth.totpVerifyBackupCode(totpToken, code.toLowerCase())
-    storeSignIn(res.data)
+    storeSignIn(res)
   } catch (error) {
-    throwAxiosError(error)
+    throwApiError(error)
   }
 }
 
@@ -65,12 +65,12 @@ export async function confirmTotp(totpToken: string, code: string) {
     throw new Error(TOTP_CODE_REQUIRED)
   }
   try {
-    const old = (await services.auth.me()).data.session.id
+    const old = (await services.auth.me()).session.id
     const res = await services.auth.totpVerify(totpToken, code)
-    storeSignIn(res.data)
+    storeSignIn(res)
     await services.auth.signOut({ session_id: old }).catch(() => {})
   } catch (error) {
-    throwAxiosError(error)
+    throwApiError(error)
   }
 }
 
@@ -100,14 +100,14 @@ export async function signUpWithEmail(body: SignUpDto): Promise<{ signedIn: bool
     const callback_url = emailLinkCallback(`${VERIFY_EMAIL_PATH}?verified=1`)
     const res = await services.auth.signUp({ ...body, callback_url })
 
-    if (!res.data.access_token) {
+    if (!res.access_token) {
       return { signedIn: false }
     }
 
-    setAuthTokens({ accessToken: res.data.access_token, refreshToken: res.data.refresh_token })
+    setAuthTokens({ accessToken: res.access_token, refreshToken: res.refresh_token })
     return { signedIn: true }
   } catch (error) {
-    throwAxiosError(error)
+    throwApiError(error)
   }
 }
 
@@ -122,7 +122,7 @@ export async function requestPasswordReset(email: string) {
       callback_url: emailLinkCallback(RESET_PASSWORD_PATH),
     })
   } catch (error) {
-    throwAxiosError(error)
+    throwApiError(error)
   }
 }
 
@@ -135,7 +135,7 @@ export async function resetPassword(token: string, password: string) {
   try {
     await services.auth.resetPassword({ token, password })
   } catch (error) {
-    throwAxiosError(error)
+    throwApiError(error)
   }
   clearAuthTokens()
   useVaultStore.getState().lock()
