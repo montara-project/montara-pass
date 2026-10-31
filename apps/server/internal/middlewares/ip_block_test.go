@@ -27,7 +27,7 @@ func TestIPBlock(t *testing.T) {
 				return status == http.StatusUnauthorized || status == http.StatusTooManyRequests
 			},
 			Exempt: func(string) bool { return exempt },
-		}, NewStore(nil), slog.New(slog.NewTextHandler(io.Discard, nil))))
+		}, NewIPKV(NewStore(nil)), slog.New(slog.NewTextHandler(io.Discard, nil))))
 		app.Get("/ok", func(c fiber.Ctx) error { return c.SendString("ok") })
 		app.Get("/missing", func(c fiber.Ctx) error { return apperr.ErrNotFound })
 		app.Get("/wrong", func(c fiber.Ctx) error { return c.SendStatus(http.StatusUnauthorized) })
@@ -64,5 +64,80 @@ func TestIPBlock(t *testing.T) {
 	}
 	if res := get(exempt, "/ok"); res.StatusCode != http.StatusOK {
 		t.Fatalf("exempt ip: %d, want 200", res.StatusCode)
+	}
+}
+
+// TestIPBlockOnBlock checks that the block a super user writes with BlockIP
+// is the one the middleware answers 429 on, that UnblockIP lets the IP
+// through at once, and that OnBlock hears of an automatic block with how
+// many failures earned it.
+func TestIPBlockOnBlock(t *testing.T) {
+	kv := NewIPKV(NewStore(nil))
+
+	var blockedIP string
+	var blockedFor time.Duration
+	app := fiber.New(fiber.Config{ErrorHandler: ErrorHandler(slog.New(slog.NewTextHandler(io.Discard, nil)))})
+	app.Use(IPBlock(IPBlockConfig{
+		MaxFailures: 2,
+		Window:      time.Minute,
+		BlockFor:    time.Hour,
+		Failed: func(c fiber.Ctx, status int) bool {
+			return status == http.StatusUnauthorized
+		},
+		Exempt: func(string) bool { return false },
+		OnBlock: func(ip string, until time.Time, failures int) {
+			blockedIP = ip
+			blockedFor = time.Until(until)
+			if failures != 2 {
+				t.Errorf("OnBlock: failures %d, want 2", failures)
+			}
+		},
+	}, kv, slog.New(slog.NewTextHandler(io.Discard, nil))))
+	app.Get("/ok", func(c fiber.Ctx) error { return c.SendString("ok") })
+	app.Get("/wrong", func(c fiber.Ctx) error { return c.SendStatus(http.StatusUnauthorized) })
+
+	get := func(path string) *http.Response {
+		t.Helper()
+		res, err := app.Test(httptest.NewRequest(http.MethodGet, path, nil))
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		return res
+	}
+
+	get("/wrong")
+	get("/wrong")
+	if res := get("/ok"); res.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("after two failures: %d, want 429", res.StatusCode)
+	}
+	if blockedIP == "" || blockedFor <= 55*time.Minute {
+		t.Fatalf("OnBlock: ip=%q for=%v, want a block for about an hour", blockedIP, blockedFor)
+	}
+
+	// A manual block through the same keys, and its lift — in a store of its
+	// own, for the IP the middleware saw above.
+	kv2 := NewIPKV(NewStore(nil))
+	BlockIP(kv2, blockedIP, time.Now().Add(time.Minute))
+	manual := fiber.New(fiber.Config{ErrorHandler: ErrorHandler(slog.New(slog.NewTextHandler(io.Discard, nil)))})
+	manual.Use(IPBlock(IPBlockConfig{Exempt: func(string) bool { return false }}, kv2, slog.New(slog.NewTextHandler(io.Discard, nil))))
+	manual.Get("/ok", func(c fiber.Ctx) error { return c.SendString("ok") })
+	res, err := manual.Test(httptest.NewRequest(http.MethodGet, "/ok", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("manually blocked ip: %d, want 429", res.StatusCode)
+	}
+
+	UnblockIP(kv2, blockedIP)
+	res, err = manual.Test(httptest.NewRequest(http.MethodGet, "/ok", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("unblocked ip: %d, want 200", res.StatusCode)
 	}
 }

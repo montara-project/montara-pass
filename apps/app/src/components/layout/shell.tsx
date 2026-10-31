@@ -3,6 +3,7 @@ import { initials } from '@montara-pass/shared/string'
 import {
   IconChevronRight,
   IconCreditCard,
+  IconForbid,
   IconFolders,
   IconKey,
   IconLock,
@@ -73,7 +74,12 @@ const TOOLS = [
 /** Named in the breadcrumb only: the account menu is the way to it. */
 const ACCOUNT = [{ title: 'Account', url: '/profile', group: 'Account' }] as const
 
-const CRUMBS = [...NAV, ...TOOLS, ...ACCOUNT]
+/** The super user's pages. Hidden from everyone else, and the route refuses them too. */
+const ADMIN = [
+  { title: 'IP blocks', url: '/settings/ip-blocks', icon: IconForbid, group: 'Admin' },
+] as const
+
+const CRUMBS = [...NAV, ...TOOLS, ...ADMIN, ...ACCOUNT]
 
 /**
  * The frame of every page after the vault is unlocked: an inset sidebar
@@ -84,6 +90,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   // The page, not its filters: choosing an item or a folder is not a move.
   const pathname = useLocation({ select: (location) => location.pathname })
   const current = CRUMBS.find((crumb) => pathname.startsWith(crumb.url))
+  // The Admin group is the super user's: hidden until the role says so.
+  const { data: role } = useQuery(queries.security.role())
+  const isSuper = role?.role === 'super_user'
 
   return (
     // The sidebar remembers itself in this cookie.
@@ -122,6 +131,14 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               <NavList items={TOOLS} pathname={pathname} />
             </SidebarGroupContent>
           </SidebarGroup>
+          {isSuper && (
+            <SidebarGroup>
+              <SidebarGroupLabel>Admin</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <NavList items={ADMIN} pathname={pathname} />
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
         </SidebarContent>
 
         <SidebarFooter>
@@ -157,7 +174,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   )
 }
 
-function NavList({ items, pathname }: { items: typeof NAV | typeof TOOLS; pathname: string }) {
+type NavItem = { title: string; url: string; icon: React.ElementType; group: string }
+
+function NavList({ items, pathname }: { items: readonly NavItem[]; pathname: string }) {
   const { isMobile, setOpenMobile } = useSidebar()
 
   return (

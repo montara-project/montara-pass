@@ -15,6 +15,7 @@ import (
 	"montara-pass/server/internal/handlers"
 	"montara-pass/server/internal/lib/borderpay"
 	"montara-pass/server/internal/lib/lemonsqueezy"
+	"montara-pass/server/internal/middlewares"
 	"montara-pass/server/internal/repositories"
 	"montara-pass/server/internal/seeders"
 
@@ -105,6 +106,26 @@ func run() error {
 		Redis:        cache,
 		Payments:     payments,
 		BorderPay:    borderPay,
+		IPKV:         middlewares.NewIPKV(middlewares.NewStore(cache)),
+	}
+
+	// The blocks a super user asked for outlive the store's own memory: a
+	// restart, or a Redis that lost its keys, is answered from the record.
+	syncCtx, syncCancel := context.WithTimeout(context.Background(), 15*time.Second)
+	manual, err := repos.IPBlock.ActiveManual(syncCtx)
+	syncCancel()
+	if err != nil {
+		return fmt.Errorf("restore ip blocks: %w", err)
+	}
+	for _, b := range manual {
+		var until time.Time
+		if b.BlockedUntil != nil {
+			until = *b.BlockedUntil
+		}
+		middlewares.BlockIP(application.IPKV, b.IP, until)
+	}
+	if len(manual) > 0 {
+		logger.Info("restored ip blocks", "count", len(manual))
 	}
 
 	// Authula reads its email templates when it is built.

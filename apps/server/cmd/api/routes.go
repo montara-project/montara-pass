@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"slices"
 	"strings"
@@ -14,6 +16,7 @@ import (
 	"montara-pass/server/internal/handlers"
 	"montara-pass/server/internal/lib/apperr"
 	"montara-pass/server/internal/middlewares"
+	"montara-pass/server/internal/models"
 )
 
 // apiPrefix scopes every endpoint, so the web app can own the rest of the
@@ -87,7 +90,12 @@ func routes(r *fiber.App, app *app.Application) {
 	exemptIPs := splitCSV(app.Config.App.RateLimitExemptIPs)
 
 	// First, so a blocked IP reaches nothing else of the API, and every
-	// limiter's 429 below is seen.
+	// limiter's 429 below is seen. The KV is the application's, so a block a
+	// super user's handler writes is the one this answers 429 on.
+	kv := app.IPKV
+	if kv == nil {
+		kv = middlewares.NewIPKV(store)
+	}
 	r.Use(apiPrefix, middlewares.IPBlock(middlewares.IPBlockConfig{
 		MaxFailures: ipBlockMaxFailures,
 		Window:      ipBlockWindow,
@@ -96,7 +104,17 @@ func routes(r *fiber.App, app *app.Application) {
 		Exempt: func(ip string) bool {
 			return slices.Contains(exemptIPs, ip) || (exemptLoopback && (ip == "127.0.0.1" || ip == "::1"))
 		},
-	}, store, app.Logger))
+		OnBlock: func(ip string, until time.Time, failures int) {
+			// The block takes hold through the KV; the record is kept for the
+			// super user's list, and never stands between them and an answer.
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			reason := fmt.Sprintf("%d failed requests in %s", failures, ipBlockWindow)
+			if _, err := app.Repositories.IPBlock.Create(ctx, ip, models.IPBlockAuto, reason, &until); err != nil {
+				app.Logger.Warn("record blocked ip", "ip", ip, "error", err)
+			}
+		},
+	}, kv, app.Logger))
 
 	// Everything outside apiPrefix belongs to the web app (see serveWebApp).
 	api := r.Group(apiPrefix)
@@ -143,6 +161,15 @@ func routes(r *fiber.App, app *app.Application) {
 	items.Delete("/:id/force", h.Item.DeletePermanently)
 	items.Put("/:id/placement", h.Item.SetPlacement)
 	items.Put("/:id/used", h.Item.MarkUsed)
+
+	// The blocked IPs: the auto-block records what it blocks, and a super
+	// user sees the list and blocks or lets an IP through by hand. The
+	// middleware enforces; these keep the record and the store in step.
+	v1.Get("/me/role", m.Authorization, h.Me.Role)
+	blocks := v1.Group("/ip-blocks", m.Authorization, m.SuperUser)
+	blocks.Get("/", h.IPBlock.List)
+	blocks.Post("/", once, h.IPBlock.Create)
+	blocks.Delete("/:id", h.IPBlock.Destroy)
 
 	// Cloud Edition only. The Community Edition has one user, so nobody to
 	// share with, and takes no payments.

@@ -5,6 +5,7 @@ import "database/sql"
 type Repositories struct {
 	Billing BillingRepository
 	Folder  FolderRepository
+	IPBlock IPBlockRepository
 	Item    ItemRepository
 	User    UserRepository
 	UserKey UserKeyRepository
@@ -17,6 +18,7 @@ func New(db *sql.DB) Repositories {
 	return Repositories{
 		Billing: BillingRepository{base},
 		Folder:  FolderRepository{base},
+		IPBlock: IPBlockRepository{base},
 		Item:    ItemRepository{base},
 		User:    UserRepository{base},
 		UserKey: UserKeyRepository{base},

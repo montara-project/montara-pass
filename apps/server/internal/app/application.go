@@ -8,6 +8,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"montara-pass/server/internal/config"
+	"montara-pass/server/internal/lib"
 	"montara-pass/server/internal/lib/borderpay"
 	"montara-pass/server/internal/lib/lemonsqueezy"
 	"montara-pass/server/internal/repositories"
@@ -31,4 +32,9 @@ type Application struct {
 	// BorderPay is nil unless the IDR plans can be paid: the Cloud Edition
 	// with BORDERPAY_API_KEY set. It sells the plans priced in IDR.
 	BorderPay *borderpay.Client
+	// IPKV is where the IP blocks live: what IPBlock counts and answers 429
+	// on, what a manual block writes and a lift deletes, and what a boot
+	// restores the active manual blocks into. In Redis when there is one, so
+	// replicas share it, and in memory otherwise.
+	IPKV lib.IPKV
 }
