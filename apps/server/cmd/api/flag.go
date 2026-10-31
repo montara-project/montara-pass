@@ -115,6 +115,9 @@ func parseFlag(cfg *config.Config) {
 	flag.StringVar(&cfg.Billing.LemonSqueezyStoreID, "lemonsqueezy-store-id", envString("LEMONSQUEEZY_STORE_ID", ""), "Lemon Squeezy store id that sells the plans")
 	flag.StringVar(&cfg.Billing.LemonSqueezyWebhookSecret, "lemonsqueezy-webhook-secret", envString("LEMONSQUEEZY_WEBHOOK_SECRET", ""), "Signing secret of the store's Lemon Squeezy webhook")
 	flag.BoolVar(&cfg.Billing.RequirePaidSharing, "require-paid-sharing", envBool("REQUIRE_PAID_SHARING", false), "Sharing an item needs a paid plan (needs lemonsqueezy-api-key)")
+	flag.StringVar(&cfg.Billing.BorderPayAPIKey, "borderpay-api-key", envString("BORDERPAY_API_KEY", ""), "BorderPay API key for IDR billing (empty disables IDR checkout)")
+	flag.StringVar(&cfg.Billing.BorderPayWebhookToken, "borderpay-webhook-token", envString("BORDERPAY_WEBHOOK_TOKEN", ""), "Verification token of the BorderPay project's webhook")
+	flag.StringVar(&cfg.Billing.BorderPayBaseURL, "borderpay-base-url", envString("BORDERPAY_BASE_URL", ""), "BorderPay API base URL override (default https://borderpay.id/api/v1)")
 
 	// Sentry
 	flag.StringVar(&cfg.Sentry.Dsn, "sentry-dsn", envString("SENTRY_DSN", ""), "Sentry DSN")
@@ -216,6 +219,17 @@ func validateFlag(cfg *config.Config) {
 	}
 	if b.RequirePaidSharing && b.LemonSqueezyAPIKey == "" {
 		log.Fatal("flag require-paid-sharing needs lemonsqueezy-api-key, so the plan can be bought")
+	}
+
+	// BorderPay sells the IDR plans: the key pays, and the token is how a
+	// webhook is believed.
+	if (b.BorderPayAPIKey == "") != (b.BorderPayWebhookToken == "") {
+		log.Fatal("flags borderpay-api-key and borderpay-webhook-token must be provided together")
+	}
+	if b.BorderPayBaseURL != "" {
+		if u, err := url.Parse(b.BorderPayBaseURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			log.Fatalf("flag borderpay-base-url: %q must be an URL like https://borderpay.id/api/v1", b.BorderPayBaseURL)
+		}
 	}
 
 	if (cfg.Auth.GoogleClientID == "") != (cfg.Auth.GoogleClientSecret == "") {

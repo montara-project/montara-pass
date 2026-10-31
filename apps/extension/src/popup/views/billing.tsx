@@ -3,7 +3,7 @@ import type { Models } from '@montara-pass/shared/api/models'
 import { formatPrice } from '@montara-pass/shared/money'
 import {
   BILLING_STATUS,
-  BILLING_TERMS,
+  billingTerms,
   hasPaidPurchase,
   isSandbox,
   ownedPurchase,
@@ -35,16 +35,21 @@ interface BillingProps {
 
 const DATE = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
 
-/** Payments happen at Lemon Squeezy, in a tab of their own. */
+/** Payments happen at the plan's provider, in a tab of their own. */
 function open(url: string) {
   window.open(url, '_blank', 'noopener')
 }
 
+/** The tabs, and the currencies their plans are priced in. */
+const CURRENCIES = ['USD', 'IDR'] as const
+
 /**
  * Billing, Cloud Edition only: the signed-in user's subscription and
- * purchases, and the plans on offer. Paying opens Lemon Squeezy in a new tab;
- * this page reads the outcome again when it is back in front, and every few
- * seconds while a payment is pending.
+ * purchases, and the plans on offer, in two tabs — the USD plans sold
+ * through Lemon Squeezy's checkout, the IDR ones through BorderPay's QRIS.
+ * Paying opens the plan's provider in a new tab; this page reads the outcome
+ * again when it is back in front, and every few seconds while a payment is
+ * pending.
  */
 export default function Billing({ onSignedOut }: BillingProps) {
   const [plans, setPlans] = useState<Models.Plan[]>([])
@@ -101,9 +106,11 @@ export default function Billing({ onSignedOut }: BillingProps) {
   }
 
   const lifetime = hasPaidPurchase(purchases)
+  // The tab's currency, and the plans on offer in it.
+  const [currency, setCurrency] = useState<'USD' | 'IDR'>('USD')
+  const onOffer = plans.filter((plan) => plan.currency === currency)
   // The plan marked out, as on the web app's billing page: the yearly one.
-  const featured = plans.find((plan) => plan.billing_interval === 'year')
-  const currency = plans[0]?.currency
+  const featured = onOffer.find((plan) => plan.billing_interval === 'year')
 
   return (
     <div className="stack detail-body tool-body">
@@ -149,7 +156,10 @@ export default function Billing({ onSignedOut }: BillingProps) {
                       Continue payment
                     </button>
                   ) : (
-                    subscription.status === 'active' && (
+                    subscription.status === 'active' &&
+                    subscription.plan.provider !== 'borderpay' && (
+                      // BorderPay renews nothing by itself and has no portal:
+                      // an IDR subscription is renewed by subscribing again.
                       <button
                         className="secondary"
                         disabled={busy !== null}
@@ -175,17 +185,32 @@ export default function Billing({ onSignedOut }: BillingProps) {
             <h3 id="billing-plans" className="billing-title">
               Plans
             </h3>
+            <div role="tablist" aria-label="Currency" className="plan-tabs">
+              {CURRENCIES.map((code) => (
+                <button
+                  key={code}
+                  role="tab"
+                  aria-selected={currency === code}
+                  disabled={busy !== null}
+                  className="plan-tab"
+                  data-on={currency === code || undefined}
+                  onClick={() => setCurrency(code)}
+                >
+                  {code}
+                </button>
+              ))}
+            </div>
             {plans.length === 0 ? (
               <p className="muted">No plans are on offer yet.</p>
             ) : (
               <ul className="plan-grid">
-                {plans.map((plan) => {
+                {onOffer.map((plan) => {
                   const purchase =
                     plan.billing === 'one_time' ? ownedPurchase(purchases, plan) : undefined
                   // One subscription at a time; another once this one has ended.
                   const subscribed = plan.billing === 'recurring' && subscription !== null
                   const saving = planSaving(plan, plans)
-                  const offer = planOffer(plan, formatPrice(plan.amount, 'USD'))
+                  const offer = planOffer(plan, formatPrice(plan.amount, plan.currency))
                   const action = plan.billing === 'recurring' ? 'Subscribe' : 'Buy once'
                   return (
                     <li
@@ -203,12 +228,12 @@ export default function Billing({ onSignedOut }: BillingProps) {
                         </span>
                       </span>
                       <span className="plan-price">
-                        {formatPrice(saving?.amount ?? plan.amount, 'USD')}{' '}
+                        {formatPrice(saving?.amount ?? plan.amount, plan.currency)}{' '}
                         <small>{planPeriod(plan)}</small>
                         {saving && (
                           <s className="plan-was">
                             <span className="visually-hidden">was </span>
-                            {formatPrice(saving.was, 'USD')}
+                            {formatPrice(saving.was, plan.currency)}
                           </s>
                         )}
                       </span>
@@ -243,15 +268,16 @@ export default function Billing({ onSignedOut }: BillingProps) {
               </ul>
             )}
             <p className="muted">
-              Paying opens Lemon Squeezy in a new tab. This page updates once the payment has gone
-              through.
+              {currency === 'IDR'
+                ? 'Paying opens BorderPay, which shows a QRIS code, in a new tab. This page updates once the payment has gone through.'
+                : 'Paying opens Lemon Squeezy in a new tab. This page updates once the payment has gone through.'}
             </p>
           </section>
 
           <div className="billing-facts">
             {[
               { id: 'billing-includes', title: 'Every plan includes', items: PLAN_INCLUDES },
-              { id: 'billing-how', title: 'How billing works', items: BILLING_TERMS },
+              { id: 'billing-how', title: 'How billing works', items: billingTerms(currency) },
             ].map(({ id, title, items }) => (
               <section key={id} className="stack billing-section" aria-labelledby={id}>
                 <h3 id={id} className="billing-title">
@@ -279,7 +305,8 @@ export default function Billing({ onSignedOut }: BillingProps) {
                   <li key={purchase.id}>
                     <span className="item-name">{planName(purchase.plan)}</span>
                     <span className="muted">
-                      {formatPrice(purchase.amount, 'USD')} · {BILLING_STATUS[purchase.status]}
+                      {formatPrice(purchase.amount, purchase.currency)} ·{' '}
+                      {BILLING_STATUS[purchase.status]}
                       {purchase.paid_at && ` · ${DATE.format(new Date(purchase.paid_at))}`}
                     </span>
                   </li>

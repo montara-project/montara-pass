@@ -83,6 +83,9 @@ services:
       LEMONSQUEEZY_WEBHOOK_SECRET: ${LEMONSQUEEZY_WEBHOOK_SECRET:-}
       # Sharing an item needs a paid plan; needs LEMONSQUEEZY_API_KEY.
       REQUIRE_PAID_SHARING: ${REQUIRE_PAID_SHARING:-false}
+      # IDR billing through BorderPay; empty leaves IDR checkout off.
+      BORDERPAY_API_KEY: ${BORDERPAY_API_KEY:-}
+      BORDERPAY_WEBHOOK_TOKEN: ${BORDERPAY_WEBHOOK_TOKEN:-}
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:8080/api/health']
       interval: 5m

@@ -25,12 +25,12 @@ type BillingRepository struct {
 
 const planColumns = `
 	p.id, p.created_at, p.updated_at, p.code, p.name, p.description,
-	p.billing, p.billing_interval, p.amount, p.compare_at_amount, p.currency, p.active, p.variant_id,
+	p.billing, p.billing_interval, p.amount, p.compare_at_amount, p.currency, p.provider, p.active, p.variant_id,
 	p.discount_code, p.discount_amount, p.discount_payments, p.discount_ends_at`
 
 func planDest(p *models.Plan) []any {
 	return []any{&p.ID, &p.CreatedAt, &p.UpdatedAt, &p.Code, &p.Name, &p.Description,
-		&p.Billing, &p.BillingInterval, &p.Amount, &p.CompareAtAmount, &p.Currency, &p.Active, &p.VariantID,
+		&p.Billing, &p.BillingInterval, &p.Amount, &p.CompareAtAmount, &p.Currency, &p.Provider, &p.Active, &p.VariantID,
 		&p.DiscountCode, &p.DiscountAmount, &p.DiscountPayments, &p.DiscountEndsAt}
 }
 
@@ -59,19 +59,21 @@ func (r *BillingRepository) GetPlan(ctx context.Context, id uuid.UUID) (models.P
 
 // SyncPlans makes the plans what the Lemon Squeezy catalog sells: each of
 // plans, found by its variant, is added or brought up to date, and every
-// other plan is taken off sale. A plan keeps its kind, which subscriptions
-// and purchases name: one whose variant changed kind is taken off sale too.
-// It returns the codes of those that did. A plan's compare_at_amount is
-// not Lemon Squeezy's and is kept, unless the new price meets it.
+// other Lemon Squeezy plan is taken off sale — the BorderPay ones, which no
+// variant names, are never touched. A plan keeps its kind, which
+// subscriptions and purchases name: one whose variant changed kind is taken
+// off sale too. It returns the codes of those that did. A plan's
+// compare_at_amount is not Lemon Squeezy's and is kept, unless the new price
+// meets it.
 func (r *BillingRepository) SyncPlans(ctx context.Context, plans []models.Plan) (changedKind []string, err error) {
 	err = lib.WithTransaction(ctx, r.DB, func(tx *sql.Tx) error {
 		kept := []string{}
 		for _, p := range plans {
 			var id uuid.UUID
 			err := tx.QueryRowContext(ctx, `
-				INSERT INTO plans (code, name, description, billing, billing_interval, amount, currency, active, variant_id,
+				INSERT INTO plans (code, name, description, billing, billing_interval, amount, currency, provider, active, variant_id,
 				                   discount_code, discount_amount, discount_payments, discount_ends_at)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 				ON CONFLICT (variant_id) DO UPDATE
 				SET name = EXCLUDED.name, description = EXCLUDED.description,
 				    billing_interval = EXCLUDED.billing_interval, amount = EXCLUDED.amount,
@@ -83,7 +85,7 @@ func (r *BillingRepository) SyncPlans(ctx context.Context, plans []models.Plan) 
 				                             THEN plans.compare_at_amount END
 				WHERE plans.billing = EXCLUDED.billing
 				RETURNING id`,
-				p.Code, p.Name, p.Description, p.Billing, p.BillingInterval, p.Amount, p.Currency, p.Active, p.VariantID,
+				p.Code, p.Name, p.Description, p.Billing, p.BillingInterval, p.Amount, p.Currency, models.PlanLemonSqueezy, p.Active, p.VariantID,
 				p.DiscountCode, p.DiscountAmount, p.DiscountPayments, p.DiscountEndsAt,
 			).Scan(&id)
 			switch {
@@ -98,7 +100,8 @@ func (r *BillingRepository) SyncPlans(ctx context.Context, plans []models.Plan) 
 
 		_, err := tx.ExecContext(ctx, `
 			UPDATE plans SET active = false, updated_at = now()
-			WHERE active AND (variant_id IS NULL OR NOT (variant_id = ANY($1)))`, kept)
+			WHERE active AND provider = $1 AND (variant_id IS NULL OR NOT (variant_id = ANY($2)))`,
+			models.PlanLemonSqueezy, kept)
 		return err
 	})
 	return changedKind, err
@@ -187,24 +190,32 @@ func (r *BillingRepository) CountSubscriptions(ctx context.Context, p ListParams
 // paid: the user's, or with a nil userID everyone's, for the super user's
 // lists. Lemon Squeezy sends nothing when a checkout lapses, so a pending
 // row is let go a little after lemonsqueezy.CheckoutLifetime (an hour), once
-// a payment made at its last minute has had time to be reported. Run before
-// reading or starting one, it stands in for a job.
+// a payment made at its last minute has had time to be reported; BorderPay
+// reports the lapse itself, but its virtual accounts stay payable a day, so
+// its pending rows live that long. Run before reading or starting one, it
+// stands in for a job.
 // ponytail: lazy, on read; a periodic job if expiry must show elsewhere.
 func (r *BillingRepository) ExpireEnded(ctx context.Context, userID *uuid.UUID) error {
 	_, err := r.execContext(ctx, `
-		UPDATE subscriptions SET status = 'expired', checkout_url = NULL, updated_at = now()
-		WHERE ($1::uuid IS NULL OR user_id = $1)
-		  AND ((status = 'active' AND current_period_end <= now())
-		    OR (status = 'pending' AND created_at <= now() - interval '65 minutes'))`,
+		UPDATE subscriptions s SET status = 'expired', checkout_url = NULL, updated_at = now()
+		FROM plans p
+		WHERE p.id = s.plan_id
+		  AND ($1::uuid IS NULL OR s.user_id = $1)
+		  AND ((s.status = 'active' AND s.current_period_end <= now())
+		    OR (s.status = 'pending' AND s.created_at <= now()
+		        - CASE WHEN p.provider = 'borderpay' THEN interval '25 hours' ELSE interval '65 minutes' END))`,
 		userID,
 	)
 	if err != nil {
 		return err
 	}
 	_, err = r.execContext(ctx, `
-		UPDATE purchases SET status = 'failed', checkout_url = NULL, updated_at = now()
-		WHERE ($1::uuid IS NULL OR user_id = $1)
-		  AND status = 'pending' AND created_at <= now() - interval '65 minutes'`,
+		UPDATE purchases b SET status = 'failed', checkout_url = NULL, updated_at = now()
+		FROM plans p
+		WHERE p.id = b.plan_id
+		  AND ($1::uuid IS NULL OR b.user_id = $1)
+		  AND b.status = 'pending' AND b.created_at <= now()
+		      - CASE WHEN p.provider = 'borderpay' THEN interval '25 hours' ELSE interval '65 minutes' END`,
 		userID,
 	)
 	return err
@@ -293,6 +304,25 @@ func (r *BillingRepository) ApplySubscription(ctx context.Context, id uuid.UUID,
 		  AND (status, current_period_end, canceled_at IS NOT NULL, provider_subscription_id, provider_updated_at)
 		      IS DISTINCT FROM ($3, $4, $5, $2, $6)`,
 		id, providerID, status, periodEnd, cancelled, providerUpdatedAt,
+	)
+	if hasPgCode(err, pgUniqueViolation) {
+		return false, apperr.New(apperr.KindConflict, "the user already has another live subscription")
+	}
+	return affected(res, err)
+}
+
+// ApplyBorderPaySubscription settles a BorderPay subscription's payment: a
+// pending row becomes active for one of its plan's periods, starting now —
+// BorderPay charges once, so nothing renews by itself; the user subscribes
+// again once the period has ended. It reports whether it changed anything: a
+// repeated webhook is a no-op.
+func (r *BillingRepository) ApplyBorderPaySubscription(ctx context.Context, id uuid.UUID, periodEnd time.Time) (bool, error) {
+	res, err := r.execContext(ctx, `
+		UPDATE subscriptions SET
+		    status = 'active', current_period_start = now(), current_period_end = $2,
+		    checkout_url = NULL, updated_at = now()
+		WHERE id = $1 AND status = 'pending'`,
+		id, periodEnd,
 	)
 	if hasPgCode(err, pgUniqueViolation) {
 		return false, apperr.New(apperr.KindConflict, "the user already has another live subscription")

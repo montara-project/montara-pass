@@ -7,8 +7,9 @@ import { card, pill } from "@/components/shared";
 
 export function Pricing({ tiers }: { tiers: Tier[] }) {
   // The same rows as the pricing page: live plans, or the authored ones until
-  // the hosted service has some.
-  const paid = tiers.filter((tier) => tier.kind !== "free");
+  // the hosted service has some — the USD ones; the IDR plans are the
+  // pricing page's tabs.
+  const paid = tiers.filter((tier) => tier.kind !== "free" && tier.currency === "USD");
   const monthly = paid.find((tier) => tier.per === "/ month");
 
   return (

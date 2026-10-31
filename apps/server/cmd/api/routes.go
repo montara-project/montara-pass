@@ -181,6 +181,7 @@ func routes(r *fiber.App, app *app.Application) {
 		billing.Post("/purchases", m.Authorization, once, h.Billing.Buy)
 		billing.Get("/portal", m.Authorization, h.Billing.Portal)
 		billing.Post("/lemonsqueezy/webhook", h.Billing.LemonSqueezyWebhook)
+		billing.Post("/borderpay/webhook", h.Billing.BorderPayWebhook)
 	}
 
 	// An unknown path under apiPrefix answers JSON. Registered last, and before

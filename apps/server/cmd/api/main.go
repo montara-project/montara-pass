@@ -13,6 +13,7 @@ import (
 	"montara-pass/server/internal/config"
 	"montara-pass/server/internal/emails"
 	"montara-pass/server/internal/handlers"
+	"montara-pass/server/internal/lib/borderpay"
 	"montara-pass/server/internal/lib/lemonsqueezy"
 	"montara-pass/server/internal/repositories"
 	"montara-pass/server/internal/seeders"
@@ -84,6 +85,18 @@ func run() error {
 		logger.Info("billing through lemon squeezy", "store", cfg.Billing.LemonSqueezyStoreID, "currency", payments.Currency)
 	}
 
+	// BorderPay takes the IDR plans: one payment each, through QRIS. Nothing
+	// to read at boot — its client is stateless and the plans are seeded.
+	var borderPay *borderpay.Client
+	switch {
+	case config.Community():
+	case cfg.Billing.BorderPayAPIKey == "":
+		logger.Warn("IDR billing checkout disabled: borderpay-api-key is not set")
+	default:
+		borderPay = borderpay.New(cfg.Billing.BorderPayAPIKey, cfg.Billing.BorderPayBaseURL, cfg.Billing.BorderPayWebhookToken)
+		logger.Info("billing through borderpay", "base_url", borderPay.BaseURL)
+	}
+
 	application := &app.Application{
 		Config:       cfg,
 		Logger:       logger,
@@ -91,6 +104,7 @@ func run() error {
 		Repositories: repos,
 		Redis:        cache,
 		Payments:     payments,
+		BorderPay:    borderPay,
 	}
 
 	// Authula reads its email templates when it is built.

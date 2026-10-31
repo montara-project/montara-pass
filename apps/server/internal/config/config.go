@@ -62,6 +62,15 @@ type ConfigBilling struct {
 	// RequirePaidSharing gates sharing an item on a paid plan. It needs
 	// payments, so that the plan can be bought.
 	RequirePaidSharing bool
+	// BorderPay sells the plans priced in IDR, through QRIS. Without an API
+	// key those plans are still listed, but nothing can be bought through
+	// them.
+	BorderPayAPIKey string
+	// The verification token of the BorderPay project's webhook, checked on
+	// every webhook it POSTs.
+	BorderPayWebhookToken string
+	// Overrides the API's base URL; tests point it elsewhere.
+	BorderPayBaseURL string
 }
 
 // ConfigAuth configures the embedded Authula server. Without a Resend key,

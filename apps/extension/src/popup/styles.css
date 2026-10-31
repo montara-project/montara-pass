@@ -1917,6 +1917,32 @@ input.range:active::-moz-range-thumb {
   font-weight: 500;
 }
 
+/* The currency tabs above the plans: USD, IDR. */
+.plan-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.plan-tab {
+  padding: 4px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-tab:hover {
+  background: var(--hover);
+}
+
+.plan-tab[data-on] {
+  border-color: var(--focus);
+  background: color-mix(in srgb, var(--focus) 15%, transparent);
+  color: var(--focus);
+}
+
 .plan-card button {
   width: 100%;
   font-weight: 500;

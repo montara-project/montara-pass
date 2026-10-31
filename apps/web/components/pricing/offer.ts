@@ -76,6 +76,7 @@ function fromPlan(plan: Plan): Tier {
   const oneTime = plan.billing === "one_time";
   const yearly = plan.billing_interval === "year";
   const per = oneTime ? "once" : yearly ? "/ year" : "/ month";
+  const idr = plan.currency === "IDR";
   return {
     code: plan.code,
     // The API's names carry the product and the store's environment
@@ -83,7 +84,10 @@ function fromPlan(plan: Plan): Tier {
     name: `Pro ${oneTime ? "Lifetime" : yearly ? "Yearly" : "Monthly"}`,
     terms: oneTime
       ? "all features · one payment · does not renew"
-      : `all features · renews ${yearly ? "yearly" : "monthly"} · cancel any time`,
+      : idr
+        ? // BorderPay charges once: the user subscribes again to renew.
+          "all features · one period · renew by subscribing again"
+        : `all features · renews ${yearly ? "yearly" : "monthly"} · cancel any time`,
     amount: plan.amount,
     offer: offerOf(plan, per),
     currency: plan.currency,

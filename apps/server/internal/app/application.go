@@ -8,6 +8,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"montara-pass/server/internal/config"
+	"montara-pass/server/internal/lib/borderpay"
 	"montara-pass/server/internal/lib/lemonsqueezy"
 	"montara-pass/server/internal/repositories"
 )
@@ -27,4 +28,7 @@ type Application struct {
 	// Payments is nil unless billing can take payments: the Cloud Edition
 	// with LEMONSQUEEZY_API_KEY set.
 	Payments *lemonsqueezy.Client
+	// BorderPay is nil unless the IDR plans can be paid: the Cloud Edition
+	// with BORDERPAY_API_KEY set. It sells the plans priced in IDR.
+	BorderPay *borderpay.Client
 }

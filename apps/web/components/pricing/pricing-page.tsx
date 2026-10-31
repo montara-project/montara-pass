@@ -12,7 +12,7 @@ import {
 } from "@/components/icons";
 import { docsUrl } from "@/components/links";
 import { PricingLedger } from "@/components/pricing/ledger-panel";
-import { formatAmount, SELF_HOST_HREF, TERMS, type Tier } from "@/components/pricing/plans";
+import { formatAmount, SELF_HOST_HREF, terms, type Tier } from "@/components/pricing/plans";
 import { card, pill } from "@/components/shared";
 
 /**
@@ -30,13 +30,16 @@ export function PricingPage({ tiers }: { tiers: Tier[] }) {
   // row marked best value. Matched by its billing rather than by code, because
   // the live plans' codes are the store's, not the authored ones.
   const [chosen, setChosen] = useState<string>();
-  const yearly = tiers.find((tier) => tier.per === "/ year");
+  // The currency of the rows on the tape: the USD plans are paid through
+  // Lemon Squeezy, the IDR ones through BorderPay's QRIS.
+  const [currency, setCurrency] = useState<"USD" | "IDR">("USD");
+  const rows = tiers.filter((tier) => tier.kind === "free" || tier.currency === currency);
+  const yearly = rows.find((tier) => tier.per === "/ year");
   const selected =
-    tiers.find((tier) => tier.code === chosen) ??
+    rows.find((tier) => tier.code === chosen) ??
     yearly ??
-    tiers.find((tier) => tier.kind !== "free") ??
-    tiers[0];
-  const currency = "USD";
+    rows.find((tier) => tier.kind !== "free") ??
+    rows[0];
 
   return (
     <main>
@@ -44,7 +47,26 @@ export function PricingPage({ tiers }: { tiers: Tier[] }) {
         <section className="tape">
           <div className="tape-head">
             <p className="tape-slug">Montara Pass — pricing</p>
-            <p className="tape-slug">billed in {currency}</p>
+            <p className="tape-slug flex items-center gap-2">
+              billed in
+              <span role="group" aria-label="Currency" className="inline-flex gap-1">
+                {(["USD", "IDR"] as const).map((code) => (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => setCurrency(code)}
+                    aria-pressed={currency === code}
+                    className={`rounded-full border px-2 py-0.5 font-mono text-[11px] tracking-[0.12em] uppercase ${
+                      currency === code
+                        ? "border-accent-bright text-accent-bright"
+                        : "border-line text-mist hover:text-accent-bright"
+                    }`}
+                  >
+                    {code}
+                  </button>
+                ))}
+              </span>
+            </p>
           </div>
 
           <h1 className="tape-title">Four prices. One vault.</h1>
@@ -59,7 +81,7 @@ export function PricingPage({ tiers }: { tiers: Tier[] }) {
               <span>Plan</span>
               <span>Price</span>
             </p>
-            {tiers.map((tier) => {
+            {rows.map((tier) => {
               const on = tier.code === selected.code;
               return (
                 <label key={tier.code} className="tape-line" data-on={on || undefined}>
@@ -91,10 +113,10 @@ export function PricingPage({ tiers }: { tiers: Tier[] }) {
                     {tier.offer ? (
                       <s className="tape-was">
                         <span className="sr-only">was </span>
-                        {formatAmount(tier.offer.was, currency)}
+                        {formatAmount(tier.offer.was, tier.currency)}
                       </s>
                     ) : null}
-                    {formatAmount(tier.offer?.amount ?? tier.amount, currency)}{" "}
+                    {formatAmount(tier.offer?.amount ?? tier.amount, tier.currency)}{" "}
                     <small>{tier.per}</small>
                   </span>
                 </label>
@@ -112,7 +134,7 @@ export function PricingPage({ tiers }: { tiers: Tier[] }) {
             </a>
           </div>
           <p className="tape-fineprint">
-            {TERMS[selected.kind]}
+            {terms(selected.kind, currency)}
             {selected.kind !== "free" ? (
               <span>No refunds: access runs to the end of the period you paid for.</span>
             ) : null}
@@ -121,7 +143,7 @@ export function PricingPage({ tiers }: { tiers: Tier[] }) {
           {/* The foot changes with the selection; announce it rather than let it
               change silently for anyone not watching the tape. */}
           <p role="status" aria-live="polite" className="sr-only">
-            {selected.name}: {selected.action.label}. {TERMS[selected.kind]}
+            {selected.name}: {selected.action.label}. {terms(selected.kind, currency)}
           </p>
         </section>
 

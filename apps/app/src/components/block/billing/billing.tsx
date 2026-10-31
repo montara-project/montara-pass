@@ -2,7 +2,7 @@ import { formatDate } from '@montara-pass/shared/date'
 import { formatPrice } from '@montara-pass/shared/money'
 import {
   BILLING_STATUS,
-  BILLING_TERMS,
+  billingTerms,
   hasPaidPurchase,
   isSandbox,
   ownedPurchase,
@@ -16,7 +16,7 @@ import {
 } from '@montara-pass/shared/plan'
 import { IconCheck, IconCreditCard } from '@tabler/icons-react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useSearch } from '@tanstack/react-router'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 
 import Page from '@/components/layout/page'
 import { Button } from '@/components/ui/button'
@@ -27,15 +27,25 @@ import { cn } from '@/lib/utils'
 
 const label = 'text-muted-foreground pl-1 font-mono text-[11px] tracking-[0.12em] uppercase'
 
+/** The tabs, and the currencies their plans are priced in. */
+const CURRENCIES = ['USD', 'IDR'] as const
+
 /**
  * Billing, Cloud Edition only: the subscription and purchases of the
- * signed-in user, and the plans on offer. Paying happens on Lemon Squeezy's
- * checkout, which sends the browser back here; the payment shows once Lemon
- * Squeezy has told the server, so a pending one is polled for. A subscription
- * renews by itself and is cancelled in Lemon Squeezy's customer portal.
+ * signed-in user, and the plans on offer, in two tabs — the USD plans sold
+ * through Lemon Squeezy's checkout, the IDR ones through BorderPay's QRIS.
+ * Either checkout brings the browser back here; the payment shows once the
+ * provider has told the server, so a pending one is polled for. A USD
+ * subscription renews by itself; an IDR one is paid a period at a time and
+ * renewed by subscribing again.
  */
 export default function BillingBlock() {
-  const { plan: chosen, checkout: returned } = useSearch({ from: '/(app)/billing/' })
+  const {
+    plan: chosen,
+    checkout: returned,
+    currency: asked,
+  } = useSearch({ from: '/(app)/billing/' })
+  const navigate = useNavigate()
 
   const plans = useQuery(queries.billing.plans())
   const overview = useQuery({
@@ -50,12 +60,17 @@ export default function BillingBlock() {
   const subscription = overview.data?.subscription ?? null
   const purchases = overview.data?.purchases ?? []
   const lifetime = hasPaidPurchase(purchases)
-  // The plan marked out: the one the website sent the user here for, or else
-  // the yearly one.
+  // The tab's currency: the one asked for, else the one the plan the website
+  // sent the user here for is priced in, else USD.
+  const chosenPlan = plans.data?.find((plan) => plan.code === chosen)
+  const currency = asked === 'USD' || asked === 'IDR' ? asked : (chosenPlan?.currency ?? 'USD')
+  const onOffer = plans.data?.filter((plan) => plan.currency === currency) ?? []
+  // The plan marked out: the one the website sent the user here for, when it
+  // is of this tab, or else the yearly one.
   const featured =
-    plans.data?.find((plan) => plan.code === chosen) ??
-    plans.data?.find((plan) => plan.billing_interval === 'year')
-  const currency = plans.data?.[0]?.currency
+    chosenPlan?.currency === currency
+      ? chosenPlan
+      : onOffer.find((plan) => plan.billing_interval === 'year')
 
   return (
     <Page
@@ -94,7 +109,10 @@ export default function BillingBlock() {
                   <a href={subscription.checkout_url}>Continue payment</a>
                 </Button>
               ) : (
-                subscription.status === 'active' && (
+                subscription.status === 'active' &&
+                subscription.plan.provider !== 'borderpay' && (
+                  // BorderPay renews nothing by itself and has no portal: an
+                  // IDR subscription is renewed by subscribing again.
                   <Button
                     size="sm"
                     variant="outline"
@@ -120,23 +138,46 @@ export default function BillingBlock() {
       </section>
 
       <section aria-labelledby="plans" className="flex flex-col gap-2">
-        <h2 id="plans" className={label}>
-          Plans
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="plans" className={label}>
+            Plans
+          </h2>
+          <div role="tablist" aria-label="Currency" className="flex gap-1">
+            {CURRENCIES.map((code) => (
+              <button
+                key={code}
+                role="tab"
+                aria-selected={currency === code}
+                disabled={busy}
+                onClick={() =>
+                  void navigate({ to: '.', search: (prev) => ({ ...prev, currency: code }) })
+                }
+                className={cn(
+                  'rounded-full border px-3 py-1 font-mono text-xs tabular-nums',
+                  currency === code
+                    ? 'border-focus bg-focus/15 text-focus'
+                    : 'text-muted-foreground hover:bg-hover'
+                )}
+              >
+                {code}
+              </button>
+            ))}
+          </div>
+        </div>
         {plans.isLoading ? (
           <Skeleton className="rounded-card h-40 w-full" />
-        ) : !plans.data?.length ? (
+        ) : !onOffer.length ? (
           <p className="text-muted-foreground pl-1 text-[13px]">No plans are on offer yet.</p>
         ) : (
           <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2 lg:grid-cols-3">
-            {plans.data.map((plan) => {
+            {onOffer.map((plan) => {
               const purchase =
                 plan.billing === 'one_time' ? ownedPurchase(purchases, plan) : undefined
               // One subscription at a time; another once this one has ended.
               const subscribed = plan.billing === 'recurring' && subscription !== null
               const marked = plan.id === featured?.id
-              const saving = planSaving(plan, plans.data)
-              const offer = planOffer(plan, formatPrice(plan.amount, 'USD'))
+              const saving = planSaving(plan, onOffer)
+              const offer = planOffer(plan, formatPrice(plan.amount, plan.currency))
               return (
                 <li
                   key={plan.id}
@@ -165,13 +206,13 @@ export default function BillingBlock() {
                   </div>
                   <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1 font-mono tabular-nums">
                     <span className="text-[28px] leading-none font-medium">
-                      {formatPrice(saving?.amount ?? plan.amount, 'USD')}
+                      {formatPrice(saving?.amount ?? plan.amount, plan.currency)}
                     </span>
                     <span className="text-muted-foreground text-xs">{planPeriod(plan)}</span>
                     {saving && (
                       <s className="text-muted-foreground decoration-muted-foreground/70 text-xs">
                         <span className="sr-only">was </span>
-                        {formatPrice(saving.was, 'USD')}
+                        {formatPrice(saving.was, plan.currency)}
                       </s>
                     )}
                   </p>
@@ -212,7 +253,7 @@ export default function BillingBlock() {
       <div className="grid gap-x-12 gap-y-8 sm:grid-cols-2">
         {[
           { id: 'includes', title: 'Every plan includes', items: PLAN_INCLUDES },
-          { id: 'how', title: 'How billing works', items: BILLING_TERMS },
+          { id: 'how', title: 'How billing works', items: billingTerms(currency) },
         ].map(({ id, title, items }) => (
           <section key={id} aria-labelledby={id} className="flex flex-col gap-2">
             <h2 id={id} className={label}>
@@ -243,7 +284,8 @@ export default function BillingBlock() {
               >
                 <span className="font-medium">{planName(purchase.plan)}</span>
                 <span className="text-muted-foreground text-[13px] tabular-nums">
-                  {formatPrice(purchase.amount, 'USD')} · {BILLING_STATUS[purchase.status]}
+                  {formatPrice(purchase.amount, purchase.currency)} ·{' '}
+                  {BILLING_STATUS[purchase.status]}
                   {purchase.paid_at && ` · ${formatDate(purchase.paid_at)}`}
                 </span>
               </li>

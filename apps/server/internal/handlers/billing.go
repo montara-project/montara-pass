@@ -17,6 +17,7 @@ import (
 	"montara-pass/server/internal/dtos"
 	"montara-pass/server/internal/lib"
 	"montara-pass/server/internal/lib/apperr"
+	"montara-pass/server/internal/lib/borderpay"
 	"montara-pass/server/internal/lib/constant"
 	"montara-pass/server/internal/lib/lemonsqueezy"
 	"montara-pass/server/internal/models"
@@ -33,6 +34,7 @@ const (
 
 var (
 	errPaymentsOff = apperr.New(apperr.KindServiceUnavailable, "payments are not available on this server")
+	errIDROff      = apperr.New(apperr.KindServiceUnavailable, "IDR payments are not available on this server")
 	errCheckout    = apperr.New(apperr.KindBadGateway, "the payment could not be started, try again")
 	errOnlyUsers   = apperr.New(apperr.KindForbidden, "only user accounts can subscribe or buy a plan")
 	errPortal      = apperr.New(apperr.KindBadGateway, "the subscription could not be opened, try again")
@@ -410,9 +412,6 @@ func (h *billingHandler) Overview(c fiber.Ctx) error {
 // anyone but a user account (the database refuses them too) and a plan that
 // is retired or of another kind.
 func (h *billingHandler) customer(c fiber.Ctx, kind string) (models.User, models.Plan, error) {
-	if h.app.Payments == nil {
-		return models.User{}, models.Plan{}, errPaymentsOff
-	}
 	uid, err := currentUser(c)
 	if err != nil {
 		return models.User{}, models.Plan{}, err
@@ -437,20 +436,32 @@ func (h *billingHandler) customer(c fiber.Ctx, kind string) (models.User, models
 	if err != nil {
 		return models.User{}, models.Plan{}, err
 	}
-	if plan.VariantID == nil {
-		return models.User{}, models.Plan{}, apperr.New(apperr.KindConflict, "this plan is not sold through Lemon Squeezy")
-	}
-	if plan.Currency != h.app.Payments.Currency {
-		return models.User{}, models.Plan{}, apperr.New(apperr.KindConflict, "this plan is priced in %s; payments are taken in %s", plan.Currency, h.app.Payments.Currency)
+	// Each plan is sold through its own provider: the IDR ones through
+	// BorderPay, the rest through Lemon Squeezy, in the store's currency.
+	switch plan.Provider {
+	case models.PlanBorderPay:
+		if h.app.BorderPay == nil {
+			return models.User{}, models.Plan{}, errIDROff
+		}
+	default:
+		if h.app.Payments == nil {
+			return models.User{}, models.Plan{}, errPaymentsOff
+		}
+		if plan.VariantID == nil {
+			return models.User{}, models.Plan{}, apperr.New(apperr.KindConflict, "this plan is not sold through Lemon Squeezy")
+		}
+		if plan.Currency != h.app.Payments.Currency {
+			return models.User{}, models.Plan{}, apperr.New(apperr.KindConflict, "this plan is priced in %s; payments are taken in %s", plan.Currency, h.app.Payments.Currency)
+		}
 	}
 	return user, plan, nil
 }
 
 // startCheckout stores a pending row for plan with insert, in table
-// ("subscriptions" or "purchases"), creates its Lemon Squeezy checkout and
-// answers the row, re-read with get. The checkout brings the user back to the
-// web app's billing page. A row whose payment could not be created is dropped, so the user is
-// free to try again.
+// ("subscriptions" or "purchases"), creates its checkout at the plan's
+// provider and answers the row, re-read with get. The checkout brings the
+// user back to the web app's billing page. A row whose payment could not be
+// created is dropped, so the user is free to try again.
 func startCheckout[T any](
 	h *billingHandler, c fiber.Ctx, user models.User, plan models.Plan, order, table string,
 	insert func(context.Context, uuid.UUID, uuid.UUID, models.Plan, int64, string) error,
@@ -462,11 +473,6 @@ func startCheckout[T any](
 		return err
 	}
 	orderID := order + "-" + id.String()
-	// The account and its orders meet in one Lemon Squeezy customer.
-	if err := EnsureCustomer(c.Context(), h.app, user); err != nil {
-		h.app.Logger.Error("save lemon squeezy customer", "user", user.ID, "error", err)
-		return errCheckout
-	}
 	// The row and the checkout take one reading of the discount, so the
 	// price recorded is the one asked.
 	discount, amount := plan.Discount(time.Now())
@@ -474,32 +480,18 @@ func startCheckout[T any](
 		return err
 	}
 
-	checkout := lemonsqueezy.Checkout{
-		VariantID:    *plan.VariantID,
-		Email:        user.Email,
-		Name:         user.Name,
-		OrderID:      orderID,
-		RedirectURL:  h.app.Config.Auth.BaseURL + "/billing?checkout=done",
-		DiscountCode: discount,
-	}
-	url, err := h.app.Payments.Checkout(c.Context(), checkout)
-	// The code is as of the last catalog sync: one deleted, rescoped or used
-	// up since may get the checkout refused. When Lemon Squeezy says so, it
-	// is opened once more without it, at the full price. Any other failure is
-	// not retried, so a price is never changed for a network error.
-	if discount != "" && lemonsqueezy.RefusedDiscount(err) {
-		h.app.Logger.Warn("lemon squeezy checkout with a discount failed, trying without it", "order_id", orderID, "code", discount, "error", err)
-		if _, err = h.repo().SetAmount(c.Context(), table, id, plan.Amount); err == nil {
-			checkout.DiscountCode = ""
-			url, err = h.app.Payments.Checkout(c.Context(), checkout)
-		}
-	}
+	url, settled, err := h.planCheckout(c.Context(), user, plan, orderID, discount, amount)
 	if err != nil {
-		h.app.Logger.Error("lemon squeezy checkout failed", "order_id", orderID, "error", err)
+		h.app.Logger.Error("checkout failed", "order_id", orderID, "provider", plan.Provider, "error", err)
 		if derr := h.repo().DeletePending(c.Context(), table, id); derr != nil {
 			h.app.Logger.Error("drop order without checkout", "order_id", orderID, "error", derr)
 		}
 		return errCheckout
+	}
+	if settled != amount {
+		if _, aerr := h.repo().SetAmount(c.Context(), table, id, settled); aerr != nil {
+			return aerr
+		}
 	}
 	if err := h.repo().SetCheckout(c.Context(), table, id, url); err != nil {
 		return err
@@ -510,6 +502,53 @@ func startCheckout[T any](
 		return err
 	}
 	return dtos.Created(c, row, message)
+}
+
+// planCheckout opens the checkout of plan's provider and answers where the
+// user pays, and what the checkout asks, which the row records: the amount
+// it was given, unless a refused discount was retried without and a full
+// price asked after all. A discount code is a Lemon Squeezy thing; the code
+// is as of the last catalog sync: one deleted, rescoped or used up since may
+// get the checkout refused. When Lemon Squeezy says so, it is opened once
+// more without it, at the full price. Any other failure is not retried, so a
+// price is never changed for a network error.
+func (h *billingHandler) planCheckout(ctx context.Context, user models.User, plan models.Plan, orderID, discount string, amount int64) (url string, settled int64, err error) {
+	if plan.Provider == models.PlanBorderPay {
+		pay, err := h.app.BorderPay.Create(ctx, borderpay.CreatePayment{
+			Amount:      amount,
+			Method:      borderpay.MethodQRIS,
+			ReferenceID: orderID,
+			ReturnURL:   h.app.Config.Auth.BaseURL + "/billing?checkout=done",
+		})
+		if err != nil {
+			return "", amount, err
+		}
+		return pay.PayURL, amount, nil
+	}
+
+	// The account and its orders meet in one Lemon Squeezy customer.
+	if err := EnsureCustomer(ctx, h.app, user); err != nil {
+		h.app.Logger.Error("save lemon squeezy customer", "user", user.ID, "error", err)
+		return "", amount, errCheckout
+	}
+	checkout := lemonsqueezy.Checkout{
+		VariantID:    *plan.VariantID,
+		Email:        user.Email,
+		Name:         user.Name,
+		OrderID:      orderID,
+		RedirectURL:  h.app.Config.Auth.BaseURL + "/billing?checkout=done",
+		DiscountCode: discount,
+	}
+	url, err = h.app.Payments.Checkout(ctx, checkout)
+	if discount != "" && lemonsqueezy.RefusedDiscount(err) {
+		h.app.Logger.Warn("lemon squeezy checkout with a discount failed, trying without it", "order_id", orderID, "code", discount, "error", err)
+		checkout.DiscountCode = ""
+		url, err = h.app.Payments.Checkout(ctx, checkout)
+		if err == nil {
+			settled = plan.Amount
+		}
+	}
+	return url, settled, err
 }
 
 // Subscribe starts a subscription to a recurring plan and answers it with the
@@ -693,4 +732,89 @@ func (h *billingHandler) LemonSqueezyWebhook(c fiber.Ctx) error {
 // sameVariant reports whether what was paid for is the variant plan is sold as.
 func sameVariant(plan models.Plan, a lemonsqueezy.Attributes) bool {
 	return plan.VariantID != nil && *plan.VariantID == a.VariantID()
+}
+
+// BorderPayWebhook is BorderPay's webhook. It is public, so only one carrying
+// the project's verification token is read — the token is a shared secret,
+// not a signature, so a payment is believed paid only when the API says so
+// too. Events billing does not use are answered 200, so they are not
+// repeated; a change already made is a no-op.
+func (h *billingHandler) BorderPayWebhook(c fiber.Ctx) error {
+	if h.app.BorderPay == nil {
+		return errIDROff
+	}
+	if !h.app.BorderPay.Verify(c.Get("X-Borderpay-Token")) {
+		return apperr.New(apperr.KindForbidden, "invalid token")
+	}
+	var e borderpay.Event
+	if err := json.Unmarshal(c.Body(), &e); err != nil {
+		return apperr.New(apperr.KindBadRequest, "invalid JSON body")
+	}
+
+	orderID := e.Data.ReferenceID
+	kind, rawID, _ := strings.Cut(orderID, "-")
+	id, err := uuid.Parse(rawID)
+	if err != nil {
+		// Something paid without billing, on the same project.
+		h.app.Logger.Info("borderpay webhook ignored: not a billing order", "event", e.Event, "reference_id", orderID)
+		return dtos.Message(c, fiber.StatusOK, "webhook ignored")
+	}
+
+	var changed bool
+	switch e.Event {
+	case borderpay.EventPaid:
+		// The token is shared, not derived: what the API says of the payment
+		// is believed over what the webhook asks for.
+		pay, err := h.app.BorderPay.Get(c.Context(), orderID)
+		if err != nil {
+			return err
+		}
+		if pay.Status != borderpay.StatusPaid {
+			h.app.Logger.Info("borderpay webhook set aside: the payment is not paid", "reference_id", orderID, "status", pay.Status)
+			break
+		}
+		switch kind {
+		case orderSubscription:
+			s, err := h.repo().GetSubscription(c.Context(), id)
+			if err != nil {
+				return err
+			}
+			if changed, err = h.repo().ApplyBorderPaySubscription(c.Context(), id, borderpayPeriodEnd(s.Plan, time.Now())); err != nil {
+				return err
+			}
+		case orderPurchase:
+			// At the price asked: BorderPay's amount is fixed, and its fee is
+			// the project's, not a code's.
+			changed, err = h.repo().MovePurchase(c.Context(), id, models.PurchasePending, models.PurchasePaid, nil)
+			// A payment that arrives for an order no longer pending needs a
+			// person: it is logged, not applied.
+			if err == nil && !changed {
+				h.app.Logger.Warn("borderpay payment for an order that is not pending", "reference_id", orderID)
+			}
+		}
+
+	case borderpay.EventExpired, borderpay.EventFailed:
+		// A subscription left pending is dropped when its checkout can no
+		// longer be paid (ExpireEnded); a purchase is marked, so its plan can
+		// be bought again.
+		if kind == orderPurchase {
+			changed, err = h.repo().MovePurchase(c.Context(), id, models.PurchasePending, models.PurchaseFailed, nil)
+		}
+	}
+
+	if err != nil {
+		return err
+	}
+	h.app.Logger.Info("borderpay webhook", "event", e.Event, "reference_id", orderID, "changed", changed)
+	return dtos.Message(c, fiber.StatusOK, "webhook received")
+}
+
+// borderpayPeriodEnd is when a subscription paid now runs to: one of its
+// plan's periods. BorderPay charges once, so the user renews by subscribing
+// again.
+func borderpayPeriodEnd(plan models.Plan, now time.Time) time.Time {
+	if plan.BillingInterval != nil && *plan.BillingInterval == "year" {
+		return now.AddDate(1, 0, 0)
+	}
+	return now.AddDate(0, 1, 0)
 }
