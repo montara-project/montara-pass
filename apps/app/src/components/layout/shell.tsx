@@ -4,6 +4,7 @@ import {
   IconChevronRight,
   IconCreditCard,
   IconForbid,
+  IconHistory,
   IconFolders,
   IconKey,
   IconLock,
@@ -65,6 +66,7 @@ const NAV = [
 const TOOLS = [
   { title: 'Password generator', url: '/generator', icon: IconKey, group: 'Tools' },
   { title: 'Password health', url: '/health', icon: IconShieldCheck, group: 'Tools' },
+  { title: 'Activity', url: '/activity', icon: IconHistory, group: 'Account' },
   // Billing is the Cloud Edition's: the Community server takes no payments.
   ...(COMMUNITY
     ? []

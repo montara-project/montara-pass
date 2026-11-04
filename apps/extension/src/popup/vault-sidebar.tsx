@@ -42,6 +42,7 @@ import {
 import {
   CreditCardIcon,
   ExternalLinkIcon,
+  HistoryIcon,
   KeyIcon,
   LockIcon,
   LogOutIcon,
@@ -52,13 +53,14 @@ import {
 import { UpdateButton } from './update-button'
 
 type Icon = typeof KeyIcon
-export type Tool = 'generator' | 'health' | 'billing'
+export type Tool = 'generator' | 'health' | 'activity' | 'billing'
 
 // group is what the breadcrumb names above the page. Billing is the Cloud
 // Edition's only: the Community Edition takes no payments.
 const TOOLS: { value: Tool; label: string; group: string; icon: Icon }[] = [
   { value: 'generator', label: 'Password generator', group: 'Tools', icon: KeyIcon },
   { value: 'health', label: 'Password health', group: 'Tools', icon: ShieldIcon },
+  { value: 'activity', label: 'Activity', group: 'Account', icon: HistoryIcon },
   ...(COMMUNITY
     ? []
     : [{ value: 'billing' as const, label: 'Billing', group: 'Account', icon: CreditCardIcon }]),

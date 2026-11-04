@@ -134,6 +134,32 @@ func mirrorUser(repo *repositories.UserRepository) func(*authulamodels.User) err
 	}
 }
 
+// recordSignIn returns the session hook that notes every sign-in in the
+// activity log, with where it came from: each way in (a password, a magic
+// link, Google, the TOTP step) ends in a new session. It is an Authula
+// service hook, which carries no context; Authula only logs its error, so a
+// row that cannot be written never stands in the way of a sign-in.
+func recordSignIn(repo *repositories.ActivityRepository) func(*authulamodels.Session) error {
+	return func(s *authulamodels.Session) error {
+		id, err := uuid.Parse(s.UserID)
+		if err != nil {
+			return err
+		}
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		entry := repositories.ActivityEntry{ActorID: id, Action: models.ActivitySignIn}
+		if s.IPAddress != nil {
+			entry.IP = *s.IPAddress
+		}
+		if s.UserAgent != nil {
+			entry.UserAgent = *s.UserAgent
+		}
+		return repo.Record(ctx, entry)
+	}
+}
+
 // addTokensToResponse adds the token pair the jwt plugin minted for a
 // successful sign-in to the JSON body the sign-in handler already wrote,
 // with the access token's expiry. A sign-in that answers with a redirect
@@ -469,8 +495,12 @@ func (i tokenIssuer) route() authulamodels.Route {
 // through Resend, and an optional TOTP step at sign-in. Authula migrates its own tables (users, accounts, sessions,
 // verifications) into authSchema of the app database when it starts, and
 // mirror runs after every user it creates or updates. customer, when set,
-// runs after mirror on every user it creates.
-func newAuth(cfg config.Config, mirror, customer func(*authulamodels.User) error, logger *slog.Logger) *authula.Auth {
+// runs after mirror on every user it creates. signedIn runs after every
+// session it creates.
+func newAuth(cfg config.Config, mirror, customer func(*authulamodels.User) error, signedIn func(*authulamodels.Session) error, logger *slog.Logger) *authula.Auth {
+	sessionHooks := &authulamodels.ServiceHooks[authulamodels.Session]{}
+	sessionHooks.RegisterAfterCreate(signedIn)
+
 	userHooks := &authulamodels.ServiceHooks[authulamodels.User]{}
 	userHooks.RegisterAfterCreate(mirror)
 	userHooks.RegisterAfterUpdate(mirror)
@@ -537,7 +567,7 @@ func newAuth(cfg config.Config, mirror, customer func(*authulamodels.User) error
 			},
 		}),
 		authulaconfig.WithRouteMappings(authRouteMappings),
-		authulaconfig.WithCoreServiceHooks(&authulamodels.CoreServiceHooksConfig{Users: userHooks}),
+		authulaconfig.WithCoreServiceHooks(&authulamodels.CoreServiceHooksConfig{Users: userHooks, Sessions: sessionHooks}),
 	)
 
 	googleEnabled := cfg.Auth.GoogleClientID != ""

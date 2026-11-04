@@ -44,6 +44,7 @@ import {
   type Sort,
 } from '../use-vault-items'
 import { VaultSidebar, type Tool } from '../vault-sidebar'
+import ActivityLog from './activity'
 import Billing from './billing'
 import ItemForm from './item-form'
 import PasswordGenerator from './password-generator'
@@ -169,6 +170,8 @@ export default function FullVault({
               <PasswordGenerator onNotice={setNotice} />
             ) : tool === 'billing' ? (
               <Billing onSignedOut={onSignedOut} />
+            ) : tool === 'activity' ? (
+              <ActivityLog items={items} onSignedOut={onSignedOut} />
             ) : (
               <PasswordHealth
                 items={items}

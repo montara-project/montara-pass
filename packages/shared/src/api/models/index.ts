@@ -1,4 +1,6 @@
 export namespace Models {
+  export type Activity = import('./activity').Activity
+  export type ActivityAction = import('./activity').ActivityAction
   export type User = import('./user').User
   export type Session = import('./user').Session
   export type Profile = import('./user').Profile

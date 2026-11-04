@@ -1,3 +1,4 @@
+import { activityServices } from './activity'
 import { authServices } from './auth'
 import { billingServices } from './billing'
 import { folderServices } from './folder'
@@ -6,6 +7,7 @@ import { keyServices } from './key'
 import { securityServices } from './security'
 
 export const services = {
+  activity: activityServices,
   auth: authServices,
   billing: billingServices,
   keys: keyServices,

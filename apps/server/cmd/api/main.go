@@ -134,7 +134,7 @@ func run() error {
 	}
 
 	// Creating the instance runs Authula's own migrations.
-	auth := newAuth(cfg, mirror, saveCustomer(application), logger)
+	auth := newAuth(cfg, mirror, saveCustomer(application), recordSignIn(&repos.Activity), logger)
 	application.Auth = auth
 	defer auth.CloseSystems()
 	defer auth.ClosePlugins()

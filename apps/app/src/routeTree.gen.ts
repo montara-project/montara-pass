@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as appRouteRouteImport } from './routes/(app)/route'
 import { Route as authRouteRouteImport } from './routes/(auth)/route'
 import { Route as ResetPasswordIndexRouteImport } from './routes/reset-password/index'
+import { Route as appActivityIndexRouteImport } from './routes/(app)/activity/index'
 import { Route as appBillingIndexRouteImport } from './routes/(app)/billing/index'
 import { Route as appFoldersIndexRouteImport } from './routes/(app)/folders/index'
 import { Route as appGeneratorIndexRouteImport } from './routes/(app)/generator/index'
@@ -43,6 +44,11 @@ const ResetPasswordIndexRoute = ResetPasswordIndexRouteImport.update({
   id: '/reset-password/',
   path: '/reset-password/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const appActivityIndexRoute = appActivityIndexRouteImport.update({
+  id: '/activity/',
+  path: '/activity/',
+  getParentRoute: () => appRouteRoute,
 } as any)
 const appBillingIndexRoute = appBillingIndexRouteImport.update({
   id: '/billing/',
@@ -109,6 +115,7 @@ const appSettingsIpBlocksIndexRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/reset-password/': typeof ResetPasswordIndexRoute
+  '/activity/': typeof appActivityIndexRoute
   '/billing/': typeof appBillingIndexRoute
   '/folders/': typeof appFoldersIndexRoute
   '/generator/': typeof appGeneratorIndexRoute
@@ -125,6 +132,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/reset-password': typeof ResetPasswordIndexRoute
+  '/activity': typeof appActivityIndexRoute
   '/billing': typeof appBillingIndexRoute
   '/folders': typeof appFoldersIndexRoute
   '/generator': typeof appGeneratorIndexRoute
@@ -144,6 +152,7 @@ export interface FileRoutesById {
   '/(app)': typeof appRouteRouteWithChildren
   '/(auth)': typeof authRouteRouteWithChildren
   '/reset-password/': typeof ResetPasswordIndexRoute
+  '/(app)/activity/': typeof appActivityIndexRoute
   '/(app)/billing/': typeof appBillingIndexRoute
   '/(app)/folders/': typeof appFoldersIndexRoute
   '/(app)/generator/': typeof appGeneratorIndexRoute
@@ -162,6 +171,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/reset-password/'
+    | '/activity/'
     | '/billing/'
     | '/folders/'
     | '/generator/'
@@ -178,6 +188,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/reset-password'
+    | '/activity'
     | '/billing'
     | '/folders'
     | '/generator'
@@ -196,6 +207,7 @@ export interface FileRouteTypes {
     | '/(app)'
     | '/(auth)'
     | '/reset-password/'
+    | '/(app)/activity/'
     | '/(app)/billing/'
     | '/(app)/folders/'
     | '/(app)/generator/'
@@ -246,6 +258,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/reset-password/'
       preLoaderRoute: typeof ResetPasswordIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/(app)/activity/': {
+      id: '/(app)/activity/'
+      path: '/activity'
+      fullPath: '/activity/'
+      preLoaderRoute: typeof appActivityIndexRouteImport
+      parentRoute: typeof appRouteRoute
     }
     '/(app)/billing/': {
       id: '/(app)/billing/'
@@ -335,6 +354,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface appRouteRouteChildren {
+  appActivityIndexRoute: typeof appActivityIndexRoute
   appBillingIndexRoute: typeof appBillingIndexRoute
   appFoldersIndexRoute: typeof appFoldersIndexRoute
   appGeneratorIndexRoute: typeof appGeneratorIndexRoute
@@ -346,6 +366,7 @@ interface appRouteRouteChildren {
 }
 
 const appRouteRouteChildren: appRouteRouteChildren = {
+  appActivityIndexRoute: appActivityIndexRoute,
   appBillingIndexRoute: appBillingIndexRoute,
   appFoldersIndexRoute: appFoldersIndexRoute,
   appGeneratorIndexRoute: appGeneratorIndexRoute,

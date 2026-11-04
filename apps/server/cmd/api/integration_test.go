@@ -15,6 +15,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -108,7 +109,7 @@ func TestIntegration(t *testing.T) {
 
 	repos := repositories.New(db)
 	mirror := mirrorUser(&repos.User)
-	auth := newAuth(cfg, mirror, nil, logger)
+	auth := newAuth(cfg, mirror, nil, recordSignIn(&repos.Activity), logger)
 	defer auth.CloseSystems()
 	defer auth.ClosePlugins()
 
@@ -809,8 +810,54 @@ func vaultFlow(
 	}
 	want(http.StatusOK, http.MethodPut, itemPath+"/restore", ownerToken, nil)
 	want(http.StatusOK, http.MethodDelete, memberPath, otherToken, nil)
+
+	// The activity log: the owner sees all that was done to the item; the
+	// other user what they did and what was done to them, and no longer what
+	// happened to the item while they were a member, now that they left.
+	// Newest first; a sign-in comes with where it came from, an item row not.
+	activity := func(token string) (actions []string, signIns int) {
+		t.Helper()
+		status, out := call(http.MethodGet, "/api/v1/activity?limit=100", token, nil)
+		if status != http.StatusOK {
+			t.Fatalf("activity: %d %v", status, out)
+		}
+		for _, raw := range out["data"].([]any) {
+			row := raw.(map[string]any)
+			switch {
+			case row["action"] == "sign_in":
+				signIns++
+			case row["item_id"] == itemID:
+				if row["ip"] != nil || row["item_type"] != "login" {
+					t.Fatalf("item activity row: %v", row)
+				}
+				actions = append(actions, row["action"].(string))
+			}
+		}
+		return actions, signIns
+	}
+	ownerLog, ownerSignIns := activity(ownerToken)
+	wantOwner := []string{
+		"item_member_removed", "item_restored", "item_trashed", "item_shared", "item_member_removed",
+		"item_updated", "item_role_changed", "item_shared", "item_created",
+	}
+	if !slices.Equal(ownerLog, wantOwner) || ownerSignIns == 0 {
+		t.Fatalf("owner's activity: %v (%d sign-ins), want %v", ownerLog, ownerSignIns, wantOwner)
+	}
+	otherLog, _ := activity(otherToken)
+	wantOther := []string{
+		"item_member_removed", "item_shared", "item_member_removed", "item_updated", "item_role_changed", "item_shared",
+	}
+	if !slices.Equal(otherLog, wantOther) {
+		t.Fatalf("other user's activity: %v, want %v", otherLog, wantOther)
+	}
+	want(http.StatusUnauthorized, http.MethodGet, "/api/v1/activity", "", nil)
+
 	want(http.StatusOK, http.MethodDelete, itemPath+"/force", ownerToken, nil)
 	want(http.StatusNotFound, http.MethodGet, itemPath, ownerToken, nil)
+	// Deleted for good, the item keeps its history for whoever did it.
+	if ownerLog, _ = activity(ownerToken); len(ownerLog) == 0 || ownerLog[0] != "item_deleted" {
+		t.Fatalf("owner's activity after a permanent delete: %v", ownerLog)
+	}
 }
 
 // billing checks the Cloud Edition's billing tables against what they

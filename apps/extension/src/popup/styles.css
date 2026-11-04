@@ -2931,3 +2931,12 @@ textarea,
     padding: 20px;
   }
 }
+
+/* A row of the activity log: read, not pressed, so the row itself is padded. */
+.health-list li.activity-row {
+  padding: 10px 14px;
+}
+
+.activity-row .item-name {
+  white-space: normal;
+}

@@ -166,6 +166,8 @@ func routes(r *fiber.App, app *app.Application) {
 	// user sees the list and blocks or lets an IP through by hand. The
 	// middleware enforces; these keep the record and the store in step.
 	v1.Get("/me/role", m.Authorization, h.Me.Role)
+	// The signed-in user's activity log: sign-ins and what was done to items.
+	v1.Get("/activity", m.Authorization, h.Activity.List)
 	blocks := v1.Group("/ip-blocks", m.Authorization, m.SuperUser)
 	blocks.Get("/", h.IPBlock.List)
 	blocks.Post("/", once, h.IPBlock.Create)

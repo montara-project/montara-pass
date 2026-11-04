@@ -1,3 +1,4 @@
+import { activityQueries } from './activity'
 import { authQueries } from './auth'
 import { billingQueries } from './billing'
 import { folderQueries } from './folder'
@@ -6,6 +7,7 @@ import { keyQueries } from './key'
 import { securityQueries } from './security'
 
 export const queries = {
+  activity: activityQueries,
   auth: authQueries,
   billing: billingQueries,
   keys: keyQueries,

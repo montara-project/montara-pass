@@ -33,6 +33,7 @@ export const PLAN_INCLUDES = [
   'Share items with other people, as editor or viewer',
   'Logins, secure notes, cards, contacts and passkeys',
   'Fill and save logins in Chrome and Firefox',
+  'Activity log of sign-ins and changes to shared items',
   'Encrypted on your device; the server never reads your vault',
 ] as const
 

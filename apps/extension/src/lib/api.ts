@@ -314,6 +314,16 @@ async function listAll<T>(path: string): Promise<T[]> {
   }
 }
 
+/** One page of the signed-in user's activity log, newest first, and how many rows it has. */
+export async function listActivity(
+  offset: number
+): Promise<{ rows: Models.Activity[]; total: number }> {
+  const page = await request<ListEnvelope<Models.Activity>>(
+    `/api/v1/activity?limit=${PAGE_SIZE}&offset=${offset}`
+  )
+  return { rows: page.data, total: page.metadata.total ?? page.data.length }
+}
+
 /** Every live item of the vault. */
 export function listItems(): Promise<Models.Item[]> {
   return listAll('/api/v1/items')

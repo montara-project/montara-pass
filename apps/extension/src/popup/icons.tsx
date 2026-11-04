@@ -146,6 +146,13 @@ export const ShieldIcon = icon(
   </>
 )
 
+export const HistoryIcon = icon(
+  <>
+    <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+    <path d="M3 3v5h5M12 7v5l3 3" />
+  </>
+)
+
 export const KeyholeIcon = icon(
   <>
     <circle cx="12" cy="10" r="3" fill="currentColor" stroke="none" />
