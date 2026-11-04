@@ -11,15 +11,17 @@
 // A request for a passkey comes from src/entrypoints/passkey-page.content.ts
 // and is answered by a third frame (inline.html#passkey); the answer passes
 // through here on its way back to the page that asked.
-// It also notices a contact (a name with an address or a phone) being sent,
-// and frames the same prompt for it. Like the background script it imports
-// nothing but WXT's wrapper, apart from src/lib/contact-capture.ts, which
-// imports nothing itself.
+// It also notices a payment card, or a contact (a name with an address or a
+// phone), being sent, and frames the same prompt for it. Like the background
+// script it imports nothing but WXT's wrapper, apart from
+// src/lib/card-capture.ts and src/lib/contact-capture.ts, which import
+// nothing themselves.
 // Keep the message names in sync with src/inline/main.tsx and
 // src/entrypoints/passkey-page.content.ts.
 
 import { defineContentScript } from 'wxt/utils/define-content-script'
 
+import { cardFrom } from '../lib/card-capture'
 import { contactFrom } from '../lib/contact-capture'
 
 export default defineContentScript({
@@ -430,7 +432,7 @@ export default defineContentScript({
     const capture = (target: EventTarget | null) => {
       const inputs = Array.from(document.querySelectorAll('input')).filter(usable)
       const passwords = inputs.filter((el) => el.type === 'password' && el.value)
-      if (passwords.length === 0) return captureContact(target)
+      if (passwords.length === 0) return captureDetails(target)
 
       // Signing in by hand: the logins on offer are no longer wanted, and the
       // corner is free for the prompt that asks to save this one.
@@ -459,10 +461,13 @@ export default defineContentScript({
     }
 
     /**
-     * Pass on the contact in the form being sent, if it holds one. Only the
-     * form around what sent it is read: a search box elsewhere is no part of it.
+     * Pass on the card in the form being sent, or else the contact, if it holds
+     * one. A checkout with both is asked about the card. Only the form around
+     * what sent it is read: a search box elsewhere is no part of it.
      */
-    const captureContact = (target: EventTarget | null) => {
+    // ponytail: a card typed into a payment provider's frame (Stripe and the
+    // like) is out of reach: the script runs in the top frame only.
+    const captureDetails = (target: EventTarget | null) => {
       const form =
         target instanceof HTMLFormElement
           ? target
@@ -474,24 +479,25 @@ export default defineContentScript({
       ).filter(
         (el) =>
           usable(el) &&
-          (!(el instanceof HTMLInputElement) || ['text', 'email', 'tel'].includes(el.type))
+          (!(el instanceof HTMLInputElement) ||
+            ['text', 'email', 'tel', 'number'].includes(el.type))
       )
-      const contact = contactFrom(
-        controls.map((el) => ({
-          autocomplete: el.getAttribute('autocomplete') ?? '',
-          name: el.getAttribute('name') ?? '',
-          id: el.id,
-          type: el.type,
-          // A country picked from a list is kept by its name, not its code.
-          value:
-            el instanceof HTMLSelectElement && el.value
-              ? (el.selectedOptions[0]?.text ?? '')
-              : el.value,
-        }))
-      )
-      if (!contact) return
+      const fields = controls.map((el) => ({
+        autocomplete: el.getAttribute('autocomplete') ?? '',
+        name: el.getAttribute('name') ?? '',
+        id: el.id,
+        type: el.type,
+        // A country picked from a list is kept by its name, not its code.
+        value:
+          el instanceof HTMLSelectElement && el.value
+            ? (el.selectedOptions[0]?.text ?? '')
+            : el.value,
+      }))
+      const card = cardFrom(fields)
+      const contact = card ? null : contactFrom(fields)
+      if (!card && !contact) return
 
-      void toBackground({ type: 'save:contact', contact })
+      void toBackground(card ? { type: 'save:card', card } : { type: 'save:contact', contact })
       offerWhenGone(controls.find((el) => el.value) ?? controls[0])
     }
 

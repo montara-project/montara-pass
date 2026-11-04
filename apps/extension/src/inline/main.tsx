@@ -2,10 +2,13 @@ import '../popup/styles.css'
 
 import type { VaultItem } from '@montara-pass/shared/types/vault'
 
-import { CONTACT_FIELDS } from '@montara-pass/shared/constants/vault'
+import { CARD_FIELDS, CONTACT_FIELDS } from '@montara-pass/shared/constants/vault'
 import {
+  cardEnding,
+  cardFields,
   contactFields,
   encryptNewItem,
+  toCard,
   toContact,
   type VaultKeys,
 } from '@montara-pass/shared/crypto/vault'
@@ -27,9 +30,9 @@ import {
   type PasskeyRequest,
 } from '../lib/passkey'
 import {
-  SaveContactFormSchema,
+  SaveDetailsFormSchema,
   SaveLoginFormSchema,
-  type SaveContactFormDto,
+  type SaveDetailsFormDto,
   type SaveLoginFormDto,
 } from '../lib/schemas'
 import {
@@ -37,6 +40,8 @@ import {
   loadVault,
   pendingSave,
   storePendingLogin,
+  type Pending,
+  type PendingCard,
   type PendingContact,
   type PendingLogin,
 } from '../lib/session'
@@ -53,8 +58,8 @@ import { useVaultItems } from '../popup/use-vault-items'
 // The inline menu: an extension page that src/entrypoints/content.ts frames under a login
 // field. It lists the logins saved for the page around it and fills the one
 // that is picked. Opened as inline.html#save it is the save prompt instead: it
-// offers to keep the login or the contact the page just submitted, unless the
-// vault has it.
+// offers to keep the login, the card or the contact the page just submitted,
+// unless the vault has it.
 // Opened as inline.html#passkey it answers the page's request for a passkey:
 // it offers to make one, or to sign in with one the vault holds.
 // Opened as inline.html#offer it sits in the corner of a page that asks for a
@@ -123,7 +128,7 @@ async function toPage(page: Page, message: object): Promise<unknown> {
  */
 const sharedLabel = (item: VaultItem) => (item.role === 'owner' ? null : 'Shared with you')
 
-/** Drop the submitted login or contact and take the save prompt away. */
+/** Drop what the page submitted and take the save prompt away. */
 async function dismiss(page: Page): Promise<void> {
   await clearPending(page.tabId)
   await toPage(page, { type: 'save:close' })
@@ -447,37 +452,59 @@ function SaveLogin({ page, keys, expired, onLocked, login }: SaveProps & { login
   )
 }
 
-/** The name a new contact is saved under: the person's, or else what there is. */
-function contactName({ contact, url }: PendingContact): string {
+/** The name a new contact or card is saved under: the person's, or else what there is. */
+function detailsName(pending: PendingContact | PendingCard): string {
+  if ('card' in pending) return `Card ${cardEnding(pending.card.number) ?? ''}`.trim()
+  const { contact, url } = pending
   const name = [contact.firstName, contact.lastName].filter(Boolean).join(' ')
   return name || contact.email || contact.company || hostOf(url) || url
 }
 
-/** Offer to save the contact the page just submitted: a name, an address, a phone. */
-function SaveContact({
+/** Only digits: a card number as the page typed it or as the vault holds it. */
+const digitsOf = (value: unknown) => (typeof value === 'string' ? value.replace(/\D/g, '') : '')
+
+/**
+ * Offer to save the card or the contact the page just submitted. A card's
+ * number is the page's and shows only its last digits; its security code is
+ * never taken from the page.
+ */
+function SaveDetails({
   page,
   keys,
   expired,
   onLocked,
   pending,
-}: SaveProps & { pending: PendingContact }) {
+}: SaveProps & { pending: PendingContact | PendingCard }) {
   const { items, error: loadError } = useVaultItems(keys, onLocked)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
   const shownAt = useRef(Infinity)
   const saving = useRef(false)
 
-  // Only the fields the page sent are shown: the rest can be added in the vault.
-  const sent = CONTACT_FIELDS.filter(({ key }) => pending.contact[key])
-  const defaultValues: SaveContactFormDto = {
-    name: contactName(pending),
-    contact: contactFields(pending.contact),
+  const card = 'card' in pending ? pending.card : null
+  const contact = 'contact' in pending ? pending.contact : null
+  const noun = card ? 'card' : 'contact'
+
+  // A card's holder and expiry, which can be put right. Of a contact, only the
+  // fields the page sent: the rest can be added in the vault.
+  const shown = card
+    ? CARD_FIELDS.filter(({ key }) => key === 'cardholder' || key === 'expiry').map(
+        ({ key, label }) => ({ path: `card.${key}` as const, label })
+      )
+    : CONTACT_FIELDS.filter(({ key }) => contact?.[key]).map(({ key, label }) => ({
+        path: `contact.${key}` as const,
+        label,
+      }))
+  const defaultValues: SaveDetailsFormDto = {
+    name: detailsName(pending),
+    contact: contactFields(contact ?? undefined),
+    card: cardFields(card ?? undefined),
   }
 
   const form = useAppForm({
     defaultValues,
     validationLogic: checked,
-    validators: { onDynamic: SaveContactFormSchema },
+    validators: { onDynamic: SaveDetailsFormSchema },
     onSubmit: async ({ value }) => {
       // A second submit while the first is still asking the page: one save.
       if (saving.current) return
@@ -488,11 +515,13 @@ function SaveContact({
 
         setError('')
         try {
-          const encrypted = await encryptNewItem(keys, {
-            name: value.name,
-            contact: toContact(value.contact),
-          })
-          await createItem({ type: 'contact', ...encrypted })
+          const encrypted = await encryptNewItem(
+            keys,
+            card
+              ? { name: value.name, card: toCard({ ...value.card, number: card.number }) }
+              : { name: value.name, contact: toContact(value.contact) }
+          )
+          await createItem({ type: card ? 'card' : 'contact', ...encrypted })
           setSaved(true)
           await clearPending(page.tabId)
           setTimeout(() => void toPage(page, { type: 'save:close' }), 1200)
@@ -501,7 +530,7 @@ function SaveContact({
             onLocked()
             return
           }
-          setError(errorMessage(err, 'Could not save the contact'))
+          setError(errorMessage(err, `Could not save the ${noun}`))
         }
       } finally {
         saving.current = false
@@ -509,17 +538,19 @@ function SaveContact({
     },
   })
 
-  // Already in the vault: a contact that holds everything the page sent.
+  // Already in the vault: a card with the same number, or a contact that
+  // holds everything the page sent.
   const known = useMemo(
     () =>
-      (items ?? []).some(
-        (item) =>
-          item.type === 'contact' &&
-          Object.entries(pending.contact).every(
-            ([key, value]) => item.secret?.contact?.[key as keyof typeof pending.contact] === value
-          )
+      (items ?? []).some((item) =>
+        card
+          ? item.type === 'card' && digitsOf(item.secret?.card?.number) === card.number
+          : item.type === 'contact' &&
+            Object.entries(contact ?? {}).every(
+              ([key, value]) => item.secret?.contact?.[key as keyof typeof contact] === value
+            )
       ),
-    [items, pending]
+    [items, card, contact]
   )
 
   const ready = items !== null && !known && !saved
@@ -531,7 +562,7 @@ function SaveContact({
     // Saved: the prompt says so, then closes by itself.
     if (saved) return
     // Nothing to ask about. A vault that could not be read is asked again on
-    // the next page, so the contact is kept for it.
+    // the next page, so what the page sent is kept for it.
     if (expired || loadError) void toPage(page, { type: 'save:close' })
     else if (known) void dismiss(page)
   }, [expired, loadError, known, saved, page])
@@ -551,19 +582,22 @@ function SaveContact({
       }}
     >
       <p>
-        <strong>Save this contact?</strong>
+        <strong>Save this {noun}?</strong>
         <br />
-        <span className="muted">{hostOf(pending.url)}</span>
+        <span className="muted">
+          {card && `${cardEnding(card.number)} · `}
+          {hostOf(pending.url)}
+        </span>
       </p>
 
       <form.AppField
         name="name"
         children={(field) => <field.TextField label="Name" autoComplete="off" />}
       />
-      {sent.map(({ key, label }) => (
+      {shown.map(({ path, label }) => (
         <form.AppField
-          key={key}
-          name={`contact.${key}`}
+          key={path}
+          name={path}
           children={(field) => <field.TextField label={label} autoComplete="off" />}
         />
       ))}
@@ -582,7 +616,7 @@ function SaveContact({
   )
 }
 
-/** The save prompt: for the login or the contact the page just submitted. */
+/** The save prompt: for the login, the card or the contact the page just submitted. */
 function SavePrompt({
   page,
   keys,
@@ -595,9 +629,7 @@ function SavePrompt({
   onUnlock: () => void
 }) {
   // undefined while it is being read.
-  const [pending, setPending] = useState<PendingLogin | PendingContact | null | undefined>(
-    undefined
-  )
+  const [pending, setPending] = useState<Pending | null | undefined>(undefined)
   const [expired, setExpired] = useState(false)
 
   useEffect(() => {
@@ -614,12 +646,12 @@ function SavePrompt({
   }, [pending, page])
 
   if (!pending) return null
-  const isContact = 'contact' in pending
+  const noun = 'card' in pending ? 'card' : 'contact' in pending ? 'contact' : 'login'
 
   if (!keys) {
     return (
       <div className="inline-note stack">
-        <p className="muted">Unlock Montara Pass to save this {isContact ? 'contact' : 'login'}.</p>
+        <p className="muted">Unlock Montara Pass to save this {noun}.</p>
         <div className="row">
           <button onClick={onUnlock}>Unlock</button>
           <button className="link" onClick={() => void dismiss(page)}>
@@ -631,10 +663,10 @@ function SavePrompt({
   }
 
   const props = { page, keys, expired, onLocked }
-  return isContact ? (
-    <SaveContact {...props} pending={pending} />
-  ) : (
+  return 'password' in pending ? (
     <SaveLogin {...props} login={pending} />
+  ) : (
+    <SaveDetails {...props} pending={pending} />
   )
 }
 

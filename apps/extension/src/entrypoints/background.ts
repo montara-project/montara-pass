@@ -1,7 +1,7 @@
 // The background script locks the vault when the auto-lock alarm fires, wipes
 // a copied secret from the clipboard when its alarm fires, tells
-// the inline menu which tab it sits in, holds a login or a contact that was
-// just submitted until the save prompt takes it, and says whether anyone is
+// the inline menu which tab it sits in, holds a login, a card or a contact
+// that was just submitted until the save prompt takes it, and says whether anyone is
 // signed in to answer a request for a passkey. It imports nothing but WXT's wrapper.
 // Keep the names in sync with src/lib/session.ts, src/lib/storage.ts,
 // src/lib/clipboard.ts and the contact fields with CONTACT_FIELDS in
@@ -133,7 +133,7 @@ export default defineBackground({
       const key = pendingKey(tabId)
       const url = new URL(sender.url).origin
 
-      // What the page just submitted, a login or a contact, one at a time. It
+      // What the page just submitted, a login, a card or a contact, one at a time. It
       // waits in session storage (in memory, closed to pages and content
       // scripts) because the page that took it is usually gone before anyone
       // could be asked about it.
@@ -177,6 +177,25 @@ export default defineBackground({
           if (Object.keys(contact).length === 0) return
 
           hold({ contact })
+          return
+        }
+        // A card's number, holder and expiry, checked again here. Never its
+        // security code, which is not taken from a page.
+        case 'save:card': {
+          const number = String(message.card?.number ?? '').replace(/[\s-]/g, '')
+          if (!/^\d{12,19}$/.test(number)) return
+
+          const cardholder = String(message.card?.cardholder ?? '')
+            .trim()
+            .slice(0, 200)
+          const expiry = String(message.card?.expiry ?? '')
+          hold({
+            card: {
+              number,
+              ...(cardholder && { cardholder }),
+              ...(/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiry) && { expiry }),
+            },
+          })
           return
         }
         // Whether there is one to ask about; the login itself is not sent back.

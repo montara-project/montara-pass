@@ -1,5 +1,6 @@
 import {
   importVaultMaterial,
+  type Card,
   type Contact,
   type VaultKeys,
   type VaultMaterial,
@@ -51,12 +52,21 @@ export interface PendingLogin {
   url: string
 }
 
-/** A contact a page just submitted, held the same way: a tab holds one or the other. */
+/** A contact a page just submitted, held the same way: a tab holds one of the three. */
 export interface PendingContact {
   contact: Contact
   /** Origin of the page it was typed into. */
   url: string
 }
+
+/** A card a page just submitted, held the same way, without its security code. */
+export interface PendingCard {
+  card: Card
+  /** Origin of the page it was typed into. */
+  url: string
+}
+
+export type Pending = PendingLogin | PendingContact | PendingCard
 
 /**
  * The key a tab's pending login is stored under, and the name of the alarm
@@ -65,9 +75,9 @@ export interface PendingContact {
 const pendingKey = (tabId: number) => `pending:${tabId}`
 const PENDING_TTL_MINUTES = 5
 
-export async function pendingSave(tabId: number): Promise<PendingLogin | PendingContact | null> {
+export async function pendingSave(tabId: number): Promise<Pending | null> {
   const stored = await chrome.storage.session.get(pendingKey(tabId))
-  return (stored[pendingKey(tabId)] as PendingLogin | PendingContact | undefined) ?? null
+  return (stored[pendingKey(tabId)] as Pending | undefined) ?? null
 }
 
 /** Hold a login for the save prompt, as the background script does. */
