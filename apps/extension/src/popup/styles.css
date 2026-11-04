@@ -889,6 +889,12 @@ a.icon-button {
   padding: 16px;
 }
 
+/* The passkey prompt's buttons: in a narrow frame, the last ones go to a
+   second line rather than past its edge. */
+.inline-note.row {
+  flex-wrap: wrap;
+}
+
 /* ---------- sign-in and unlock ---------- */
 
 .auth {
