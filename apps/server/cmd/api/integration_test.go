@@ -15,6 +15,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -33,6 +34,8 @@ import (
 	"montara-pass/server/internal/lib"
 	"montara-pass/server/internal/lib/constant"
 	"montara-pass/server/internal/lib/lemonsqueezy"
+	"montara-pass/server/internal/lib/passkey"
+	"montara-pass/server/internal/middlewares"
 	"montara-pass/server/internal/models"
 	"montara-pass/server/internal/repositories"
 	"montara-pass/server/internal/seeders"
@@ -108,7 +111,7 @@ func TestIntegration(t *testing.T) {
 
 	repos := repositories.New(db)
 	mirror := mirrorUser(&repos.User)
-	auth := newAuth(cfg, mirror, nil, logger)
+	auth := newAuth(cfg, mirror, nil, recordSignIn(&repos.Activity), logger)
 	defer auth.CloseSystems()
 	defer auth.ClosePlugins()
 
@@ -214,6 +217,12 @@ func TestIntegration(t *testing.T) {
 		application.Redis = client
 	}
 
+	application.Passkeys, err = passkey.New("localhost", "Montara Pass", cfg.Auth.BaseURL, middlewares.NewIPKV(middlewares.NewStore(nil)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	registerPasskeyRoutes(auth, application)
+
 	server, err := newServer(application)
 	if err != nil {
 		t.Fatal(err)
@@ -293,7 +302,8 @@ func TestIntegration(t *testing.T) {
 	if status, _ := call(http.MethodPost, "/api/v1/auth/token", "", nil); status != http.StatusUnauthorized {
 		t.Fatalf("token without a session: %d, want 401", status)
 	}
-	userToken := signIn(userEmail, userPass)["access_token"].(string)
+	userIn := signIn(userEmail, userPass)
+	userToken := userIn["access_token"].(string)
 
 	if status, out := call(http.MethodGet, "/api/health", "", nil); status != http.StatusOK {
 		t.Fatalf("health: %d %v", status, out)
@@ -316,6 +326,10 @@ func TestIntegration(t *testing.T) {
 		t.Fatalf("super user route as super user: %d %v", status, out)
 	}
 
+	// On the super user's account: the user's address is near the per-email
+	// sign-in limit (10 a minute) by the password reset.
+	sessionFlow(t, call, signIn, superToken, superEmail, superPass, userIn)
+	passkeyFlow(t, call, userToken, userPass, user.ID)
 	vaultFlow(t, call, superToken, superPass, userToken, userEmail, user.ID)
 	billingFlow(t, call, db, store, superToken, userToken, user.ID)
 
@@ -383,6 +397,67 @@ func TestIntegration(t *testing.T) {
 	}
 	if status, _ := call(http.MethodPost, "/api/v1/folders", superToken, folder); status != http.StatusUnauthorized {
 		t.Fatalf("create after sign out: %d, want 401", status)
+	}
+}
+
+// sessionFlow lists the devices a user is signed in on and signs them out:
+// one at a time, then every one but the current. A signed-out device's access
+// and refresh tokens stop working; another user's session cannot be touched.
+func sessionFlow(
+	t *testing.T,
+	call func(method, path, token string, body any, headers ...string) (int, map[string]any),
+	signIn func(email, password string) map[string]any,
+	userToken, email, password string,
+	other map[string]any,
+) {
+	t.Helper()
+	sessionID := func(out map[string]any) string { return out["session"].(map[string]any)["id"].(string) }
+	list := func() (ids []string, current string) {
+		status, out := call(http.MethodGet, "/api/v1/sessions", userToken, nil)
+		if status != http.StatusOK {
+			t.Fatalf("sessions: %d %v", status, out)
+		}
+		for _, raw := range out["data"].([]any) {
+			row := raw.(map[string]any)
+			ids = append(ids, row["id"].(string))
+			if row["current"] == true {
+				current = row["id"].(string)
+			}
+		}
+		return ids, current
+	}
+
+	second := signIn(email, password)
+	third := signIn(email, password)
+	ids, current := list()
+	if !slices.Contains(ids, sessionID(second)) || !slices.Contains(ids, sessionID(third)) || current == "" {
+		t.Fatalf("sessions: %v, current %q", ids, current)
+	}
+
+	if status, _ := call(http.MethodDelete, "/api/v1/sessions/"+current, userToken, nil); status != http.StatusBadRequest {
+		t.Fatalf("revoke the current session: %d, want 400", status)
+	}
+	if status, _ := call(http.MethodDelete, "/api/v1/sessions/"+sessionID(other), userToken, nil); status != http.StatusNotFound {
+		t.Fatalf("revoke another user's session: %d, want 404", status)
+	}
+	if status, out := call(http.MethodDelete, "/api/v1/sessions/"+sessionID(second), userToken, nil); status != http.StatusOK {
+		t.Fatalf("revoke a session: %d %v", status, out)
+	}
+	if status, _ := call(http.MethodGet, "/api/v1/sessions", second["access_token"].(string), nil); status != http.StatusUnauthorized {
+		t.Fatalf("access token of a revoked session: %d, want 401", status)
+	}
+	if status, _ := call(http.MethodPost, "/api/v1/auth/token/refresh", "", map[string]any{"refresh_token": second["refresh_token"]}); status == http.StatusOK {
+		t.Fatal("refresh token of a revoked session still refreshes")
+	}
+
+	if status, out := call(http.MethodDelete, "/api/v1/sessions", userToken, nil); status != http.StatusOK {
+		t.Fatalf("revoke other sessions: %d %v", status, out)
+	}
+	if status, _ := call(http.MethodGet, "/api/v1/sessions", third["access_token"].(string), nil); status != http.StatusUnauthorized {
+		t.Fatalf("access token after revoking the others: %d, want 401", status)
+	}
+	if ids, _ = list(); len(ids) != 1 || ids[0] != current {
+		t.Fatalf("sessions after revoking the others: %v, want only %s", ids, current)
 	}
 }
 
@@ -809,8 +884,54 @@ func vaultFlow(
 	}
 	want(http.StatusOK, http.MethodPut, itemPath+"/restore", ownerToken, nil)
 	want(http.StatusOK, http.MethodDelete, memberPath, otherToken, nil)
+
+	// The activity log: the owner sees all that was done to the item; the
+	// other user what they did and what was done to them, and no longer what
+	// happened to the item while they were a member, now that they left.
+	// Newest first; a sign-in comes with where it came from, an item row not.
+	activity := func(token string) (actions []string, signIns int) {
+		t.Helper()
+		status, out := call(http.MethodGet, "/api/v1/activity?limit=100", token, nil)
+		if status != http.StatusOK {
+			t.Fatalf("activity: %d %v", status, out)
+		}
+		for _, raw := range out["data"].([]any) {
+			row := raw.(map[string]any)
+			switch {
+			case row["action"] == "sign_in":
+				signIns++
+			case row["item_id"] == itemID:
+				if row["ip"] != nil || row["item_type"] != "login" {
+					t.Fatalf("item activity row: %v", row)
+				}
+				actions = append(actions, row["action"].(string))
+			}
+		}
+		return actions, signIns
+	}
+	ownerLog, ownerSignIns := activity(ownerToken)
+	wantOwner := []string{
+		"item_member_removed", "item_restored", "item_trashed", "item_shared", "item_member_removed",
+		"item_updated", "item_role_changed", "item_shared", "item_created",
+	}
+	if !slices.Equal(ownerLog, wantOwner) || ownerSignIns == 0 {
+		t.Fatalf("owner's activity: %v (%d sign-ins), want %v", ownerLog, ownerSignIns, wantOwner)
+	}
+	otherLog, _ := activity(otherToken)
+	wantOther := []string{
+		"item_member_removed", "item_shared", "item_member_removed", "item_updated", "item_role_changed", "item_shared",
+	}
+	if !slices.Equal(otherLog, wantOther) {
+		t.Fatalf("other user's activity: %v, want %v", otherLog, wantOther)
+	}
+	want(http.StatusUnauthorized, http.MethodGet, "/api/v1/activity", "", nil)
+
 	want(http.StatusOK, http.MethodDelete, itemPath+"/force", ownerToken, nil)
 	want(http.StatusNotFound, http.MethodGet, itemPath, ownerToken, nil)
+	// Deleted for good, the item keeps its history for whoever did it.
+	if ownerLog, _ = activity(ownerToken); len(ownerLog) == 0 || ownerLog[0] != "item_deleted" {
+		t.Fatalf("owner's activity after a permanent delete: %v", ownerLog)
+	}
 }
 
 // billing checks the Cloud Edition's billing tables against what they

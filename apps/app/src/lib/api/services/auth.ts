@@ -1,5 +1,11 @@
 import type { SignInDto, SignUpDto } from '@montara-pass/shared/api/dtos/auth/schema'
-import type { Profile, SignInData, TotpSetup } from '@montara-pass/shared/api/models/user'
+import type {
+  PasskeyCeremony,
+  PasskeySignInData,
+  Profile,
+  SignInData,
+  TotpSetup,
+} from '@montara-pass/shared/api/models/user'
 
 import { TOTP_TOKEN_HEADER } from '@montara-pass/shared/auth/totp'
 
@@ -18,6 +24,10 @@ export const authServices = {
   resetPassword: (body: { token: string; password: string }) =>
     request<unknown>('POST', `${AUTH_PATH}/email-password/change-password`, { body }),
   me: () => request<Profile>('GET', `${AUTH_PATH}/me`),
+  /** Begins a passkey sign-in: a challenge any passkey on any account can sign. */
+  passkeyOptions: () => request<PasskeyCeremony>('POST', `${AUTH_PATH}/passkey/options`),
+  passkeySignIn: (body: { ceremony: string; credential: unknown }) =>
+    request<PasskeySignInData>('POST', `${AUTH_PATH}/passkey/sign-in`, { body }),
   // session_id ends that session of the caller's instead of the current one.
   signOut: (body: { session_id?: string } = {}) =>
     request<unknown>('POST', `${AUTH_PATH}/sign-out`, { body }),

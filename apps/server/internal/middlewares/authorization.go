@@ -38,7 +38,8 @@ func bearerToken(header string) string {
 // other users share items with whoever holds an email address, so an
 // unverified account could collect what was meant for the address's owner.
 func (m *Middlewares) Authorization(c fiber.Ctx) error {
-	uid, err := uuid.Parse(m.UserID(c))
+	userID, sessionID := m.signedIn(c)
+	uid, err := uuid.Parse(userID)
 	if err != nil {
 		return apperr.ErrUnauthorized
 	}
@@ -56,6 +57,7 @@ func (m *Middlewares) Authorization(c fiber.Ctx) error {
 		return errEmailNotVerified
 	}
 	lib.ContextSetUID(c, uid)
+	lib.ContextSetSessionID(c, sessionID)
 
 	return c.Next()
 }
@@ -64,52 +66,59 @@ func (m *Middlewares) Authorization(c fiber.Ctx) error {
 // or else a live session cookie, or "" for none. It does not ask for a
 // verified email; Authorization does.
 func (m *Middlewares) UserID(c fiber.Ctx) string {
-	if id := m.bearerUserID(c); id != "" {
-		return id
-	}
-	return m.sessionUserID(c)
+	userID, _ := m.signedIn(c)
+	return userID
 }
 
-// bearerUserID returns the user a valid access token belongs to, or "". The
+// signedIn returns the user and the session a request is signed in with, by
+// a valid access token or else a live session cookie, or "" for none.
+func (m *Middlewares) signedIn(c fiber.Ctx) (userID, sessionID string) {
+	if userID, sessionID = m.bearerSession(c); userID != "" {
+		return userID, sessionID
+	}
+	return m.cookieSession(c)
+}
+
+// bearerSession returns the user and session of a valid access token, or "". The
 // jwt plugin verifies the signature, the expiry and the token's blacklist,
 // not its session, so signing out or a password reset revokes it only
 // through the session check here.
-func (m *Middlewares) bearerUserID(c fiber.Ctx) string {
+func (m *Middlewares) bearerSession(c fiber.Ctx) (userID, sessionID string) {
 	token := bearerToken(c.Get(fiber.HeaderAuthorization))
 	if token == "" {
-		return ""
+		return "", ""
 	}
 
 	jwt, ok := m.app.Auth.ServiceRegistry.Get(authulamodels.ServiceJWT.String()).(authulaservices.JWTService)
 	if !ok {
-		return ""
+		return "", ""
 	}
 	actor, err := jwt.ValidateToken(c.Context(), token)
 	if err != nil || actor.Type != authulamodels.ActorUser {
-		return ""
+		return "", ""
 	}
 
-	sessionID, _ := actor.Claims["session_id"].(string)
+	sessionID, _ = actor.Claims["session_id"].(string)
 	session, err := m.app.Auth.CoreServices().SessionService.GetByID(c.Context(), sessionID)
 	if err != nil || session == nil || session.ExpiresAt.Before(time.Now().UTC()) {
-		return ""
+		return "", ""
 	}
-	return actor.ID
+	return actor.ID, session.ID
 }
 
-// sessionUserID returns the user of a live session cookie, or "".
-func (m *Middlewares) sessionUserID(c fiber.Ctx) string {
+// cookieSession returns the user and session of a live session cookie, or "".
+func (m *Middlewares) cookieSession(c fiber.Ctx) (userID, sessionID string) {
 	token := c.Cookies(config.SessionCookieName)
 	if token == "" {
-		return ""
+		return "", ""
 	}
 
 	services := m.app.Auth.CoreServices()
 	session, err := services.SessionService.GetByToken(c.Context(), services.TokenService.Hash(token))
 	if err != nil || session == nil || session.ExpiresAt.Before(time.Now().UTC()) {
-		return ""
+		return "", ""
 	}
-	return session.UserID
+	return session.UserID, session.ID
 }
 
 // SuperUser lets only super users through. It runs after Authorization and

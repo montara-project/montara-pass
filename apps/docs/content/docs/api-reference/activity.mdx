@@ -1,0 +1,57 @@
+---
+title: Activity
+description: The signed-in user's sign-ins, and who created, changed, shared or removed an item.
+---
+
+The route is protected. The log holds who signed in, and who created,
+changed, trashed, restored, deleted, shared or unshared an item. The server
+cannot read an item, so a row names it by id and type only; the clients put
+a name to it from the vault they decrypt, and fall back to the type ("a
+login") for an item the reader no longer holds.
+
+A user sees:
+
+- what they did themselves, including every sign-in, with its IP and
+  User-Agent;
+- what was done to them: an item shared with them, a role change, being
+  removed;
+- what anyone did to an item while they were one of its members.
+
+Item rows carry no IP: the other members of the item see them. Rows older
+than 90 days are deleted.
+
+```json
+{
+  "id": "…",
+  "created_at": "…",
+  "action": "item_shared",
+  "item_id": "…",
+  "item_type": "login",
+  "actor": { "id": "…", "name": "Aji", "email": "aji@example.com" },
+  "subject": { "id": "…", "name": "Ana", "email": "ana@example.com" },
+  "role": "viewer",
+  "ip": null,
+  "user_agent": null
+}
+```
+
+| `action` | Recorded when |
+| --- | --- |
+| `sign_in` | A session starts: a password, a magic link, Google or the TOTP step |
+| `item_created` | [Create](/api-reference/items#create) |
+| `item_updated` | [Update the content](/api-reference/items#update-the-content) |
+| `item_trashed`, `item_restored`, `item_deleted` | [Trash](/api-reference/items#trash), restore and delete for good |
+| `item_shared` | [Share](/api-reference/members#share); `subject` and `role` name the new member |
+| `item_role_changed` | [Change a role](/api-reference/members#change-a-role) |
+| `item_member_removed` | [Remove a member](/api-reference/members#remove-a-member); `actor` and `subject` are the same user when they left |
+
+Filing an item, marking it as used and rotating its key are not recorded.
+
+## List
+
+```http
+GET /api/v1/activity?offset=&limit=
+```
+
+Newest first. `offset` and `limit` work as in
+[pagination](/api-reference#pagination).

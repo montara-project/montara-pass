@@ -13,5 +13,7 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  // Self-checks run in Node (node src/<name>.check.ts), outside the bundle.
+  "exclude": ["src/**/*.check.ts"]
 }

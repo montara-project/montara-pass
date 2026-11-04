@@ -105,6 +105,7 @@ func parseFlag(cfg *config.Config) {
 	flag.StringVar(&cfg.Auth.EmailFrom, "email-from", envString("FROM_ADDRESS", ""), "Sender address for auth emails")
 	flag.StringVar(&cfg.Auth.ResendAPIKey, "resend-api-key", envString("RESEND_API_KEY", ""), "Resend API key for auth emails")
 	flag.StringVar(&cfg.Auth.GoogleClientID, "google-client-id", envString("GOOGLE_CLIENT_ID", ""), "Google OAuth client ID (empty disables Google sign-in)")
+	flag.StringVar(&cfg.Auth.PasskeyRPID, "passkey-rp-id", envString("PASSKEY_RP_ID", ""), "Domain account passkeys are made for, e.g. montarapass.com; changing it orphans existing passkeys (default the host of auth-base-url)")
 	flag.StringVar(&cfg.Auth.GoogleClientSecret, "google-client-secret", envString("GOOGLE_CLIENT_SECRET", ""), "Google OAuth client secret")
 
 	// Redis
@@ -115,6 +116,10 @@ func parseFlag(cfg *config.Config) {
 	flag.StringVar(&cfg.Billing.LemonSqueezyStoreID, "lemonsqueezy-store-id", envString("LEMONSQUEEZY_STORE_ID", ""), "Lemon Squeezy store id that sells the plans")
 	flag.StringVar(&cfg.Billing.LemonSqueezyWebhookSecret, "lemonsqueezy-webhook-secret", envString("LEMONSQUEEZY_WEBHOOK_SECRET", ""), "Signing secret of the store's Lemon Squeezy webhook")
 	flag.BoolVar(&cfg.Billing.RequirePaidSharing, "require-paid-sharing", envBool("REQUIRE_PAID_SHARING", false), "Sharing an item needs a paid plan (needs lemonsqueezy-api-key)")
+	flag.StringVar(&cfg.Billing.BorderPayAPIKey, "borderpay-api-key", envString("BORDERPAY_API_KEY", ""), "BorderPay API key for IDR billing (empty disables IDR checkout)")
+	flag.StringVar(&cfg.Billing.BorderPayWebhookToken, "borderpay-webhook-token", envString("BORDERPAY_WEBHOOK_TOKEN", ""), "Verification token of the BorderPay project's webhook")
+	flag.StringVar(&cfg.Billing.BorderPayBaseURL, "borderpay-base-url", envString("BORDERPAY_BASE_URL", ""), "BorderPay API base URL override (default https://borderpay.id/api/v1)")
+	flag.StringVar(&cfg.Billing.CountryHeader, "country-header", envString("COUNTRY_HEADER", ""), "Header the proxy in front sets to the client's country, e.g. CF-IPCountry: Indonesia then buys only the IDR plans, elsewhere only the others (empty offers every plan)")
 
 	// Sentry
 	flag.StringVar(&cfg.Sentry.Dsn, "sentry-dsn", envString("SENTRY_DSN", ""), "Sentry DSN")
@@ -188,6 +193,10 @@ func validateFlag(cfg *config.Config) {
 		log.Fatalf("flag auth-base-url: %q must be an origin like https://api.example.com", cfg.Auth.BaseURL)
 	}
 	cfg.Auth.BaseURL = strings.TrimSuffix(cfg.Auth.BaseURL, "/")
+	if cfg.Auth.PasskeyRPID == "" {
+		u, _ := url.Parse(cfg.Auth.BaseURL)
+		cfg.Auth.PasskeyRPID = u.Hostname()
+	}
 
 	// Verification, password reset and magic-link sign-in all send email, so
 	// the Cloud Edition needs a sender and a Resend key. The Community
@@ -216,6 +225,17 @@ func validateFlag(cfg *config.Config) {
 	}
 	if b.RequirePaidSharing && b.LemonSqueezyAPIKey == "" {
 		log.Fatal("flag require-paid-sharing needs lemonsqueezy-api-key, so the plan can be bought")
+	}
+
+	// BorderPay sells the IDR plans: the key pays, and the token is how a
+	// webhook is believed.
+	if (b.BorderPayAPIKey == "") != (b.BorderPayWebhookToken == "") {
+		log.Fatal("flags borderpay-api-key and borderpay-webhook-token must be provided together")
+	}
+	if b.BorderPayBaseURL != "" {
+		if u, err := url.Parse(b.BorderPayBaseURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			log.Fatalf("flag borderpay-base-url: %q must be an URL like https://borderpay.id/api/v1", b.BorderPayBaseURL)
+		}
 	}
 
 	if (cfg.Auth.GoogleClientID == "") != (cfg.Auth.GoogleClientSecret == "") {

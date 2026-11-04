@@ -10,6 +10,7 @@ import { isTotpCode, TOTP_CODE_REQUIRED, TOTP_TOKEN_HEADER } from '@montara-pass
 import z from 'zod'
 
 import { serverAllowed } from './origin'
+import { clearAllPending } from './session'
 import { clearTokens, getSettings, getTokens, saveTokens } from './storage'
 
 // A small fetch client for the routes the popup needs. The web app uses axios
@@ -135,6 +136,8 @@ async function saveSignIn(data: Models.SignInData): Promise<void> {
     throw new ApiError('Sign-in response did not include tokens', 200)
   }
   await saveTokens({ accessToken: data.access_token, refreshToken: data.refresh_token })
+  // A save held for whoever was signed in before is not this account's.
+  await clearAllPending()
 }
 
 /**
@@ -153,6 +156,38 @@ export async function signIn(email: string, password: string): Promise<{ totpTok
 
   await saveSignIn(data)
   return {}
+}
+
+/** Begins a passkey sign-in: a challenge any passkey on the account can sign. */
+export async function passkeyOptions(): Promise<Models.PasskeyCeremony> {
+  const res = await send(`${AUTH_PATH}/passkey/options`, { method: 'POST' })
+  if (!res.ok) throw await errorFrom(res)
+  return (await res.json()) as Models.PasskeyCeremony
+}
+
+/**
+ * Finishes a passkey sign-in and stores the tokens. A passkey verifies the
+ * user, so there is no TOTP step. Answers with the vault key the passkey
+ * seals, if it does.
+ */
+export async function passkeySignIn(
+  ceremony: string,
+  credential: unknown
+): Promise<Models.PasskeySignInData['passkey']> {
+  const res = await send(`${AUTH_PATH}/passkey/sign-in`, {
+    method: 'POST',
+    body: JSON.stringify({ ceremony, credential }),
+  })
+  if (!res.ok) throw await errorFrom(res)
+
+  const data = (await res.json()) as Models.PasskeySignInData
+  await saveSignIn(data)
+  return data.passkey
+}
+
+/** The passkeys on the account; they are added in the web app. */
+export async function listPasskeys(): Promise<Models.AccountPasskey[]> {
+  return (await request<Envelope<Models.AccountPasskey[]>>('/api/v1/passkeys')).data
 }
 
 /**
@@ -214,6 +249,7 @@ export async function signOut(): Promise<void> {
     // Ignore: there is no session left to end.
   } finally {
     await clearTokens()
+    await clearAllPending()
   }
 }
 
@@ -264,14 +300,17 @@ export async function getBilling(): Promise<Models.BillingOverview | null> {
 
 /**
  * The plans on offer, cheapest first within each kind; none where the server
- * has no billing.
+ * has no billing. region is the only currency the user may buy in, where the
+ * server knows their country: IDR in Indonesia, USD elsewhere.
  */
-export async function listPlans(): Promise<Models.Plan[]> {
+export async function listPlans(): Promise<{ plans: Models.Plan[]; region?: 'USD' | 'IDR' }> {
   try {
-    const res = await request<Envelope<Models.Plan[]>>('/api/v1/plans')
-    return res.data
+    const res = await request<
+      Envelope<Models.Plan[]> & { metadata?: { currency?: 'USD' | 'IDR' } }
+    >('/api/v1/plans')
+    return { plans: res.data, region: res.metadata?.currency }
   } catch (error) {
-    if (error instanceof ApiError && error.status === 404) return []
+    if (error instanceof ApiError && error.status === 404) return { plans: [] }
     throw error
   }
 }
@@ -312,6 +351,16 @@ async function listAll<T>(path: string): Promise<T[]> {
       return rows
     }
   }
+}
+
+/** One page of the signed-in user's activity log, newest first, and how many rows it has. */
+export async function listActivity(
+  offset: number
+): Promise<{ rows: Models.Activity[]; total: number }> {
+  const page = await request<ListEnvelope<Models.Activity>>(
+    `/api/v1/activity?limit=${PAGE_SIZE}&offset=${offset}`
+  )
+  return { rows: page.data, total: page.metadata.total ?? page.data.length }
 }
 
 /** Every live item of the vault. */

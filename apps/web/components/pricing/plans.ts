@@ -106,21 +106,76 @@ export const TIERS: Tier[] = [
     per: "once",
     action: { label: "Buy lifetime", href: `${APP_URL}/billing?plan=pro-lifetime` },
   },
+  {
+    code: "pro-monthly-idr",
+    name: "Pro Monthly",
+    terms: "all features · one period · renew by subscribing again",
+    amount: 25000,
+    currency: "IDR",
+    kind: "recurring",
+    per: "/ month",
+    action: {
+      label: "Subscribe monthly",
+      href: `${APP_URL}/billing?plan=pro-monthly-idr&currency=IDR`,
+    },
+  },
+  {
+    code: "pro-yearly-idr",
+    name: "Pro Yearly",
+    terms: "all features · one period · renew by subscribing again",
+    amount: 250000,
+    currency: "IDR",
+    kind: "recurring",
+    per: "/ year",
+    action: {
+      label: "Subscribe annually",
+      href: `${APP_URL}/billing?plan=pro-yearly-idr&currency=IDR`,
+    },
+  },
+  {
+    code: "pro-lifetime-idr",
+    name: "Pro Lifetime",
+    terms: "all features · one payment · does not renew",
+    amount: 5000000,
+    currency: "IDR",
+    kind: "one_time",
+    per: "once",
+    action: {
+      label: "Buy lifetime",
+      href: `${APP_URL}/billing?plan=pro-lifetime-idr&currency=IDR`,
+    },
+  },
 ];
 
 /**
  * The terms under the tape's action, which depend on what the selected row is
- * rather than on how it bills: a free row is never charged, and saying so is
- * the point of the page.
+ * and the currency it bills in, rather than on how it bills: a free row is
+ * never charged, and saying so is the point of the page.
  */
-export const TERMS: Record<Kind, string> = {
-  free: "Nothing to pay, nothing to renew.",
-  recurring: "Renews until canceled. Paid through Lemon Squeezy.",
-  one_time: "One payment, no renewal. Paid through Lemon Squeezy.",
-};
+export function terms(kind: Kind, currency: string): string {
+  if (kind === "free") return "Nothing to pay, nothing to renew.";
+  if (currency === "IDR") {
+    return kind === "recurring"
+      ? "One period at a time: subscribe again to renew. Paid through BorderPay (QRIS)."
+      : "One payment, no renewal. Paid through BorderPay (QRIS).";
+  }
+  return kind === "recurring"
+    ? "Renews until canceled. Paid through Lemon Squeezy."
+    : "One payment, no renewal. Paid through Lemon Squeezy.";
+}
 
-/** A tier's amount from cents, which the API counts every currency in. */
+/**
+ * A tier's amount from the currency's minor unit, which the API counts every
+ * currency in: cents for USD, the rupiah itself for IDR.
+ */
 export function formatAmount(amount: number, currency: string): string {
+  if (currency === "IDR") {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  }
   const digits = 2;
   const value = amount / 10 ** digits;
   // Whole amounts read as "$3", not "$3.00": a price list is scanned, and the

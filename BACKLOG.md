@@ -22,7 +22,7 @@ which both billing pages list.
       a known breach (k-anonymity lookup, so the server still learns nothing).
 - [ ] **Security dashboard for admins**: password health across the team, not
       only one's own vault.
-- [ ] **Activity log**: who signed in, shared, changed or removed an item.
+- [x] **Activity log**: who signed in, shared, changed or removed an item.
 - [ ] **Emergency access / account recovery**: a trusted contact, or an admin,
       can regain access without the server holding the master password.
 - [ ] **Email masking**: generate an alias address per site that forwards to

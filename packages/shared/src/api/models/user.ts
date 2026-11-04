@@ -17,6 +17,42 @@ export interface Session {
   expires_at: ISO8601DateString
 }
 
+/** A device signed in to the account: one of the user's live sessions (GET /api/v1/sessions). */
+export interface Device {
+  id: string
+  created_at: ISO8601DateString
+  /** When the session was last renewed: roughly, last active. */
+  updated_at: ISO8601DateString
+  expires_at: ISO8601DateString
+  ip: string | null
+  user_agent: string | null
+  /** The session this app is signed in with. */
+  current: boolean
+}
+
+/** A passkey on the account (GET /api/v1/passkeys). */
+export interface AccountPasskey {
+  id: string
+  created_at: ISO8601DateString
+  name: string
+  /** base64url, as the browser names the credential. */
+  credential_id: string
+  /** The vault key sealed under the passkey's PRF output; null when it signs in only. */
+  encrypted_vault_key: string | null
+  last_used_at: ISO8601DateString | null
+}
+
+/** Body of POST /api/v1/auth/passkey/sign-in: a sign-in, and the passkey's sealed vault key. */
+export interface PasskeySignInData extends SignInData {
+  passkey: { id: string; encrypted_vault_key: string | null }
+}
+
+/** Body of POST /api/v1/auth/passkey/options and data of POST /api/v1/passkeys/register/begin. */
+export interface PasskeyCeremony {
+  ceremony: string
+  options: { publicKey: Record<string, unknown> }
+}
+
 /** Body of GET /api/v1/auth/me. Authula's routes answer without the data envelope. */
 export interface Profile {
   user: User

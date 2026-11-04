@@ -7,7 +7,11 @@ const BILLING_QUERY_KEY = 'billing'
 const plans = () =>
   queryOptions({
     queryKey: [BILLING_QUERY_KEY, 'plans'],
-    queryFn: async () => (await services.billing.plans()).data,
+    queryFn: async () => {
+      const res = await services.billing.plans()
+      // Set only where the server knows the country: then those plans alone.
+      return { plans: res.data, region: res.metadata?.currency }
+    },
   })
 
 const overview = () =>

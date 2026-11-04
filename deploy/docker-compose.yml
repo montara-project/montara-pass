@@ -71,6 +71,7 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      PASSKEY_RP_ID: ${PASSKEY_RP_ID:-}
       # The web app is served from this same origin, so CORS stays off.
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
       # Requests arrive through Dokploy's Traefik. Without this every client
@@ -83,6 +84,12 @@ services:
       LEMONSQUEEZY_WEBHOOK_SECRET: ${LEMONSQUEEZY_WEBHOOK_SECRET:-}
       # Sharing an item needs a paid plan; needs LEMONSQUEEZY_API_KEY.
       REQUIRE_PAID_SHARING: ${REQUIRE_PAID_SHARING:-false}
+      # IDR billing through BorderPay; empty leaves IDR checkout off.
+      BORDERPAY_API_KEY: ${BORDERPAY_API_KEY:-}
+      BORDERPAY_WEBHOOK_TOKEN: ${BORDERPAY_WEBHOOK_TOKEN:-}
+      # The client's country header from the proxy in front (CF-IPCountry):
+      # Indonesia buys only the IDR plans, elsewhere only the USD ones.
+      COUNTRY_HEADER: ${COUNTRY_HEADER:-}
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:8080/api/health']
       interval: 5m

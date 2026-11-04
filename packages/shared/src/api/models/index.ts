@@ -1,6 +1,12 @@
 export namespace Models {
+  export type Activity = import('./activity').Activity
+  export type ActivityAction = import('./activity').ActivityAction
   export type User = import('./user').User
   export type Session = import('./user').Session
+  export type Device = import('./user').Device
+  export type AccountPasskey = import('./user').AccountPasskey
+  export type PasskeySignInData = import('./user').PasskeySignInData
+  export type PasskeyCeremony = import('./user').PasskeyCeremony
   export type Profile = import('./user').Profile
   export type SignInData = import('./user').SignInData
   export type TokenPair = import('./user').TokenPair
@@ -16,4 +22,6 @@ export namespace Models {
   export type Purchase = import('./billing').Purchase
   export type BillingOverview = import('./billing').BillingOverview
   export type BillingPortal = import('./billing').BillingPortal
+  export type MeRole = import('./security').MeRole
+  export type IPBlock = import('./security').IPBlock
 }

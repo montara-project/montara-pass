@@ -1,0 +1,81 @@
+---
+title: Passkeys
+description: Passkeys on the account, to sign in and to unlock the vault.
+---
+
+A passkey on the account signs in without the account password or the TOTP
+code: it is discoverable, so it names the account, and it verifies the user.
+Where the authenticator has the WebAuthn PRF extension, the passkey also
+unlocks the vault: the client seals the vault key under a key derived from
+the passkey's PRF output and stores that copy with the passkey. The PRF
+output never leaves the client, so the server still cannot open the vault.
+
+The passkeys are made for `PASSKEY_RP_ID` (see
+[configuration](/getting-started/configuration)). The server accepts a
+ceremony from the web app's origin, any origin under the RP ID, and a
+browser extension's own origin: an extension may use the RP ID of a host it
+has permission for (Chrome 122, Firefox 150).
+
+Options are WebAuthn's, as JSON: binary fields are base64url. A ceremony
+is finished once, within five minutes.
+
+```json
+{
+  "id": "…",
+  "created_at": "…",
+  "name": "Chrome on macOS",
+  "credential_id": "base64url…",
+  "encrypted_vault_key": "base64…",
+  "last_used_at": "…"
+}
+```
+
+## List
+
+```http
+GET /api/v1/passkeys
+```
+
+The account's passkeys, with the sealed vault key for unlocking.
+
+## Register
+
+```http
+POST /api/v1/passkeys/register/begin
+{ "password": "account password" }
+```
+
+Answers `{ "ceremony", "options" }`, `403` for a wrong password. At most 10
+passkeys per account.
+
+```http
+POST /api/v1/passkeys/register/finish
+{ "ceremony", "name", "credential", "encrypted_vault_key" }
+```
+
+`credential` is the `PublicKeyCredential` as JSON, without its client
+extension results. `encrypted_vault_key` is left out for an authenticator
+without PRF: the passkey then signs in only.
+
+## Remove
+
+```http
+DELETE /api/v1/passkeys/:id
+```
+
+## Sign in
+
+```http
+POST /api/v1/auth/passkey/options
+```
+
+Answers `{ "ceremony", "options" }` for a discoverable passkey.
+
+```http
+POST /api/v1/auth/passkey/sign-in
+{ "ceremony", "credential" }
+```
+
+Answers like a [sign-in](/api-reference/authentication), with the session
+cookie and the token pair, plus `passkey: { id, encrypted_vault_key }`.
+`401` when the passkey is unknown, removed, or answers for another account.

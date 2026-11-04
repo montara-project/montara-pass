@@ -889,6 +889,12 @@ a.icon-button {
   padding: 16px;
 }
 
+/* The passkey prompt's buttons: in a narrow frame, the last ones go to a
+   second line rather than past its edge. */
+.inline-note.row {
+  flex-wrap: wrap;
+}
+
 /* ---------- sign-in and unlock ---------- */
 
 .auth {
@@ -1917,6 +1923,32 @@ input.range:active::-moz-range-thumb {
   font-weight: 500;
 }
 
+/* The currency tabs above the plans: USD, IDR. */
+.plan-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.plan-tab {
+  padding: 4px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-tab:hover {
+  background: var(--hover);
+}
+
+.plan-tab[data-on] {
+  border-color: var(--focus);
+  background: color-mix(in srgb, var(--focus) 15%, transparent);
+  color: var(--focus);
+}
+
 .plan-card button {
   width: 100%;
   font-weight: 500;
@@ -2904,4 +2936,13 @@ textarea,
   .detail-body {
     padding: 20px;
   }
+}
+
+/* A row of the activity log: read, not pressed, so the row itself is padded. */
+.health-list li.activity-row {
+  padding: 10px 14px;
+}
+
+.activity-row .item-name {
+  white-space: normal;
 }
