@@ -88,7 +88,9 @@ func (r *IPBlockRepository) Create(ctx context.Context, ip, source, reason strin
 		INSERT INTO ip_blocks (ip, source, reason, status, blocked_until)
 		VALUES ($1, $2, NULLIF($3, ''), 'active', $4)
 		ON CONFLICT (ip) WHERE status = 'active' DO UPDATE
-		SET source = EXCLUDED.source, reason = coalesce(EXCLUDED.reason, ip_blocks.reason),
+		-- An automatic block does not turn a manual one into its own.
+		SET source = CASE WHEN ip_blocks.source = 'manual' THEN 'manual' ELSE EXCLUDED.source END,
+		    reason = coalesce(EXCLUDED.reason, ip_blocks.reason),
 		    blocked_until = CASE
 		        WHEN ip_blocks.blocked_until IS NULL OR EXCLUDED.blocked_until IS NULL THEN NULL
 		        ELSE GREATEST(ip_blocks.blocked_until, EXCLUDED.blocked_until) END,
@@ -127,13 +129,14 @@ func (r *IPBlockRepository) Lift(ctx context.Context, id uuid.UUID) (models.IPBl
 	return b, changed, nil
 }
 
-// ActiveManual returns the manual blocks still shutting their IP out, for the
-// boot that restores them into the key-value store.
-func (r *IPBlockRepository) ActiveManual(ctx context.Context) ([]models.IPBlock, error) {
+// Active returns the blocks still shutting their IP out, manual and
+// automatic, for the boot that restores them into the key-value store: an
+// in-memory store forgets them on a restart.
+func (r *IPBlockRepository) Active(ctx context.Context) ([]models.IPBlock, error) {
 	query := fmt.Sprintf(`SELECT %s FROM ip_blocks
-		WHERE status = $1 AND source = $2 AND (blocked_until IS NULL OR blocked_until > now())
+		WHERE status = $1 AND (blocked_until IS NULL OR blocked_until > now())
 		ORDER BY created_at`, ipBlockColumns)
-	rows, err := r.queryContext(ctx, query, models.IPBlockActive, models.IPBlockManual)
+	rows, err := r.queryContext(ctx, query, models.IPBlockActive)
 	if err != nil {
 		return nil, err
 	}

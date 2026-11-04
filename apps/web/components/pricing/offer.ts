@@ -25,6 +25,8 @@ interface Plan {
   /** In the currency's minor unit. */
   amount: number;
   currency: string;
+  /** Who takes the payment: BorderPay charges once, Lemon Squeezy renews. */
+  provider: "lemonsqueezy" | "borderpay";
   /** What it is marked down from, set by hand; null for none. */
   compare_at_amount: number | null;
   /**
@@ -78,7 +80,7 @@ function fromPlan(plan: Plan): Tier {
   const oneTime = plan.billing === "one_time";
   const yearly = plan.billing_interval === "year";
   const per = oneTime ? "once" : yearly ? "/ year" : "/ month";
-  const idr = plan.currency === "IDR";
+  const borderPay = plan.provider === "borderpay";
   return {
     code: plan.code,
     // The API's names carry the product and the store's environment
@@ -86,7 +88,7 @@ function fromPlan(plan: Plan): Tier {
     name: `Pro ${oneTime ? "Lifetime" : yearly ? "Yearly" : "Monthly"}`,
     terms: oneTime
       ? "all features · one payment · does not renew"
-      : idr
+      : borderPay
         ? // BorderPay charges once: the user subscribes again to renew.
           "all features · one period · renew by subscribing again"
         : `all features · renews ${yearly ? "yearly" : "monthly"} · cancel any time`,

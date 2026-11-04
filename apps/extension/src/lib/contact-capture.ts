@@ -11,6 +11,8 @@ export interface FieldInfo {
   id: string
   type: string
   value: string
+  /** A select's chosen option as shown, where its value is a code. */
+  label?: string
 }
 
 export type CapturedContact = Partial<Record<ContactField, string>>
@@ -53,6 +55,11 @@ const BY_NAME: [RegExp, Slot][] = [
   [/^(full.?)?name$|^nama(.?lengkap)?$/i, 'fullName'],
 ]
 
+/** "shipping" or "billing", where the autocomplete names the section. */
+function sectionOf(field: FieldInfo): string {
+  return field.autocomplete.toLowerCase().match(/\b(shipping|billing)\b/)?.[1] ?? ''
+}
+
 function slotOf(field: FieldInfo): Slot | null {
   // "shipping street-address": the last word names the field.
   const token = field.autocomplete.trim().toLowerCase().split(/\s+/).pop() ?? ''
@@ -74,10 +81,19 @@ function slotOf(field: FieldInfo): Slot | null {
  */
 export function contactFrom(fields: FieldInfo[]): CapturedContact | null {
   const found: Partial<Record<Slot, string[]>> = {}
+  // A checkout with a shipping and a billing address: the first one's lines.
+  let addressSection: string | undefined
   for (const field of fields) {
-    const value = field.value.trim().slice(0, 500)
-    const slot = value && slotOf(field)
-    if (slot) (found[slot] ??= []).push(value)
+    const slot = slotOf(field)
+    // A country picked from a list by its code is kept by its name.
+    const raw = slot === 'country' && field.label ? field.label : field.value
+    const value = raw.trim().slice(0, 500)
+    if (!slot || !value) continue
+    if (slot === 'address') {
+      addressSection ??= sectionOf(field)
+      if (sectionOf(field) !== addressSection) continue
+    }
+    ;(found[slot] ??= []).push(value)
   }
 
   const contact: CapturedContact = {}
@@ -86,9 +102,10 @@ export function contactFrom(fields: FieldInfo[]): CapturedContact | null {
     // The lines of an address belong together; of anything else, the first.
     contact[slot] = slot === 'address' ? values.join(', ') : values[0]
   }
-  if (!contact.firstName && !contact.lastName && found.fullName) {
+  // A whole name fills only the parts the form did not give apart.
+  if (!contact.lastName && found.fullName) {
     const [first, ...rest] = found.fullName[0].split(/\s+/)
-    contact.firstName = first
+    contact.firstName ??= first
     if (rest.length) contact.lastName = rest.join(' ')
   }
 

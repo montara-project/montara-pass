@@ -86,6 +86,18 @@ export async function storePendingLogin(tabId: number, login: PendingLogin): Pro
   await chrome.alarms.create(pendingKey(tabId), { delayInMinutes: PENDING_TTL_MINUTES })
 }
 
+/**
+ * Drop every tab's pending save. What a page submitted belongs to whoever was
+ * signed in then: another account must not be offered it.
+ */
+export async function clearAllPending(): Promise<void> {
+  const keys = Object.keys(await chrome.storage.session.get(null)).filter((key) =>
+    key.startsWith('pending:')
+  )
+  await chrome.storage.session.remove(keys)
+  await Promise.all(keys.map((key) => chrome.alarms.clear(key)))
+}
+
 export async function clearPending(tabId: number): Promise<void> {
   await chrome.storage.session.remove(pendingKey(tabId))
   await chrome.alarms.clear(pendingKey(tabId))

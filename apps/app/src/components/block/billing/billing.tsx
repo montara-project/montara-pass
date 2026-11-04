@@ -104,7 +104,8 @@ export default function BillingBlock() {
                 <span className="text-muted-foreground text-[13px]">
                   {BILLING_STATUS[subscription.status]}
                   {subscription.status === 'active' &&
-                    (subscription.canceled_at
+                    // BorderPay charges once: its subscriptions end, never renew.
+                    (subscription.canceled_at || subscription.plan.provider === 'borderpay'
                       ? `, ends ${formatDate(subscription.current_period_end)}`
                       : `, renews ${formatDate(subscription.current_period_end)}`)}
                 </span>

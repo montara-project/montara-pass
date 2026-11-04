@@ -50,4 +50,30 @@ assert.equal(cardFrom([field('12345', { name: 'card_number' })]), null)
 // No number, no card.
 assert.equal(cardFrom([field('Aji Jha', { autocomplete: 'cc-name' })]), null)
 
+// The first field that holds a card wins: a gift-card box before it does not.
+assert.deepEqual(
+  cardFrom([
+    field('1234 5678', { name: 'card_number_gift' }),
+    field('4111 1111 1111 1111', { autocomplete: 'cc-number' }),
+  ]),
+  { number: '4111111111111111' }
+)
+// A month field's value, and an expiry field the month and year stand in for.
+assert.deepEqual(
+  cardFrom([
+    field('4111111111111111', { name: 'cardnumber' }),
+    field('2029-12', { name: 'expiry' }),
+  ]),
+  { number: '4111111111111111', expiry: '12/29' }
+)
+assert.deepEqual(
+  cardFrom([
+    field('4111111111111111', { name: 'cardnumber' }),
+    field('soon', { name: 'expiry' }),
+    field('07', { name: 'exp_month' }),
+    field('2030', { name: 'exp_year' }),
+  ]),
+  { number: '4111111111111111', expiry: '07/30' }
+)
+
 console.log('card-capture: ok')

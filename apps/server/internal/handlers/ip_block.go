@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"net"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -70,8 +72,18 @@ func (h *ipBlockHandler) Create(c fiber.Ctx) error {
 	if err := lib.ValidateRequestBody(c, &body); err != nil {
 		return err
 	}
-	if net.ParseIP(body.IP) == nil {
+	parsed := net.ParseIP(body.IP)
+	if parsed == nil {
 		return apperr.New(apperr.KindBadRequest, "ip must be a valid IP address")
+	}
+	// Spelled as the middleware sees a client's address (c.IP()), so one
+	// IPv6 address written two ways is one block.
+	ip := parsed.String()
+	// The middleware never blocks an exempt address: a block recorded for one
+	// would be listed as active and do nothing.
+	exempt := strings.Split(h.app.Config.App.RateLimitExemptIPs, ",")
+	if slices.ContainsFunc(exempt, func(e string) bool { return strings.TrimSpace(e) == ip }) {
+		return apperr.New(apperr.KindBadRequest, "%s is exempt from blocking (RATE_LIMIT_EXEMPT_IPS)", ip)
 	}
 
 	var until *time.Time
@@ -80,28 +92,39 @@ func (h *ipBlockHandler) Create(c fiber.Ctx) error {
 		until = &t
 	}
 
-	b, err := h.repo().Create(c.Context(), body.IP, models.IPBlockManual, body.Reason, until)
+	b, err := h.repo().Create(c.Context(), ip, models.IPBlockManual, body.Reason, until)
 	if err != nil {
 		return err
 	}
-	middlewares.BlockIP(h.app.IPKV, b.IP, orZero(b.BlockedUntil))
+	if err := middlewares.BlockIP(h.app.IPKV, b.IP, orZero(b.BlockedUntil)); err != nil {
+		h.app.Logger.Warn("store ip block: enforced from the next boot", "ip", b.IP, "error", err)
+	}
 	h.app.Logger.Info("ip blocked by hand", "ip", b.IP, "until", b.BlockedUntil, "by", currentUserID(c))
 	return dtos.Created(c, b, "ip blocked")
 }
 
-// Destroy lifts a block early: the record is marked, and its key deleted, so
-// the IP is let through at once.
+// Destroy lifts a block early: its key is deleted, so the IP is let through
+// at once, then the record is marked. A key the store would not delete leaves
+// the record active, as the block still is.
 func (h *ipBlockHandler) Destroy(c fiber.Ctx) error {
 	id, err := pathID(c, "ip block")
 	if err != nil {
 		return err
+	}
+	b, err := h.repo().Get(c.Context(), id)
+	if err != nil {
+		return err
+	}
+	if b.Status == models.IPBlockActive {
+		if err := middlewares.UnblockIP(h.app.IPKV, b.IP); err != nil {
+			return err
+		}
 	}
 	b, changed, err := h.repo().Lift(c.Context(), id)
 	if err != nil {
 		return err
 	}
 	if changed {
-		middlewares.UnblockIP(h.app.IPKV, b.IP)
 		h.app.Logger.Info("ip block lifted by hand", "ip", b.IP, "by", currentUserID(c))
 	}
 	return dtos.OK(c, b)

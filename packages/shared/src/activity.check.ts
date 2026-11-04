@@ -80,6 +80,19 @@ assert.equal(
   deviceName('Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0'),
   'Firefox on Linux'
 )
+// Chrome and Edge on an iPhone say Safari too, under their own names.
+assert.equal(
+  deviceName(
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/131.0.6778.73 Mobile/15E148 Safari/604.1'
+  ),
+  'Chrome on iOS'
+)
+assert.equal(
+  deviceName(
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 EdgiOS/131.0.2903.70 Mobile/15E148 Safari/605.1.15'
+  ),
+  'Edge on iOS'
+)
 assert.equal(deviceName('Go-http-client/1.1'), '')
 assert.equal(deviceName(null), '')
 

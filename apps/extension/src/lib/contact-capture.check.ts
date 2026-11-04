@@ -10,7 +10,7 @@ const { contactFrom } = (await import(
 
 const field = (
   value: string,
-  rest: Partial<Record<'autocomplete' | 'name' | 'id' | 'type', string>>
+  rest: Partial<Record<'autocomplete' | 'name' | 'id' | 'type' | 'label', string>>
 ) => ({
   autocomplete: '',
   name: '',
@@ -85,5 +85,33 @@ assert.equal(
 )
 // Empty fields count for nothing.
 assert.equal(contactFrom([field(' ', { name: 'name' }), field('', { name: 'address' })]), null)
+
+// A country picked by its code is kept by the name shown for it.
+assert.deepEqual(
+  contactFrom([
+    field('Aji Jha', { autocomplete: 'name' }),
+    field('ID', { autocomplete: 'country', label: 'Indonesia' }),
+  ]),
+  { firstName: 'Aji', lastName: 'Jha', country: 'Indonesia' }
+)
+// A shipping and a billing address: the first one, not both run together.
+assert.deepEqual(
+  contactFrom([
+    field('Aji', { autocomplete: 'given-name' }),
+    field('Jl. Merdeka 1', { autocomplete: 'shipping address-line1' }),
+    field('Blok A', { autocomplete: 'shipping address-line2' }),
+    field('Jl. Sudirman 9', { autocomplete: 'billing address-line1' }),
+  ]),
+  { firstName: 'Aji', address: 'Jl. Merdeka 1, Blok A' }
+)
+// A whole name fills the last name the form did not give apart.
+assert.deepEqual(
+  contactFrom([
+    field('Aji', { autocomplete: 'given-name' }),
+    field('Aji Jha', { name: 'full_name' }),
+    field('08123', { type: 'tel' }),
+  ]),
+  { firstName: 'Aji', lastName: 'Jha', phone: '08123' }
+)
 
 console.log('contact-capture: ok')

@@ -421,6 +421,16 @@ export default defineContentScript({
       passkeyTimer = window.setTimeout(closePasskey, 5000)
     }
 
+    /** The form around what sent it: the form itself, a button or a field in it. */
+    const formOf = (target: EventTarget | null) =>
+      target instanceof HTMLFormElement
+        ? target
+        : target instanceof HTMLButtonElement || target instanceof HTMLInputElement
+          ? target.form
+          : target instanceof Element
+            ? target.closest('form')
+            : null
+
     /**
      * Pass on the login in the page's form, if it holds one. Called when the
      * form looks like it is being sent.
@@ -431,7 +441,13 @@ export default defineContentScript({
     /** @param target what sent the form: the form, a button or a field in it */
     const capture = (target: EventTarget | null) => {
       const inputs = Array.from(document.querySelectorAll('input')).filter(usable)
-      const passwords = inputs.filter((el) => el.type === 'password' && el.value)
+      // A form that was sent is read for its own password: a filled sign-in
+      // elsewhere on the page does not make a checkout a login. Without a
+      // form, the page's.
+      const sent = formOf(target)
+      const passwords = inputs.filter(
+        (el) => el.type === 'password' && el.value && (!sent || el.form === sent)
+      )
       if (passwords.length === 0) return captureDetails(target)
 
       // Signing in by hand: the logins on offer are no longer wanted, and the
@@ -467,31 +483,35 @@ export default defineContentScript({
      */
     // ponytail: a card typed into a payment provider's frame (Stripe and the
     // like) is out of reach: the script runs in the top frame only.
+    // ponytail: without a form around what sent it, the whole page is read,
+    // for checkouts that a script sends without a <form>.
     const captureDetails = (target: EventTarget | null) => {
-      const form =
-        target instanceof HTMLFormElement
-          ? target
-          : target instanceof Element
-            ? target.closest('form')
-            : null
-      const controls = Array.from(
-        (form ?? document).querySelectorAll<Control>('input, select, textarea')
-      ).filter(
-        (el) =>
+      const form = formOf(target)
+      // A form's own controls, those outside it with form= among them.
+      const all = form
+        ? Array.from(form.elements)
+        : Array.from(document.querySelectorAll('input, select, textarea'))
+      const controls = all.filter(
+        (el): el is Control =>
+          (el instanceof HTMLInputElement ||
+            el instanceof HTMLSelectElement ||
+            el instanceof HTMLTextAreaElement) &&
           usable(el) &&
           (!(el instanceof HTMLInputElement) ||
-            ['text', 'email', 'tel', 'number'].includes(el.type))
+            ['text', 'email', 'tel', 'number', 'month'].includes(el.type))
       )
       const fields = controls.map((el) => ({
         autocomplete: el.getAttribute('autocomplete') ?? '',
         name: el.getAttribute('name') ?? '',
         id: el.id,
         type: el.type,
-        // A country picked from a list is kept by its name, not its code.
-        value:
+        // A month or a year picked from a list counts by its value; a country
+        // is kept by its name, which the label carries.
+        value: el.value,
+        label:
           el instanceof HTMLSelectElement && el.value
             ? (el.selectedOptions[0]?.text ?? '')
-            : el.value,
+            : undefined,
       }))
       const card = cardFrom(fields)
       const contact = card ? null : contactFrom(fields)

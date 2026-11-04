@@ -73,7 +73,12 @@ export default function IpBlocks() {
             onValueChange={(value) =>
               void navigate({
                 to: '.',
-                search: (prev) => ({ ...prev, status: value === 'all' ? undefined : value }),
+                // Another filter starts again from its first page.
+                search: (prev) => ({
+                  ...prev,
+                  status: value === 'all' ? undefined : value,
+                  page: undefined,
+                }),
                 replace: true,
               })
             }
@@ -98,6 +103,12 @@ export default function IpBlocks() {
     >
       {isLoading ? (
         <RowsSkeleton />
+      ) : isError && blocks.length === 0 ? (
+        <EmptyState
+          icon={IconShieldLock}
+          title="Couldn't load the IP blocks"
+          description="The list could not be read. Try again in a moment."
+        />
       ) : !loading && blocks.length === 0 ? (
         <EmptyState
           icon={IconShieldLock}

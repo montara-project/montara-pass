@@ -154,7 +154,8 @@ export default function Billing({ onSignedOut }: BillingProps) {
                     <span className="muted">
                       {BILLING_STATUS[subscription.status]}
                       {subscription.status === 'active' &&
-                        `, ${subscription.canceled_at ? 'ends' : 'renews'} ${DATE.format(new Date(subscription.current_period_end))}`}
+                        // BorderPay charges once: its subscriptions end, never renew.
+                        `, ${subscription.canceled_at || subscription.plan.provider === 'borderpay' ? 'ends' : 'renews'} ${DATE.format(new Date(subscription.current_period_end))}`}
                     </span>
                   </span>
                   {subscription.checkout_url ? (
@@ -209,7 +210,7 @@ export default function Billing({ onSignedOut }: BillingProps) {
                 ))}
               </div>
             )}
-            {plans.length === 0 ? (
+            {onOffer.length === 0 ? (
               <p className="muted">No plans are on offer yet.</p>
             ) : (
               <ul className="plan-grid">

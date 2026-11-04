@@ -69,7 +69,7 @@ func (h *billingHandler) ListPlans(c fiber.Ctx) error {
 
 // The currency each side of the border buys in: Indonesia the IDR plans,
 // through BorderPay's QRIS, everywhere else the plans of the Lemon Squeezy
-// store.
+// store, in the store's currency (USD when no store is configured).
 const (
 	currencyIndonesia = "IDR"
 	currencyElsewhere = "USD"
@@ -90,6 +90,11 @@ func (h *billingHandler) regionCurrency(c fiber.Ctx) string {
 	}
 	if c.IsProxyTrusted() && strings.EqualFold(strings.TrimSpace(c.Get(name)), "ID") {
 		return currencyIndonesia
+	}
+	// Abroad buys from the Lemon Squeezy store, in its currency, so the
+	// clients' filter by this currency finds its plans.
+	if h.app.Payments != nil && h.app.Payments.Currency != "" {
+		return h.app.Payments.Currency
 	}
 	return currencyElsewhere
 }
@@ -557,6 +562,8 @@ func startCheckout[T any](
 // more without it, at the full price. Any other failure is not retried, so a
 // price is never changed for a network error.
 func (h *billingHandler) planCheckout(ctx context.Context, user models.User, plan models.Plan, orderID, discount string, amount int64) (url string, settled int64, err error) {
+	// What the checkout asks, unless a refused discount is retried below.
+	settled = amount
 	if plan.Provider == models.PlanBorderPay {
 		pay, err := h.app.BorderPay.Create(ctx, borderpay.CreatePayment{
 			Amount:      amount,
@@ -823,13 +830,17 @@ func (h *billingHandler) BorderPayWebhook(c fiber.Ctx) error {
 			if err != nil {
 				return err
 			}
-			if changed, err = h.repo().ApplyBorderPaySubscription(c.Context(), id, borderpayPeriodEnd(s.Plan, time.Now())); err != nil {
+			if changed, err = h.repo().ApplyBorderPaySubscription(c.Context(), id, borderpayPeriodEnd(s.Plan, time.Now()), s.Status); err != nil {
 				return err
 			}
 		case orderPurchase:
 			// At the price asked: BorderPay's amount is fixed, and its fee is
-			// the project's, not a code's.
+			// the project's, not a code's. An expired or failed webhook may
+			// have come first; the API's word that it is paid wins.
 			changed, err = h.repo().MovePurchase(c.Context(), id, models.PurchasePending, models.PurchasePaid, nil)
+			if err == nil && !changed {
+				changed, err = h.repo().MovePurchase(c.Context(), id, models.PurchaseFailed, models.PurchasePaid, nil)
+			}
 			// A payment that arrives for an order no longer pending needs a
 			// person: it is logged, not applied.
 			if err == nil && !changed {
@@ -838,10 +849,14 @@ func (h *billingHandler) BorderPayWebhook(c fiber.Ctx) error {
 		}
 
 	case borderpay.EventExpired, borderpay.EventFailed:
-		// A subscription left pending is dropped when its checkout can no
-		// longer be paid (ExpireEnded); a purchase is marked, so its plan can
-		// be bought again.
-		if kind == orderPurchase {
+		// The payment can no longer be made: a pending subscription is let
+		// go at once, rather than holding Subscribe back until ExpireEnded
+		// sweeps it, and a purchase is marked, so its plan can be bought
+		// again. A paid webhook that still comes settles either (above).
+		switch kind {
+		case orderSubscription:
+			changed, err = h.repo().ExpirePendingSubscription(c.Context(), id)
+		case orderPurchase:
 			changed, err = h.repo().MovePurchase(c.Context(), id, models.PurchasePending, models.PurchaseFailed, nil)
 		}
 	}

@@ -9,7 +9,7 @@ import { queries } from '@/lib/api/queries'
 
 /** What the server accepts: an address, a why, and until when. The address's
  * shape is only a courtesy here; the server reads it with net.ParseIP. */
-const IP_PATTERN = /^(?:\d{1,3}(?:\.\d{1,3}){3}|[0-9A-Fa-f:]{2,45})$/
+const IP_PATTERN = /^(?:\d{1,3}(?:\.\d{1,3}){3}|[0-9A-Fa-f:.]{2,45})$/
 
 const BlockIPSchema = z.object({
   ip: z.string().min(1, 'Required').regex(IP_PATTERN, 'Must be a valid IP address'),

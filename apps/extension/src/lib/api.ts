@@ -10,6 +10,7 @@ import { isTotpCode, TOTP_CODE_REQUIRED, TOTP_TOKEN_HEADER } from '@montara-pass
 import z from 'zod'
 
 import { serverAllowed } from './origin'
+import { clearAllPending } from './session'
 import { clearTokens, getSettings, getTokens, saveTokens } from './storage'
 
 // A small fetch client for the routes the popup needs. The web app uses axios
@@ -135,6 +136,8 @@ async function saveSignIn(data: Models.SignInData): Promise<void> {
     throw new ApiError('Sign-in response did not include tokens', 200)
   }
   await saveTokens({ accessToken: data.access_token, refreshToken: data.refresh_token })
+  // A save held for whoever was signed in before is not this account's.
+  await clearAllPending()
 }
 
 /**
@@ -246,6 +249,7 @@ export async function signOut(): Promise<void> {
     // Ignore: there is no session left to end.
   } finally {
     await clearTokens()
+    await clearAllPending()
   }
 }
 

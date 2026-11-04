@@ -118,7 +118,9 @@ func TestIPBlockOnBlock(t *testing.T) {
 	// A manual block through the same keys, and its lift — in a store of its
 	// own, for the IP the middleware saw above.
 	kv2 := NewIPKV(NewStore(nil))
-	BlockIP(kv2, blockedIP, time.Now().Add(time.Minute))
+	if err := BlockIP(kv2, blockedIP, time.Now().Add(time.Minute)); err != nil {
+		t.Fatal(err)
+	}
 	manual := fiber.New(fiber.Config{ErrorHandler: ErrorHandler(slog.New(slog.NewTextHandler(io.Discard, nil)))})
 	manual.Use(IPBlock(IPBlockConfig{Exempt: func(string) bool { return false }}, kv2, slog.New(slog.NewTextHandler(io.Discard, nil))))
 	manual.Get("/ok", func(c fiber.Ctx) error { return c.SendString("ok") })
@@ -131,7 +133,9 @@ func TestIPBlockOnBlock(t *testing.T) {
 		t.Fatalf("manually blocked ip: %d, want 429", res.StatusCode)
 	}
 
-	UnblockIP(kv2, blockedIP)
+	if err := UnblockIP(kv2, blockedIP); err != nil {
+		t.Fatal(err)
+	}
 	res, err = manual.Test(httptest.NewRequest(http.MethodGet, "/ok", nil))
 	if err != nil {
 		t.Fatal(err)

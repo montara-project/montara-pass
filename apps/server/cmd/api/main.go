@@ -115,23 +115,28 @@ func run() error {
 		return fmt.Errorf("passkeys: %w", err)
 	}
 
-	// The blocks a super user asked for outlive the store's own memory: a
-	// restart, or a Redis that lost its keys, is answered from the record.
+	// The blocks outlive the store's own memory: a restart, or a Redis that
+	// lost its keys, is answered from the record.
 	syncCtx, syncCancel := context.WithTimeout(context.Background(), 15*time.Second)
-	manual, err := repos.IPBlock.ActiveManual(syncCtx)
+	active, err := repos.IPBlock.Active(syncCtx)
 	syncCancel()
 	if err != nil {
 		return fmt.Errorf("restore ip blocks: %w", err)
 	}
-	for _, b := range manual {
+	restored := 0
+	for _, b := range active {
 		var until time.Time
 		if b.BlockedUntil != nil {
 			until = *b.BlockedUntil
 		}
-		middlewares.BlockIP(application.IPKV, b.IP, until)
+		if err := middlewares.BlockIP(application.IPKV, b.IP, until); err != nil {
+			logger.Error("restore ip block", "ip", b.IP, "error", err)
+			continue
+		}
+		restored++
 	}
-	if len(manual) > 0 {
-		logger.Info("restored ip blocks", "count", len(manual))
+	if len(active) > 0 {
+		logger.Info("restored ip blocks", "restored", restored, "of", len(active))
 	}
 
 	// Authula reads its email templates when it is built.
@@ -198,7 +203,27 @@ func run() error {
 		go syncCatalogEvery(application, catalogSyncInterval)
 	}
 
+	// The activity log keeps 90 days whether or not anyone reads it.
+	go pruneActivityEvery(application, activityPruneInterval)
+
 	return serve(application)
+}
+
+// activityPruneInterval is how often rows past the activity log's 90 days
+// are deleted.
+const activityPruneInterval = time.Hour
+
+// pruneActivityEvery deletes the activity log's expired rows every interval,
+// for as long as the process runs.
+// ponytail: every replica prunes on its own clock; the delete is idempotent.
+func pruneActivityEvery(application *app.Application, interval time.Duration) {
+	for range time.Tick(interval) {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		if err := application.Repositories.Activity.Prune(ctx); err != nil {
+			application.Logger.Warn("prune activity log", "error", err)
+		}
+		cancel()
+	}
 }
 
 // catalogSyncInterval is how often the plans follow the Lemon Squeezy

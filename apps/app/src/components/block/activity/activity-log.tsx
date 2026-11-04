@@ -99,7 +99,7 @@ export default function ActivityLog() {
     >
       {isLoading ? (
         <RowsSkeleton />
-      ) : !loading && rows.length === 0 ? (
+      ) : !loading && total === 0 ? (
         <EmptyState
           icon={IconHistory}
           title="No activity yet"

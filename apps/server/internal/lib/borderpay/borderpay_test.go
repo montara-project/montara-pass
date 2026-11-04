@@ -52,7 +52,7 @@ func TestClient(t *testing.T) {
 				w.Write([]byte(`{"error":{"code":"amount_below_min","message":"amount is below the minimum"}}`))
 				return
 			}
-			if p.Amount != 25000 || p.Method != MethodQRIS || p.ReferenceID != "sub-x" {
+			if p.Amount != 25000 || p.Method != MethodQRIS || p.ReferenceID != "sub-x" || p.ReturnURL != "https://app.example.com/billing" {
 				t.Errorf("create: %+v", p)
 			}
 			w.WriteHeader(http.StatusCreated)
@@ -70,7 +70,7 @@ func TestClient(t *testing.T) {
 
 	c := New("key", srv.URL, "")
 
-	pay, err := c.Create(context.Background(), CreatePayment{Amount: 25000, Method: MethodQRIS, ReferenceID: "sub-x"})
+	pay, err := c.Create(context.Background(), CreatePayment{Amount: 25000, Method: MethodQRIS, ReferenceID: "sub-x", ReturnURL: "https://app.example.com/billing"})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -15,7 +15,8 @@ type activityHandler struct {
 }
 
 // List answers one page of the log, newest first. Rows past the 90 days the
-// log keeps are pruned first; a prune that fails only leaves them a while.
+// log keeps are pruned first, as they are every hour (cmd/api/main.go); a
+// prune that fails only leaves them a while.
 func (h *activityHandler) List(c fiber.Ctx) error {
 	uid, err := currentUser(c)
 	if err != nil {

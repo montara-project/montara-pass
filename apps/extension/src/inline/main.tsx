@@ -457,7 +457,8 @@ function detailsName(pending: PendingContact | PendingCard): string {
   if ('card' in pending) return `Card ${cardEnding(pending.card.number) ?? ''}`.trim()
   const { contact, url } = pending
   const name = [contact.firstName, contact.lastName].filter(Boolean).join(' ')
-  return name || contact.email || contact.company || hostOf(url) || url
+  // The vault takes a name of at most 200 characters.
+  return (name || contact.email || contact.company || hostOf(url) || url).slice(0, 200)
 }
 
 /** Only digits: a card number as the page typed it or as the vault holds it. */
@@ -635,7 +636,9 @@ function SavePrompt({
   useEffect(() => {
     void pendingSave(page.tabId).then(setPending)
 
-    const reread = () => void pendingSave(page.tabId).then((found) => found || setExpired(true))
+    // Another submission replaces the one shown; none left means it ran out.
+    const reread = () =>
+      void pendingSave(page.tabId).then((found) => (found ? setPending(found) : setExpired(true)))
     chrome.storage.session.onChanged.addListener(reread)
     return () => chrome.storage.session.onChanged.removeListener(reread)
   }, [page.tabId])
@@ -663,10 +666,12 @@ function SavePrompt({
   }
 
   const props = { page, keys, expired, onLocked }
+  // Remounted for a new submission, so the form starts from what it holds.
+  const key = JSON.stringify(pending)
   return 'password' in pending ? (
-    <SaveLogin {...props} login={pending} />
+    <SaveLogin key={key} {...props} login={pending} />
   ) : (
-    <SaveDetails {...props} pending={pending} />
+    <SaveDetails key={key} {...props} pending={pending} />
   )
 }
 

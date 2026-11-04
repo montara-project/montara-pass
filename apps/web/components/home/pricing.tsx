@@ -2,15 +2,22 @@
 
 import { ArrowRightIcon, CheckIcon } from "@/components/icons";
 import { docsUrl } from "@/components/links";
-import { formatAmount, type Tier } from "@/components/pricing/plans";
+import { formatAmount, type Tier, TIERS } from "@/components/pricing/plans";
 import { card, pill } from "@/components/shared";
 
 export function Pricing({ tiers, region }: { tiers: Tier[]; region?: "USD" | "IDR" }) {
   // The same rows as the pricing page: live plans, or the authored ones until
   // the hosted service has some — in the visitor's currency where their
   // country is known, else the USD ones; the pricing page has both as tabs.
-  const currency = region ?? "USD";
-  const paid = tiers.filter((tier) => tier.kind !== "free" && tier.currency === currency);
+  // Without a known country, USD, or IDR where only IDR plans are on offer.
+  const currency =
+    region ??
+    (tiers.some((tier) => tier.kind !== "free" && tier.currency === "USD") ? "USD" : "IDR");
+  const inCurrency = (list: Tier[]) =>
+    list.filter((tier) => tier.kind !== "free" && tier.currency === currency);
+  // No live plan in the visitor's currency yet: the authored ones stand in.
+  const live = inCurrency(tiers);
+  const paid = live.length ? live : inCurrency(TIERS);
   const monthly = paid.find((tier) => tier.per === "/ month");
 
   return (
@@ -21,7 +28,8 @@ export function Pricing({ tiers, region }: { tiers: Tier[]; region?: "USD" | "ID
           Free to run. Or let us host it.
         </h2>
         <p className="mx-auto mt-6 max-w-xl text-pretty leading-7 text-mist">
-          Self-hosting costs you a server and nothing to us. Cloud runs it for you, cancel anytime.
+          Self-hosting costs you a server and nothing to us. Cloud runs it for you,{" "}
+          {currency === "IDR" ? "paid one period at a time." : "cancel anytime."}
         </p>
       </div>
 
@@ -126,11 +134,11 @@ function PlanRow({ tier, monthly }: { tier: Tier; monthly?: Tier }) {
       <div className="ml-auto flex items-center gap-3">
         <div className="flex flex-col items-end">
           <span className="whitespace-nowrap text-lg font-medium">
-            {formatAmount(tier.offer?.amount ?? tier.amount, "USD")}
+            {formatAmount(tier.offer?.amount ?? tier.amount, tier.currency)}
           </span>
           {was > 0 ? (
             <span className="whitespace-nowrap font-mono text-xs text-mist">
-              was {formatAmount(was, "USD")}
+              was {formatAmount(was, tier.currency)}
             </span>
           ) : null}
         </div>

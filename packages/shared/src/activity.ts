@@ -59,10 +59,10 @@ export function describeActivity(row: Activity, meId: string, itemName?: string)
 export function deviceName(userAgent: string | null): string {
   const ua = userAgent ?? ''
   const browser = [
-    [/Edg\//, 'Edge'],
+    [/Edg(iOS|A)?\//, 'Edge'],
     [/OPR\//, 'Opera'],
-    [/Firefox\//, 'Firefox'],
-    [/Chrome\//, 'Chrome'],
+    [/Firefox\/|FxiOS\//, 'Firefox'],
+    [/Chrome\/|CriOS\//, 'Chrome'],
     [/Safari\//, 'Safari'],
   ].find(([pattern]) => (pattern as RegExp).test(ua))?.[1]
   const system = [

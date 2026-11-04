@@ -44,22 +44,27 @@ func NewIPKV(store Store) IPKV {
 // BlockIP shuts ip out of the API until until — for good at a zero time — by
 // writing the key IPBlock answers 429 on. The auto-block writes it itself;
 // the super user's manual block and the boot sync from the database come
-// here.
-func BlockIP(kv IPKV, ip string, until time.Time) {
+// here. It answers the store's error: a block the store refused is not
+// enforced.
+func BlockIP(kv IPKV, ip string, until time.Time) error {
 	if until.IsZero() {
 		until = time.Now().Add(permanentFor)
 	}
 	if exp := until.Sub(time.Now()); exp <= 0 {
-		return
+		return nil
 	}
-	_ = kv.Set(ipBlockKeyPrefix+ip, []byte(strconv.FormatInt(until.Unix(), 10)), until.Sub(time.Now()))
+	return kv.Set(ipBlockKeyPrefix+ip, []byte(strconv.FormatInt(until.Unix(), 10)), until.Sub(time.Now()))
 }
 
 // UnblockIP lifts every block of ip, the automatic and the manual alike, and
 // forgets its failure count, so it does not run into a block again at once.
-func UnblockIP(kv IPKV, ip string) {
-	_ = kv.Delete(ipBlockKeyPrefix + ip)
+// It answers the error of deleting the block: the IP is still shut out then.
+func UnblockIP(kv IPKV, ip string) error {
+	if err := kv.Delete(ipBlockKeyPrefix + ip); err != nil {
+		return err
+	}
 	_ = kv.Delete(ipFailKeyPrefix + ip)
+	return nil
 }
 
 // IPBlockConfig says when IPBlock shuts a client IP out.
@@ -116,7 +121,11 @@ func IPBlock(cfg IPBlockConfig, kv IPKV, logger *slog.Logger) fiber.Handler {
 		}
 
 		until := time.Now().Add(cfg.BlockFor)
-		_ = kv.Set(blockKey, []byte(strconv.FormatInt(until.Unix(), 10)), cfg.BlockFor)
+		// A block the store did not take is not one: nothing is recorded.
+		if serr := kv.Set(blockKey, []byte(strconv.FormatInt(until.Unix(), 10)), cfg.BlockFor); serr != nil {
+			logger.Error("store client ip block", "ip", ip, "error", serr)
+			return err
+		}
 		_ = kv.Delete(failKey)
 		if cfg.OnBlock != nil {
 			cfg.OnBlock(ip, until, failures)

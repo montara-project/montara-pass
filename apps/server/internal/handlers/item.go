@@ -153,6 +153,10 @@ func (h *itemHandler) Update(c fiber.Ctx) error {
 	if err := h.repo().Update(c.Context(), update, uid); err != nil {
 		return err
 	}
+	// The row names the type the item has now.
+	if body.Type != "" {
+		item.Type = body.Type
+	}
 	h.record(c, models.ActivityItemUpdated, item, nil, "")
 
 	item, err = h.repo().Get(c.Context(), item.ID, uid)

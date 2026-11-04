@@ -4,8 +4,10 @@ import type { SignInData } from '@montara-pass/shared/api/models/user'
 import { isTotpCode, TOTP_CODE_REQUIRED } from '@montara-pass/shared/auth/totp'
 
 import { env } from '@/config/env'
+import { getQueryClient } from '@/lib/providers/react-query'
 
 import { throwApiError } from '../api/api-error'
+import { ROLE_QUERY_KEY } from '../api/queries/security'
 import { services } from '../api/services'
 import { RESET_PASSWORD_PATH, VERIFY_EMAIL_PATH } from '../constants/auth'
 import { useVaultStore } from '../stores/vault'
@@ -16,6 +18,8 @@ export function storeSignIn(data: SignInData) {
     throw new Error('Sign-in response did not include an access token')
   }
   setAuthTokens({ accessToken: data.access_token, refreshToken: data.refresh_token })
+  // A role read before, for another account or before a promotion, is not this one's.
+  getQueryClient().removeQueries({ queryKey: [ROLE_QUERY_KEY] })
 }
 
 /**

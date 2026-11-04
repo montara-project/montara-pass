@@ -66,21 +66,26 @@ export function toExpiry(month: string, year: string): string | undefined {
  */
 export function cardFrom(fields: FieldInfo[]): CapturedCard | null {
   const found: Partial<Record<Slot, string>> = {}
+  // Every field that may hold the number: the first one that is a card wins.
+  const numbers: string[] = []
   for (const field of fields) {
     const value = field.value.trim().slice(0, 200)
     const slot = value && slotOf(field)
-    if (slot && !found[slot]) found[slot] = value
+    if (slot === 'number') numbers.push(value.replace(/[\s-]/g, ''))
+    else if (slot && !found[slot]) found[slot] = value
   }
 
-  const number = found.number?.replace(/[\s-]/g, '') ?? ''
-  if (!/^\d{12,19}$/.test(number) || !luhn(number)) return null
+  const number = numbers.find((n) => /^\d{12,19}$/.test(n) && luhn(n))
+  if (!number) return null
 
   const card: CapturedCard = { number }
   if (found.cardholder) card.cardholder = found.cardholder
-  // "12/29", "12 / 2029", "1229", or a month and a year apart.
-  const [month, year] = found.expiry
-    ? (found.expiry.match(/^\s*(\d{1,2})\s*[/-]?\s*(\d{2}|\d{4})\s*$/)?.slice(1) ?? [])
-    : [found.month, found.year]
+  // "12/29", "12 / 2029", "1229", a month field's "2029-12", or else a month
+  // and a year apart.
+  const combined = found.expiry?.match(/^\s*(\d{1,2})\s*[/-]?\s*(\d{2}|\d{4})\s*$/)?.slice(1)
+  const monthField = found.expiry?.match(/^(\d{4})-(\d{2})$/)
+  const [month, year] =
+    combined ?? (monthField ? [monthField[2], monthField[1]] : [found.month, found.year])
   const expiry = month && year ? toExpiry(month, year) : undefined
   if (expiry) card.expiry = expiry
   return card

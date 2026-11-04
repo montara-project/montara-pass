@@ -163,7 +163,7 @@ export function PricingPage({
         <PricingLedger />
       </div>
 
-      <PricingBelow />
+      <PricingBelow currency={currency} />
     </main>
   );
 }
@@ -193,6 +193,22 @@ const gates = [
   },
 ];
 
+const billingIDR = [
+  {
+    icon: CreditCardIcon,
+    text: "BorderPay handles the payment, by QRIS from any Indonesian bank or e-wallet.",
+  },
+  {
+    icon: SyncIcon,
+    text: "A monthly or annual plan is paid one period at a time. Nothing renews by itself: subscribe again when it ends.",
+  },
+  {
+    icon: InfinityIcon,
+    text: "The lifetime plan is one payment. It does not renew, and it does not expire.",
+  },
+  { icon: ReceiptIcon, text: "We do not refund. There is no trial period on the paid tiers." },
+];
+
 const billing = [
   {
     icon: CreditCardIcon,
@@ -212,7 +228,7 @@ const billing = [
 const heading = "font-heading text-2xl font-medium tracking-tight";
 const below = "border-t border-line px-6 py-20 sm:px-10 sm:py-24";
 
-function PricingBelow() {
+function PricingBelow({ currency }: { currency: "USD" | "IDR" }) {
   return (
     <>
       <section aria-labelledby="included" className={below}>
@@ -277,10 +293,10 @@ function PricingBelow() {
               Billing, plainly
             </h2>
             <p className="mt-4 text-[15px] leading-7 text-mist">
-              Four things worth knowing before you enter a card. No surprises, no dark patterns.
+              Four things worth knowing before you pay. No surprises, no dark patterns.
             </p>
             <ul className="mt-6 flex flex-col gap-5">
-              {billing.map((item) => (
+              {(currency === "IDR" ? billingIDR : billing).map((item) => (
                 <li key={item.text} className="flex items-start gap-3.5">
                   <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md border border-line bg-card text-accent-bright">
                     <item.icon className="size-3.5" />

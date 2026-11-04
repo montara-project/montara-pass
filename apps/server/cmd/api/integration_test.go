@@ -302,7 +302,8 @@ func TestIntegration(t *testing.T) {
 	if status, _ := call(http.MethodPost, "/api/v1/auth/token", "", nil); status != http.StatusUnauthorized {
 		t.Fatalf("token without a session: %d, want 401", status)
 	}
-	userToken := signIn(userEmail, userPass)["access_token"].(string)
+	userIn := signIn(userEmail, userPass)
+	userToken := userIn["access_token"].(string)
 
 	if status, out := call(http.MethodGet, "/api/health", "", nil); status != http.StatusOK {
 		t.Fatalf("health: %d %v", status, out)
@@ -325,7 +326,9 @@ func TestIntegration(t *testing.T) {
 		t.Fatalf("super user route as super user: %d %v", status, out)
 	}
 
-	sessionFlow(t, call, signIn, userToken, userEmail, userPass, super)
+	// On the super user's account: the user's address is near the per-email
+	// sign-in limit (10 a minute) by the password reset.
+	sessionFlow(t, call, signIn, superToken, superEmail, superPass, userIn)
 	passkeyFlow(t, call, userToken, userPass, user.ID)
 	vaultFlow(t, call, superToken, superPass, userToken, userEmail, user.ID)
 	billingFlow(t, call, db, store, superToken, userToken, user.ID)

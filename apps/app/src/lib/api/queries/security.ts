@@ -6,7 +6,7 @@ import type { IPBlockCreateRequest, IPBlockListParams } from '../services/securi
 
 import { services } from '../services'
 
-const ROLE_QUERY_KEY = 'me-role'
+export const ROLE_QUERY_KEY = 'me-role'
 const IP_BLOCK_QUERY_KEY = 'ip-blocks'
 
 /**

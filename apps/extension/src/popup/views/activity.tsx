@@ -23,6 +23,8 @@ interface ActivityLogProps {
  */
 export default function ActivityLog({ items, onSignedOut }: ActivityLogProps) {
   const [rows, setRows] = useState<Models.Activity[] | null>(null)
+  // How many rows the server has handed over: the next page starts there.
+  const [fetched, setFetched] = useState(0)
   const [total, setTotal] = useState(0)
   const [meId, setMeId] = useState('')
   const [error, setError] = useState('')
@@ -33,7 +35,13 @@ export default function ActivityLog({ items, onSignedOut }: ActivityLogProps) {
       setBusy(true)
       try {
         const page = await listActivity(offset)
-        setRows((prev) => [...(offset > 0 ? (prev ?? []) : []), ...page.rows])
+        setFetched(offset + page.rows.length)
+        // A row that moved onto this page as new ones came in is shown once.
+        setRows((prev) => {
+          const kept = offset > 0 ? (prev ?? []) : []
+          const seen = new Set(kept.map((row) => row.id))
+          return [...kept, ...page.rows.filter((row) => !seen.has(row.id))]
+        })
         setTotal(page.total)
         setError('')
       } catch (err) {
@@ -50,8 +58,10 @@ export default function ActivityLog({ items, onSignedOut }: ActivityLogProps) {
     void load(0)
     void getProfile()
       .then((profile) => setMeId(profile.user.id))
-      .catch(() => undefined)
-  }, [load])
+      .catch((err) => {
+        if (err instanceof SignedOutError) onSignedOut()
+      })
+  }, [load, onSignedOut])
 
   const names = useMemo(
     () => new Map((items ?? []).map((item) => [item.id, item.secret?.name])),
@@ -95,8 +105,8 @@ export default function ActivityLog({ items, onSignedOut }: ActivityLogProps) {
         </ul>
       )}
 
-      {rows && rows.length < total && (
-        <button className="link" disabled={busy} onClick={() => void load(rows.length)}>
+      {rows && fetched < total && (
+        <button className="link" disabled={busy} onClick={() => void load(fetched)}>
           {busy ? 'Loading…' : 'Show more'}
         </button>
       )}

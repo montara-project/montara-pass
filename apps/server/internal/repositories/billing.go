@@ -314,19 +314,34 @@ func (r *BillingRepository) ApplySubscription(ctx context.Context, id uuid.UUID,
 // ApplyBorderPaySubscription settles a BorderPay subscription's payment: a
 // pending row becomes active for one of its plan's periods, starting now —
 // BorderPay charges once, so nothing renews by itself; the user subscribes
-// again once the period has ended. It reports whether it changed anything: a
-// repeated webhook is a no-op.
-func (r *BillingRepository) ApplyBorderPaySubscription(ctx context.Context, id uuid.UUID, periodEnd time.Time) (bool, error) {
+// again once the period has ended. A row an expired webhook let go is
+// settled too, for a payment BorderPay still took: from (the row's status as
+// read) must still hold, so a repeated webhook, or one that lost a race, is a
+// no-op. It reports whether it changed anything.
+func (r *BillingRepository) ApplyBorderPaySubscription(ctx context.Context, id uuid.UUID, periodEnd time.Time, from string) (bool, error) {
+	if from != models.SubscriptionPending && from != models.SubscriptionExpired {
+		return false, nil
+	}
 	res, err := r.execContext(ctx, `
 		UPDATE subscriptions SET
 		    status = 'active', current_period_start = now(), current_period_end = $2,
 		    checkout_url = NULL, updated_at = now()
-		WHERE id = $1 AND status = 'pending'`,
-		id, periodEnd,
+		WHERE id = $1 AND status = $3 AND (status = 'pending' OR current_period_start = created_at)`,
+		id, periodEnd, from,
 	)
 	if hasPgCode(err, pgUniqueViolation) {
 		return false, apperr.New(apperr.KindConflict, "the user already has another live subscription")
 	}
+	return affected(res, err)
+}
+
+// ExpirePendingSubscription lets go of a pending subscription whose payment
+// can no longer be made, so the user may subscribe again at once. It reports
+// whether it changed anything.
+func (r *BillingRepository) ExpirePendingSubscription(ctx context.Context, id uuid.UUID) (bool, error) {
+	res, err := r.execContext(ctx, `
+		UPDATE subscriptions SET status = 'expired', checkout_url = NULL, updated_at = now()
+		WHERE id = $1 AND status = 'pending'`, id)
 	return affected(res, err)
 }
 
