@@ -163,6 +163,23 @@ closing the tab or five minutes without an answer drop the login.
 A form the site refuses is offered as well: the extension sees that a form
 was sent, not what the site answered.
 
+## Saving a contact as it is submitted
+
+A form without a password that holds someone's details, such as a shipping
+address or a profile, is offered the same way, as a contact. The extension
+reads the fields of the form that was sent by their `autocomplete` value
+(`given-name`, `street-address`, `postal-code` and so on), or by their name
+or id when they have none, in English or Indonesian (`alamat`, `kota`,
+`kode_pos`). It counts as a contact when it has a name and at least one of
+an address, a city, a state, a postal code, a country, a phone or a company.
+A name with only an email is a sign-up or a message, and is not offered.
+
+The prompt shows the fields the page sent, and each can be corrected before
+**Save**. Nothing is shown when a contact in the vault already holds all of
+them. Locked, signed out, the Montara Pass app itself, **Not now** and the
+five minutes work as they do for a login. A tab holds one login or one
+contact at a time: whichever was sent last.
+
 ## Site icons and last use
 
 A login keeps the icon of its site inside its encrypted content, as a PNG
@@ -193,7 +210,7 @@ without the route is ignored: the login is filled all the same.
 | Access and refresh tokens | `chrome.storage.local` | on sign out |
 | Unlocked vault keys | `chrome.storage.session` (in memory) | after 15 minutes without use, when the browser closes, on **Lock** |
 | Master password | nowhere | used once to unlock |
-| A login just submitted, until it is saved or declined | `chrome.storage.session` (in memory) | on save, on **Not now**, when the tab closes, after 5 minutes |
+| A login or a contact just submitted, until it is saved or declined | `chrome.storage.session` (in memory) | on save, on **Not now**, when the tab closes, after 5 minutes |
 | A copied username or password | the system clipboard | after 1 minute, by the background script |
 
 ## Permissions

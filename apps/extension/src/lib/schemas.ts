@@ -1,4 +1,4 @@
-import { ItemFormSchema } from '@montara-pass/shared/api/dtos/vault/schema'
+import { ItemEditFormSchema, ItemFormSchema } from '@montara-pass/shared/api/dtos/vault/schema'
 import { optionalString } from '@montara-pass/shared/validation'
 import z from 'zod'
 
@@ -63,3 +63,8 @@ export const SaveLoginFormSchema = z.object({
 })
 
 export type SaveLoginFormDto = z.infer<typeof SaveLoginFormSchema>
+
+/** The save prompt for a contact: its name and the fields the page sent, put right. */
+export const SaveContactFormSchema = ItemEditFormSchema.pick({ name: true, contact: true })
+
+export type SaveContactFormDto = z.infer<typeof SaveContactFormSchema>

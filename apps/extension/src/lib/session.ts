@@ -1,5 +1,6 @@
 import {
   importVaultMaterial,
+  type Contact,
   type VaultKeys,
   type VaultMaterial,
 } from '@montara-pass/shared/crypto/vault'
@@ -50,6 +51,13 @@ export interface PendingLogin {
   url: string
 }
 
+/** A contact a page just submitted, held the same way: a tab holds one or the other. */
+export interface PendingContact {
+  contact: Contact
+  /** Origin of the page it was typed into. */
+  url: string
+}
+
 /**
  * The key a tab's pending login is stored under, and the name of the alarm
  * that drops it. Keep both in sync with src/entrypoints/background.ts.
@@ -57,9 +65,9 @@ export interface PendingLogin {
 const pendingKey = (tabId: number) => `pending:${tabId}`
 const PENDING_TTL_MINUTES = 5
 
-export async function pendingLogin(tabId: number): Promise<PendingLogin | null> {
+export async function pendingSave(tabId: number): Promise<PendingLogin | PendingContact | null> {
   const stored = await chrome.storage.session.get(pendingKey(tabId))
-  return (stored[pendingKey(tabId)] as PendingLogin | undefined) ?? null
+  return (stored[pendingKey(tabId)] as PendingLogin | PendingContact | undefined) ?? null
 }
 
 /** Hold a login for the save prompt, as the background script does. */
@@ -68,7 +76,7 @@ export async function storePendingLogin(tabId: number, login: PendingLogin): Pro
   await chrome.alarms.create(pendingKey(tabId), { delayInMinutes: PENDING_TTL_MINUTES })
 }
 
-export async function clearPendingLogin(tabId: number): Promise<void> {
+export async function clearPending(tabId: number): Promise<void> {
   await chrome.storage.session.remove(pendingKey(tabId))
   await chrome.alarms.clear(pendingKey(tabId))
 }

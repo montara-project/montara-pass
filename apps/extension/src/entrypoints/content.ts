@@ -11,11 +11,16 @@
 // A request for a passkey comes from src/entrypoints/passkey-page.content.ts
 // and is answered by a third frame (inline.html#passkey); the answer passes
 // through here on its way back to the page that asked.
-// Like the background script it imports nothing but WXT's wrapper.
+// It also notices a contact (a name with an address or a phone) being sent,
+// and frames the same prompt for it. Like the background script it imports
+// nothing but WXT's wrapper, apart from src/lib/contact-capture.ts, which
+// imports nothing itself.
 // Keep the message names in sync with src/inline/main.tsx and
 // src/entrypoints/passkey-page.content.ts.
 
 import { defineContentScript } from 'wxt/utils/define-content-script'
+
+import { contactFrom } from '../lib/contact-capture'
 
 export default defineContentScript({
   matches: ['http://*/*', 'https://*/*'],
@@ -86,11 +91,13 @@ export default defineContentScript({
     </button>`
     const badge = shadow.querySelector('button')!
 
-    const usable = (el: HTMLInputElement) => {
+    type Control = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+
+    const usable = (el: Control) => {
       const style = getComputedStyle(el)
       return (
         !el.disabled &&
-        !el.readOnly &&
+        !('readOnly' in el && el.readOnly) &&
         style.visibility !== 'hidden' &&
         style.display !== 'none' &&
         el.getClientRects().length > 0
@@ -283,7 +290,7 @@ export default defineContentScript({
       saveFrame = document.createElement('iframe')
       greet(saveFrame)
       saveFrame.src = `${FRAME_URL}#save`
-      saveFrame.title = 'Montara Pass: save this login'
+      saveFrame.title = 'Montara Pass: save to the vault'
       // Out of sight until the prompt reports a height: it has nothing to show
       // for a login the vault already has. Transparent rather than empty: a
       // browser does not lay out a frame without area, which would then never
@@ -419,10 +426,11 @@ export default defineContentScript({
     // ponytail: any button press on a page with a filled password field counts
     // as sending it, so a sign-up the site then refuses is offered too. Telling
     // them apart means watching the response; add it if the prompt gets noisy.
-    const capture = () => {
+    /** @param target what sent the form: the form, a button or a field in it */
+    const capture = (target: EventTarget | null) => {
       const inputs = Array.from(document.querySelectorAll('input')).filter(usable)
       const passwords = inputs.filter((el) => el.type === 'password' && el.value)
-      if (passwords.length === 0) return
+      if (passwords.length === 0) return captureContact(target)
 
       // Signing in by hand: the logins on offer are no longer wanted, and the
       // corner is free for the prompt that asks to save this one.
@@ -447,13 +455,55 @@ export default defineContentScript({
         username: username?.value ?? '',
         password: password.value,
       })
+      offerWhenGone(password)
+    }
 
-      // A page that loads another one is asked about there. One that only
-      // swaps the form out is asked once the form is gone.
+    /**
+     * Pass on the contact in the form being sent, if it holds one. Only the
+     * form around what sent it is read: a search box elsewhere is no part of it.
+     */
+    const captureContact = (target: EventTarget | null) => {
+      const form =
+        target instanceof HTMLFormElement
+          ? target
+          : target instanceof Element
+            ? target.closest('form')
+            : null
+      const controls = Array.from(
+        (form ?? document).querySelectorAll<Control>('input, select, textarea')
+      ).filter(
+        (el) =>
+          usable(el) &&
+          (!(el instanceof HTMLInputElement) || ['text', 'email', 'tel'].includes(el.type))
+      )
+      const contact = contactFrom(
+        controls.map((el) => ({
+          autocomplete: el.getAttribute('autocomplete') ?? '',
+          name: el.getAttribute('name') ?? '',
+          id: el.id,
+          type: el.type,
+          // A country picked from a list is kept by its name, not its code.
+          value:
+            el instanceof HTMLSelectElement && el.value
+              ? (el.selectedOptions[0]?.text ?? '')
+              : el.value,
+        }))
+      )
+      if (!contact) return
+
+      void toBackground({ type: 'save:contact', contact })
+      offerWhenGone(controls.find((el) => el.value) ?? controls[0])
+    }
+
+    /**
+     * A page that loads another one is asked about there. One that only swaps
+     * the form out is asked once the field is gone.
+     */
+    const offerWhenGone = (el: Control) => {
       clearInterval(watch)
       let ticks = 0
       watch = window.setInterval(() => {
-        if (!password.isConnected || !usable(password)) {
+        if (!el.isConnected || !usable(el)) {
           clearInterval(watch)
           void offerSave()
         } else if (++ticks >= 20) {
@@ -462,14 +512,14 @@ export default defineContentScript({
       }, 500)
     }
 
-    document.addEventListener('submit', (e) => e.isTrusted && capture(), true)
+    document.addEventListener('submit', (e) => e.isTrusted && capture(e.target), true)
     document.addEventListener(
       'click',
       (e) => {
         const pressed =
           e.target instanceof Element &&
           e.target.closest('button, input[type="submit"], [role="button"]')
-        if (e.isTrusted && pressed) capture()
+        if (e.isTrusted && pressed) capture(pressed)
       },
       true
     )
@@ -516,7 +566,7 @@ export default defineContentScript({
       (e) => {
         // A page can dispatch key events of its own.
         if (!e.isTrusted) return
-        if (e.key === 'Enter' && e.target instanceof HTMLInputElement) capture()
+        if (e.key === 'Enter' && e.target instanceof HTMLInputElement) capture(e.target)
         if (e.key === 'Escape' && frame) {
           dismissed = true
           close()

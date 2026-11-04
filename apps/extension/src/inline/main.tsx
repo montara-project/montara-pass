@@ -2,7 +2,13 @@ import '../popup/styles.css'
 
 import type { VaultItem } from '@montara-pass/shared/types/vault'
 
-import { encryptNewItem, type VaultKeys } from '@montara-pass/shared/crypto/vault'
+import { CONTACT_FIELDS } from '@montara-pass/shared/constants/vault'
+import {
+  contactFields,
+  encryptNewItem,
+  toContact,
+  type VaultKeys,
+} from '@montara-pass/shared/crypto/vault'
 import { generatePassword } from '@montara-pass/shared/password'
 import { errorMessage } from '@montara-pass/shared/string'
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -20,12 +26,18 @@ import {
   rpIdFor,
   type PasskeyRequest,
 } from '../lib/passkey'
-import { SaveLoginFormSchema, type SaveLoginFormDto } from '../lib/schemas'
 import {
-  clearPendingLogin,
+  SaveContactFormSchema,
+  SaveLoginFormSchema,
+  type SaveContactFormDto,
+  type SaveLoginFormDto,
+} from '../lib/schemas'
+import {
+  clearPending,
   loadVault,
-  pendingLogin,
+  pendingSave,
   storePendingLogin,
+  type PendingContact,
   type PendingLogin,
 } from '../lib/session'
 import { fillsSite, matchesSite } from '../lib/site'
@@ -41,7 +53,8 @@ import { useVaultItems } from '../popup/use-vault-items'
 // The inline menu: an extension page that src/entrypoints/content.ts frames under a login
 // field. It lists the logins saved for the page around it and fills the one
 // that is picked. Opened as inline.html#save it is the save prompt instead: it
-// offers to keep the login the page just submitted, unless the vault has it.
+// offers to keep the login or the contact the page just submitted, unless the
+// vault has it.
 // Opened as inline.html#passkey it answers the page's request for a passkey:
 // it offers to make one, or to sign in with one the vault holds.
 // Opened as inline.html#offer it sits in the corner of a page that asks for a
@@ -110,9 +123,9 @@ async function toPage(page: Page, message: object): Promise<unknown> {
  */
 const sharedLabel = (item: VaultItem) => (item.role === 'owner' ? null : 'Shared with you')
 
-/** Drop the submitted login and take the save prompt away. */
+/** Drop the submitted login or contact and take the save prompt away. */
 async function dismiss(page: Page): Promise<void> {
-  await clearPendingLogin(page.tabId)
+  await clearPending(page.tabId)
   await toPage(page, { type: 'save:close' })
 }
 
@@ -290,27 +303,26 @@ function Logins({
   )
 }
 
-/** Offer to save the login the page just submitted. */
-function SaveLogin({
-  page,
-  keys,
-  onLocked,
-}: {
+/** What both save prompts are told: the page, and whether what it sent ran out. */
+interface SaveProps {
   page: Page
   keys: VaultKeys
+  /** It runs out after a while, also under an open prompt, which then closes. */
+  expired: boolean
   onLocked: () => void
-}) {
+}
+
+/** Offer to save the login the page just submitted. */
+function SaveLogin({ page, keys, expired, onLocked, login }: SaveProps & { login: PendingLogin }) {
   const { items, error: loadError } = useVaultItems(keys, onLocked)
-  // undefined while it is being read.
-  const [login, setLogin] = useState<PendingLogin | null | undefined>(undefined)
   const [showPassword, setShowPassword] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
   const shownAt = useRef(Infinity)
   const saving = useRef(false)
 
-  // The username the page sent, once it has been read: it can be put right.
-  const defaultValues: SaveLoginFormDto = { username: login?.username ?? '' }
+  // The username the page sent: it can be put right.
+  const defaultValues: SaveLoginFormDto = { username: login.username }
 
   const form = useAppForm({
     defaultValues,
@@ -318,7 +330,7 @@ function SaveLogin({
     validators: { onDynamic: SaveLoginFormSchema },
     onSubmit: async ({ value }) => {
       // A second submit while the first is still asking the page: one save.
-      if (!login || saving.current) return
+      if (saving.current) return
       saving.current = true
 
       try {
@@ -338,7 +350,7 @@ function SaveLogin({
           })
           await createItem({ type: 'login', ...encrypted })
           setSaved(true)
-          await clearPendingLogin(page.tabId)
+          await clearPending(page.tabId)
           setTimeout(() => void toPage(page, { type: 'save:close' }), 1200)
         } catch (err) {
           if (err instanceof SignedOutError) {
@@ -353,21 +365,11 @@ function SaveLogin({
     },
   })
 
-  useEffect(() => {
-    void pendingLogin(page.tabId).then(setLogin)
-
-    // It runs out after a while, also under an open prompt, which then closes.
-    const reread = () => void pendingLogin(page.tabId).then((found) => found || setLogin(null))
-    chrome.storage.session.onChanged.addListener(reread)
-    return () => chrome.storage.session.onChanged.removeListener(reread)
-  }, [page.tabId])
-
   // Already in the vault: the same account on this site, or the same password
   // when the page asked for no username. A login that holds only a passkey
   // does not know the account's password.
   const known = useMemo(
     () =>
-      !!login &&
       (items ?? []).some(
         (item) =>
           item.type === 'login' &&
@@ -380,7 +382,7 @@ function SaveLogin({
     [items, login]
   )
 
-  const ready = !!login && items !== null && !known && !saved
+  const ready = items !== null && !known && !saved
   useEffect(() => {
     if (ready) shownAt.current = performance.now()
   }, [ready])
@@ -390,9 +392,9 @@ function SaveLogin({
     if (saved) return
     // Nothing to ask about. A vault that could not be read is asked again on
     // the next page, so the login is kept for it.
-    if (login === null || loadError) void toPage(page, { type: 'save:close' })
+    if (expired || loadError) void toPage(page, { type: 'save:close' })
     else if (known) void dismiss(page)
-  }, [login, loadError, known, saved, page])
+  }, [expired, loadError, known, saved, page])
 
   /** A send the user made, once the prompt had been on screen long enough to be read. */
   const meant = ({ isTrusted, timeStamp }: Event) =>
@@ -442,6 +444,197 @@ function SaveLogin({
         </button>
       </div>
     </form>
+  )
+}
+
+/** The name a new contact is saved under: the person's, or else what there is. */
+function contactName({ contact, url }: PendingContact): string {
+  const name = [contact.firstName, contact.lastName].filter(Boolean).join(' ')
+  return name || contact.email || contact.company || hostOf(url) || url
+}
+
+/** Offer to save the contact the page just submitted: a name, an address, a phone. */
+function SaveContact({
+  page,
+  keys,
+  expired,
+  onLocked,
+  pending,
+}: SaveProps & { pending: PendingContact }) {
+  const { items, error: loadError } = useVaultItems(keys, onLocked)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState('')
+  const shownAt = useRef(Infinity)
+  const saving = useRef(false)
+
+  // Only the fields the page sent are shown: the rest can be added in the vault.
+  const sent = CONTACT_FIELDS.filter(({ key }) => pending.contact[key])
+  const defaultValues: SaveContactFormDto = {
+    name: contactName(pending),
+    contact: contactFields(pending.contact),
+  }
+
+  const form = useAppForm({
+    defaultValues,
+    validationLogic: checked,
+    validators: { onDynamic: SaveContactFormSchema },
+    onSubmit: async ({ value }) => {
+      // A second submit while the first is still asking the page: one save.
+      if (saving.current) return
+      saving.current = true
+
+      try {
+        if ((await toPage(page, { type: 'save:check' })) !== true) return
+
+        setError('')
+        try {
+          const encrypted = await encryptNewItem(keys, {
+            name: value.name,
+            contact: toContact(value.contact),
+          })
+          await createItem({ type: 'contact', ...encrypted })
+          setSaved(true)
+          await clearPending(page.tabId)
+          setTimeout(() => void toPage(page, { type: 'save:close' }), 1200)
+        } catch (err) {
+          if (err instanceof SignedOutError) {
+            onLocked()
+            return
+          }
+          setError(errorMessage(err, 'Could not save the contact'))
+        }
+      } finally {
+        saving.current = false
+      }
+    },
+  })
+
+  // Already in the vault: a contact that holds everything the page sent.
+  const known = useMemo(
+    () =>
+      (items ?? []).some(
+        (item) =>
+          item.type === 'contact' &&
+          Object.entries(pending.contact).every(
+            ([key, value]) => item.secret?.contact?.[key as keyof typeof pending.contact] === value
+          )
+      ),
+    [items, pending]
+  )
+
+  const ready = items !== null && !known && !saved
+  useEffect(() => {
+    if (ready) shownAt.current = performance.now()
+  }, [ready])
+
+  useEffect(() => {
+    // Saved: the prompt says so, then closes by itself.
+    if (saved) return
+    // Nothing to ask about. A vault that could not be read is asked again on
+    // the next page, so the contact is kept for it.
+    if (expired || loadError) void toPage(page, { type: 'save:close' })
+    else if (known) void dismiss(page)
+  }, [expired, loadError, known, saved, page])
+
+  if (saved) return <p className="inline-note">Saved to Montara Pass.</p>
+  if (!ready) return null
+
+  return (
+    <form
+      className="inline-note stack"
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault()
+        const { isTrusted, timeStamp } = e.nativeEvent
+        if (isTrusted && timeStamp - shownAt.current >= SETTLE_MS)
+          void submit(e.currentTarget, form)
+      }}
+    >
+      <p>
+        <strong>Save this contact?</strong>
+        <br />
+        <span className="muted">{hostOf(pending.url)}</span>
+      </p>
+
+      <form.AppField
+        name="name"
+        children={(field) => <field.TextField label="Name" autoComplete="off" />}
+      />
+      {sent.map(({ key, label }) => (
+        <form.AppField
+          key={key}
+          name={`contact.${key}`}
+          children={(field) => <field.TextField label={label} autoComplete="off" />}
+        />
+      ))}
+
+      {error && <p className="error">{error}</p>}
+
+      <div className="row">
+        <form.AppForm>
+          <form.SubmitButton label="Save" busyLabel="Saving…" />
+        </form.AppForm>
+        <button type="button" className="link" onClick={() => void dismiss(page)}>
+          Not now
+        </button>
+      </div>
+    </form>
+  )
+}
+
+/** The save prompt: for the login or the contact the page just submitted. */
+function SavePrompt({
+  page,
+  keys,
+  onLocked,
+  onUnlock,
+}: {
+  page: Page
+  keys: VaultKeys | null
+  onLocked: () => void
+  onUnlock: () => void
+}) {
+  // undefined while it is being read.
+  const [pending, setPending] = useState<PendingLogin | PendingContact | null | undefined>(
+    undefined
+  )
+  const [expired, setExpired] = useState(false)
+
+  useEffect(() => {
+    void pendingSave(page.tabId).then(setPending)
+
+    const reread = () => void pendingSave(page.tabId).then((found) => found || setExpired(true))
+    chrome.storage.session.onChanged.addListener(reread)
+    return () => chrome.storage.session.onChanged.removeListener(reread)
+  }, [page.tabId])
+
+  // Nothing to ask about.
+  useEffect(() => {
+    if (pending === null) void toPage(page, { type: 'save:close' })
+  }, [pending, page])
+
+  if (!pending) return null
+  const isContact = 'contact' in pending
+
+  if (!keys) {
+    return (
+      <div className="inline-note stack">
+        <p className="muted">Unlock Montara Pass to save this {isContact ? 'contact' : 'login'}.</p>
+        <div className="row">
+          <button onClick={onUnlock}>Unlock</button>
+          <button className="link" onClick={() => void dismiss(page)}>
+            Not now
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const props = { page, keys, expired, onLocked }
+  return isContact ? (
+    <SaveContact {...props} pending={pending} />
+  ) : (
+    <SaveLogin {...props} login={pending} />
   )
 }
 
@@ -838,18 +1031,13 @@ function Inline() {
   }
 
   if (SAVE) {
-    return keys ? (
-      <SaveLogin page={page} keys={keys} onLocked={() => setKeys(null)} />
-    ) : (
-      <div className="inline-note stack">
-        <p className="muted">Unlock Montara Pass to save this login.</p>
-        <div className="row">
-          <button onClick={() => void unlock()}>Unlock</button>
-          <button className="link" onClick={() => void dismiss(page)}>
-            Not now
-          </button>
-        </div>
-      </div>
+    return (
+      <SavePrompt
+        page={page}
+        keys={keys}
+        onLocked={() => setKeys(null)}
+        onUnlock={() => void unlock()}
+      />
     )
   }
 

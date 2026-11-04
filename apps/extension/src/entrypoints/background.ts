@@ -1,10 +1,11 @@
 // The background script locks the vault when the auto-lock alarm fires, wipes
 // a copied secret from the clipboard when its alarm fires, tells
-// the inline menu which tab it sits in, holds a login that was just submitted
-// until the save prompt takes it, and says whether anyone is signed in to
-// answer a request for a passkey. It imports nothing but WXT's wrapper.
-// Keep the names in sync with src/lib/session.ts, src/lib/storage.ts and
-// src/lib/clipboard.ts.
+// the inline menu which tab it sits in, holds a login or a contact that was
+// just submitted until the save prompt takes it, and says whether anyone is
+// signed in to answer a request for a passkey. It imports nothing but WXT's wrapper.
+// Keep the names in sync with src/lib/session.ts, src/lib/storage.ts,
+// src/lib/clipboard.ts and the contact fields with CONTACT_FIELDS in
+// packages/shared/src/constants/vault.ts.
 
 import { defineBackground } from 'wxt/utils/define-background'
 
@@ -20,6 +21,18 @@ const PENDING_TTL_MS = 5 * 60_000
 /** The key a tab's pending login is stored under, and the name of its alarm. */
 const PENDING_PREFIX = 'pending:'
 const pendingKey = (tabId: number) => `${PENDING_PREFIX}${tabId}`
+const CONTACT_KEYS = [
+  'firstName',
+  'lastName',
+  'email',
+  'phone',
+  'company',
+  'address',
+  'city',
+  'state',
+  'postalCode',
+  'country',
+]
 
 /**
  * Empty the clipboard. Firefox runs this script as an event page, which has a
@@ -118,40 +131,52 @@ export default defineBackground({
       // The rest comes from the content script, which runs in the top frame.
       if (sender.frameId !== 0 || !sender.url) return
       const key = pendingKey(tabId)
+      const url = new URL(sender.url).origin
+
+      // What the page just submitted, a login or a contact, one at a time. It
+      // waits in session storage (in memory, closed to pages and content
+      // scripts) because the page that took it is usually gone before anyone
+      // could be asked about it.
+      const hold = (pending: object) =>
+        void chrome.storage.local.get([TOKENS_KEY, SETTINGS_KEY]).then((stored) => {
+          // Nobody is signed in: there is no vault to save it to.
+          if (!stored[TOKENS_KEY]) return
+
+          // Montara Pass itself: what is typed there is the master password,
+          // which is kept nowhere, or an item that is in the vault already.
+          const settings = stored[SETTINGS_KEY] as { apiUrl?: string; appUrl?: string } | undefined
+          // Compared as origins: a configured URL may carry a path or a slash.
+          const own = [
+            settings?.apiUrl ?? import.meta.env.VITE_DEFAULT_API_URL,
+            settings?.appUrl ?? import.meta.env.VITE_DEFAULT_APP_URL,
+          ].map(originOf)
+          if (own.includes(url)) return
+
+          void chrome.alarms.create(key, { delayInMinutes: PENDING_TTL_MS / 60_000 })
+          return chrome.storage.session.set({ [key]: { ...pending, url, at: Date.now() } })
+        })
 
       switch (message?.type) {
-        // A login the page just submitted. It waits in session storage (in
-        // memory, closed to pages and content scripts) because the page that
-        // took it is usually gone before anyone could be asked about it.
         case 'save:capture': {
           const password = String(message.password ?? '')
           if (!password || password.length > 1024) return
 
-          const pending = {
-            username: String(message.username ?? '').slice(0, 320),
-            password,
-            url: new URL(sender.url).origin,
-            at: Date.now(),
-          }
-          void chrome.storage.local.get([TOKENS_KEY, SETTINGS_KEY]).then((stored) => {
-            // Nobody is signed in: there is no vault to save it to.
-            if (!stored[TOKENS_KEY]) return
+          hold({ username: String(message.username ?? '').slice(0, 320), password })
+          return
+        }
+        // Only the known fields, as strings: the page chose what is in them.
+        case 'save:contact': {
+          const contact = Object.fromEntries(
+            CONTACT_KEYS.map((name) => [
+              name,
+              String(message.contact?.[name] ?? '')
+                .trim()
+                .slice(0, 500),
+            ]).filter(([, value]) => value)
+          )
+          if (Object.keys(contact).length === 0) return
 
-            // Montara Pass itself: what is typed there is the master password,
-            // which is kept nowhere.
-            const settings = stored[SETTINGS_KEY] as
-              | { apiUrl?: string; appUrl?: string }
-              | undefined
-            // Compared as origins: a configured URL may carry a path or a slash.
-            const own = [
-              settings?.apiUrl ?? import.meta.env.VITE_DEFAULT_API_URL,
-              settings?.appUrl ?? import.meta.env.VITE_DEFAULT_APP_URL,
-            ].map(originOf)
-            if (own.includes(pending.url)) return
-
-            void chrome.alarms.create(key, { delayInMinutes: PENDING_TTL_MS / 60_000 })
-            return chrome.storage.session.set({ [key]: pending })
-          })
+          hold({ contact })
           return
         }
         // Whether there is one to ask about; the login itself is not sent back.
