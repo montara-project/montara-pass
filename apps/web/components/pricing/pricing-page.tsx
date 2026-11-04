@@ -25,14 +25,23 @@ import { card, pill } from "@/components/shared";
  * The tiers come from the route, which read the plans on the server; this
  * component only holds the selection.
  */
-export function PricingPage({ tiers }: { tiers: Tier[] }) {
+export function PricingPage({
+  tiers,
+  region,
+}: {
+  tiers: Tier[];
+  /** The only currency on sale to the visitor, where their country is known. */
+  region?: "USD" | "IDR";
+}) {
   // The tier the foot action offers; none chosen yet means the yearly one, the
   // row marked best value. Matched by its billing rather than by code, because
   // the live plans' codes are the store's, not the authored ones.
   const [chosen, setChosen] = useState<string>();
   // The currency of the rows on the tape: the USD plans are paid through
-  // Lemon Squeezy, the IDR ones through BorderPay's QRIS.
-  const [currency, setCurrency] = useState<"USD" | "IDR">("USD");
+  // Lemon Squeezy, the IDR ones through BorderPay's QRIS. Where the visitor's
+  // country is known, only its currency is on sale.
+  const [tab, setCurrency] = useState<"USD" | "IDR">("USD");
+  const currency = region ?? tab;
   const rows = tiers.filter((tier) => tier.kind === "free" || tier.currency === currency);
   const yearly = rows.find((tier) => tier.per === "/ year");
   const selected =
@@ -49,23 +58,27 @@ export function PricingPage({ tiers }: { tiers: Tier[] }) {
             <p className="tape-slug">Montara Pass — pricing</p>
             <p className="tape-slug flex items-center gap-2">
               billed in
-              <span role="group" aria-label="Currency" className="inline-flex gap-1">
-                {(["USD", "IDR"] as const).map((code) => (
-                  <button
-                    key={code}
-                    type="button"
-                    onClick={() => setCurrency(code)}
-                    aria-pressed={currency === code}
-                    className={`rounded-full border px-2 py-0.5 font-mono text-[11px] tracking-[0.12em] uppercase ${
-                      currency === code
-                        ? "border-accent-bright text-accent-bright"
-                        : "border-line text-mist hover:text-accent-bright"
-                    }`}
-                  >
-                    {code}
-                  </button>
-                ))}
-              </span>
+              {region ? (
+                <span className="font-mono">{region}</span>
+              ) : (
+                <span role="group" aria-label="Currency" className="inline-flex gap-1">
+                  {(["USD", "IDR"] as const).map((code) => (
+                    <button
+                      key={code}
+                      type="button"
+                      onClick={() => setCurrency(code)}
+                      aria-pressed={currency === code}
+                      className={`rounded-full border px-2 py-0.5 font-mono text-[11px] tracking-[0.12em] uppercase ${
+                        currency === code
+                          ? "border-accent-bright text-accent-bright"
+                          : "border-line text-mist hover:text-accent-bright"
+                      }`}
+                    >
+                      {code}
+                    </button>
+                  ))}
+                </span>
+              )}
             </p>
           </div>
 

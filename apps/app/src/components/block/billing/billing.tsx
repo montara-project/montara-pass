@@ -34,6 +34,8 @@ const CURRENCIES = ['USD', 'IDR'] as const
  * Billing, Cloud Edition only: the subscription and purchases of the
  * signed-in user, and the plans on offer, in two tabs — the USD plans sold
  * through Lemon Squeezy's checkout, the IDR ones through BorderPay's QRIS.
+ * Where the server knows the user's country it names the one currency they
+ * may buy in (IDR in Indonesia, USD elsewhere): then only that tab shows.
  * Either checkout brings the browser back here; the payment shows once the
  * provider has told the server, so a pending one is polled for. A USD
  * subscription renews by itself; an IDR one is paid a period at a time and
@@ -60,11 +62,14 @@ export default function BillingBlock() {
   const subscription = overview.data?.subscription ?? null
   const purchases = overview.data?.purchases ?? []
   const lifetime = hasPaidPurchase(purchases)
-  // The tab's currency: the one asked for, else the one the plan the website
-  // sent the user here for is priced in, else USD.
-  const chosenPlan = plans.data?.find((plan) => plan.code === chosen)
-  const currency = asked === 'USD' || asked === 'IDR' ? asked : (chosenPlan?.currency ?? 'USD')
-  const onOffer = plans.data?.filter((plan) => plan.currency === currency) ?? []
+  // The tab's currency: the user's country's, where the server knows it; else
+  // the one asked for, else the one the plan the website sent the user here
+  // for is priced in, else USD.
+  const region = plans.data?.region
+  const chosenPlan = plans.data?.plans.find((plan) => plan.code === chosen)
+  const currency =
+    region ?? (asked === 'USD' || asked === 'IDR' ? asked : (chosenPlan?.currency ?? 'USD'))
+  const onOffer = plans.data?.plans.filter((plan) => plan.currency === currency) ?? []
   // The plan marked out: the one the website sent the user here for, when it
   // is of this tab, or else the yearly one.
   const featured =
@@ -142,27 +147,30 @@ export default function BillingBlock() {
           <h2 id="plans" className={label}>
             Plans
           </h2>
-          <div role="tablist" aria-label="Currency" className="flex gap-1">
-            {CURRENCIES.map((code) => (
-              <button
-                key={code}
-                role="tab"
-                aria-selected={currency === code}
-                disabled={busy}
-                onClick={() =>
-                  void navigate({ to: '.', search: (prev) => ({ ...prev, currency: code }) })
-                }
-                className={cn(
-                  'rounded-full border px-3 py-1 font-mono text-xs tabular-nums',
-                  currency === code
-                    ? 'border-focus bg-focus/15 text-focus'
-                    : 'text-muted-foreground hover:bg-hover'
-                )}
-              >
-                {code}
-              </button>
-            ))}
-          </div>
+          {/* Only one currency is on sale where the country is known. */}
+          {!region && (
+            <div role="tablist" aria-label="Currency" className="flex gap-1">
+              {CURRENCIES.map((code) => (
+                <button
+                  key={code}
+                  role="tab"
+                  aria-selected={currency === code}
+                  disabled={busy}
+                  onClick={() =>
+                    void navigate({ to: '.', search: (prev) => ({ ...prev, currency: code }) })
+                  }
+                  className={cn(
+                    'rounded-full border px-3 py-1 font-mono text-xs tabular-nums',
+                    currency === code
+                      ? 'border-focus bg-focus/15 text-focus'
+                      : 'text-muted-foreground hover:bg-hover'
+                  )}
+                >
+                  {code}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         {plans.isLoading ? (
           <Skeleton className="rounded-card h-40 w-full" />

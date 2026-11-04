@@ -118,6 +118,7 @@ func parseFlag(cfg *config.Config) {
 	flag.StringVar(&cfg.Billing.BorderPayAPIKey, "borderpay-api-key", envString("BORDERPAY_API_KEY", ""), "BorderPay API key for IDR billing (empty disables IDR checkout)")
 	flag.StringVar(&cfg.Billing.BorderPayWebhookToken, "borderpay-webhook-token", envString("BORDERPAY_WEBHOOK_TOKEN", ""), "Verification token of the BorderPay project's webhook")
 	flag.StringVar(&cfg.Billing.BorderPayBaseURL, "borderpay-base-url", envString("BORDERPAY_BASE_URL", ""), "BorderPay API base URL override (default https://borderpay.id/api/v1)")
+	flag.StringVar(&cfg.Billing.CountryHeader, "country-header", envString("COUNTRY_HEADER", ""), "Header the proxy in front sets to the client's country, e.g. CF-IPCountry: Indonesia then buys only the IDR plans, elsewhere only the others (empty offers every plan)")
 
 	// Sentry
 	flag.StringVar(&cfg.Sentry.Dsn, "sentry-dsn", envString("SENTRY_DSN", ""), "Sentry DSN")

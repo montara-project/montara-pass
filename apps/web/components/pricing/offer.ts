@@ -1,3 +1,5 @@
+import { headers } from "next/headers";
+
 import { APP_URL } from "@/components/links";
 import { formatAmount, type Tier, TIERS } from "@/components/pricing/plans";
 
@@ -115,4 +117,15 @@ export async function getTiers(): Promise<Tier[]> {
   } catch {
     return TIERS;
   }
+}
+
+/**
+ * The only currency on sale to the visitor, from the country Cloudflare names
+ * in cf-ipcountry: IDR in Indonesia, through BorderPay, USD everywhere else,
+ * as the API enforces at checkout. undefined without the header (local dev),
+ * where both are shown.
+ */
+export async function visitorRegion(): Promise<"USD" | "IDR" | undefined> {
+  const country = (await headers()).get("cf-ipcountry")?.toUpperCase();
+  return country ? (country === "ID" ? "IDR" : "USD") : undefined;
 }

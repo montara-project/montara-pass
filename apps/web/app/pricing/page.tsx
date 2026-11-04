@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { getTiers } from "@/components/pricing/offer";
+import { getTiers, visitorRegion } from "@/components/pricing/offer";
 import { PricingPage } from "@/components/pricing/pricing-page";
 import { pageMeta } from "@/lib/constants/meta";
 
@@ -12,5 +12,5 @@ export const metadata: Metadata = pageMeta({
 });
 
 export default async function Page() {
-  return <PricingPage tiers={await getTiers()} />;
+  return <PricingPage tiers={await getTiers()} region={await visitorRegion()} />;
 }

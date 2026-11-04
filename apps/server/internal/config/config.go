@@ -71,6 +71,12 @@ type ConfigBilling struct {
 	BorderPayWebhookToken string
 	// Overrides the API's base URL; tests point it elsewhere.
 	BorderPayBaseURL string
+	// CountryHeader names the request header that carries the client's
+	// country as two letters (Cloudflare's CF-IPCountry), set by the proxy in
+	// front of the API. With it, Indonesia is sold only the IDR plans, through
+	// BorderPay, and everywhere else only the others. Empty offers every plan
+	// to everyone.
+	CountryHeader string
 }
 
 // ConfigAuth configures the embedded Authula server. Without a Resend key,

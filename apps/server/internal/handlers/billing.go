@@ -35,6 +35,7 @@ const (
 var (
 	errPaymentsOff = apperr.New(apperr.KindServiceUnavailable, "payments are not available on this server")
 	errIDROff      = apperr.New(apperr.KindServiceUnavailable, "IDR payments are not available on this server")
+	errRegion      = apperr.New(apperr.KindForbidden, "this plan is not sold in your country")
 	errCheckout    = apperr.New(apperr.KindBadGateway, "the payment could not be started, try again")
 	errOnlyUsers   = apperr.New(apperr.KindForbidden, "only user accounts can subscribe or buy a plan")
 	errPortal      = apperr.New(apperr.KindBadGateway, "the subscription could not be opened, try again")
@@ -51,12 +52,52 @@ func (h *billingHandler) repo() *repositories.BillingRepository {
 }
 
 // ListPlans answers the plans on offer. It is public: the website shows them.
+// Where the country is known, metadata.currency names the only currency the
+// caller may buy in, and the clients show only those plans; every plan is
+// still listed, for the website, which reads them from its own server.
 func (h *billingHandler) ListPlans(c fiber.Ctx) error {
 	plans, err := h.repo().ListPlans(c.Context(), false)
 	if err != nil {
 		return err
 	}
-	return dtos.OK(c, plans)
+	var meta dtos.Metadata
+	if currency := h.regionCurrency(c); currency != "" {
+		meta = dtos.Metadata{"currency": currency}
+	}
+	return dtos.Response(c, fiber.StatusOK, plans, meta, "")
+}
+
+// The currency each side of the border buys in: Indonesia the IDR plans,
+// through BorderPay's QRIS, everywhere else the plans of the Lemon Squeezy
+// store.
+const (
+	currencyIndonesia = "IDR"
+	currencyElsewhere = "USD"
+)
+
+// regionCurrency answers the only currency the caller may buy in, from the
+// country the proxy in front of the API put in the configured header, or ""
+// where none is configured and every plan is on offer. The header is believed
+// only from a trusted proxy; anything else, and a country the proxy did not
+// know, buys as from abroad.
+//
+// ponytail: a VPN in another country gets the other side's plans; the header
+// is the proxy's word on the connection, not on the customer.
+func (h *billingHandler) regionCurrency(c fiber.Ctx) string {
+	name := h.app.Config.Billing.CountryHeader
+	if name == "" {
+		return ""
+	}
+	if c.IsProxyTrusted() && strings.EqualFold(strings.TrimSpace(c.Get(name)), "ID") {
+		return currencyIndonesia
+	}
+	return currencyElsewhere
+}
+
+// soldIn reports whether plan may be bought by a caller who buys in currency,
+// as regionCurrency answers it: every plan when it is "".
+func soldIn(plan models.Plan, currency string) bool {
+	return currency == "" || (plan.Currency == currencyIndonesia) == (currency == currencyIndonesia)
 }
 
 // ListAllPlans answers every plan, retired ones included, for a super user.
@@ -435,6 +476,9 @@ func (h *billingHandler) customer(c fiber.Ctx, kind string) (models.User, models
 	}
 	if err != nil {
 		return models.User{}, models.Plan{}, err
+	}
+	if !soldIn(plan, h.regionCurrency(c)) {
+		return models.User{}, models.Plan{}, errRegion
 	}
 	// Each plan is sold through its own provider: the IDR ones through
 	// BorderPay, the rest through Lemon Squeezy, in the store's currency.

@@ -86,6 +86,9 @@ services:
       # IDR billing through BorderPay; empty leaves IDR checkout off.
       BORDERPAY_API_KEY: ${BORDERPAY_API_KEY:-}
       BORDERPAY_WEBHOOK_TOKEN: ${BORDERPAY_WEBHOOK_TOKEN:-}
+      # The client's country header from the proxy in front (CF-IPCountry):
+      # Indonesia buys only the IDR plans, elsewhere only the USD ones.
+      COUNTRY_HEADER: ${COUNTRY_HEADER:-}
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:8080/api/health']
       interval: 5m

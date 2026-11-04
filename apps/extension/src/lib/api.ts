@@ -264,14 +264,17 @@ export async function getBilling(): Promise<Models.BillingOverview | null> {
 
 /**
  * The plans on offer, cheapest first within each kind; none where the server
- * has no billing.
+ * has no billing. region is the only currency the user may buy in, where the
+ * server knows their country: IDR in Indonesia, USD elsewhere.
  */
-export async function listPlans(): Promise<Models.Plan[]> {
+export async function listPlans(): Promise<{ plans: Models.Plan[]; region?: 'USD' | 'IDR' }> {
   try {
-    const res = await request<Envelope<Models.Plan[]>>('/api/v1/plans')
-    return res.data
+    const res = await request<
+      Envelope<Models.Plan[]> & { metadata?: { currency?: 'USD' | 'IDR' } }
+    >('/api/v1/plans')
+    return { plans: res.data, region: res.metadata?.currency }
   } catch (error) {
-    if (error instanceof ApiError && error.status === 404) return []
+    if (error instanceof ApiError && error.status === 404) return { plans: [] }
     throw error
   }
 }

@@ -5,11 +5,12 @@ import { docsUrl } from "@/components/links";
 import { formatAmount, type Tier } from "@/components/pricing/plans";
 import { card, pill } from "@/components/shared";
 
-export function Pricing({ tiers }: { tiers: Tier[] }) {
+export function Pricing({ tiers, region }: { tiers: Tier[]; region?: "USD" | "IDR" }) {
   // The same rows as the pricing page: live plans, or the authored ones until
-  // the hosted service has some — the USD ones; the IDR plans are the
-  // pricing page's tabs.
-  const paid = tiers.filter((tier) => tier.kind !== "free" && tier.currency === "USD");
+  // the hosted service has some — in the visitor's currency where their
+  // country is known, else the USD ones; the pricing page has both as tabs.
+  const currency = region ?? "USD";
+  const paid = tiers.filter((tier) => tier.kind !== "free" && tier.currency === currency);
   const monthly = paid.find((tier) => tier.per === "/ month");
 
   return (
@@ -78,7 +79,9 @@ export function Pricing({ tiers }: { tiers: Tier[] }) {
             ))}
           </ul>
           <p className="mt-6 font-mono text-xs text-mist">
-            Paid through Lemon Squeezy · cancel anytime
+            {currency === "IDR"
+              ? "Paid through BorderPay QRIS · one period at a time"
+              : "Paid through Lemon Squeezy · cancel anytime"}
           </p>
         </article>
       </div>

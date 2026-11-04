@@ -47,12 +47,16 @@ const CURRENCIES = ['USD', 'IDR'] as const
  * Billing, Cloud Edition only: the signed-in user's subscription and
  * purchases, and the plans on offer, in two tabs — the USD plans sold
  * through Lemon Squeezy's checkout, the IDR ones through BorderPay's QRIS.
+ * Where the server knows the user's country it names the one currency they
+ * may buy in (IDR in Indonesia, USD elsewhere): then only that tab shows.
  * Paying opens the plan's provider in a new tab; this page reads the outcome
  * again when it is back in front, and every few seconds while a payment is
  * pending.
  */
 export default function Billing({ onSignedOut }: BillingProps) {
   const [plans, setPlans] = useState<Models.Plan[]>([])
+  // The only currency on sale to this user, where the server knows their country.
+  const [region, setRegion] = useState<'USD' | 'IDR'>()
   // undefined while it loads; null where the server has no billing.
   const [overview, setOverview] = useState<Models.BillingOverview | null>()
   const [error, setError] = useState('')
@@ -62,7 +66,8 @@ export default function Billing({ onSignedOut }: BillingProps) {
   const load = useCallback(async () => {
     try {
       const [onOffer, mine] = await Promise.all([listPlans(), getBilling()])
-      setPlans(onOffer)
+      setPlans(onOffer.plans)
+      setRegion(onOffer.region)
       setOverview(mine)
       setError('')
     } catch (err) {
@@ -107,7 +112,8 @@ export default function Billing({ onSignedOut }: BillingProps) {
 
   const lifetime = hasPaidPurchase(purchases)
   // The tab's currency, and the plans on offer in it.
-  const [currency, setCurrency] = useState<'USD' | 'IDR'>('USD')
+  const [tab, setCurrency] = useState<'USD' | 'IDR'>('USD')
+  const currency = region ?? tab
   const onOffer = plans.filter((plan) => plan.currency === currency)
   // The plan marked out, as on the web app's billing page: the yearly one.
   const featured = onOffer.find((plan) => plan.billing_interval === 'year')
@@ -185,21 +191,24 @@ export default function Billing({ onSignedOut }: BillingProps) {
             <h3 id="billing-plans" className="billing-title">
               Plans
             </h3>
-            <div role="tablist" aria-label="Currency" className="plan-tabs">
-              {CURRENCIES.map((code) => (
-                <button
-                  key={code}
-                  role="tab"
-                  aria-selected={currency === code}
-                  disabled={busy !== null}
-                  className="plan-tab"
-                  data-on={currency === code || undefined}
-                  onClick={() => setCurrency(code)}
-                >
-                  {code}
-                </button>
-              ))}
-            </div>
+            {/* Only one currency is on sale where the country is known. */}
+            {!region && (
+              <div role="tablist" aria-label="Currency" className="plan-tabs">
+                {CURRENCIES.map((code) => (
+                  <button
+                    key={code}
+                    role="tab"
+                    aria-selected={currency === code}
+                    disabled={busy !== null}
+                    className="plan-tab"
+                    data-on={currency === code || undefined}
+                    onClick={() => setCurrency(code)}
+                  >
+                    {code}
+                  </button>
+                ))}
+              </div>
+            )}
             {plans.length === 0 ? (
               <p className="muted">No plans are on offer yet.</p>
             ) : (
