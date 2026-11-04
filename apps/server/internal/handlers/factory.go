@@ -11,6 +11,8 @@ type Handlers struct {
 	Item     *itemHandler
 	Key      *keyHandler
 	Me       *meHandler
+	Passkey  *passkeyHandler
+	Session  *sessionHandler
 }
 
 func New(app *app.Application) *Handlers {
@@ -23,5 +25,7 @@ func New(app *app.Application) *Handlers {
 		Item:     &itemHandler{app: app},
 		Key:      &keyHandler{app: app},
 		Me:       &meHandler{app: app},
+		Passkey:  &passkeyHandler{app: app},
+		Session:  &sessionHandler{app: app},
 	}
 }

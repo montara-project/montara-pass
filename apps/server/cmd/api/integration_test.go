@@ -34,6 +34,8 @@ import (
 	"montara-pass/server/internal/lib"
 	"montara-pass/server/internal/lib/constant"
 	"montara-pass/server/internal/lib/lemonsqueezy"
+	"montara-pass/server/internal/lib/passkey"
+	"montara-pass/server/internal/middlewares"
 	"montara-pass/server/internal/models"
 	"montara-pass/server/internal/repositories"
 	"montara-pass/server/internal/seeders"
@@ -215,6 +217,12 @@ func TestIntegration(t *testing.T) {
 		application.Redis = client
 	}
 
+	application.Passkeys, err = passkey.New("localhost", "Montara Pass", cfg.Auth.BaseURL, middlewares.NewIPKV(middlewares.NewStore(nil)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	registerPasskeyRoutes(auth, application)
+
 	server, err := newServer(application)
 	if err != nil {
 		t.Fatal(err)
@@ -317,6 +325,8 @@ func TestIntegration(t *testing.T) {
 		t.Fatalf("super user route as super user: %d %v", status, out)
 	}
 
+	sessionFlow(t, call, signIn, userToken, userEmail, userPass, super)
+	passkeyFlow(t, call, userToken, userPass, user.ID)
 	vaultFlow(t, call, superToken, superPass, userToken, userEmail, user.ID)
 	billingFlow(t, call, db, store, superToken, userToken, user.ID)
 
@@ -384,6 +394,67 @@ func TestIntegration(t *testing.T) {
 	}
 	if status, _ := call(http.MethodPost, "/api/v1/folders", superToken, folder); status != http.StatusUnauthorized {
 		t.Fatalf("create after sign out: %d, want 401", status)
+	}
+}
+
+// sessionFlow lists the devices a user is signed in on and signs them out:
+// one at a time, then every one but the current. A signed-out device's access
+// and refresh tokens stop working; another user's session cannot be touched.
+func sessionFlow(
+	t *testing.T,
+	call func(method, path, token string, body any, headers ...string) (int, map[string]any),
+	signIn func(email, password string) map[string]any,
+	userToken, email, password string,
+	other map[string]any,
+) {
+	t.Helper()
+	sessionID := func(out map[string]any) string { return out["session"].(map[string]any)["id"].(string) }
+	list := func() (ids []string, current string) {
+		status, out := call(http.MethodGet, "/api/v1/sessions", userToken, nil)
+		if status != http.StatusOK {
+			t.Fatalf("sessions: %d %v", status, out)
+		}
+		for _, raw := range out["data"].([]any) {
+			row := raw.(map[string]any)
+			ids = append(ids, row["id"].(string))
+			if row["current"] == true {
+				current = row["id"].(string)
+			}
+		}
+		return ids, current
+	}
+
+	second := signIn(email, password)
+	third := signIn(email, password)
+	ids, current := list()
+	if !slices.Contains(ids, sessionID(second)) || !slices.Contains(ids, sessionID(third)) || current == "" {
+		t.Fatalf("sessions: %v, current %q", ids, current)
+	}
+
+	if status, _ := call(http.MethodDelete, "/api/v1/sessions/"+current, userToken, nil); status != http.StatusBadRequest {
+		t.Fatalf("revoke the current session: %d, want 400", status)
+	}
+	if status, _ := call(http.MethodDelete, "/api/v1/sessions/"+sessionID(other), userToken, nil); status != http.StatusNotFound {
+		t.Fatalf("revoke another user's session: %d, want 404", status)
+	}
+	if status, out := call(http.MethodDelete, "/api/v1/sessions/"+sessionID(second), userToken, nil); status != http.StatusOK {
+		t.Fatalf("revoke a session: %d %v", status, out)
+	}
+	if status, _ := call(http.MethodGet, "/api/v1/sessions", second["access_token"].(string), nil); status != http.StatusUnauthorized {
+		t.Fatalf("access token of a revoked session: %d, want 401", status)
+	}
+	if status, _ := call(http.MethodPost, "/api/v1/auth/token/refresh", "", map[string]any{"refresh_token": second["refresh_token"]}); status == http.StatusOK {
+		t.Fatal("refresh token of a revoked session still refreshes")
+	}
+
+	if status, out := call(http.MethodDelete, "/api/v1/sessions", userToken, nil); status != http.StatusOK {
+		t.Fatalf("revoke other sessions: %d %v", status, out)
+	}
+	if status, _ := call(http.MethodGet, "/api/v1/sessions", third["access_token"].(string), nil); status != http.StatusUnauthorized {
+		t.Fatalf("access token after revoking the others: %d, want 401", status)
+	}
+	if ids, _ = list(); len(ids) != 1 || ids[0] != current {
+		t.Fatalf("sessions after revoking the others: %v, want only %s", ids, current)
 	}
 }
 

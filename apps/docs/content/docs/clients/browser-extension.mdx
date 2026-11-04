@@ -53,6 +53,15 @@ The API accepts extension origins without a CORS entry.
 
 ## The popup
 
+**Sign in with a passkey** signs in with a passkey on the account, made in
+the web app under **Account → Passkeys**. Where that passkey can unlock the
+vault too, the popup opens unlocked; otherwise it asks for the master
+password. Locked again, the popup offers **Unlock with a passkey**. The popup
+asks the browser itself, which an extension may do for the hosts it has
+permission for from Chrome 122 and Firefox 150. On Montara Pass's own site
+the extension does not offer to keep a passkey in the vault: the account's
+passkey belongs on the device's authenticator.
+
 After signing in and unlocking, the popup shows:
 
 - **Logins for the current site**, each with a **Fill** button.

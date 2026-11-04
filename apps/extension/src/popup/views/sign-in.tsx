@@ -1,12 +1,15 @@
 import { SignInSchema, TotpCodeSchema } from '@montara-pass/shared/api/dtos/auth/schema'
+import { passkeyCancelled, passkeysSupported } from '@montara-pass/shared/auth/passkey'
 import { COMMUNITY } from '@montara-pass/shared/constants/edition'
 import { errorMessage } from '@montara-pass/shared/string'
 import { useEffect, useState } from 'react'
 
+import { signInWithPasskey } from '../../lib/account-passkey'
 import { signIn, verifyTotp } from '../../lib/api'
 import { DEFAULT_SETTINGS, getSettings } from '../../lib/storage'
 import { BrandMark } from '../brand-mark'
 import { checked, submit, useAppForm } from '../form'
+import { FingerprintIcon } from '../icons'
 
 interface SignInProps {
   onSignedIn: () => void
@@ -20,6 +23,22 @@ export default function SignIn({ onSignedIn, onSettings }: SignInProps) {
   const [appUrl, setAppUrl] = useState(DEFAULT_SETTINGS.appUrl)
   // Set when the account asks for a code from an authenticator app.
   const [totpToken, setTotpToken] = useState('')
+  const [passkeyBusy, setPasskeyBusy] = useState(false)
+
+  // A passkey names the account and verifies the user: no password, no code.
+  // One that unlocks the vault too skips the master password as well.
+  const signInPasskey = async () => {
+    setError('')
+    setPasskeyBusy(true)
+    try {
+      await signInWithPasskey()
+      onSignedIn()
+    } catch (err) {
+      if (!passkeyCancelled(err)) setError(errorMessage(err, 'Sign-in with a passkey failed'))
+    } finally {
+      setPasskeyBusy(false)
+    }
+  }
 
   useEffect(() => {
     void getSettings().then((settings) => setAppUrl(settings.appUrl))
@@ -92,6 +111,17 @@ export default function SignIn({ onSignedIn, onSettings }: SignInProps) {
       <form.AppForm>
         <form.SubmitButton label="Sign in" busyLabel="Signing in…" className="auth-submit" />
       </form.AppForm>
+      {passkeysSupported() && (
+        <button
+          type="button"
+          className="secondary auth-submit"
+          disabled={passkeyBusy}
+          onClick={() => void signInPasskey()}
+        >
+          <FingerprintIcon />
+          {passkeyBusy ? 'Waiting for your passkey…' : 'Sign in with a passkey'}
+        </button>
+      )}
       {!COMMUNITY && (
         <p className="muted auth-note">
           No account yet?{' '}

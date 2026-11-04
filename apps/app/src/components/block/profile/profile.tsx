@@ -6,9 +6,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { queries } from '@/lib/api/queries'
 
 import ChangeMasterPasswordForm from './change-master-password-form'
+import Devices from './devices'
+import Passkeys from './passkeys'
 import TwoFactor from './two-factor'
 
-/** The account: who is signed in, and the password that opens their vault. */
+/** The account: who is signed in, on which devices, and the password that opens their vault. */
 export default function ProfileBlock() {
   const { data, isLoading } = useQuery(queries.auth.profile())
   const user = data?.user
@@ -43,6 +45,10 @@ export default function ProfileBlock() {
       </section>
 
       <TwoFactor />
+
+      <Passkeys />
+
+      <Devices />
 
       <ChangeMasterPasswordForm />
     </Page>

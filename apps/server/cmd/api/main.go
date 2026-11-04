@@ -15,6 +15,7 @@ import (
 	"montara-pass/server/internal/handlers"
 	"montara-pass/server/internal/lib/borderpay"
 	"montara-pass/server/internal/lib/lemonsqueezy"
+	"montara-pass/server/internal/lib/passkey"
 	"montara-pass/server/internal/middlewares"
 	"montara-pass/server/internal/repositories"
 	"montara-pass/server/internal/seeders"
@@ -108,6 +109,11 @@ func run() error {
 		BorderPay:    borderPay,
 		IPKV:         middlewares.NewIPKV(middlewares.NewStore(cache)),
 	}
+	// Passkey ceremonies wait between their two requests in the same store.
+	application.Passkeys, err = passkey.New(cfg.Auth.PasskeyRPID, "Montara Pass", cfg.Auth.BaseURL, application.IPKV)
+	if err != nil {
+		return fmt.Errorf("passkeys: %w", err)
+	}
 
 	// The blocks a super user asked for outlive the store's own memory: a
 	// restart, or a Redis that lost its keys, is answered from the record.
@@ -136,6 +142,7 @@ func run() error {
 	// Creating the instance runs Authula's own migrations.
 	auth := newAuth(cfg, mirror, saveCustomer(application), recordSignIn(&repos.Activity), logger)
 	application.Auth = auth
+	registerPasskeyRoutes(auth, application)
 	defer auth.CloseSystems()
 	defer auth.ClosePlugins()
 

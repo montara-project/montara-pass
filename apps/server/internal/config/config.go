@@ -87,6 +87,10 @@ type ConfigAuth struct {
 	ResendAPIKey       string
 	GoogleClientID     string
 	GoogleClientSecret string
+	// PasskeyRPID is the domain account passkeys are made for. A passkey
+	// works on that domain and its subdomains only, so changing it orphans
+	// every passkey made before. Defaults to the host of BaseURL.
+	PasskeyRPID string
 }
 
 type ConfigApp struct {

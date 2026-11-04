@@ -30,6 +30,7 @@ flag of the same name in kebab-case (`go run ./cmd/api -h`).
 | `RESEND_API_KEY` | none | Resend API key. Required with `FROM_ADDRESS`. |
 | `GOOGLE_CLIENT_ID` | none | Google OAuth client. Empty disables Google sign-in. |
 | `GOOGLE_CLIENT_SECRET` | none | Google OAuth secret. |
+| `PASSKEY_RP_ID` | host of `AUTH_BASE_URL` | The domain account passkeys are made for. A passkey works on that domain and its subdomains, so `montarapass.com` serves `app.montarapass.com` too. Changing it orphans every passkey made before. |
 | `LEMONSQUEEZY_API_KEY` | none | Cloud Edition: the Lemon Squeezy API key that takes payments for plans (a test-mode key for the store's test mode). Empty leaves checkout off. The API reads the store when it starts and refuses to start if it cannot. |
 | `LEMONSQUEEZY_STORE_ID` | none | The numeric id of the store that sells the plans. Its catalog is the plans: one per variant, at the variant's price, synced when the API starts, every 15 minutes, and when a super user calls `POST /api/v1/plans/sync`. Each new account is saved as one of its customers. Required with `LEMONSQUEEZY_API_KEY`. |
 | `LEMONSQUEEZY_WEBHOOK_SECRET` | none | The signing secret of the store's webhook, pointed at `$AUTH_BASE_URL/api/v1/billing/lemonsqueezy/webhook` with `order_created`, `order_refunded`, `subscription_created` and `subscription_updated`. Required with `LEMONSQUEEZY_API_KEY`. |

@@ -71,6 +71,7 @@ services:
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      PASSKEY_RP_ID: ${PASSKEY_RP_ID:-}
       # The web app is served from this same origin, so CORS stays off.
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
       # Requests arrive through Dokploy's Traefik. Without this every client

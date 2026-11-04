@@ -31,6 +31,8 @@ const (
 	authEmailRateLimit = 10
 	apiRateLimit       = 120
 	publicKeyRateLimit = 20
+	// Registering a passkey checks the account password.
+	passkeyRegisterRateLimit = 10
 )
 
 // totpRateLimit is how many TOTP codes one account may try in totpRateWindow,
@@ -168,6 +170,18 @@ func routes(r *fiber.App, app *app.Application) {
 	v1.Get("/me/role", m.Authorization, h.Me.Role)
 	// The signed-in user's activity log: sign-ins and what was done to items.
 	v1.Get("/activity", m.Authorization, h.Activity.List)
+	// Passkeys on the account: signing in with one is under authBasePath
+	// (cmd/api/passkey.go); these list, register and remove them.
+	passkeys := v1.Group("/passkeys", m.Authorization)
+	passkeys.Get("/", h.Passkey.List)
+	passkeys.Post("/register/begin", middlewares.RateLimit("passkey-register", passkeyRegisterRateLimit, exemptLoopback, exemptIPs, store), h.Passkey.RegisterBegin)
+	passkeys.Post("/register/finish", h.Passkey.RegisterFinish)
+	passkeys.Delete("/:id", h.Passkey.Delete)
+	// The devices signed in to the account, and signing them out.
+	sessions := v1.Group("/sessions", m.Authorization)
+	sessions.Get("/", h.Session.List)
+	sessions.Delete("/", h.Session.RevokeOthers)
+	sessions.Delete("/:id", h.Session.Revoke)
 	blocks := v1.Group("/ip-blocks", m.Authorization, m.SuperUser)
 	blocks.Get("/", h.IPBlock.List)
 	blocks.Post("/", once, h.IPBlock.Create)

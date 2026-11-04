@@ -3,6 +3,10 @@ export namespace Models {
   export type ActivityAction = import('./activity').ActivityAction
   export type User = import('./user').User
   export type Session = import('./user').Session
+  export type Device = import('./user').Device
+  export type AccountPasskey = import('./user').AccountPasskey
+  export type PasskeySignInData = import('./user').PasskeySignInData
+  export type PasskeyCeremony = import('./user').PasskeyCeremony
   export type Profile = import('./user').Profile
   export type SignInData = import('./user').SignInData
   export type TokenPair = import('./user').TokenPair

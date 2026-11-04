@@ -11,7 +11,7 @@ import { RESET_PASSWORD_PATH, VERIFY_EMAIL_PATH } from '../constants/auth'
 import { useVaultStore } from '../stores/vault'
 import { clearAuthTokens, setAuthTokens } from './token-storage'
 
-function storeSignIn(data: SignInData) {
+export function storeSignIn(data: SignInData) {
   if (!data.access_token) {
     throw new Error('Sign-in response did not include an access token')
   }

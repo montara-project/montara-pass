@@ -11,6 +11,7 @@ import (
 	"montara-pass/server/internal/lib"
 	"montara-pass/server/internal/lib/borderpay"
 	"montara-pass/server/internal/lib/lemonsqueezy"
+	"montara-pass/server/internal/lib/passkey"
 	"montara-pass/server/internal/repositories"
 )
 
@@ -37,4 +38,6 @@ type Application struct {
 	// restores the active manual blocks into. In Redis when there is one, so
 	// replicas share it, and in memory otherwise.
 	IPKV lib.IPKV
+	// Passkeys runs the WebAuthn ceremonies for passkeys on the account.
+	Passkeys *passkey.Service
 }

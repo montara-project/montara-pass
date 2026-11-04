@@ -1,4 +1,14 @@
 {
   "title": "API reference",
-  "pages": ["index", "authentication", "keys", "folders", "items", "members", "activity"]
+  "pages": [
+    "index",
+    "authentication",
+    "keys",
+    "folders",
+    "items",
+    "members",
+    "passkeys",
+    "activity",
+    "sessions"
+  ]
 }

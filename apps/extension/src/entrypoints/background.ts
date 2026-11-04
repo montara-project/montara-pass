@@ -133,6 +133,18 @@ export default defineBackground({
       const key = pendingKey(tabId)
       const url = new URL(sender.url).origin
 
+      // Whether the page is Montara Pass itself, by the stored settings.
+      const ownSite = (stored: Record<string, unknown>) => {
+        const settings = stored[SETTINGS_KEY] as { apiUrl?: string; appUrl?: string } | undefined
+        // Compared as origins: a configured URL may carry a path or a slash.
+        return [
+          settings?.apiUrl ?? import.meta.env.VITE_DEFAULT_API_URL,
+          settings?.appUrl ?? import.meta.env.VITE_DEFAULT_APP_URL,
+        ]
+          .map(originOf)
+          .includes(url)
+      }
+
       // What the page just submitted, a login, a card or a contact, one at a time. It
       // waits in session storage (in memory, closed to pages and content
       // scripts) because the page that took it is usually gone before anyone
@@ -144,13 +156,7 @@ export default defineBackground({
 
           // Montara Pass itself: what is typed there is the master password,
           // which is kept nowhere, or an item that is in the vault already.
-          const settings = stored[SETTINGS_KEY] as { apiUrl?: string; appUrl?: string } | undefined
-          // Compared as origins: a configured URL may carry a path or a slash.
-          const own = [
-            settings?.apiUrl ?? import.meta.env.VITE_DEFAULT_API_URL,
-            settings?.appUrl ?? import.meta.env.VITE_DEFAULT_APP_URL,
-          ].map(originOf)
-          if (own.includes(url)) return
+          if (ownSite(stored)) return
 
           void chrome.alarms.create(key, { delayInMinutes: PENDING_TTL_MS / 60_000 })
           return chrome.storage.session.set({ [key]: { ...pending, url, at: Date.now() } })
@@ -211,10 +217,13 @@ export default defineBackground({
           return true
         // Whether a page's request for a passkey is worth a prompt: only with
         // somebody signed in, whose vault can hold one.
+        // Never on Montara Pass itself: a passkey for the account belongs on
+        // the device's own authenticator, which can unlock the vault (PRF),
+        // not inside the vault it would unlock.
         case 'passkey:available':
           void chrome.storage.local
-            .get(TOKENS_KEY)
-            .then((stored) => sendResponse(!!stored[TOKENS_KEY]))
+            .get([TOKENS_KEY, SETTINGS_KEY])
+            .then((stored) => sendResponse(!!stored[TOKENS_KEY] && !ownSite(stored)))
           return true
       }
     })

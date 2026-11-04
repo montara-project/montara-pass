@@ -542,7 +542,7 @@ func newAuth(cfg config.Config, mirror, customer func(*authulamodels.User) error
 		authulaconfig.WithLogger(authulamodels.LoggerConfig{Level: logLevel, Logger: logger}),
 		authulaconfig.WithSession(authulamodels.SessionConfig{
 			CookieName:         config.SessionCookieName,
-			ExpiresIn:          7 * 24 * time.Hour,
+			ExpiresIn:          sessionTTL,
 			UpdateAge:          24 * time.Hour,
 			Secure:             cfg.App.Env != config.EnvDevelopment,
 			HttpOnly:           true,

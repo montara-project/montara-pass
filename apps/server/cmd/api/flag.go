@@ -105,6 +105,7 @@ func parseFlag(cfg *config.Config) {
 	flag.StringVar(&cfg.Auth.EmailFrom, "email-from", envString("FROM_ADDRESS", ""), "Sender address for auth emails")
 	flag.StringVar(&cfg.Auth.ResendAPIKey, "resend-api-key", envString("RESEND_API_KEY", ""), "Resend API key for auth emails")
 	flag.StringVar(&cfg.Auth.GoogleClientID, "google-client-id", envString("GOOGLE_CLIENT_ID", ""), "Google OAuth client ID (empty disables Google sign-in)")
+	flag.StringVar(&cfg.Auth.PasskeyRPID, "passkey-rp-id", envString("PASSKEY_RP_ID", ""), "Domain account passkeys are made for, e.g. montarapass.com; changing it orphans existing passkeys (default the host of auth-base-url)")
 	flag.StringVar(&cfg.Auth.GoogleClientSecret, "google-client-secret", envString("GOOGLE_CLIENT_SECRET", ""), "Google OAuth client secret")
 
 	// Redis
@@ -192,6 +193,10 @@ func validateFlag(cfg *config.Config) {
 		log.Fatalf("flag auth-base-url: %q must be an origin like https://api.example.com", cfg.Auth.BaseURL)
 	}
 	cfg.Auth.BaseURL = strings.TrimSuffix(cfg.Auth.BaseURL, "/")
+	if cfg.Auth.PasskeyRPID == "" {
+		u, _ := url.Parse(cfg.Auth.BaseURL)
+		cfg.Auth.PasskeyRPID = u.Hostname()
+	}
 
 	// Verification, password reset and magic-link sign-in all send email, so
 	// the Cloud Edition needs a sender and a Resend key. The Community

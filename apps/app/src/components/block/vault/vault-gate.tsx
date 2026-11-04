@@ -5,12 +5,15 @@ import {
   SetupVaultFormSchema,
   UnlockFormSchema,
 } from '@montara-pass/shared/api/dtos/vault/schema'
+import { passkeyCancelled, passkeysSupported } from '@montara-pass/shared/auth/passkey'
 import {
   createUserKeys,
   unlockVault,
   WrongMasterPasswordError,
+  WrongPasskeyError,
 } from '@montara-pass/shared/crypto/vault'
-import { initials } from '@montara-pass/shared/string'
+import { errorMessage, initials } from '@montara-pass/shared/string'
+import { IconFingerprint } from '@tabler/icons-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 
@@ -23,6 +26,7 @@ import { apiErrorMessage } from '@/lib/api/api-error'
 import { queries } from '@/lib/api/queries'
 import { FOLDER_QUERY_KEY } from '@/lib/api/queries/folder'
 import { ITEM_QUERY_KEY } from '@/lib/api/queries/item'
+import { unlockWithPasskey } from '@/lib/auth/passkey-auth'
 import { AUTO_LOCK_MINUTES, useVaultStore } from '@/lib/stores/vault'
 
 interface VaultGateProps {
@@ -109,6 +113,27 @@ function UnlockForm({ userKeys }: { userKeys: Models.UserKeys }) {
   const unlock = useVaultStore((state) => state.unlock)
   // What unlocking said, as opposed to what the field says about itself.
   const [error, setError] = useState('')
+  const [passkeyBusy, setPasskeyBusy] = useState(false)
+  // Only offered when a passkey seals the vault key and the browser has passkeys.
+  const { data: passkeys } = useQuery({ ...queries.passkeys.list(), enabled: passkeysSupported() })
+  const canUsePasskey = passkeys?.some((p) => p.encrypted_vault_key) ?? false
+
+  const unlockPasskey = async () => {
+    setError('')
+    setPasskeyBusy(true)
+    try {
+      unlock(await unlockWithPasskey(userKeys, passkeys ?? []))
+    } catch (err) {
+      if (passkeyCancelled(err)) return
+      setError(
+        err instanceof WrongPasskeyError
+          ? err.message
+          : errorMessage(err, 'The vault could not be unlocked.')
+      )
+    } finally {
+      setPasskeyBusy(false)
+    }
+  }
 
   const form = useAppForm({
     defaultValues: { master_password: '' },
@@ -167,6 +192,20 @@ function UnlockForm({ userKeys }: { userKeys: Models.UserKeys }) {
           />
         </form.AppForm>
       </form>
+
+      {canUsePasskey && (
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          className="w-full"
+          disabled={passkeyBusy}
+          onClick={() => void unlockPasskey()}
+        >
+          <IconFingerprint />
+          {passkeyBusy ? 'Waiting for your passkey…' : 'Unlock with a passkey'}
+        </Button>
+      )}
 
       <p className="text-muted-foreground text-center text-[13px] text-balance">
         Locks again after {AUTO_LOCK_MINUTES} minutes without use, and when this page is reloaded.

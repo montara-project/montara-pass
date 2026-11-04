@@ -242,7 +242,13 @@ export async function unlockVaultMaterial(
   masterPassword: string,
   keys: Models.UserKeys
 ): Promise<VaultMaterial> {
-  const vaultKeyRaw = await unwrapVaultKey(masterPassword, keys)
+  return materialFromVaultKey(await unwrapVaultKey(masterPassword, keys), keys)
+}
+
+async function materialFromVaultKey(
+  vaultKeyRaw: Uint8Array<ArrayBuffer>,
+  keys: Models.UserKeys
+): Promise<VaultMaterial> {
   const vaultKey = await importAesKey(vaultKeyRaw)
   const privateKeyRaw = await open(vaultKey, fromBase64(keys.encrypted_private_key))
 
@@ -269,6 +275,80 @@ export async function unlockVault(
   keys: Models.UserKeys
 ): Promise<VaultKeys> {
   return importVaultMaterial(await unlockVaultMaterial(masterPassword, keys))
+}
+
+/*
+ * A passkey on the account can open the vault too, where its authenticator
+ * has the PRF extension (auth/passkey.ts): the vault key is sealed a second
+ * time, under a key derived from the passkey's PRF output, which only that
+ * authenticator can give again. The server keeps the sealed copy with the
+ * passkey and never sees the PRF output. Changing the master password leaves
+ * the vault key, and so these copies, as they are.
+ */
+
+const PASSKEY_KEY_INFO = utf8Encode('montara-pass passkey vault key v1')
+
+/** The AES key a passkey's PRF output seals the vault key under. */
+async function passkeyKey(prf: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
+  const base = await crypto.subtle.importKey('raw', prf, 'HKDF', false, ['deriveKey'])
+  return crypto.subtle.deriveKey(
+    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(32), info: PASSKEY_KEY_INFO },
+    base,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  )
+}
+
+/**
+ * The vault key as bytes, opened with the master password, to seal for a
+ * new passkey: an unlocked vault holds it only as a key that cannot be
+ * exported. Throws WrongMasterPasswordError.
+ */
+export function vaultKeyForPasskey(
+  masterPassword: string,
+  keys: Models.UserKeys
+): Promise<Uint8Array<ArrayBuffer>> {
+  return unwrapVaultKey(masterPassword, keys)
+}
+
+/** Seal the vault key under a passkey's PRF output, for the server to keep with it. */
+export async function sealVaultKeyForPasskey(
+  vaultKeyRaw: Uint8Array<ArrayBuffer>,
+  prf: Uint8Array<ArrayBuffer>
+): Promise<string> {
+  return toBase64(await seal(await passkeyKey(prf), vaultKeyRaw))
+}
+
+export class WrongPasskeyError extends Error {
+  constructor() {
+    super('This passkey cannot unlock the vault. Use your master password.')
+    this.name = 'WrongPasskeyError'
+  }
+}
+
+/** Open the vault's keys with a passkey's PRF output; throws WrongPasskeyError. */
+export async function unlockVaultMaterialWithPasskey(
+  prf: Uint8Array<ArrayBuffer>,
+  encryptedVaultKey: string,
+  keys: Models.UserKeys
+): Promise<VaultMaterial> {
+  let vaultKeyRaw: Uint8Array<ArrayBuffer>
+  try {
+    vaultKeyRaw = await open(await passkeyKey(prf), fromBase64(encryptedVaultKey))
+  } catch {
+    throw new WrongPasskeyError()
+  }
+  return materialFromVaultKey(vaultKeyRaw, keys)
+}
+
+/** Unlock a vault with a passkey's PRF output; throws WrongPasskeyError. */
+export async function unlockVaultWithPasskey(
+  prf: Uint8Array<ArrayBuffer>,
+  encryptedVaultKey: string,
+  keys: Models.UserKeys
+): Promise<VaultKeys> {
+  return importVaultMaterial(await unlockVaultMaterialWithPasskey(prf, encryptedVaultKey, keys))
 }
 
 /**

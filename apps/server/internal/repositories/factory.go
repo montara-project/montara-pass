@@ -8,6 +8,8 @@ type Repositories struct {
 	Folder   FolderRepository
 	IPBlock  IPBlockRepository
 	Item     ItemRepository
+	Passkey  PasskeyRepository
+	Session  SessionRepository
 	User     UserRepository
 	UserKey  UserKeyRepository
 }
@@ -22,6 +24,8 @@ func New(db *sql.DB) Repositories {
 		Folder:   FolderRepository{base},
 		IPBlock:  IPBlockRepository{base},
 		Item:     ItemRepository{base},
+		Passkey:  PasskeyRepository{base},
+		Session:  SessionRepository{base},
 		User:     UserRepository{base},
 		UserKey:  UserKeyRepository{base},
 	}

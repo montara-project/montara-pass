@@ -155,6 +155,38 @@ export async function signIn(email: string, password: string): Promise<{ totpTok
   return {}
 }
 
+/** Begins a passkey sign-in: a challenge any passkey on the account can sign. */
+export async function passkeyOptions(): Promise<Models.PasskeyCeremony> {
+  const res = await send(`${AUTH_PATH}/passkey/options`, { method: 'POST' })
+  if (!res.ok) throw await errorFrom(res)
+  return (await res.json()) as Models.PasskeyCeremony
+}
+
+/**
+ * Finishes a passkey sign-in and stores the tokens. A passkey verifies the
+ * user, so there is no TOTP step. Answers with the vault key the passkey
+ * seals, if it does.
+ */
+export async function passkeySignIn(
+  ceremony: string,
+  credential: unknown
+): Promise<Models.PasskeySignInData['passkey']> {
+  const res = await send(`${AUTH_PATH}/passkey/sign-in`, {
+    method: 'POST',
+    body: JSON.stringify({ ceremony, credential }),
+  })
+  if (!res.ok) throw await errorFrom(res)
+
+  const data = (await res.json()) as Models.PasskeySignInData
+  await saveSignIn(data)
+  return data.passkey
+}
+
+/** The passkeys on the account; they are added in the web app. */
+export async function listPasskeys(): Promise<Models.AccountPasskey[]> {
+  return (await request<Envelope<Models.AccountPasskey[]>>('/api/v1/passkeys')).data
+}
+
 /**
  * Answers the TOTP step with a code from the authenticator app, or else a
  * backup code: those are lowercase, and a phone keyboard may have capitalised
