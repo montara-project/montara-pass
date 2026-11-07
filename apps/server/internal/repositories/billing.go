@@ -528,6 +528,69 @@ func (r *BillingRepository) DeletePending(ctx context.Context, table string, id 
 	return err
 }
 
+// customersFrom is every account in Authula, joined to the mirror for its
+// role; customerWhere leaves the super users out, as Stats does.
+const customersFrom = `authula.users a LEFT JOIN users m ON m.id = a.id`
+
+func customerWhere(p ListParams) *whereBuilder {
+	w := newWhere("TRUE")
+	w.add("m.role IS DISTINCT FROM $%d", constant.RoleSuperUser)
+	w.search(p.Search, "a.name", "a.email")
+	return w
+}
+
+// ListCustomers answers one page of the customer accounts for a super user,
+// the most recently active first. Authula keeps its timestamps without a
+// zone, in UTC. Last active reads the sessions, which are deleted once they
+// end, and the sign-ins in the activity log, which keeps 90 days.
+func (r *BillingRepository) ListCustomers(ctx context.Context, p ListParams) ([]models.Account, error) {
+	where, args, limit, offset := customerWhere(p).page(p)
+	query := fmt.Sprintf(`
+		SELECT a.id, a.name, a.email, coalesce(a.email_verified, false), a.created_at AT TIME ZONE 'UTC',
+		       held.name, held.billing, held.billing_interval,
+		       GREATEST(
+		            (SELECT max(updated_at) AT TIME ZONE 'UTC' FROM authula.sessions WHERE user_id = a.id),
+		            (SELECT max(created_at) FROM activity_logs WHERE actor_id = a.id AND action = 'sign_in')) AS last_active_at
+		FROM %s
+		LEFT JOIN LATERAL (
+		    SELECT p.name, p.billing, p.billing_interval FROM (
+		        SELECT plan_id, current_period_start AS since, 0 AS rank FROM subscriptions
+		        WHERE user_id = a.id AND status = '%s' AND current_period_end > now()
+		        UNION ALL
+		        SELECT plan_id, paid_at, 1 FROM purchases WHERE user_id = a.id AND status = '%s'
+		    ) h JOIN plans p ON p.id = h.plan_id
+		    ORDER BY h.rank, h.since DESC LIMIT 1
+		) held ON TRUE
+		WHERE %s
+		ORDER BY last_active_at DESC NULLS LAST, a.created_at DESC, a.id
+		LIMIT $%d OFFSET $%d`,
+		customersFrom, models.SubscriptionActive, models.PurchasePaid, where, limit, offset)
+	rows, err := r.queryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	return collectRows(rows, func(row rowScanner) (models.Account, error) {
+		var c models.Account
+		var verified bool
+		var plan, billing sql.NullString
+		var interval *string
+		err := row.Scan(&c.ID, &c.Name, &c.Email, &verified, &c.CreatedAt, &plan, &billing, &interval, &c.LastActiveAt)
+		if plan.Valid {
+			c.Plan = &models.AccountPlan{Name: plan.String, Billing: billing.String, BillingInterval: interval}
+		}
+		c.Status = models.AccountUnverified
+		if verified {
+			c.Status = models.AccountActive
+		}
+		return c, err
+	})
+}
+
+// CountCustomers counts what ListCustomers pages through.
+func (r *BillingRepository) CountCustomers(ctx context.Context, p ListParams) (int64, error) {
+	return r.countRows(ctx, customersFrom, customerWhere(p))
+}
+
 // Stats counts what a super user's overview shows, in one round trip.
 // Accounts are read from Authula, which owns them; a user whose mirror row
 // is missing still counts, and super users do not. A subscription counts

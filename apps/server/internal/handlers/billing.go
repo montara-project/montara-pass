@@ -123,6 +123,26 @@ func (h *billingHandler) Stats(c fiber.Ctx) error {
 	return dtos.OK(c, stats)
 }
 
+// ListCustomers answers one page of the customer accounts, for a super user.
+func (h *billingHandler) ListCustomers(c fiber.Ctx) error {
+	var q dtos.CustomerListQuery
+	if err := lib.ValidateRequestQuery(c, &q); err != nil {
+		return err
+	}
+	q.Clamp()
+
+	p := repositories.ListParams{Offset: q.Offset, Limit: q.Limit, Search: q.Search}
+	customers, err := h.repo().ListCustomers(c.Context(), p)
+	if err != nil {
+		return err
+	}
+	total, err := h.repo().CountCustomers(c.Context(), p)
+	if err != nil {
+		return err
+	}
+	return dtos.List(c, customers, dtos.ListMeta(int(total), q.Offset, q.Limit))
+}
+
 // SyncPlans reads the Lemon Squeezy catalog now, for a super user who just
 // changed it, and answers every plan.
 func (h *billingHandler) SyncPlans(c fiber.Ctx) error {

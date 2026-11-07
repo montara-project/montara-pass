@@ -1434,6 +1434,19 @@ func billingFlow(
 		stats["subscribed_users"] != float64(1) || stats["plans"] != float64(3) || stats["plans_on_offer"] != float64(1) {
 		t.Fatalf("stats: %v", stats)
 	}
+	// The customer accounts: no super user, the subscriber holding its
+	// plan, and a search that finds it by email.
+	want(http.StatusForbidden, http.MethodGet, "/api/v1/users", userToken, nil)
+	status, out := call(http.MethodGet, "/api/v1/users?search="+url.QueryEscape("user@example"), superToken, nil)
+	customers, _ := out["data"].([]any)
+	if status != http.StatusOK || len(customers) != 1 {
+		t.Fatalf("customers: %d %v", status, out)
+	}
+	if c := customers[0].(map[string]any); c["email"] != "user@example.com" || c["plan"] == nil ||
+		c["plan"].(map[string]any)["billing"] != "recurring" ||
+		c["status"] != "active" || c["last_active_at"] == nil {
+		t.Fatalf("customer: %v", c)
+	}
 	// The one paid period, paid just now, in its currency.
 	if revenue, _ := stats["subscription_revenue"].([]any); len(revenue) != 1 ||
 		revenue[0].(map[string]any)["currency"] != "USD" ||

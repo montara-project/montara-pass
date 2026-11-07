@@ -217,6 +217,8 @@ func routes(r *fiber.App, app *app.Application) {
 		v1.Get("/purchases", m.Authorization, m.SuperUser, h.Billing.ListPurchases)
 		// The counts on the admin's dashboard.
 		v1.Get("/stats", m.Authorization, m.SuperUser, h.Billing.Stats)
+		// The customer accounts, the most recently active first.
+		v1.Get("/users", m.Authorization, m.SuperUser, h.Billing.ListCustomers)
 
 		billing := v1.Group("/billing")
 		billing.Get("/", m.Authorization, h.Billing.Overview)

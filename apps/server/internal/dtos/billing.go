@@ -38,3 +38,20 @@ type CheckoutBody struct {
 func (dto CheckoutBody) Validate(v *validator.MapValidator) {
 	v.Field("plan_id").Required().UUID()
 }
+
+// CustomerListQuery pages the super user's list of accounts. Search matches
+// the account's name or email.
+type CustomerListQuery struct {
+	Offset int    `query:"offset"`
+	Limit  int    `query:"limit"`
+	Search string `query:"search"`
+}
+
+func (dto CustomerListQuery) Validate(v *validator.MapValidator) {
+	listRules(v)
+}
+
+// Clamp applies the shared pagination bounds.
+func (dto *CustomerListQuery) Clamp() {
+	dto.Offset, dto.Limit = clampPage(dto.Offset, dto.Limit)
+}
