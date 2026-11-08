@@ -2,12 +2,16 @@
 // a copied secret from the clipboard when its alarm fires, tells
 // the inline menu which tab it sits in, holds a login, a card or a contact
 // that was just submitted until the save prompt takes it, and says whether anyone is
-// signed in to answer a request for a passkey. It imports nothing but WXT's wrapper.
+// signed in to answer a request for a passkey. In Firefox it also does for the
+// inline menu what the menu's frame may not (src/inline/firefox.ts). It imports
+// nothing but WXT's wrapper and src/lib/autofill.ts, which imports nothing.
 // Keep the names in sync with src/lib/session.ts, src/lib/storage.ts,
 // src/lib/clipboard.ts and the contact fields with CONTACT_FIELDS in
 // packages/shared/src/constants/vault.ts.
 
 import { defineBackground } from 'wxt/utils/define-background'
+
+import { fillLogin, fillNewPassword } from '../lib/autofill'
 
 const AUTO_LOCK_ALARM = 'auto-lock'
 const CLEAR_CLIPBOARD_ALARM = 'clear-clipboard'
@@ -73,6 +77,47 @@ const originOf = (value: unknown) => {
   }
 }
 
+/** What the inline menu may have run in its page, by name. */
+const FILLS = { fillLogin, fillNewPassword }
+
+/**
+ * Firefox gives the inline menu, an extension page framed in a web page, only
+ * what a content script gets (src/inline/firefox.ts). It asks for the rest
+ * here. The tabs and the page script are always its own tab's.
+ */
+async function frameCall(tabId: number, api: string, args: unknown[]): Promise<unknown> {
+  switch (api) {
+    case 'session.get':
+      return chrome.storage.session.get(args[0] as string | string[] | null)
+    case 'session.set':
+      return chrome.storage.session.set(args[0] as Record<string, unknown>)
+    case 'session.remove':
+      return chrome.storage.session.remove(args[0] as string | string[])
+    case 'alarms.create':
+      return chrome.alarms.create(String(args[0]), args[1] as chrome.alarms.AlarmCreateInfo)
+    case 'alarms.clear':
+      return chrome.alarms.clear(String(args[0]))
+    case 'tabs.get':
+      return chrome.tabs.get(tabId)
+    case 'tabs.sendMessage':
+      return chrome.tabs.sendMessage(tabId, args[0], { frameId: 0 })
+    // Only the extension's own pages.
+    case 'tabs.create':
+      if (!String(args[0]).startsWith(chrome.runtime.getURL(''))) break
+      return chrome.tabs.create({ url: String(args[0]) })
+    case 'scripting.fill': {
+      const func = FILLS[args[0] as keyof typeof FILLS]
+      if (!func || !Array.isArray(args[1])) break
+      return chrome.scripting.executeScript({
+        target: { tabId },
+        func: func as (...args: unknown[]) => unknown,
+        args: args[1],
+      })
+    }
+  }
+  throw new Error(`Not available: ${api}`)
+}
+
 export default defineBackground({
   // An ES module: a service worker in Chrome, an event page in Firefox.
   type: 'module',
@@ -116,6 +161,22 @@ export default defineBackground({
       void chrome.alarms.clear(pendingKey(tabId))
     })
 
+    // The inline menu in Firefox hears of session changes through a port
+    // (src/inline/firefox.ts). The names of what changed, not the values.
+    const menus = new Set<chrome.runtime.Port>()
+    chrome.runtime.onConnect.addListener((port) => {
+      const fromMenu = port.sender?.url?.startsWith(chrome.runtime.getURL('inline.html')) === true
+      if (port.name !== 'frame:session' || port.sender?.id !== chrome.runtime.id || !fromMenu) {
+        port.disconnect()
+        return
+      }
+      menus.add(port)
+      port.onDisconnect.addListener(() => menus.delete(port))
+    })
+    chrome.storage.session.onChanged.addListener((changes) => {
+      for (const port of menus) port.postMessage(Object.keys(changes))
+    })
+
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (sender.id !== chrome.runtime.id || sender.tab?.id === undefined) return
       const tabId = sender.tab.id
@@ -125,6 +186,13 @@ export default defineBackground({
       const fromMenu = sender.url?.startsWith(chrome.runtime.getURL('inline.html')) === true
       if (fromMenu) {
         if (message?.type === 'inline:context') sendResponse({ tabId, url: sender.tab.url ?? '' })
+        if (message?.type === 'frame:call') {
+          frameCall(tabId, String(message.api), Array.isArray(message.args) ? message.args : [])
+            .then((result) => sendResponse({ result }))
+            .catch((err) => sendResponse({ error: String(err?.message ?? err) }))
+          // The answer comes later.
+          return true
+        }
         return
       }
 

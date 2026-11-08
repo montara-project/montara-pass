@@ -23,8 +23,20 @@ interface SettingsProps {
   onSignOut?: () => void
 }
 
-/** `pnpm watch`: the API and the web app run apart, each with its own URL. */
+/**
+ * `pnpm watch`: dev mode can be switched on, for an API and a web app that
+ * run apart, each with its own URL. A released build never offers it.
+ */
 const DEV = import.meta.env.MODE === 'development'
+
+/**
+ * Dev mode is on when the saved server has a web app of its own. The build's
+ * own two URLs are what it falls back to with dev mode off, so they count as off.
+ */
+const isDevMode = ({ apiUrl, appUrl }: { apiUrl: string; appUrl: string }) =>
+  DEV &&
+  appUrl !== apiUrl &&
+  (apiUrl !== DEFAULT_SETTINGS.apiUrl || appUrl !== DEFAULT_SETTINGS.appUrl)
 
 const SITE_URL = 'https://montarapass.com'
 const DOCS_URL = 'https://docs.montarapass.com'
@@ -33,9 +45,15 @@ const DOCS_URL = 'https://docs.montarapass.com'
  * The two origins a valid server form stands for. A released build knows one
  * server, which also serves the web app.
  */
-function originsOf(value: { selfHosted: boolean; apiUrl: string; appUrl: string }) {
-  const apiOrigin = DEV || value.selfHosted ? originOf(value.apiUrl)! : DEFAULT_SETTINGS.apiUrl
-  if (DEV) return { apiOrigin, appOrigin: originOf(value.appUrl)! }
+function originsOf(value: {
+  selfHosted: boolean
+  devMode: boolean
+  apiUrl: string
+  appUrl: string
+}) {
+  const dev = DEV && value.devMode
+  const apiOrigin = dev || value.selfHosted ? originOf(value.apiUrl)! : DEFAULT_SETTINGS.apiUrl
+  if (dev) return { apiOrigin, appOrigin: originOf(value.appUrl)! }
   if (value.selfHosted) return { apiOrigin, appOrigin: apiOrigin }
   return { apiOrigin, appOrigin: DEFAULT_SETTINGS.appUrl }
 }
@@ -72,6 +90,7 @@ export default function Settings({ onClose, onLock, onSignOut }: SettingsProps) 
     // What is saved, once it has been read: the form starts over from it.
     defaultValues: {
       selfHosted: saved.apiUrl !== DEFAULT_SETTINGS.apiUrl,
+      devMode: isDevMode(saved),
       apiUrl: saved.apiUrl,
       appUrl: saved.appUrl,
     },
@@ -133,11 +152,13 @@ export default function Settings({ onClose, onLock, onSignOut }: SettingsProps) 
     }
   }, [signedIn])
 
-  const { selfHosted, apiUrl, appUrl } = useSelector(form.store, (state) => state.values)
-  const wasSelfHosted = saved.apiUrl !== DEFAULT_SETTINGS.apiUrl
-  const changed = DEV
-    ? apiUrl !== saved.apiUrl || appUrl !== saved.appUrl
-    : selfHosted !== wasSelfHosted || (selfHosted && apiUrl !== saved.apiUrl)
+  const values = useSelector(form.store, (state) => state.values)
+  const { selfHosted } = values
+  const dev = DEV && values.devMode
+  // Whether saving would point the extension somewhere else. A field that is
+  // not a URL yet counts as a change, so Save shows what is wrong with it.
+  const target = originsOf(values)
+  const changed = target.apiOrigin !== saved.apiUrl || target.appOrigin !== saved.appUrl
 
   // One line under the fields says what is wrong with them, or with the server.
   const fieldError = useSelector(form.store, (state) =>
@@ -236,7 +257,31 @@ export default function Settings({ onClose, onLock, onSignOut }: SettingsProps) 
             void submit(e.currentTarget, form)
           }}
         >
-          {DEV ? (
+          <label className="set-row toggle" htmlFor="set-self-hosted">
+            <span className="set-text">
+              Self-hosted
+              <span className="muted">Use your own Montara Pass server</span>
+            </span>
+            <form.AppField
+              name="selfHosted"
+              children={(field) => <field.Switch id="set-self-hosted" />}
+            />
+          </label>
+
+          {DEV && (
+            <label className="set-row toggle" htmlFor="set-dev-mode">
+              <span className="set-text">
+                Dev mode
+                <span className="muted">An API server and a web app at their own URLs</span>
+              </span>
+              <form.AppField
+                name="devMode"
+                children={(field) => <field.Switch id="set-dev-mode" />}
+              />
+            </label>
+          )}
+
+          {dev ? (
             <>
               <label className="set-row set-field" htmlFor="set-api-dev">
                 <span className="set-text">API server</span>
@@ -253,17 +298,6 @@ export default function Settings({ onClose, onLock, onSignOut }: SettingsProps) 
             </>
           ) : (
             <>
-              <label className="set-row toggle" htmlFor="set-self-hosted">
-                <span className="set-text">
-                  Self-hosted
-                  <span className="muted">Use your own Montara Pass server</span>
-                </span>
-                <form.AppField
-                  name="selfHosted"
-                  children={(field) => <field.Switch id="set-self-hosted" />}
-                />
-              </label>
-
               <label className="set-row set-field" htmlFor="set-api">
                 <span className="set-text">
                   Server URL
@@ -276,7 +310,12 @@ export default function Settings({ onClose, onLock, onSignOut }: SettingsProps) 
                   <form.AppField
                     name="apiUrl"
                     children={(field) => (
-                      <field.Input id="set-api" placeholder="https://vault.example.com/api" />
+                      <field.Input
+                        id="set-api"
+                        placeholder={
+                          DEV ? 'http://localhost:8080' : 'https://vault.example.com/api'
+                        }
+                      />
                     )}
                   />
                 ) : (

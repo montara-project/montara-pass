@@ -89,7 +89,6 @@ const TOOLS = [
 const MENU = [
   { title: 'Profile', url: '/profile', icon: IconUserCircle, group: 'Account' },
   { title: 'Manage folders', url: '/folders', icon: IconFolders, group: 'Vault' },
-  { title: 'Trash', url: '/trash', icon: IconTrash, group: 'Vault' },
   // Sharing is the Cloud Edition's: the Community server has one user.
   ...(COMMUNITY
     ? []
@@ -106,7 +105,16 @@ const ADMIN = [
 ] as const
 
 /** Only routes that actually exist are listed, and each names its breadcrumb group. */
-const CRUMBS = [{ title: 'Vault', url: '/vault', group: 'Vault' }, ...TOOLS, ...MENU, ...ADMIN]
+/** Under the vault's views in the sidebar: what was thrown away, until it is emptied. */
+const TRASH = { title: 'Trash', url: '/trash', icon: IconTrash, group: 'Vault' } as const
+
+const CRUMBS = [
+  { title: 'Vault', url: '/vault', group: 'Vault' },
+  TRASH,
+  ...TOOLS,
+  ...MENU,
+  ...ADMIN,
+]
 
 /**
  * The frame of every page after the vault is unlocked: an inset sidebar
@@ -201,8 +209,11 @@ function VaultViews({ pathname }: { pathname: string }) {
     type?: string
     favorite?: boolean
   }
-  const totals = useItemTotals(VAULT_VIEWS.map((view) => view.search))
+  // The views' counts, then the trash's: the same server totals, nothing decrypted.
+  const totals = useItemTotals([...VAULT_VIEWS.map((view) => view.search), { trashed: true }])
+  const trashed = totals[VAULT_VIEWS.length]
   const onVault = pathname.startsWith('/vault')
+  const onTrash = pathname.startsWith(TRASH.url)
 
   return (
     <SidebarMenu>
@@ -228,6 +239,19 @@ function VaultViews({ pathname }: { pathname: string }) {
           </SidebarMenuItem>
         )
       })}
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild tooltip={TRASH.title} isActive={onTrash}>
+          <Link
+            to={TRASH.url}
+            aria-current={onTrash ? 'page' : undefined}
+            onClick={() => isMobile && setOpenMobile(false)}
+          >
+            <TRASH.icon />
+            <span>{TRASH.title}</span>
+          </Link>
+        </SidebarMenuButton>
+        {trashed !== undefined && <SidebarMenuBadge>{trashed}</SidebarMenuBadge>}
+      </SidebarMenuItem>
     </SidebarMenu>
   )
 }

@@ -19,23 +19,25 @@ const NOT_HTTPS =
 
 /**
  * Where the extension finds its server. A released build asks for one URL,
- * and only when it is self-hosted; a development build asks for two.
+ * and only when it is self-hosted; a development build in dev mode asks for two.
  */
 export const ServerFormSchema = z
   .object({
     selfHosted: z.boolean(),
+    devMode: z.boolean(),
     apiUrl: z.string(),
     appUrl: z.string(),
   })
   .superRefine((value, ctx) => {
-    if (DEV || value.selfHosted) {
+    const dev = DEV && value.devMode
+    if (dev || value.selfHosted) {
       const origin = originOf(value.apiUrl)
       if (!origin) ctx.addIssue({ code: 'custom', path: ['apiUrl'], message: NOT_A_URL })
       else if (!serverAllowed(origin)) {
         ctx.addIssue({ code: 'custom', path: ['apiUrl'], message: NOT_HTTPS })
       }
     }
-    if (DEV && !originOf(value.appUrl)) {
+    if (dev && !originOf(value.appUrl)) {
       ctx.addIssue({ code: 'custom', path: ['appUrl'], message: NOT_A_URL })
     }
   })

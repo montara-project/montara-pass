@@ -1,3 +1,4 @@
+import './firefox'
 import '../popup/styles.css'
 
 import type { VaultItem } from '@montara-pass/shared/types/vault'
