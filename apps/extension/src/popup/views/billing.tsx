@@ -26,7 +26,7 @@ import {
   SignedOutError,
   subscribe,
 } from '../../lib/api'
-import { CheckIcon, CreditCardIcon } from '../icons'
+import { CheckIcon, CreditCardIcon, QrIcon } from '../icons'
 
 interface BillingProps {
   /** The session ended underneath the page. */
@@ -42,6 +42,15 @@ function open(url: string) {
 
 /** The tabs, and the currencies their plans are priced in. */
 const CURRENCIES = ['USD', 'IDR'] as const
+
+/** Who takes the payment, by the currency the plans are priced in. */
+const GATEWAY = { USD: 'Lemon Squeezy', IDR: 'BorderPay' } as const
+
+/** What each checkout leaves behind, under how billing works. */
+const BILLING_NOTE = {
+  USD: 'VAT and receipts are issued by Lemon Squeezy',
+  IDR: 'Paid by QRIS · no card stored',
+} as const
 
 /**
  * Billing, Cloud Edition only: the signed-in user's subscription and
@@ -118,214 +127,253 @@ export default function Billing({ onSignedOut }: BillingProps) {
   // The plan marked out, as on the web app's billing page: the yearly one.
   const featured = onOffer.find((plan) => plan.billing_interval === 'year')
 
+  const gateway = GATEWAY[currency]
+
   return (
-    <div className="stack detail-body tool-body">
-      <header className="billing-head">
-        <h2 className="detail-title">
-          <CreditCardIcon />
-          Billing
-        </h2>
-        <span className="muted">
-          Your plan, and what you have bought.{currency && ` Prices in ${currency}.`}
-        </span>
+    <div className="stack detail-body tool-body gen-page">
+      <header className="tool-page-head">
+        <div className="list-title">
+          <p className="eyebrow">Account · Billing</p>
+          <h1>Billing</h1>
+          <p className="muted">
+            Your plan, and what you have bought. Prices in {currency},{' '}
+            {currency === 'IDR' ? 'paid through' : 'charged by'} {gateway}.
+          </p>
+        </div>
+        <dl className="health-stats">
+          <div>
+            <dt>Gateway</dt>
+            <dd className="billing-gateway">{gateway}</dd>
+          </div>
+          <div>
+            <dt>Currency</dt>
+            <dd>{currency}</dd>
+          </div>
+        </dl>
       </header>
 
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
+      <div className="billing-body">
+        {error && (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
 
-      {overview === undefined ? (
-        !error && <p className="muted">Loading…</p>
-      ) : overview === null ? (
-        <p className="muted">This server takes no payments.</p>
-      ) : (
-        <>
-          <section className="stack billing-section" aria-labelledby="billing-subscription">
-            <h3 id="billing-subscription" className="billing-title">
-              Subscription
-            </h3>
-            <div className="billing-row">
-              {subscription ? (
-                <>
-                  <span className="item-text">
-                    <span className="item-name">{planName(subscription.plan)}</span>
-                    <span className="muted">
-                      {BILLING_STATUS[subscription.status]}
-                      {subscription.status === 'active' &&
-                        // BorderPay charges once: its subscriptions end, never renew.
-                        `, ${subscription.canceled_at || subscription.plan.provider === 'borderpay' ? 'ends' : 'renews'} ${DATE.format(new Date(subscription.current_period_end))}`}
-                    </span>
-                  </span>
-                  {subscription.checkout_url ? (
-                    <button className="secondary" onClick={() => open(subscription.checkout_url!)}>
-                      Continue payment
-                    </button>
+        {overview === undefined ? (
+          !error && <p className="muted">Loading…</p>
+        ) : overview === null ? (
+          <p className="muted">This server takes no payments.</p>
+        ) : (
+          <>
+            <section className="billing-section" aria-labelledby="billing-subscription">
+              <h2 id="billing-subscription" className="eyebrow">
+                Subscription
+              </h2>
+              <div className="field-group billing-row">
+                <span className="tile">{currency === 'IDR' ? <QrIcon /> : <CreditCardIcon />}</span>
+                <span className="item-text">
+                  {subscription ? (
+                    <>
+                      <span className="item-name">{planName(subscription.plan)}</span>
+                      <span className="muted">
+                        {BILLING_STATUS[subscription.status]}
+                        {subscription.status === 'active' &&
+                          // BorderPay charges once: its subscriptions end, never renew.
+                          `, ${subscription.canceled_at || subscription.plan.provider === 'borderpay' ? 'ends' : 'renews'} ${DATE.format(new Date(subscription.current_period_end))}`}
+                      </span>
+                    </>
                   ) : (
-                    subscription.status === 'active' &&
-                    subscription.plan.provider !== 'borderpay' && (
-                      // BorderPay renews nothing by itself and has no portal:
-                      // an IDR subscription is renewed by subscribing again.
-                      <button
-                        className="secondary"
-                        disabled={busy !== null}
-                        onClick={() =>
-                          void start('portal', async () => (await getBillingPortal()).url)
-                        }
-                      >
-                        Manage subscription
-                      </button>
-                    )
+                    <>
+                      <span className="item-name">No active subscription</span>
+                      <span className="muted">
+                        {currency === 'IDR'
+                          ? 'Pick a plan below; BorderPay sends a QRIS code to finish.'
+                          : 'Pick a plan below to unlock Pro features.'}
+                      </span>
+                    </>
                   )}
-                </>
-              ) : (
-                <>
-                  <span className="muted billing-none">No subscription.</span>
-                  {!lifetime && <span className="billing-pill">free tier</span>}
-                </>
-              )}
-            </div>
-          </section>
-
-          <section className="stack billing-section" aria-labelledby="billing-plans">
-            <h3 id="billing-plans" className="billing-title">
-              Plans
-            </h3>
-            {/* Only one currency is on sale where the country is known. */}
-            {!region && (
-              <div role="tablist" aria-label="Currency" className="plan-tabs">
-                {CURRENCIES.map((code) => (
-                  <button
-                    key={code}
-                    role="tab"
-                    aria-selected={currency === code}
-                    disabled={busy !== null}
-                    className="plan-tab"
-                    data-on={currency === code || undefined}
-                    onClick={() => setCurrency(code)}
-                  >
-                    {code}
+                </span>
+                {subscription?.checkout_url ? (
+                  <button className="small" onClick={() => open(subscription.checkout_url!)}>
+                    Continue payment
                   </button>
-                ))}
-              </div>
-            )}
-            {onOffer.length === 0 ? (
-              <p className="muted">No plans are on offer yet.</p>
-            ) : (
-              <ul className="plan-grid">
-                {onOffer.map((plan) => {
-                  const purchase =
-                    plan.billing === 'one_time' ? ownedPurchase(purchases, plan) : undefined
-                  // One subscription at a time; another once this one has ended.
-                  const subscribed = plan.billing === 'recurring' && subscription !== null
-                  const saving = planSaving(plan, plans)
-                  const offer = planOffer(plan, formatPrice(plan.amount, plan.currency))
-                  const action = plan.billing === 'recurring' ? 'Subscribe' : 'Buy once'
-                  return (
-                    <li
-                      key={plan.id}
-                      className="plan-card"
-                      data-featured={plan.id === featured?.id || undefined}
+                ) : subscription ? (
+                  subscription.status === 'active' &&
+                  subscription.plan.provider !== 'borderpay' && (
+                    // BorderPay renews nothing by itself and has no portal:
+                    // an IDR subscription is renewed by subscribing again.
+                    <button
+                      className="secondary small"
+                      disabled={busy !== null}
+                      onClick={() =>
+                        void start('portal', async () => (await getBillingPortal()).url)
+                      }
                     >
-                      <span className="plan-head">
-                        <span className="item-name">{planName(plan)}</span>
-                        <span className="plan-chips">
-                          {saving && saving.percent >= 1 && (
-                            <span className="billing-pill">Save {saving.percent}%</span>
-                          )}
-                          {isSandbox(plan) && <span className="plan-chip">sandbox</span>}
-                        </span>
-                      </span>
-                      <span className="plan-price">
-                        {formatPrice(saving?.amount ?? plan.amount, plan.currency)}{' '}
-                        <small>{planPeriod(plan)}</small>
-                        {saving && (
-                          <s className="plan-was">
-                            <span className="visually-hidden">was </span>
-                            {formatPrice(saving.was, plan.currency)}
-                          </s>
-                        )}
-                      </span>
-                      <span className="plan-notes">
-                        {offer && <span className="plan-offer">{offer}</span>}
-                        <span className="plan-terms">{planTerms(plan)}</span>
-                      </span>
-                      {purchase?.status === 'paid' ? (
-                        <span className="muted">You own this.</span>
-                      ) : purchase?.checkout_url ? (
-                        <button className="secondary" onClick={() => open(purchase.checkout_url!)}>
-                          Continue payment
-                        </button>
-                      ) : (
-                        <button
-                          className="secondary"
-                          disabled={busy !== null || subscribed}
-                          onClick={() =>
-                            void start(plan.id, async () =>
-                              plan.billing === 'recurring'
-                                ? (await subscribe(plan.id)).checkout_url
-                                : (await buy(plan.id)).checkout_url
-                            )
-                          }
-                        >
-                          {busy === plan.id ? 'Opening…' : action}
-                        </button>
-                      )}
-                    </li>
+                      Manage subscription
+                    </button>
                   )
-                })}
-              </ul>
-            )}
-            <p className="muted">
-              {currency === 'IDR'
-                ? 'Paying opens BorderPay, which shows a QRIS code, in a new tab. This page updates once the payment has gone through.'
-                : 'Paying opens Lemon Squeezy in a new tab. This page updates once the payment has gone through.'}
-            </p>
-          </section>
+                ) : (
+                  !lifetime && <span className="billing-pill">Free tier</span>
+                )}
+              </div>
+            </section>
 
-          <div className="billing-facts">
-            {[
-              { id: 'billing-includes', title: 'Every plan includes', items: PLAN_INCLUDES },
-              { id: 'billing-how', title: 'How billing works', items: billingTerms(currency) },
-            ].map(({ id, title, items }) => (
-              <section key={id} className="stack billing-section" aria-labelledby={id}>
-                <h3 id={id} className="billing-title">
-                  {title}
-                </h3>
-                <ul className="billing-checks">
-                  {items.map((item) => (
-                    <li key={item}>
-                      <CheckIcon />
-                      {item}
+            <section className="billing-section" aria-labelledby="billing-plans">
+              <div className="billing-plans-head">
+                <h2 id="billing-plans" className="eyebrow">
+                  Plans
+                </h2>
+                {/* Only one currency is on sale where the country is known. */}
+                {!region && (
+                  <div role="tablist" aria-label="Currency" className="plan-tabs">
+                    {CURRENCIES.map((code) => (
+                      <button
+                        key={code}
+                        role="tab"
+                        aria-selected={currency === code}
+                        disabled={busy !== null}
+                        className="plan-tab"
+                        data-on={currency === code || undefined}
+                        onClick={() => setCurrency(code)}
+                      >
+                        {code}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {onOffer.length === 0 ? (
+                <p className="muted">No plans are on offer yet.</p>
+              ) : (
+                <ul className="plan-grid">
+                  {onOffer.map((plan) => {
+                    const purchase =
+                      plan.billing === 'one_time' ? ownedPurchase(purchases, plan) : undefined
+                    // One subscription at a time; another once this one has ended.
+                    const subscribed = plan.billing === 'recurring' && subscription !== null
+                    const marked = plan.id === featured?.id
+                    const saving = planSaving(plan, onOffer)
+                    const offer = planOffer(plan, formatPrice(plan.amount, plan.currency))
+                    const action = plan.billing === 'recurring' ? 'Subscribe' : 'Buy once'
+                    return (
+                      <li key={plan.id} className="plan-card" data-featured={marked || undefined}>
+                        <span className="plan-head">
+                          <span className="item-name">{planName(plan)}</span>
+                          <span className="plan-chips">
+                            {saving && saving.percent >= 1 && (
+                              <span className="plan-chip plan-save">
+                                <span className="visually-hidden">Save </span>−{saving.percent}%
+                              </span>
+                            )}
+                            {isSandbox(plan) && <span className="plan-chip">sandbox</span>}
+                          </span>
+                        </span>
+                        <span className="plan-body">
+                          {saving && (
+                            <span className="eyebrow">
+                              Was{' '}
+                              <s className="plan-was">{formatPrice(saving.was, plan.currency)}</s>
+                            </span>
+                          )}
+                          <span className="plan-price">
+                            {formatPrice(saving?.amount ?? plan.amount, plan.currency)}{' '}
+                            <small>{planPeriod(plan)}</small>
+                          </span>
+                          {offer && <span className="plan-offer">{offer}</span>}
+                          <span className="plan-terms">{planTerms(plan)}</span>
+                          {purchase?.status === 'paid' ? (
+                            <span className="muted plan-action">You own this.</span>
+                          ) : purchase?.checkout_url ? (
+                            <button
+                              className="plan-action"
+                              onClick={() => open(purchase.checkout_url!)}
+                            >
+                              Continue payment
+                            </button>
+                          ) : (
+                            <button
+                              className={marked ? 'plan-action' : 'secondary plan-action'}
+                              disabled={busy !== null || subscribed}
+                              onClick={() =>
+                                void start(plan.id, async () =>
+                                  plan.billing === 'recurring'
+                                    ? (await subscribe(plan.id)).checkout_url
+                                    : (await buy(plan.id)).checkout_url
+                                )
+                              }
+                            >
+                              {busy === plan.id ? 'Opening…' : action}
+                            </button>
+                          )}
+                        </span>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+              <p className="muted billing-hint">
+                {currency === 'IDR'
+                  ? 'Paying opens BorderPay, which shows a QRIS code, in a new tab. This page updates once the payment has gone through.'
+                  : 'Paying opens Lemon Squeezy in a new tab. This page updates once the payment has gone through.'}
+              </p>
+            </section>
+
+            <div className="billing-facts">
+              {[
+                {
+                  id: 'billing-includes',
+                  title: 'Every plan includes',
+                  items: PLAN_INCLUDES,
+                  note: null,
+                },
+                {
+                  id: 'billing-how',
+                  title: 'How billing works',
+                  items: billingTerms(currency),
+                  note: BILLING_NOTE[currency],
+                },
+              ].map(({ id, title, items, note }) => (
+                <section key={id} className="billing-section" aria-labelledby={id}>
+                  <h2 id={id} className="eyebrow">
+                    {title}
+                  </h2>
+                  <div className="field-group">
+                    <ul className="billing-checks">
+                      {items.map((item) => (
+                        <li key={item}>
+                          <CheckIcon />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                    {note && <p className="field-group-foot">{note}</p>}
+                  </div>
+                </section>
+              ))}
+            </div>
+
+            {purchases.length > 0 && (
+              <section className="billing-section" aria-labelledby="billing-purchases">
+                <h2 id="billing-purchases" className="eyebrow">
+                  Purchases
+                </h2>
+                <ul className="field-group billing-list">
+                  {purchases.map((purchase) => (
+                    <li key={purchase.id}>
+                      <span className="item-name">{planName(purchase.plan)}</span>
+                      <span className="muted mono">
+                        {formatPrice(purchase.amount, purchase.currency)} ·{' '}
+                        {BILLING_STATUS[purchase.status]}
+                        {purchase.paid_at && ` · ${DATE.format(new Date(purchase.paid_at))}`}
+                      </span>
                     </li>
                   ))}
                 </ul>
               </section>
-            ))}
-          </div>
-
-          {purchases.length > 0 && (
-            <section className="stack billing-section" aria-labelledby="billing-purchases">
-              <h3 id="billing-purchases" className="billing-title">
-                Purchases
-              </h3>
-              <ul className="billing-list">
-                {purchases.map((purchase) => (
-                  <li key={purchase.id}>
-                    <span className="item-name">{planName(purchase.plan)}</span>
-                    <span className="muted">
-                      {formatPrice(purchase.amount, purchase.currency)} ·{' '}
-                      {BILLING_STATUS[purchase.status]}
-                      {purchase.paid_at && ` · ${DATE.format(new Date(purchase.paid_at))}`}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-        </>
-      )}
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }
