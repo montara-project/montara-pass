@@ -71,6 +71,10 @@ type ConfigBilling struct {
 	BorderPayWebhookToken string
 	// Overrides the API's base URL; tests point it elsewhere.
 	BorderPayBaseURL string
+	// Where BorderPay sends the browser back once a payment is done: the web
+	// app's billing page. Defaults to the API's own /billing, right when the
+	// API serves the web app.
+	BorderPayReturnURL string
 	// CountryHeader names the request header that carries the client's
 	// country as two letters (Cloudflare's CF-IPCountry), set by the proxy in
 	// front of the API. With it, Indonesia is sold only the IDR plans, through

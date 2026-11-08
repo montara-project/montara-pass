@@ -589,7 +589,7 @@ func (h *billingHandler) planCheckout(ctx context.Context, user models.User, pla
 			Amount:      amount,
 			Method:      borderpay.MethodQRIS,
 			ReferenceID: orderID,
-			ReturnURL:   h.app.Config.Auth.BaseURL + "/billing?checkout=done",
+			ReturnURL:   h.app.Config.Billing.BorderPayReturnURL,
 		})
 		if err != nil {
 			return "", amount, err

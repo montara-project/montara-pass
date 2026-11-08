@@ -23,6 +23,16 @@ func TestVerify(t *testing.T) {
 	}
 }
 
+// The host alone, as the dashboard shows it, and with the API's path, reach
+// the same API.
+func TestBaseURL(t *testing.T) {
+	for _, base := range []string{"", "https://borderpay.id", "https://borderpay.id/", "https://borderpay.id/api/v1", "https://borderpay.id/api/v1/"} {
+		if got := New("key", base, "").BaseURL; got != "https://borderpay.id/api/v1" {
+			t.Errorf("base %q: %q", base, got)
+		}
+	}
+}
+
 func TestEvent(t *testing.T) {
 	var e Event
 	if err := json.Unmarshal([]byte(`{"event":"payment.paid","mode":"test",
@@ -42,7 +52,7 @@ func TestClient(t *testing.T) {
 			return
 		}
 		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/payments":
+		case r.Method == http.MethodPost && r.URL.Path == "/api/v1/payments":
 			var p CreatePayment
 			if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
 				t.Error(err)
@@ -59,7 +69,7 @@ func TestClient(t *testing.T) {
 			w.Write([]byte(`{"reference_id":"sub-x","status":"pending","amount":25000,
 				"pay_url":"https://borderpay.id/pay/sub-x","qr_string":"000201…",
 				"expires_at":"2026-10-31T12:00:00Z"}`))
-		case r.Method == http.MethodGet && r.URL.Path == "/payments/sub-x":
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/payments/sub-x":
 			w.Write([]byte(`{"reference_id":"sub-x","status":"paid","amount":25000,
 				"method":"qris","paid_at":"2026-10-31T11:00:00Z"}`))
 		default:

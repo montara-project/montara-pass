@@ -19,7 +19,11 @@ import (
 	"time"
 )
 
-const apiURL = "https://borderpay.id/api/v1"
+// BorderPay's host, and the path its API lives under.
+const (
+	apiHost = "https://borderpay.id"
+	apiPath = "/api/v1"
+)
 
 // MethodQRIS is the payment method billing asks for: the customer scans a QR,
 // which every Indonesian bank and e-wallet reads.
@@ -57,14 +61,16 @@ type Client struct {
 }
 
 // New returns a client for one BorderPay project: its API key pays, its
-// webhook token is how a webhook is believed. An empty base URL is the API's
-// own.
+// webhook token is how a webhook is believed. The base URL names the host,
+// with or without the /api/v1 the API lives under (https://borderpay.id and
+// https://borderpay.id/api/v1 are the same); empty is BorderPay's own.
 func New(apiKey, baseURL, webhookToken string) *Client {
 	if baseURL == "" {
-		baseURL = apiURL
+		baseURL = apiHost
 	}
+	host := strings.TrimSuffix(strings.TrimSuffix(baseURL, "/"), apiPath)
 	return &Client{
-		BaseURL:      strings.TrimSuffix(baseURL, "/"),
+		BaseURL:      host + apiPath,
 		apiKey:       apiKey,
 		webhookToken: webhookToken,
 		http:         &http.Client{Timeout: 15 * time.Second},

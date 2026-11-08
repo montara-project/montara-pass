@@ -118,7 +118,8 @@ func parseFlag(cfg *config.Config) {
 	flag.BoolVar(&cfg.Billing.RequirePaidSharing, "require-paid-sharing", envBool("REQUIRE_PAID_SHARING", false), "Sharing an item needs a paid plan (needs lemonsqueezy-api-key)")
 	flag.StringVar(&cfg.Billing.BorderPayAPIKey, "borderpay-api-key", envString("BORDERPAY_API_KEY", ""), "BorderPay API key for IDR billing (empty disables IDR checkout)")
 	flag.StringVar(&cfg.Billing.BorderPayWebhookToken, "borderpay-webhook-token", envString("BORDERPAY_WEBHOOK_TOKEN", ""), "Verification token of the BorderPay project's webhook")
-	flag.StringVar(&cfg.Billing.BorderPayBaseURL, "borderpay-base-url", envString("BORDERPAY_BASE_URL", ""), "BorderPay API base URL override (default https://borderpay.id/api/v1)")
+	flag.StringVar(&cfg.Billing.BorderPayBaseURL, "borderpay-base-url", envString("BORDERPAY_BASE_URL", ""), "BorderPay host, with or without /api/v1 (default https://borderpay.id)")
+	flag.StringVar(&cfg.Billing.BorderPayReturnURL, "borderpay-return-url", envString("BORDERPAY_RETURN_URL", ""), "Where a finished BorderPay payment sends the user back to, e.g. https://app.example.com/billing?checkout=done (default <auth-base-url>/billing?checkout=done)")
 	flag.StringVar(&cfg.Billing.CountryHeader, "country-header", envString("COUNTRY_HEADER", ""), "Header the proxy in front sets to the client's country, e.g. CF-IPCountry: Indonesia then buys only the IDR plans, elsewhere only the others (empty offers every plan)")
 
 	// Sentry
@@ -234,8 +235,14 @@ func validateFlag(cfg *config.Config) {
 	}
 	if b.BorderPayBaseURL != "" {
 		if u, err := url.Parse(b.BorderPayBaseURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-			log.Fatalf("flag borderpay-base-url: %q must be an URL like https://borderpay.id/api/v1", b.BorderPayBaseURL)
+			log.Fatalf("flag borderpay-base-url: %q must be an URL like https://borderpay.id", b.BorderPayBaseURL)
 		}
+	}
+	if b.BorderPayReturnURL == "" {
+		// b is a copy: the default is written to the config itself.
+		cfg.Billing.BorderPayReturnURL = cfg.Auth.BaseURL + "/billing?checkout=done"
+	} else if u, err := url.Parse(b.BorderPayReturnURL); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		log.Fatalf("flag borderpay-return-url: %q must be an absolute URL like https://app.example.com/billing?checkout=done", b.BorderPayReturnURL)
 	}
 
 	if (cfg.Auth.GoogleClientID == "") != (cfg.Auth.GoogleClientSecret == "") {
