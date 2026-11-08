@@ -13,15 +13,18 @@ import { lastUsedAgo } from '../../lib/usage'
 import { maskUsername } from '../../lib/username'
 import {
   ArrowLeftIcon,
+  BookOpenIcon,
   CardIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
   CopyIcon,
   ExternalLinkIcon,
   EyeIcon,
   EyeOffIcon,
   FilterIcon,
   GridIcon,
-  KeyholeIcon,
   KeyIcon,
+  KeyRoundIcon,
   MoreIcon,
   NoteIcon,
   PencilIcon,
@@ -70,7 +73,7 @@ type Pane =
 
 const FILTERS: { value: Filter; label: string; icon: typeof GridIcon }[] = [
   { value: 'all', label: 'All items', icon: GridIcon },
-  { value: 'login', label: 'Logins', icon: KeyIcon },
+  { value: 'login', label: 'Logins', icon: KeyRoundIcon },
   { value: 'secure_note', label: 'Secure notes', icon: NoteIcon },
   { value: 'card', label: 'Cards', icon: CardIcon },
   { value: 'contact', label: 'Contacts', icon: UserIcon },
@@ -108,6 +111,8 @@ export default function FullVault({
   const [filter, setFilter] = useState<Filter>('all')
   const [sort, setSort] = useState<Sort>('name')
   const [search, setSearch] = useState('')
+  // '' is every folder.
+  const [folder, setFolder] = useState('')
   const [pane, setPane] = useState<Pane>({ mode: 'view', id: null })
   // A tool takes the place of the list and the item beside it.
   const [tool, setTool] = useState<Tool | null>(null)
@@ -134,11 +139,11 @@ export default function FullVault({
   const visible = useMemo(
     () =>
       searchAndSort(
-        readable.filter((item) => inFilter(item, filter)),
+        readable.filter((item) => inFilter(item, filter) && (!folder || item.folder_id === folder)),
         search,
         sort
       ),
-    [readable, filter, search, sort]
+    [readable, filter, folder, search, sort]
   )
 
   const selectedId = pane.mode === 'new' ? null : pane.id
@@ -146,6 +151,8 @@ export default function FullVault({
   const selected = readable.find((item) => item.id === selectedId) ?? null
   // On a narrow window the pane covers the list, so it needs to know when it is in use.
   const paneOpen = pane.mode !== 'view' || selected !== null
+  // Folders are kept in the web app; there is no editor for them here.
+  const foldersUrl = appUrl && `${appUrl.replace(/\/$/, '')}/folders`
 
   return (
     <VaultSidebar
@@ -187,19 +194,57 @@ export default function FullVault({
         ) : (
           <>
             <section className="list-col" aria-label="Items">
-              {/* One bar: what to look for, how to order it, and what to add. */}
+              {/* Three parts, a line under each: what the page is, what narrows
+                  the list, and the list. */}
+              <header className="list-head-page">
+                <div className="list-title">
+                  <p className="eyebrow">Vault</p>
+                  <h1>Vault</h1>
+                  <p className="muted">
+                    Your items and the ones shared with you, decrypted in this browser only.
+                  </p>
+                </div>
+                <button
+                  className="new-item"
+                  aria-label="New item"
+                  title="New item"
+                  onClick={() => setPane({ mode: 'new' })}
+                >
+                  <PlusIcon width={16} height={16} />
+                  <span className="new-item-label">New item</span>
+                </button>
+              </header>
+
+              {/* What to look for, where, and in what order. */}
               <div className="list-tools">
                 <label className="search">
                   <SearchIcon />
                   <input
                     type="search"
-                    placeholder="Search all items"
+                    placeholder="Search name, username or URL"
                     aria-label="Search all items"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     autoFocus
                   />
                 </label>
+                {folders.length > 0 && (
+                  <div className="select-box folder-filter">
+                    <select
+                      aria-label="Folder"
+                      value={folder}
+                      onChange={(e) => setFolder(e.target.value)}
+                    >
+                      <option value="">All folders</option>
+                      {folders.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDownIcon width={14} height={14} />
+                  </div>
+                )}
                 {/* The order it is in is named on hover and to a screen reader;
                     pressing it takes the other one. */}
                 <button
@@ -219,61 +264,71 @@ export default function FullVault({
                 >
                   <RefreshIcon className={refreshing ? 'spin' : undefined} />
                 </button>
-                <button
-                  className="new-item"
-                  aria-label="New item"
-                  title="New item"
-                  onClick={() => setPane({ mode: 'new' })}
-                >
-                  <PlusIcon width={18} height={18} />
-                  <span className="new-item-label">New item</span>
-                </button>
               </div>
 
-              {error && (
-                <p className="error list-message" role="alert">
-                  {error}
-                </p>
-              )}
-              {items === null && !error && <p className="muted list-message">Decrypting…</p>}
-              {items !== null && visible.length === 0 && (
-                <p className="muted list-message">
-                  {readable.length === 0 ? 'Your vault is empty.' : 'Nothing matches.'}
-                </p>
-              )}
-
-              {/* The headings scroll with the rows, so their columns line up
+              {/* The list as a table in its own card: headings, rows, and a
+                  footer with the count and the way to the folders. */}
+              <div className="list-table">
+                {/* The headings scroll with the rows, so their columns line up
                   with the rows' whatever the scrollbar takes, and stay on top. */}
-              <div className="list-scroll">
-                {visible.length > 0 && (
+                <div className="list-scroll">
                   <div className="list-head" aria-hidden="true">
                     <span>Name</span>
                     <span className="col">Folder</span>
                     <span className="col">Last used</span>
                   </div>
-                )}
 
-                <ul className="items">
-                  {visible.map((item) => (
-                    <li key={item.id}>
-                      <button
-                        className="item-row"
-                        aria-current={item.id === selectedId ? 'true' : undefined}
-                        onClick={() => setPane({ mode: 'view', id: item.id })}
-                      >
-                        <ItemTile item={item} />
-                        <span className="item-text">
-                          <span className="item-name">{item.secret!.name}</span>
-                          <span className="muted">{itemSubtitle(item)}</span>
-                        </span>
-                        <span className="col muted">
-                          {folderNames.get(item.folder_id ?? '') ?? '—'}
-                        </span>
-                        <span className="col muted">{lastUsedAgo(item.last_used_at) ?? '—'}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                  {error && (
+                    <p className="error list-message" role="alert">
+                      {error}
+                    </p>
+                  )}
+                  {items === null && !error && <p className="muted list-message">Decrypting…</p>}
+                  {items !== null && visible.length === 0 && (
+                    <p className="muted list-message">
+                      {readable.length === 0 ? 'Your vault is empty.' : 'Nothing matches.'}
+                    </p>
+                  )}
+
+                  <ul className="items">
+                    {visible.map((item) => (
+                      <li key={item.id}>
+                        <button
+                          className="item-row"
+                          aria-current={item.id === selectedId ? 'true' : undefined}
+                          onClick={() => setPane({ mode: 'view', id: item.id })}
+                        >
+                          <ItemTile item={item} />
+                          <span className="item-text">
+                            <span className="item-name">{item.secret!.name}</span>
+                            <span className="muted">{itemSubtitle(item)}</span>
+                          </span>
+                          <span className="col muted">
+                            {folderNames.get(item.folder_id ?? '') ?? '—'}
+                          </span>
+                          <span className="col muted">{lastUsedAgo(item.last_used_at) ?? '—'}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <footer className="list-foot">
+                  <span className="list-count">
+                    {items !== null && `${visible.length} of ${readable.length} items`}
+                  </span>
+                  {foldersUrl && (
+                    <a
+                      className="button secondary small"
+                      href={foldersUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Manage folders
+                      <ChevronRightIcon width={12} height={12} />
+                    </a>
+                  )}
+                </footer>
               </div>
             </section>
 
@@ -336,9 +391,26 @@ export default function FullVault({
               ) : (
                 <div className="detail-empty">
                   <span className="tile">
-                    <KeyholeIcon />
+                    <KeyIcon />
                   </span>
                   <p className="muted">Select an item to see it, or create a new one.</p>
+                  <div className="detail-empty-actions">
+                    <button onClick={() => setPane({ mode: 'new' })}>
+                      <PlusIcon width={14} height={14} />
+                      New item
+                    </button>
+                    {foldersUrl && (
+                      <a
+                        className="button secondary"
+                        href={foldersUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <BookOpenIcon width={14} height={14} />
+                        Browse folders
+                      </a>
+                    )}
+                  </div>
                 </div>
               )}
             </section>

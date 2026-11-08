@@ -2,7 +2,7 @@ import type { ItemListParams } from '@montara-pass/shared/api/dtos/vault/schema'
 import type { VaultFolder, VaultItem } from '@montara-pass/shared/types/vault'
 
 import { decryptFolderName, decryptItem, type VaultKeys } from '@montara-pass/shared/crypto/vault'
-import { useQuery } from '@tanstack/react-query'
+import { useQueries, useQuery } from '@tanstack/react-query'
 
 import type { ApiListResponse } from '@/types/api'
 
@@ -67,6 +67,20 @@ export function useItems(params: ItemListParams) {
       return { ...res, data }
     },
   })
+}
+
+/**
+ * How many live items match each filter, from the server's totals alone: one
+ * item is asked for and none is decrypted. Under the items key, so saving or
+ * trashing an item recounts.
+ */
+export function useItemTotals(filters: readonly ItemListParams[]) {
+  return useQueries({
+    queries: filters.map((filter) => ({
+      queryKey: [...LIST_ITEM_QUERY_KEY({ ...filter, limit: 1 }), 'total'],
+      queryFn: async () => (await services.items.list({ ...filter, limit: 1 })).metadata?.total,
+    })),
+  }).map((result) => result.data)
 }
 
 /** The API's largest page. */

@@ -1343,37 +1343,122 @@ a.set-row svg {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding-top: 16px;
   background: var(--panel);
   border-right: 1px solid var(--border);
+}
+
+/* What the page is: a small label, its name, what it holds. */
+.list-head-page {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.list-title {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.list-title .muted {
+  font-size: 13px;
+}
+
+.eyebrow {
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
 
 .list-tools {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 12px 12px;
+  padding: 14px 24px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.list-tools select {
+  height: 36px;
+  font-size: 13px;
+}
+
+.folder-filter {
+  width: 160px;
+  flex-shrink: 0;
+}
+
+/* The list in its own card, under the bars, with the page's gutter round it. */
+.list-table {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  margin: 16px 24px 20px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.list-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.list-foot .list-count {
+  flex: 1;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+a.button.small {
+  height: 26px;
+  padding: 0 10px;
+  gap: 4px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+a.button.small svg {
+  color: var(--muted);
 }
 
 /* The search takes the bar's room; the buttons beside it stand as tall. */
 .list-tools .search {
   flex: 1;
   min-width: 0;
+  height: 36px;
   margin: 0;
 }
 
 .list-tools .icon-button {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
 }
 
 .new-item {
-  height: 40px;
+  height: 36px;
   padding: 0 14px;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .list-message {
-  padding: 8px 20px;
+  padding: 14px 16px;
 }
 
 /* The rows' scroller keeps its scrollbar 4px off the line beside it, where a
@@ -1383,27 +1468,57 @@ a.set-row svg {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  scrollbar-gutter: stable;
-  margin-right: 4px;
-  padding: 0 4px 8px 8px;
+  overscroll-behavior: contain;
 }
 
-/* Here the whole row is the control, so the row itself is not padded. */
+/* Here the whole row is the control, so the row itself is not padded. Rows
+   run edge to edge with a faint line between them, as a table's do. */
+.list-col .items {
+  gap: 0;
+}
+
 .list-col .items li {
   padding: 0;
+  border-radius: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.list-col .tile {
+  width: 32px;
+  height: 32px;
+  margin-right: 0;
+  border-radius: 8px;
+}
+
+.list-col .tile svg {
+  width: 16px;
+  height: 16px;
+}
+
+.list-col .tile-favicon {
+  padding: 4px;
+}
+
+.list-col .item-name {
+  font-size: 13.5px;
+}
+
+.list-col .item-text .muted {
+  font-size: 12px;
 }
 
 .item-row {
   width: 100%;
   height: auto;
-  padding: 8px 12px;
+  padding: 11px 16px;
   justify-content: flex-start;
   gap: 0;
+  column-gap: 12px;
   background: none;
   color: var(--fg);
   font-weight: 400;
   text-align: left;
-  border-radius: 12px;
+  border-radius: 0;
 }
 
 /* The list as a table: name, folder, last used. The two extra columns go
@@ -1431,34 +1546,34 @@ a.set-row svg {
   position: sticky;
   top: 0;
   z-index: 1;
-  margin-bottom: 4px;
-  padding: 4px 12px 8px;
+  column-gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
   background: var(--panel);
   color: var(--muted);
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.list-head::after {
-  content: '';
-  position: absolute;
-  inset: auto 12px 0;
-  height: 1px;
-  background: var(--border);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
 
 .col {
-  padding-left: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: 12px;
+}
+
+.item-row .col:last-child {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
 }
 
 @container (max-width: 520px) {
   /* New item keeps its sign and gives its words to the search beside it. */
   .new-item {
-    width: 40px;
+    width: 36px;
     padding: 0;
   }
 
@@ -1466,11 +1581,13 @@ a.set-row svg {
     display: none;
   }
 
-  /* The headings go; the line under them stays: it is where the list begins.
-     The pixel of padding gives the line a box to sit in, inside the scroller
-     rather than clipped above it. */
+  .folder-filter {
+    width: 120px;
+  }
+
+  /* The headings go; the line under them stays: it is where the list begins. */
   .list-head {
-    padding: 0 0 1px;
+    padding: 0;
   }
 
   .list-head > span {
@@ -2389,18 +2506,46 @@ input.range:active::-moz-range-thumb {
   text-align: center;
 }
 
-.detail-empty .tile {
-  margin: 0;
-  opacity: 0.6;
+.detail-empty {
+  gap: 14px;
 }
 
-button.secondary {
+.detail-empty .tile {
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.detail-empty .muted {
+  font-size: 13px;
+}
+
+.detail-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.detail-empty-actions > * {
+  height: 36px;
+  padding: 0 14px;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+button.secondary,
+a.button.secondary {
   border: 1px solid var(--border);
   background: none;
   color: var(--fg);
 }
 
-button.secondary:hover {
+button.secondary:hover,
+a.button.secondary:hover {
   background: var(--hover);
 }
 

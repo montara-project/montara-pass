@@ -112,6 +112,13 @@ export const FilterIcon = icon(
   </>
 )
 
+export const BookOpenIcon = icon(
+  <>
+    <path d="M12 7v14" />
+    <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" />
+  </>
+)
+
 export const ChevronDownIcon = icon(<path d="m6 9 6 6 6-6" />)
 
 export const LogOutIcon = icon(
@@ -143,6 +150,18 @@ export const ShieldIcon = icon(
   <>
     <path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6l-7-3Z" />
     <path d="m9 12 2 2 4-4" />
+  </>
+)
+
+/** The plain shield, for password health; the checked one is Security. */
+export const ShieldOutlineIcon = icon(
+  <path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6l-7-3Z" />
+)
+
+export const KeyRoundIcon = icon(
+  <>
+    <path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z" />
+    <circle cx="16.5" cy="7.5" r=".5" fill="currentColor" />
   </>
 )
 

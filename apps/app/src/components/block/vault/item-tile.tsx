@@ -22,14 +22,14 @@ export default function ItemTile({ item, large }: { item: VaultItem; large?: boo
       className={cn(
         // On the page's own tone, so a favicon reads on any surface.
         'bg-background text-foreground inline-flex shrink-0 items-center justify-center border',
-        large ? 'rounded-card size-12' : 'rounded-control size-9',
-        icon && 'p-1.5'
+        large ? 'rounded-card size-12' : 'size-8 rounded-md',
+        icon && (large ? 'p-1.5' : 'p-1')
       )}
     >
       {icon ? (
         <img src={icon} alt="" className="size-full object-contain" />
       ) : (
-        <Icon className="size-5" />
+        <Icon className={large ? 'size-5' : 'size-4'} />
       )}
     </span>
   )

@@ -1,22 +1,27 @@
 import { COMMUNITY } from '@montara-pass/shared/constants/edition'
 import { initials } from '@montara-pass/shared/string'
 import {
-  IconChevronRight,
   IconCreditCard,
-  IconForbid,
-  IconHistory,
+  IconFileText,
   IconFolders,
+  IconForbid,
   IconKey,
+  IconLayoutGrid,
   IconLock,
   IconLogout,
+  IconPassword,
   IconSelector,
+  IconShield,
   IconShieldCheck,
+  IconStar,
   IconTrash,
+  IconUser,
   IconUserCircle,
 } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 
+import ServerTime from '@/components/layout/server-time'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -31,7 +36,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Separator } from '@/components/ui/separator'
 import {
   Sidebar,
   SidebarContent,
@@ -42,46 +46,62 @@ import {
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
   SidebarRail,
+  SidebarSeparator,
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar'
 import { env } from '@/config/env'
 import { useSignOut } from '@/hooks/use-sign-out'
+import { useItemTotals } from '@/hooks/use-vault'
 import { queries } from '@/lib/api/queries'
 import { HOME_PATH } from '@/lib/constants/auth'
 import { useVaultStore } from '@/lib/stores/vault'
 
-/** Only routes that actually exist are listed, and each names its breadcrumb group. */
-const NAV = [
-  { title: 'Vault', url: '/vault', icon: IconLock, group: 'Vault' },
-  { title: 'Folders', url: '/folders', icon: IconFolders, group: 'Vault' },
-  { title: 'Trash', url: '/trash', icon: IconTrash, group: 'Vault' },
-] as const
+/** The vault's views, each a filter of the vault page, with how many items it holds. */
+const VAULT_VIEWS: {
+  title: string
+  icon: React.ElementType
+  search: { type?: string; favorite?: boolean }
+}[] = [
+  { title: 'All items', icon: IconLayoutGrid, search: {} },
+  { title: 'Logins', icon: IconKey, search: { type: 'login' } },
+  { title: 'Secure notes', icon: IconFileText, search: { type: 'secure_note' } },
+  { title: 'Cards', icon: IconCreditCard, search: { type: 'card' } },
+  { title: 'Contacts', icon: IconUser, search: { type: 'contact' } },
+  { title: 'Favorites', icon: IconStar, search: { favorite: true } },
+]
 
 /** Shown at the foot of the sidebar, above the account. */
 const TOOLS = [
-  { title: 'Password generator', url: '/generator', icon: IconKey, group: 'Tools' },
-  { title: 'Password health', url: '/health', icon: IconShieldCheck, group: 'Tools' },
-  { title: 'Activity', url: '/activity', icon: IconHistory, group: 'Account' },
+  { title: 'Password generator', url: '/generator', icon: IconPassword, group: 'Tools' },
+  { title: 'Password health', url: '/health', icon: IconShield, group: 'Tools' },
+  // Sign-ins and changes to items: the account's security record.
+  { title: 'Security', url: '/activity', icon: IconShieldCheck, group: 'Account' },
+] as const
+
+/** In the account menu: the vault's other pages and the account's own. */
+const MENU = [
+  { title: 'Account', url: '/profile', icon: IconUserCircle, group: 'Account' },
+  { title: 'Folders', url: '/folders', icon: IconFolders, group: 'Vault' },
+  { title: 'Trash', url: '/trash', icon: IconTrash, group: 'Vault' },
   // Billing is the Cloud Edition's: the Community server takes no payments.
   ...(COMMUNITY
     ? []
     : [{ title: 'Billing', url: '/billing', icon: IconCreditCard, group: 'Account' } as const]),
 ] as const
 
-/** Named in the breadcrumb only: the account menu is the way to it. */
-const ACCOUNT = [{ title: 'Account', url: '/profile', group: 'Account' }] as const
-
 /** The super user's pages. Hidden from everyone else, and the route refuses them too. */
 const ADMIN = [
   { title: 'IP blocks', url: '/settings/ip-blocks', icon: IconForbid, group: 'Admin' },
 ] as const
 
-const CRUMBS = [...NAV, ...TOOLS, ...ADMIN, ...ACCOUNT]
+/** Only routes that actually exist are listed, and each names its breadcrumb group. */
+const CRUMBS = [{ title: 'Vault', url: '/vault', group: 'Vault' }, ...TOOLS, ...MENU, ...ADMIN]
 
 /**
  * The frame of every page after the vault is unlocked: an inset sidebar
@@ -92,9 +112,6 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   // The page, not its filters: choosing an item or a folder is not a move.
   const pathname = useLocation({ select: (location) => location.pathname })
   const current = CRUMBS.find((crumb) => pathname.startsWith(crumb.url))
-  // The Admin group is the super user's: hidden until the role says so.
-  const { data: role } = useQuery(queries.security.role())
-  const isSuper = role?.role === 'super_user'
 
   return (
     // The sidebar remembers itself in this cookie.
@@ -103,47 +120,43 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       className="h-svh"
     >
       <Sidebar variant="inset" collapsible="icon">
-        <SidebarHeader>
+        {/* As tall as the page's header, with its line along the bottom: the
+            two lines meet as one, open or folded. */}
+        <SidebarHeader className="relative h-14 shrink-0 justify-center gap-0 py-0">
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" asChild>
                 <Link to={HOME_PATH}>
                   <img src="/static/logo-128.png" alt="" className="size-8 rounded-lg" />
-                  <div className="grid flex-1 text-left leading-tight">
-                    <span className="text-foreground truncate font-semibold">
+                  <div className="grid flex-1 gap-0.5 text-left leading-tight">
+                    <span className="text-foreground truncate text-[15px] font-semibold tracking-[-0.01em]">
                       {env.VITE_APP_NAME}
                     </span>
-                    <span className="truncate text-xs">
-                      {COMMUNITY ? 'Community Edition' : 'Password manager'}
+                    <span className="truncate text-xs font-normal">
+                      {COMMUNITY ? 'Community Edition' : 'Your vault'}
                     </span>
                   </div>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
+          <SidebarSeparator className="absolute inset-x-0 bottom-0 mx-0 w-auto" />
         </SidebarHeader>
 
-        <SidebarContent>
+        <SidebarContent className="pt-2">
           <SidebarGroup>
             <SidebarGroupLabel>Vault</SidebarGroupLabel>
-            <NavList items={NAV} pathname={pathname} />
+            <VaultViews pathname={pathname} />
           </SidebarGroup>
           <SidebarGroup className="mt-auto">
             <SidebarGroupContent>
               <NavList items={TOOLS} pathname={pathname} />
             </SidebarGroupContent>
           </SidebarGroup>
-          {isSuper && (
-            <SidebarGroup>
-              <SidebarGroupLabel>Admin</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <NavList items={ADMIN} pathname={pathname} />
-              </SidebarGroupContent>
-            </SidebarGroup>
-          )}
         </SidebarContent>
 
-        <SidebarFooter>
+        <SidebarFooter className="gap-1">
+          <SidebarSeparator className="mx-0.5 bg-sidebar-border/50" />
           <Account />
         </SidebarFooter>
         <SidebarRail />
@@ -151,8 +164,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
       <SidebarInset className="bg-panel min-h-0 overflow-hidden">
         <header className="bg-panel border-border sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b px-3 sm:px-6 md:rounded-t-sheet">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
+          <SidebarTrigger className="-ml-2" />
           {current && (
             <Breadcrumb>
               <BreadcrumbList>
@@ -164,6 +176,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               </BreadcrumbList>
             </Breadcrumb>
           )}
+          <ServerTime className="ml-auto" />
         </header>
         {/* A new scroller for each page, so each one arrives at its top. It is
             what moves as the page arrives, and the inset clips it: the content
@@ -173,6 +186,44 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </SidebarInset>
     </SidebarProvider>
+  )
+}
+
+/** The vault's views, each with its count; the one the vault page shows is lit. */
+function VaultViews({ pathname }: { pathname: string }) {
+  const { isMobile, setOpenMobile } = useSidebar()
+  const search = useLocation({ select: (location) => location.search }) as {
+    type?: string
+    favorite?: boolean
+  }
+  const totals = useItemTotals(VAULT_VIEWS.map((view) => view.search))
+  const onVault = pathname.startsWith('/vault')
+
+  return (
+    <SidebarMenu>
+      {VAULT_VIEWS.map(({ title, icon: Icon, search: view }, index) => {
+        const active =
+          onVault &&
+          search.type === view.type &&
+          Boolean(search.favorite) === Boolean(view.favorite)
+        return (
+          <SidebarMenuItem key={title}>
+            <SidebarMenuButton asChild tooltip={title} isActive={active}>
+              <Link
+                to="/vault"
+                search={view}
+                aria-current={active ? 'page' : undefined}
+                onClick={() => isMobile && setOpenMobile(false)}
+              >
+                <Icon />
+                <span>{title}</span>
+              </Link>
+            </SidebarMenuButton>
+            {totals[index] !== undefined && <SidebarMenuBadge>{totals[index]}</SidebarMenuBadge>}
+          </SidebarMenuItem>
+        )
+      })}
+    </SidebarMenu>
   )
 }
 
@@ -198,7 +249,7 @@ function NavList({ items, pathname }: { items: readonly NavItem[]; pathname: str
   )
 }
 
-/** The foot of the sidebar: who is signed in, and the ways out. */
+/** The foot of the sidebar: who is signed in, the account's other pages, and the ways out. */
 function Account() {
   const navigate = useNavigate()
   const signOut = useSignOut()
@@ -206,6 +257,9 @@ function Account() {
   const { isMobile } = useSidebar()
   const { data: profile, isError, refetch } = useQuery(queries.auth.profile())
   const user = profile?.user
+  // The Admin pages are the super user's: hidden until the role says so.
+  const { data: role } = useQuery(queries.security.role())
+  const pages = role?.role === 'super_user' ? [...MENU, ...ADMIN] : MENU
 
   if (isError && !user) {
     return (
@@ -231,15 +285,15 @@ function Account() {
             >
               <span
                 aria-hidden="true"
-                className="bg-avatar text-avatar-foreground inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold"
+                className="bg-avatar text-avatar-foreground inline-flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold"
               >
                 {user ? initials(user.name || user.email) : ''}
               </span>
               <div className="grid flex-1 text-left leading-tight">
-                <span className="text-foreground truncate font-semibold">
+                <span className="text-foreground truncate text-sm font-semibold">
                   {user?.name || 'Account'}
                 </span>
-                {user && <span className="truncate text-xs">{user.email}</span>}
+                {user && <span className="truncate text-[13px] font-normal">{user.email}</span>}
               </div>
               <IconSelector className="ml-auto size-4" />
             </SidebarMenuButton>
@@ -250,11 +304,13 @@ function Account() {
             sideOffset={4}
             className="w-(--radix-dropdown-menu-trigger-width) min-w-56"
           >
-            <DropdownMenuItem onClick={() => void navigate({ to: '/profile' })}>
-              <IconUserCircle />
-              Account
-              <IconChevronRight className="ml-auto size-4!" />
-            </DropdownMenuItem>
+            {pages.map(({ title, url, icon: Icon }) => (
+              <DropdownMenuItem key={url} onClick={() => void navigate({ to: url })}>
+                <Icon />
+                {title}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={lock}>
               <IconLock />
               Lock vault

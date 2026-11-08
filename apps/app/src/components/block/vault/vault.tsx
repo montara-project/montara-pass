@@ -4,15 +4,17 @@ import { ITEM_TYPE_LABEL, ItemTypeOptions } from '@montara-pass/shared/constants
 import { cardEnding, matchesSearch } from '@montara-pass/shared/crypto/vault'
 import { formatDate } from '@montara-pass/shared/date'
 import {
+  IconBook,
   IconChevronLeft,
   IconChevronRight,
   IconFilterOff,
+  IconKey,
   IconLock,
   IconPlus,
   IconSearch,
   IconStarFilled,
 } from '@tabler/icons-react'
-import { useNavigate, useSearch } from '@tanstack/react-router'
+import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
 
 import type { VaultSearch } from '@/routes/(app)/vault'
@@ -46,6 +48,7 @@ export default function Vault() {
   const {
     folder: folderId,
     type,
+    favorite,
     page = 0,
     item: selectedId,
   } = useSearch({ from: '/(app)/vault/' })
@@ -67,8 +70,9 @@ export default function Vault() {
       limit: PAGE_SIZE,
       ...(folderId ? { folder_id: folderId } : {}),
       ...(type ? { type } : {}),
+      ...(favorite ? { favorite } : {}),
     }),
-    [page, folderId, type]
+    [page, folderId, type, favorite]
   )
 
   const { data: folders } = useFolders()
@@ -83,15 +87,16 @@ export default function Vault() {
         (item) =>
           (!folderId || item.folder_id === folderId) &&
           (!type || item.type === type) &&
+          (!favorite || item.favorite) &&
           matchesSearch(item.secret, term)
       ),
-    [everything.data, folderId, type, term]
+    [everything.data, folderId, type, favorite, term]
   )
   const total = term ? found.length : (paged.data?.metadata?.total ?? 0)
   const items = term
     ? found.slice(params.offset, params.offset + PAGE_SIZE)
     : (paged.data?.data ?? [])
-  const filtered = Boolean(folderId || type || term)
+  const filtered = Boolean(folderId || type || favorite || term)
   const folderList = useMemo(() => folders ?? [], [folders])
 
   const selected = items.find((item) => item.id === selectedId) ?? null
@@ -120,30 +125,33 @@ export default function Vault() {
             selected && '@max-[760px]/vault:hidden'
           )}
         >
-          {/* Three parts, each with room under it: what the page is, what narrows
-              the list, and the list. One gutter for all of them. */}
-          <header className="flex flex-wrap items-center gap-x-3 gap-y-2 px-6 pt-5 pb-5">
-            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          {/* Three parts, a line under each: what the page is, what narrows the
+              list, and the list. One gutter for all of them. */}
+          <header className="border-border/60 flex flex-wrap items-center gap-x-4 gap-y-2 border-b px-6 pt-[22px] pb-[18px]">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <p className="text-muted-foreground font-mono text-[10px] tracking-[0.09em] uppercase">
+                Vault
+              </p>
               <h1 className="text-xl font-semibold tracking-[-0.01em]">Vault</h1>
               <p className="text-muted-foreground text-[13px]">
                 Your items and the ones shared with you, decrypted in this browser only.
               </p>
             </div>
-            <Button onClick={() => setOpenAdd(true)}>
+            <Button size="sm" onClick={() => setOpenAdd(true)}>
               <IconPlus />
               New item
             </Button>
           </header>
 
-          <div className="flex flex-wrap items-center gap-2 px-6 pb-4">
-            <div className="relative min-w-48 flex-1 sm:max-w-72">
+          <div className="border-border/60 flex flex-wrap items-center gap-2 border-b px-6 py-3.5">
+            <div className="relative min-w-48 flex-1">
               <IconSearch
                 className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
                 aria-hidden
               />
               <Input
                 type="search"
-                placeholder="Search items"
+                placeholder="Search name, username or URL"
                 aria-label="Search items by name, username or URL"
                 value={search}
                 onFocus={() => setSearchFocused(true)}
@@ -165,105 +173,121 @@ export default function Vault() {
               onSelect={(value) => filter({ folder: value === ALL ? undefined : value })}
             />
             <SelectInput
+              // The sidebar sets the type too: remount so this shows it.
+              key={`type-${type ?? ALL}`}
               className="h-9 w-36"
               placeholder="All types"
               options={typeOptions}
               defaultValue={type ?? ALL}
               onSelect={(value) => filter({ type: value === ALL ? undefined : value })}
             />
-            <span className="text-muted-foreground ml-auto text-xs tabular-nums">
-              {!isLoading && `${total} ${total === 1 ? 'item' : 'items'}`}
-            </span>
           </div>
 
-          {/* The list as a table: name, folder, updated. The two extra columns
+          {/* The list as a table in its own card: headings, rows, and a footer
+              with the count and the way to the folders. The two extra columns
               go when the list is too narrow to hold them. */}
-          {/* The line under them stays when they go: it is where the list begins. */}
-          <div className="mx-6 border-b">
-            <div className="text-muted-foreground grid grid-cols-[minmax(0,1fr)_140px_120px] pb-2 text-xs font-medium @max-[560px]/list:hidden">
-              <span>Name</span>
-              <span className="pl-3">Folder</span>
-              <span className="pl-3">Updated</span>
+          <div className="flex min-h-0 flex-1 flex-col px-6 pt-4 pb-5">
+            <div className="rounded-card bg-panel flex min-h-0 flex-1 flex-col overflow-hidden border">
+              {/* The line under the headings stays when they go: it is where the list begins. */}
+              <div className="text-muted-foreground grid shrink-0 grid-cols-[minmax(0,1fr)_140px_120px] gap-3 border-b px-4 py-2.5 font-mono text-[10px] tracking-[0.09em] uppercase @max-[560px]/list:[&>span]:hidden">
+                <span>Name</span>
+                <span>Folder</span>
+                <span>Updated</span>
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                {isLoading ? (
+                  <ul className="m-0 list-none p-0" aria-hidden="true">
+                    {Array.from({ length: 8 }, (_, index) => (
+                      <li key={index} className="flex items-center gap-3 px-4 py-[11px]">
+                        <Skeleton className="size-8 rounded-md" />
+                        <span className="flex flex-1 flex-col gap-1.5">
+                          <Skeleton className="h-3.5 w-40 max-w-full" />
+                          <Skeleton className="h-3 w-28 max-w-full" />
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : isError ? (
+                  <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
+                    <p role="alert" className="text-danger text-[13px] whitespace-pre-line">
+                      {apiErrorMessage(error)}
+                    </p>
+                    <Button variant="outline" size="sm" onClick={() => void refetch()}>
+                      Try again
+                    </Button>
+                  </div>
+                ) : items.length === 0 ? (
+                  // The list has its own edge, so what stands in for it has none.
+                  <EmptyState
+                    framed={false}
+                    icon={filtered ? IconFilterOff : IconLock}
+                    title={filtered ? 'No items match these filters' : 'Your vault is empty'}
+                    description={
+                      filtered
+                        ? 'Change the search, the folder or the type above to see more.'
+                        : 'Add your first login or secure note with New item.'
+                    }
+                  />
+                ) : (
+                  <ul className="fade-in divide-border/60 m-0 list-none divide-y border-b border-border/60 p-0">
+                    {items.map((item) => (
+                      <li key={item.id}>
+                        <ItemRow
+                          item={item}
+                          folders={folderList}
+                          selected={item.id === selectedId}
+                          onSelect={() => setUrl({ item: item.id })}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <footer className="flex shrink-0 items-center gap-1 border-t px-4 py-2">
+                <span className="text-muted-foreground flex-1 font-mono text-[10px] tracking-[0.05em] uppercase tabular-nums">
+                  {!isLoading &&
+                    (pages > 1 ? `${from}–${to} of ${total} items` : `${total} of ${total} items`)}
+                </span>
+                {pages > 1 && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      mode="icon"
+                      size="icon"
+                      aria-label="Previous page"
+                      disabled={page <= 0}
+                      onClick={() => turn(page - 1)}
+                    >
+                      <IconChevronLeft />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      mode="icon"
+                      size="icon"
+                      aria-label="Next page"
+                      disabled={page >= pages - 1}
+                      onClick={() => turn(page + 1)}
+                    >
+                      <IconChevronRight />
+                    </Button>
+                  </>
+                )}
+                <Button
+                  asChild
+                  variant="outline"
+                  size="xs"
+                  className="h-[26px] gap-1 px-2.5 text-xs"
+                >
+                  <Link to="/folders">
+                    Manage folders
+                    <IconChevronRight className="text-muted-foreground size-3" />
+                  </Link>
+                </Button>
+              </footer>
             </div>
           </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto px-3 pt-2 pb-3">
-            {isLoading ? (
-              <ul className="m-0 list-none p-0" aria-hidden="true">
-                {Array.from({ length: 8 }, (_, index) => (
-                  <li key={index} className="flex items-center gap-3 px-3 py-2">
-                    <Skeleton className="rounded-control size-9" />
-                    <span className="flex flex-1 flex-col gap-1.5">
-                      <Skeleton className="h-3.5 w-40 max-w-full" />
-                      <Skeleton className="h-3 w-28 max-w-full" />
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : isError ? (
-              <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
-                <p role="alert" className="text-danger text-[13px] whitespace-pre-line">
-                  {apiErrorMessage(error)}
-                </p>
-                <Button variant="outline" size="sm" onClick={() => void refetch()}>
-                  Try again
-                </Button>
-              </div>
-            ) : items.length === 0 ? (
-              // The list has its own edge, so what stands in for it has none.
-              <EmptyState
-                framed={false}
-                icon={filtered ? IconFilterOff : IconLock}
-                title={filtered ? 'No items match these filters' : 'Your vault is empty'}
-                description={
-                  filtered
-                    ? 'Change the search, the folder or the type above to see more.'
-                    : 'Add your first login or secure note with New item.'
-                }
-              />
-            ) : (
-              <ul className="fade-in m-0 list-none p-0 space-y-1">
-                {items.map((item) => (
-                  <li key={item.id}>
-                    <ItemRow
-                      item={item}
-                      folders={folderList}
-                      selected={item.id === selectedId}
-                      onSelect={() => setUrl({ item: item.id })}
-                    />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {pages > 1 && (
-            <footer className="flex items-center gap-1 border-t px-6 py-2">
-              <span className="text-muted-foreground flex-1 text-xs tabular-nums">
-                {from}–{to} of {total}
-              </span>
-              <Button
-                variant="ghost"
-                mode="icon"
-                size="icon"
-                aria-label="Previous page"
-                disabled={page <= 0}
-                onClick={() => turn(page - 1)}
-              >
-                <IconChevronLeft />
-              </Button>
-              <Button
-                variant="ghost"
-                mode="icon"
-                size="icon"
-                aria-label="Next page"
-                disabled={page >= pages - 1}
-                onClick={() => turn(page + 1)}
-              >
-                <IconChevronRight />
-              </Button>
-            </footer>
-          )}
         </section>
 
         <section
@@ -279,13 +303,25 @@ export default function Vault() {
               onClose={() => setUrl({ item: undefined })}
             />
           ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-4 p-8 text-center">
-              <span className="opacity-60">
-                <ItemTile item={{ type: 'login', secret: null } as VaultItem} />
+            <div className="flex h-full flex-col items-center justify-center gap-3.5 p-8 text-center">
+              <span className="bg-panel inline-flex size-11 items-center justify-center rounded-xl border">
+                <IconKey className="size-5" aria-hidden />
               </span>
-              <p className="text-muted-foreground text-balance">
+              <p className="text-muted-foreground text-[13px] text-balance">
                 Select an item to see it, or create a new one.
               </p>
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button size="sm" onClick={() => setOpenAdd(true)}>
+                  <IconPlus />
+                  New item
+                </Button>
+                <Button asChild variant="secondary" size="sm">
+                  <Link to="/folders">
+                    <IconBook />
+                    Browse folders
+                  </Link>
+                </Button>
+              </div>
             </div>
           )}
         </section>
@@ -321,19 +357,17 @@ function ItemRow({ item, folders, selected, onSelect }: ItemRowProps) {
       type="button"
       aria-current={selected ? 'true' : undefined}
       onClick={onSelect}
-      className="hover:bg-hover aria-[current=true]:bg-card rounded-row grid w-full grid-cols-[auto_minmax(0,1fr)_140px_120px] items-center px-3 py-2 text-left transition-colors duration-[120ms] motion-reduce:transition-none @max-[560px]/list:grid-cols-[auto_minmax(0,1fr)]"
+      className="hover:bg-hover aria-[current=true]:bg-card grid w-full grid-cols-[auto_minmax(0,1fr)_140px_120px] items-center gap-3 px-4 py-[11px] text-left transition-colors duration-[120ms] motion-reduce:transition-none @max-[560px]/list:grid-cols-[auto_minmax(0,1fr)]"
     >
-      <span className="mr-3">
-        <ItemTile item={item} />
-      </span>
+      <ItemTile item={item} />
       <span className="flex min-w-0 flex-col">
         <span className="flex min-w-0 items-center gap-1.5">
           {item.secret ? (
-            <span className="truncate text-[15px] font-medium tracking-[-0.005em]">
+            <span className="truncate text-[13.5px] font-medium tracking-[-0.005em]">
               {item.secret.name}
             </span>
           ) : (
-            <span className="text-danger truncate text-[15px]">Unable to decrypt</span>
+            <span className="text-danger truncate text-[13.5px]">Unable to decrypt</span>
           )}
           {item.favorite && (
             <IconStarFilled
@@ -342,12 +376,12 @@ function ItemRow({ item, folders, selected, onSelect }: ItemRowProps) {
             />
           )}
         </span>
-        <span className="text-muted-foreground truncate text-[13px]">{itemSubtitle(item)}</span>
+        <span className="text-muted-foreground truncate text-xs">{itemSubtitle(item)}</span>
       </span>
-      <span className="text-muted-foreground truncate pl-3 text-[13px] @max-[560px]/list:hidden">
+      <span className="text-muted-foreground truncate text-xs @max-[560px]/list:hidden">
         {folder?.name ?? '—'}
       </span>
-      <span className="text-muted-foreground truncate pl-3 text-[13px] tabular-nums @max-[560px]/list:hidden">
+      <span className="text-muted-foreground truncate font-mono text-[11px] tracking-[0.04em] tabular-nums @max-[560px]/list:hidden">
         {formatDate(item.updated_at)}
       </span>
     </button>
