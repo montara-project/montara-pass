@@ -646,7 +646,8 @@ func newAuth(cfg config.Config, mirror, customer func(*authulamodels.User) error
 				Enabled: googleEnabled,
 				Providers: map[string]oauth2plugintypes.ProviderConfig{
 					"google": {
-						Enabled:      googleEnabled,
+						// A pointer since Authula v1.50: nil would mean enabled.
+						Enabled:      &googleEnabled,
 						ClientID:     cfg.Auth.GoogleClientID,
 						ClientSecret: cfg.Auth.GoogleClientSecret,
 						RedirectURL:  authConfig.BaseURL + authBasePath + "/oauth2/callback/google",
