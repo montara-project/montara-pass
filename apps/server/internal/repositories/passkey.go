@@ -2,14 +2,20 @@ package repositories
 
 import (
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 
 	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 
+	"montara-pass/server/internal/lib"
 	"montara-pass/server/internal/models"
 )
+
+// ErrPasskeyLimit is Create refusing a passkey over the account's limit.
+var ErrPasskeyLimit = errors.New("the account has as many passkeys as it may keep")
 
 // PasskeyRepository keeps the passkeys users sign in with (see
 // migrations/000010).
@@ -19,16 +25,34 @@ type PasskeyRepository struct {
 
 const passkeyColumns = `id, created_at, user_id, name, credential, encrypted_vault_key, last_used_at`
 
-// Create stores a passkey just registered.
-func (r *PasskeyRepository) Create(ctx context.Context, userID uuid.UUID, name string, cred webauthn.Credential, encryptedVaultKey *string) (models.Passkey, error) {
+// Create stores a passkey just registered, unless the account has max of
+// them already (ErrPasskeyLimit). The count and the insert run under a lock
+// per account, so registrations finished at once cannot both slip under it.
+func (r *PasskeyRepository) Create(ctx context.Context, userID uuid.UUID, name string, cred webauthn.Credential, encryptedVaultKey *string, max int) (models.Passkey, error) {
 	raw, err := json.Marshal(cred)
 	if err != nil {
 		return models.Passkey{}, err
 	}
-	return scanPasskey(r.queryRowContext(ctx, `
-		INSERT INTO passkeys (user_id, name, credential_id, credential, encrypted_vault_key)
-		VALUES ($1, $2, $3, $4, $5)
-		RETURNING `+passkeyColumns, userID, name, cred.ID, raw, encryptedVaultKey))
+	var p models.Passkey
+	err = lib.WithTransaction(ctx, r.DB, func(tx *sql.Tx) error {
+		// Held until the transaction ends.
+		if _, err := tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtextextended('passkeys:' || $1::text, 0))`, userID); err != nil {
+			return err
+		}
+		var count int
+		if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM passkeys WHERE user_id = $1`, userID).Scan(&count); err != nil {
+			return err
+		}
+		if count >= max {
+			return ErrPasskeyLimit
+		}
+		p, err = scanPasskey(tx.QueryRowContext(ctx, `
+			INSERT INTO passkeys (user_id, name, credential_id, credential, encrypted_vault_key)
+			VALUES ($1, $2, $3, $4, $5)
+			RETURNING `+passkeyColumns, userID, name, cred.ID, raw, encryptedVaultKey))
+		return err
+	})
+	return p, err
 }
 
 // ListByUser returns userID's passkeys, the oldest first.

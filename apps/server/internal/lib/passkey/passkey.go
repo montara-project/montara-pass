@@ -142,21 +142,16 @@ func (s *Service) Hold(session *webauthn.SessionData, origin string) (string, er
 	return id, s.kv.Set(ceremonyPrefix+id, raw, ceremonyTTL)
 }
 
-// Take returns a held ceremony and forgets it, so it is finished only once.
-//
-// ponytail: a get then a delete, not one atomic step, so two requests racing
-// with the same signed response could both pass; the authenticator's
-// signature over the challenge still has to be one the user just made. Use
-// GETDEL if the store grows one.
+// Take returns a held ceremony and forgets it in the same step, so of two
+// requests finishing it at once only one gets it: it is finished only once.
 func (s *Service) Take(id string) (session webauthn.SessionData, origin string, err error) {
 	if id == "" {
 		return session, "", ErrCeremony
 	}
-	raw, err := s.kv.Get(ceremonyPrefix + id)
+	raw, err := s.kv.Take(ceremonyPrefix + id)
 	if err != nil || len(raw) == 0 {
 		return session, "", ErrCeremony
 	}
-	_ = s.kv.Delete(ceremonyPrefix + id)
 	var h held
 	if err := json.Unmarshal(raw, &h); err != nil {
 		return session, "", ErrCeremony

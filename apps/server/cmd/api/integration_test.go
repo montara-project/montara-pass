@@ -217,7 +217,8 @@ func TestIntegration(t *testing.T) {
 		application.Redis = client
 	}
 
-	application.Passkeys, err = passkey.New("localhost", "Montara Pass", cfg.Auth.BaseURL, middlewares.NewIPKV(middlewares.NewStore(nil)))
+	// Ceremonies are held in Redis too when there is one (GETDEL), else in memory.
+	application.Passkeys, err = passkey.New("localhost", "Montara Pass", cfg.Auth.BaseURL, middlewares.NewIPKV(middlewares.NewStore(application.Redis)))
 	if err != nil {
 		t.Fatal(err)
 	}

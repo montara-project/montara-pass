@@ -63,6 +63,8 @@ var guessPaths = []string{
 	authBasePath + "/totp/enable",
 	authBasePath + "/totp/disable",
 	authBasePath + "/email-password/request-email-change",
+	// Adding a passkey checks the account password first.
+	apiPrefix + "/v1/passkeys/register/begin",
 }
 
 // failedAttempt reports whether a request counts against its IP: a wrong

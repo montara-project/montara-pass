@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"errors"
 
 	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
@@ -13,12 +14,16 @@ import (
 	"montara-pass/server/internal/lib"
 	"montara-pass/server/internal/lib/apperr"
 	"montara-pass/server/internal/lib/passkey"
+	"montara-pass/server/internal/repositories"
 )
 
 // maxPasskeys bounds how many passkeys one account keeps.
 const maxPasskeys = 10
 
-var errPasskeyInvalid = apperr.New(apperr.KindBadRequest, "the passkey could not be verified")
+var (
+	errPasskeyInvalid = apperr.New(apperr.KindBadRequest, "the passkey could not be verified")
+	errPasskeyLimit   = apperr.New(apperr.KindBadRequest, "an account keeps at most %d passkeys: remove one first", maxPasskeys)
+)
 
 // passkeyHandler manages the passkeys a user signs in with, and with which
 // the vault can be unlocked. Signing in with one is an Authula route
@@ -84,8 +89,10 @@ func (h *passkeyHandler) RegisterBegin(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+	// Checked again where the passkey is stored: ceremonies begun side by
+	// side would each pass here.
 	if len(user.Credentials) >= maxPasskeys {
-		return apperr.New(apperr.KindBadRequest, "an account keeps at most %d passkeys: remove one first", maxPasskeys)
+		return errPasskeyLimit
 	}
 
 	opts := []webauthn.RegistrationOption{
@@ -149,7 +156,10 @@ func (h *passkeyHandler) RegisterFinish(c fiber.Ctx) error {
 		return errPasskeyInvalid
 	}
 
-	p, err := h.app.Repositories.Passkey.Create(c.Context(), uid, body.Name, *cred, body.EncryptedVaultKey)
+	p, err := h.app.Repositories.Passkey.Create(c.Context(), uid, body.Name, *cred, body.EncryptedVaultKey, maxPasskeys)
+	if errors.Is(err, repositories.ErrPasskeyLimit) {
+		return errPasskeyLimit
+	}
 	if err != nil {
 		return err
 	}

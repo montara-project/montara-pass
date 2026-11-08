@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"strconv"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/redis/go-redis/v9"
 
 	"montara-pass/server/internal/lib"
 	"montara-pass/server/internal/lib/apperr"
@@ -38,7 +40,23 @@ func NewIPKV(store Store) IPKV {
 	if store.storage == nil {
 		return &memoryKV{entries: map[string]memoryEntry{}}
 	}
-	return store.storage
+	return &redisKV{Storage: store.storage, client: store.client}
+}
+
+// redisKV is Fiber's Redis storage, which names keys as given, with the
+// get-and-delete it lacks.
+type redisKV struct {
+	fiber.Storage
+	client redis.UniversalClient
+}
+
+// Take is Redis's GETDEL: one command, so it cannot be split by another.
+func (k *redisKV) Take(key string) ([]byte, error) {
+	val, err := k.client.GetDel(context.Background(), key).Bytes()
+	if errors.Is(err, redis.Nil) {
+		return nil, nil
+	}
+	return val, err
 }
 
 // BlockIP shuts ip out of the API until until — for good at a zero time — by
@@ -50,10 +68,13 @@ func BlockIP(kv IPKV, ip string, until time.Time) error {
 	if until.IsZero() {
 		until = time.Now().Add(permanentFor)
 	}
-	if exp := until.Sub(time.Now()); exp <= 0 {
+	// One clock read: a second could find the deadline passed after the check
+	// and hand the store an expiry of zero or less.
+	exp := until.Sub(time.Now())
+	if exp <= 0 {
 		return nil
 	}
-	return kv.Set(ipBlockKeyPrefix+ip, []byte(strconv.FormatInt(until.Unix(), 10)), until.Sub(time.Now()))
+	return kv.Set(ipBlockKeyPrefix+ip, []byte(strconv.FormatInt(until.Unix(), 10)), exp)
 }
 
 // UnblockIP lifts every block of ip, the automatic and the manual alike, and
@@ -165,6 +186,7 @@ type memoryEntry struct {
 // that fail once and never return do not pile up.
 const memorySweepAt = 10_000
 
+// Get answers key's value, or nil once it has expired or was never set.
 func (m *memoryKV) Get(key string) ([]byte, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -175,6 +197,8 @@ func (m *memoryKV) Get(key string) ([]byte, error) {
 	return e.val, nil
 }
 
+// Set keeps val under key for exp, first dropping expired entries once the
+// map has grown to memorySweepAt.
 func (m *memoryKV) Set(key string, val []byte, exp time.Duration) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -190,6 +214,20 @@ func (m *memoryKV) Set(key string, val []byte, exp time.Duration) error {
 	return nil
 }
 
+// Take answers key's value and deletes it under one lock, so only one caller
+// gets it.
+func (m *memoryKV) Take(key string) ([]byte, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	e, ok := m.entries[key]
+	delete(m.entries, key)
+	if !ok || time.Now().After(e.expires) {
+		return nil, nil
+	}
+	return e.val, nil
+}
+
+// Delete forgets key; a missing key is not an error.
 func (m *memoryKV) Delete(key string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

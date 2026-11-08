@@ -145,3 +145,23 @@ func TestIPBlockOnBlock(t *testing.T) {
 		t.Fatalf("unblocked ip: %d, want 200", res.StatusCode)
 	}
 }
+
+// Take hands a value to one caller only: the second finds nothing.
+func TestMemoryKVTake(t *testing.T) {
+	kv := NewIPKV(NewStore(nil))
+	if err := kv.Set("k", []byte("v"), time.Minute); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := kv.Take("k"); err != nil || string(got) != "v" {
+		t.Fatalf("first take: %q %v", got, err)
+	}
+	if got, err := kv.Take("k"); err != nil || got != nil {
+		t.Fatalf("second take: %q %v", got, err)
+	}
+	if err := kv.Set("old", []byte("v"), -time.Second); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := kv.Take("old"); got != nil {
+		t.Fatalf("an expired value was taken: %q", got)
+	}
+}
