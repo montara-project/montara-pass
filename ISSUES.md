@@ -31,7 +31,7 @@ bind parameter, setiap akses item lewat `item_members`, dan error 500 tidak memb
 | M-3 | Terbuka | Butuh keputusan desain (fingerprint atau penyematan kunci) |
 | M-4 | Sebagian | Limiter per email 10/menit di rute auth, IP diblokir 1 jam setelah 20 kegagalan (`01cab11`), dan TOTP opsional (`1618cda`). Belum ada lockout per akun; minimum password masih 8 |
 | M-5 | Diperbaiki | Web app mengunci setelah 15 menit tanpa klik atau ketikan |
-| M-6 | Sebagian | `fflate` bersih, `katex` di-override ke 0.18.10, modul Go bersih (`govulncheck`: 0 yang terjangkau). 2026-10-30: `seroval` dan `node-forge` di-override; tinggal `deepmerge` (low), versi perbaikannya belum terbit di npm |
+| M-6 | Sebagian | `fflate` bersih, `katex` di-override ke 0.18.10, modul Go bersih (`govulncheck`: 0 yang terjangkau). 2026-10-30: `seroval` dan `node-forge` di-override; tinggal `deepmerge` (low), versi perbaikannya belum terbit di npm. 2026-11-04: `glob` (GHSA-3g3m-2fjr-6pw4) dan `minimatch` via `@expo/cli` di-override ke 14.0.3 dan 11.0.4; `expo config` dan `expo export` jalan. `pnpm audit --prod`: tinggal `deepmerge` |
 | L-1 | Sebagian | `PUT /keys` kini meminta account password (`8d1579a`), jadi sesi curian saja tidak cukup. Revisi dan salinan untuk pemulihan belum ada |
 | L-2 | Terbuka | Butuh format cipher baru dan migrasi |
 | L-3 | Diperbaiki | Event sintetis diabaikan |
@@ -41,7 +41,7 @@ bind parameter, setiap akses item lewat `item_members`, dan error 500 tidak memb
 | L-7 | Diperbaiki | Web app dan ekstensi mengosongkan clipboard satu menit setelah menyalin (`135b912`, `db77a6a`). Isinya tidak dibaca dulu, jadi salinan lain dalam menit itu ikut terhapus |
 | L-8 | Terbuka | |
 | L-9 | Terbuka | |
-| M-7 | Diperbaiki | Tiap frame diberi token rahasia lewat `postMessage` dan content script hanya mendengar pesan yang membawanya. Diuji di Chromium; Firefox belum |
+| M-7 | Diperbaiki | Tiap frame diberi token rahasia lewat `postMessage` dan content script hanya mendengar pesan yang membawanya. Diuji di Chromium dan Firefox 159 (di Firefox frame meminjam API dari background, lihat `src/inline/firefox.ts`) |
 | M-8 | Terbuka | Urutan rilis menutup web app; ekstensi lama butuh versi klien minimum di server |
 | L-10 | Diperbaiki | `rpIdFor` menolak sufiks publik (`tldts`) |
 | L-11 | Diperbaiki | Item bukan milik sendiri diberi label "Shared with you" di menu inline dan prompt passkey |
