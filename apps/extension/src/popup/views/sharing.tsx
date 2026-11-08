@@ -46,6 +46,71 @@ export default function Sharing({ items, meEmail, onSignedOut, onManage, onOpen 
     rows.flatMap(({ members }) => members.filter((m) => m.email !== meEmail).map((m) => m.user_id))
   )
 
+  // Loading, nothing shared, or the list.
+  const renderList = () => {
+    if (shared === null) {
+      return !error && <p className="muted">Loading…</p>
+    }
+    if (rows.length === 0) {
+      return (
+        <div className="field-group health-empty">
+          <p className="health-empty-title">Nothing is shared yet</p>
+          <p className="muted">
+            Share an item from its More menu, with someone who has a vault, and it shows here.
+          </p>
+        </div>
+      )
+    }
+    return (
+      <div className="field-group">
+        <ul className="sec-rows">
+          {rows.map(({ item, members }) => {
+            const owner = item.role === 'owner'
+            return (
+              <li key={item.id}>
+                <ItemTile item={item} />
+                <span className="item-text">
+                  <span className="item-name">{item.secret!.name}</span>
+                  <span className="eyebrow share-sub">{itemSubtitle(item)}</span>
+                </span>
+                <span
+                  className="share-people"
+                  role="img"
+                  aria-label={members.map((m) => m.name || m.email).join(', ')}
+                >
+                  {members.slice(0, 3).map((m) => (
+                    <span
+                      key={m.user_id}
+                      className={m.role === 'owner' ? 'share-avatar owner' : 'share-avatar'}
+                      title={`${m.name || m.email} · ${m.role}`}
+                    >
+                      {initials(m.name || m.email)}
+                    </span>
+                  ))}
+                  {members.length > 3 && (
+                    <span className="share-avatar">+{members.length - 3}</span>
+                  )}
+                </span>
+                <span className={owner ? 'share-role owner' : 'share-role'}>{item.role}</span>
+                <button
+                  className="secondary small"
+                  onClick={() => (owner ? onManage(item.id) : onOpen(item.id))}
+                >
+                  {owner ? 'Manage' : 'Open'}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+        <p className="field-group-foot">
+          <span>
+            {rows.length} shared {rows.length === 1 ? 'item' : 'items'}
+          </span>
+        </p>
+      </div>
+    )
+  }
+
   return (
     <div className="stack detail-body tool-body gen-page">
       <header className="tool-page-head">
@@ -72,63 +137,7 @@ export default function Sharing({ items, meEmail, onSignedOut, onManage, onOpen 
         {error && <p className="error">{error}</p>}
         <section className="sec-section">
           <h2 className="eyebrow">Shared items</h2>
-          {shared === null ? (
-            !error && <p className="muted">Loading…</p>
-          ) : rows.length === 0 ? (
-            <div className="field-group health-empty">
-              <p className="health-empty-title">Nothing is shared yet</p>
-              <p className="muted">
-                Share an item from its More menu, with someone who has a vault, and it shows here.
-              </p>
-            </div>
-          ) : (
-            <div className="field-group">
-              <ul className="sec-rows">
-                {rows.map(({ item, members }) => {
-                  const owner = item.role === 'owner'
-                  return (
-                    <li key={item.id}>
-                      <ItemTile item={item} />
-                      <span className="item-text">
-                        <span className="item-name">{item.secret!.name}</span>
-                        <span className="eyebrow share-sub">{itemSubtitle(item)}</span>
-                      </span>
-                      <span
-                        className="share-people"
-                        role="img"
-                        aria-label={members.map((m) => m.name || m.email).join(', ')}
-                      >
-                        {members.slice(0, 3).map((m) => (
-                          <span
-                            key={m.user_id}
-                            className={m.role === 'owner' ? 'share-avatar owner' : 'share-avatar'}
-                            title={`${m.name || m.email} · ${m.role}`}
-                          >
-                            {initials(m.name || m.email)}
-                          </span>
-                        ))}
-                        {members.length > 3 && (
-                          <span className="share-avatar">+{members.length - 3}</span>
-                        )}
-                      </span>
-                      <span className={owner ? 'share-role owner' : 'share-role'}>{item.role}</span>
-                      <button
-                        className="secondary small"
-                        onClick={() => (owner ? onManage(item.id) : onOpen(item.id))}
-                      >
-                        {owner ? 'Manage' : 'Open'}
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-              <p className="field-group-foot">
-                <span>
-                  {rows.length} shared {rows.length === 1 ? 'item' : 'items'}
-                </span>
-              </p>
-            </div>
-          )}
+          {renderList()}
           <p className="eyebrow">
             Viewers read an item · editors can change it too · only its owner shares it
           </p>

@@ -3,7 +3,7 @@ import type { VaultItem } from '@montara-pass/shared/types/vault'
 
 import { deviceName } from '@montara-pass/shared/activity'
 import { formatDate, formatDateTime } from '@montara-pass/shared/date'
-import { errorMessage } from '@montara-pass/shared/string'
+import { errorMessage, onOffLabel } from '@montara-pass/shared/string'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import AuditTable from '@/components/block/security/audit-table'
@@ -196,9 +196,7 @@ export default function Security({ items, appUrl, onSignedOut, onNotice }: Secur
         <dl className="health-stats">
           <div>
             <dt>TOTP</dt>
-            <dd className={totp ? 'health-good' : undefined}>
-              {totp === undefined ? '—' : totp ? 'On' : 'Off'}
-            </dd>
+            <dd className={totp ? 'health-good' : undefined}>{onOffLabel(totp)}</dd>
           </div>
           <div>
             <dt>Passkeys</dt>

@@ -5,6 +5,7 @@ import { COMMUNITY } from '@montara-pass/shared/constants/edition'
 import { CARD_FIELDS, CONTACT_FIELDS, ITEM_TYPE_LABEL } from '@montara-pass/shared/constants/vault'
 import { cardEnding, decryptItem } from '@montara-pass/shared/crypto/vault'
 import { passwordStrength } from '@montara-pass/shared/password'
+import { sharingLabel } from '@montara-pass/shared/sharing'
 import { linkOf } from '@montara-pass/shared/url'
 import { QueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import {
@@ -110,6 +111,13 @@ const NotesView = lazy(() =>
 )
 
 const MASK = '••••••••••••'
+
+/** A card field as shown. Hidden, a card number still shows its last four digits. */
+function cardFieldText(key: string, value: string, hidden: boolean): string {
+  if (!hidden) return value
+  if (key === 'number') return cardEnding(value) || MASK
+  return MASK
+}
 
 /** Items asked for at a time. The server cannot sort or search, so the list grows as it comes. */
 const PAGE_SIZE = 25
@@ -264,6 +272,135 @@ export default function FullVault({
   // Folders are kept in the web app; there is no editor for them here.
   const foldersUrl = appUrl && `${appUrl.replace(/\/$/, '')}/folders`
 
+  // The tool in place of the list and the item.
+  const renderTool = () => {
+    if (tool === 'generator') {
+      return <PasswordGenerator onNotice={setNotice} />
+    }
+    if (tool === 'billing') {
+      return <Billing onSignedOut={onSignedOut} />
+    }
+    if (tool === 'sharing') {
+      return (
+        <Sharing
+          items={items}
+          meEmail={user?.email}
+          onSignedOut={onSignedOut}
+          onManage={(id) => {
+            setTool(null)
+            setPane({ mode: 'share', id })
+          }}
+          onOpen={(id) => {
+            setTool(null)
+            setFilter('all')
+            setSearch('')
+            setPane({ mode: 'view', id })
+          }}
+        />
+      )
+    }
+    if (tool === 'activity') {
+      return (
+        <Security items={items} appUrl={appUrl} onSignedOut={onSignedOut} onNotice={setNotice} />
+      )
+    }
+    return (
+      <PasswordHealth
+        items={items}
+        onOpen={(id) => {
+          setTool(null)
+          setFilter('all')
+          setSearch('')
+          setPane({ mode: 'view', id })
+        }}
+        onRescan={() => void refresh()}
+        rescanning={refreshing}
+        onOpenVault={() => setTool(null)}
+      />
+    )
+  }
+
+  // The pane: sharing, the form, the item, or a prompt to pick one.
+  const renderPane = () => {
+    if (pane.mode === 'share' && selected) {
+      return (
+        <ShareItem
+          key={selected.id}
+          keys={keys}
+          item={selected}
+          onDone={() => setPane({ mode: 'view', id: selected.id })}
+          onSignedOut={onSignedOut}
+          onNotice={setNotice}
+        />
+      )
+    }
+    if (pane.mode !== 'view') {
+      return (
+        <ItemForm
+          // A different item is a different form, with its own fields.
+          key={pane.mode === 'edit' ? pane.id : 'new'}
+          keys={keys}
+          item={pane.mode === 'edit' ? (selected ?? undefined) : undefined}
+          folders={folders}
+          onCancel={() => setPane({ mode: 'view', id: selectedId })}
+          onSignedOut={onSignedOut}
+          onSaved={(id) => {
+            setNotice('Item saved')
+            setPane({ mode: 'view', id })
+            void reload()
+          }}
+        />
+      )
+    }
+    if (selected) {
+      return (
+        <ItemDetail
+          key={selected.id}
+          item={selected}
+          onCopy={(value, label) => void copy(value, label)}
+          onEdit={() => setPane({ mode: 'edit', id: selected.id })}
+          onShare={() => setPane({ mode: 'share', id: selected.id })}
+          onFavorite={() =>
+            void act(
+              () =>
+                setItemPlacement(selected.id, {
+                  folder_id: selected.folder_id,
+                  favorite: !selected.favorite,
+                }),
+              selected.favorite ? 'Removed from favorites' : 'Added to favorites'
+            )
+          }
+          onTrash={() =>
+            void act(
+              () => trashItem(selected.id),
+              'Moved to the trash. The web app can restore it.'
+            )
+          }
+        />
+      )
+    }
+    return (
+      <div className="detail-empty">
+        <span className="tile">
+          <KeyIcon />
+        </span>
+        <p className="muted">Select an item to see it, or create a new one.</p>
+        <div className="detail-empty-actions">
+          <button onClick={() => setPane({ mode: 'new' })}>
+            <PlusIcon width={14} height={14} />
+            New item
+          </button>
+          {foldersUrl && (
+            <a className="button secondary" href={foldersUrl} target="_blank" rel="noreferrer">
+              <BookOpenIcon width={14} height={14} />
+              Browse folders
+            </a>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <VaultSidebar
       filters={FILTERS.map((f) => ({ ...f, count: counts[f.value] }))}
@@ -283,47 +420,7 @@ export default function FullVault({
       <div className={['full', paneOpen && 'pane-open'].filter(Boolean).join(' ')}>
         {tool ? (
           <section className="detail-col tool-col" aria-label="Tools">
-            {tool === 'generator' ? (
-              <PasswordGenerator onNotice={setNotice} />
-            ) : tool === 'billing' ? (
-              <Billing onSignedOut={onSignedOut} />
-            ) : tool === 'sharing' ? (
-              <Sharing
-                items={items}
-                meEmail={user?.email}
-                onSignedOut={onSignedOut}
-                onManage={(id) => {
-                  setTool(null)
-                  setPane({ mode: 'share', id })
-                }}
-                onOpen={(id) => {
-                  setTool(null)
-                  setFilter('all')
-                  setSearch('')
-                  setPane({ mode: 'view', id })
-                }}
-              />
-            ) : tool === 'activity' ? (
-              <Security
-                items={items}
-                appUrl={appUrl}
-                onSignedOut={onSignedOut}
-                onNotice={setNotice}
-              />
-            ) : (
-              <PasswordHealth
-                items={items}
-                onOpen={(id) => {
-                  setTool(null)
-                  setFilter('all')
-                  setSearch('')
-                  setPane({ mode: 'view', id })
-                }}
-                onRescan={() => void refresh()}
-                rescanning={refreshing}
-                onOpenVault={() => setTool(null)}
-              />
-            )}
+            {renderTool()}
           </section>
         ) : (
           <>
@@ -482,79 +579,7 @@ export default function FullVault({
                 </button>
               )}
 
-              {pane.mode === 'share' && selected ? (
-                <ShareItem
-                  key={selected.id}
-                  keys={keys}
-                  item={selected}
-                  onDone={() => setPane({ mode: 'view', id: selected.id })}
-                  onSignedOut={onSignedOut}
-                  onNotice={setNotice}
-                />
-              ) : pane.mode !== 'view' ? (
-                <ItemForm
-                  // A different item is a different form, with its own fields.
-                  key={pane.mode === 'edit' ? pane.id : 'new'}
-                  keys={keys}
-                  item={pane.mode === 'edit' ? (selected ?? undefined) : undefined}
-                  folders={folders}
-                  onCancel={() => setPane({ mode: 'view', id: selectedId })}
-                  onSignedOut={onSignedOut}
-                  onSaved={(id) => {
-                    setNotice('Item saved')
-                    setPane({ mode: 'view', id })
-                    void reload()
-                  }}
-                />
-              ) : selected ? (
-                <ItemDetail
-                  key={selected.id}
-                  item={selected}
-                  onCopy={(value, label) => void copy(value, label)}
-                  onEdit={() => setPane({ mode: 'edit', id: selected.id })}
-                  onShare={() => setPane({ mode: 'share', id: selected.id })}
-                  onFavorite={() =>
-                    void act(
-                      () =>
-                        setItemPlacement(selected.id, {
-                          folder_id: selected.folder_id,
-                          favorite: !selected.favorite,
-                        }),
-                      selected.favorite ? 'Removed from favorites' : 'Added to favorites'
-                    )
-                  }
-                  onTrash={() =>
-                    void act(
-                      () => trashItem(selected.id),
-                      'Moved to the trash. The web app can restore it.'
-                    )
-                  }
-                />
-              ) : (
-                <div className="detail-empty">
-                  <span className="tile">
-                    <KeyIcon />
-                  </span>
-                  <p className="muted">Select an item to see it, or create a new one.</p>
-                  <div className="detail-empty-actions">
-                    <button onClick={() => setPane({ mode: 'new' })}>
-                      <PlusIcon width={14} height={14} />
-                      New item
-                    </button>
-                    {foldersUrl && (
-                      <a
-                        className="button secondary"
-                        href={foldersUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <BookOpenIcon width={14} height={14} />
-                        Browse folders
-                      </a>
-                    )}
-                  </div>
-                </div>
-              )}
+              {renderPane()}
             </section>
           </>
         )}
@@ -619,14 +644,10 @@ function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: Item
       .then((members) => setOthers(members.length - 1))
       .catch(() => setOthers(null))
   }, [item.id, item.role])
-  const sharing =
-    item.role !== 'owner'
-      ? 'Shared with you'
-      : COMMUNITY || others === 0
-        ? 'Not shared'
-        : others
-          ? `Shared with ${others}`
-          : null
+  const sharing = sharingLabel(item.role === 'owner', others)
+  // Masked as the list shows it, until asked for.
+  const username =
+    secret.username && (showUsername ? secret.username : maskUsername(secret.username))
 
   return (
     <div className="stack detail-body item-view">
@@ -716,17 +737,7 @@ function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: Item
         <FieldGroup title="Credentials" count={secret.passkey ? 3 : 2}>
           <div className="field">
             <dt>Username</dt>
-            <dd>
-              {secret.username ? (
-                showUsername ? (
-                  secret.username
-                ) : (
-                  maskUsername(secret.username)
-                )
-              ) : (
-                <span className="muted">None</span>
-              )}
-            </dd>
+            <dd>{username || <span className="muted">None</span>}</dd>
             {secret.username && (
               <button
                 className="icon-button"
@@ -839,11 +850,7 @@ function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: Item
                 <dd className={value && isSecret ? 'mono' : undefined}>
                   {/* Hidden, a card number still shows its last four digits. */}
                   {value ? (
-                    isSecret && !revealed ? (
-                      (key === 'number' && cardEnding(value)) || MASK
-                    ) : (
-                      value
-                    )
+                    cardFieldText(key, value, isSecret && !revealed)
                   ) : (
                     <span className="muted">None</span>
                   )}

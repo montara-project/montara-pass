@@ -89,6 +89,77 @@ export default function PasswordHealth({
 
   const stat = (value: number) => (value > 0 ? 'health-bad' : 'health-good')
 
+  // Decrypting, the all-clear, or the findings.
+  const renderBody = () => {
+    if (items === null) {
+      return <p className="muted">Decrypting…</p>
+    }
+    if (findings === 0) {
+      return (
+        <div className="field-group health-empty">
+          <span className="tile">
+            <ShieldIcon />
+          </span>
+          <p className="health-empty-title">
+            {health.checked === 0 ? 'Nothing to check yet.' : 'Every login looks healthy.'}
+          </p>
+          <p className="muted">
+            {health.checked === 0
+              ? 'No login in the vault has a password. Add one, and its strength shows here.'
+              : 'Nothing is reused and nothing is weak. Run the scan again after you add new logins.'}
+          </p>
+          <div className="detail-empty-actions">
+            <button disabled={rescanning} onClick={onRescan}>
+              <RefreshIcon width={14} height={14} className={rescanning ? 'spin' : undefined} />
+              {rescanning ? 'Scanning…' : 'Run scan'}
+            </button>
+            <button className="secondary" onClick={onOpenVault}>
+              <GridIcon width={14} height={14} />
+              Open vault
+            </button>
+          </div>
+          <p className="eyebrow">
+            Scanned {health.checked} {health.checked === 1 ? 'login' : 'logins'} · 0 findings
+          </p>
+        </div>
+      )
+    }
+    return (
+      // Reused takes two columns when there are groups enough for two, weak the third.
+      <div className="health-grid">
+        {health.reused.length > 0 && (
+          <section className={right.length > 0 ? 'health-section wide' : 'health-section'}>
+            <header>
+              <h2>Reused passwords</h2>
+              <p className="muted">If one site leaks the password, the others are open too.</p>
+            </header>
+            <div className={right.length > 0 ? 'health-pair' : undefined}>
+              <ReusedCard groups={left} onOpen={onOpen} />
+              {right.length > 0 && <ReusedCard groups={right} onOpen={onOpen} />}
+            </div>
+          </section>
+        )}
+
+        {health.weak.length > 0 && (
+          <section className="health-section">
+            <header>
+              <h2>Weak passwords</h2>
+              <p className="muted">Short, or made of few kinds of characters, so quick to guess.</p>
+            </header>
+            <ul className="field-group health-rows">
+              {health.weak.map((item) => (
+                <Row key={item.id} item={item} weak onOpen={() => onOpen(item.id)} />
+              ))}
+            </ul>
+            <p className="eyebrow">
+              {health.weak.length} of {health.checked} logins · open one to fix it
+            </p>
+          </section>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="stack detail-body tool-body gen-page">
       <header className="tool-page-head">
@@ -115,73 +186,7 @@ export default function PasswordHealth({
         )}
       </header>
 
-      <div className="health-body">
-        {items === null ? (
-          <p className="muted">Decrypting…</p>
-        ) : findings === 0 ? (
-          <div className="field-group health-empty">
-            <span className="tile">
-              <ShieldIcon />
-            </span>
-            <p className="health-empty-title">
-              {health.checked === 0 ? 'Nothing to check yet.' : 'Every login looks healthy.'}
-            </p>
-            <p className="muted">
-              {health.checked === 0
-                ? 'No login in the vault has a password. Add one, and its strength shows here.'
-                : 'Nothing is reused and nothing is weak. Run the scan again after you add new logins.'}
-            </p>
-            <div className="detail-empty-actions">
-              <button disabled={rescanning} onClick={onRescan}>
-                <RefreshIcon width={14} height={14} className={rescanning ? 'spin' : undefined} />
-                {rescanning ? 'Scanning…' : 'Run scan'}
-              </button>
-              <button className="secondary" onClick={onOpenVault}>
-                <GridIcon width={14} height={14} />
-                Open vault
-              </button>
-            </div>
-            <p className="eyebrow">
-              Scanned {health.checked} {health.checked === 1 ? 'login' : 'logins'} · 0 findings
-            </p>
-          </div>
-        ) : (
-          // Reused takes two columns when there are groups enough for two, weak the third.
-          <div className="health-grid">
-            {health.reused.length > 0 && (
-              <section className={right.length > 0 ? 'health-section wide' : 'health-section'}>
-                <header>
-                  <h2>Reused passwords</h2>
-                  <p className="muted">If one site leaks the password, the others are open too.</p>
-                </header>
-                <div className={right.length > 0 ? 'health-pair' : undefined}>
-                  <ReusedCard groups={left} onOpen={onOpen} />
-                  {right.length > 0 && <ReusedCard groups={right} onOpen={onOpen} />}
-                </div>
-              </section>
-            )}
-
-            {health.weak.length > 0 && (
-              <section className="health-section">
-                <header>
-                  <h2>Weak passwords</h2>
-                  <p className="muted">
-                    Short, or made of few kinds of characters, so quick to guess.
-                  </p>
-                </header>
-                <ul className="field-group health-rows">
-                  {health.weak.map((item) => (
-                    <Row key={item.id} item={item} weak onOpen={() => onOpen(item.id)} />
-                  ))}
-                </ul>
-                <p className="eyebrow">
-                  {health.weak.length} of {health.checked} logins · open one to fix it
-                </p>
-              </section>
-            )}
-          </div>
-        )}
-      </div>
+      <div className="health-body">{renderBody()}</div>
     </div>
   )
 }

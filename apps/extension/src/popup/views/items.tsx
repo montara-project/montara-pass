@@ -75,6 +75,31 @@ interface ItemsProps {
   onSettings: () => void
 }
 
+/** What a row's menu offers to copy, for each kind of item. */
+function copyActions(item: VaultItem) {
+  const secret = item.secret!
+  switch (item.type) {
+    case 'login':
+      return [
+        { label: 'Copy username', Icon: UserIcon, value: secret.username, what: 'username' },
+        { label: 'Copy password', Icon: KeyIcon, value: secret.password, what: 'password' },
+      ]
+    case 'card':
+      return [
+        {
+          label: 'Copy card number',
+          Icon: CardIcon,
+          value: secret.card?.number,
+          what: 'card number',
+        },
+      ]
+    case 'contact':
+      return [{ label: 'Copy email', Icon: CopyIcon, value: secret.contact?.email, what: 'email' }]
+    default:
+      return [{ label: 'Copy note', Icon: CopyIcon, value: secret.notes, what: 'note' }]
+  }
+}
+
 export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings }: ItemsProps) {
   const { items, user, error, load } = useVaultItems(keys, onSignedOut)
   const {
@@ -483,68 +508,20 @@ export default function Items({ keys, onLock, onSignOut, onSignedOut, onSettings
             </>
           ) : (
             <>
-              {menuItem.type === 'login' ? (
-                <>
-                  <button
-                    role="menuitem"
-                    className="menu-item"
-                    onClick={() => {
-                      setRowMenu(null)
-                      void copy(menuItem.secret!.username, 'username')
-                    }}
-                  >
-                    <UserIcon />
-                    Copy username
-                  </button>
-                  <button
-                    role="menuitem"
-                    className="menu-item"
-                    onClick={() => {
-                      setRowMenu(null)
-                      void copy(menuItem.secret!.password, 'password')
-                    }}
-                  >
-                    <KeyIcon />
-                    Copy password
-                  </button>
-                </>
-              ) : menuItem.type === 'card' ? (
+              {copyActions(menuItem).map(({ label, Icon, value, what }) => (
                 <button
+                  key={what}
                   role="menuitem"
                   className="menu-item"
                   onClick={() => {
                     setRowMenu(null)
-                    void copy(menuItem.secret!.card?.number, 'card number')
+                    void copy(value, what)
                   }}
                 >
-                  <CardIcon />
-                  Copy card number
+                  <Icon />
+                  {label}
                 </button>
-              ) : menuItem.type === 'contact' ? (
-                <button
-                  role="menuitem"
-                  className="menu-item"
-                  onClick={() => {
-                    setRowMenu(null)
-                    void copy(menuItem.secret!.contact?.email, 'email')
-                  }}
-                >
-                  <CopyIcon />
-                  Copy email
-                </button>
-              ) : (
-                <button
-                  role="menuitem"
-                  className="menu-item"
-                  onClick={() => {
-                    setRowMenu(null)
-                    void copy(menuItem.secret!.notes, 'note')
-                  }}
-                >
-                  <CopyIcon />
-                  Copy note
-                </button>
-              )}
+              ))}
 
               <hr className="menu-rule" />
               <button

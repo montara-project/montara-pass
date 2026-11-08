@@ -226,7 +226,8 @@ export default defineContentScript({
 
     /** Take the host out of the page once nothing in it is left to show. */
     const release = () => {
-      if (!field && !saveFrame && !passkeyFrame && !offerFrame) host.remove()
+      const nothingShown = !field && !saveFrame && !passkeyFrame && !offerFrame
+      if (nothingShown) host.remove()
     }
 
     const hide = () => {
@@ -422,14 +423,14 @@ export default defineContentScript({
     }
 
     /** The form around what sent it: the form itself, a button or a field in it. */
-    const formOf = (target: EventTarget | null) =>
-      target instanceof HTMLFormElement
-        ? target
-        : target instanceof HTMLButtonElement || target instanceof HTMLInputElement
-          ? target.form
-          : target instanceof Element
-            ? target.closest('form')
-            : null
+    const formOf = (target: EventTarget | null) => {
+      if (target instanceof HTMLFormElement) return target
+      if (target instanceof HTMLButtonElement || target instanceof HTMLInputElement) {
+        return target.form
+      }
+      if (target instanceof Element) return target.closest('form')
+      return null
+    }
 
     /**
      * Pass on the login in the page's form, if it holds one. Called when the
@@ -529,12 +530,10 @@ export default defineContentScript({
       clearInterval(watch)
       let ticks = 0
       watch = window.setInterval(() => {
-        if (!el.isConnected || !usable(el)) {
-          clearInterval(watch)
-          void offerSave()
-        } else if (++ticks >= 20) {
-          clearInterval(watch)
-        }
+        const gone = !el.isConnected || !usable(el)
+        // Gone, or still there after 10 seconds: either way the watch ends.
+        if (gone || ++ticks >= 20) clearInterval(watch)
+        if (gone) void offerSave()
       }, 500)
     }
 
@@ -598,7 +597,9 @@ export default defineContentScript({
           close()
         }
         if (e.key === 'Escape' && offerShown()) closeOffer()
-        if (e.key === 'ArrowDown' && e.altKey && field && e.target === field) {
+        // Alt+Down in the field it belongs to opens the menu again.
+        const reopens = e.key === 'ArrowDown' && e.altKey && field && e.target === field
+        if (reopens) {
           e.preventDefault()
           close()
           open()

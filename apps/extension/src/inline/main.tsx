@@ -619,6 +619,13 @@ function SaveDetails({
 }
 
 /** The save prompt: for the login, the card or the contact the page just submitted. */
+/** What a pending save is: a card, a contact, or a login. */
+function pendingNoun(pending: PendingLogin | PendingContact | PendingCard) {
+  if ('card' in pending) return 'card'
+  if ('contact' in pending) return 'contact'
+  return 'login'
+}
+
 function SavePrompt({
   page,
   keys,
@@ -650,7 +657,7 @@ function SavePrompt({
   }, [pending, page])
 
   if (!pending) return null
-  const noun = 'card' in pending ? 'card' : 'contact' in pending ? 'contact' : 'login'
+  const noun = pendingNoun(pending)
 
   if (!keys) {
     return (
@@ -976,7 +983,9 @@ function Inline() {
   }, [page])
 
   useEffect(() => {
-    if (AUTO && page && keys && suggesting) void toPage(page, { type: 'inline:show' })
+    // Opens by itself only with the auto flag, unlocked, on a page it may fill.
+    const showsItself = AUTO && page && keys && suggesting
+    if (showsItself) void toPage(page, { type: 'inline:show' })
   }, [page, keys, suggesting])
 
   const readVault = useCallback(() => {
