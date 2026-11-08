@@ -17,6 +17,7 @@ import {
   IconTrash,
   IconUser,
   IconUserCircle,
+  IconUsers,
 } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
@@ -86,9 +87,13 @@ const TOOLS = [
 
 /** In the account menu: the vault's other pages and the account's own. */
 const MENU = [
-  { title: 'Account', url: '/profile', icon: IconUserCircle, group: 'Account' },
-  { title: 'Folders', url: '/folders', icon: IconFolders, group: 'Vault' },
+  { title: 'Profile', url: '/profile', icon: IconUserCircle, group: 'Account' },
+  { title: 'Manage folders', url: '/folders', icon: IconFolders, group: 'Vault' },
   { title: 'Trash', url: '/trash', icon: IconTrash, group: 'Vault' },
+  // Sharing is the Cloud Edition's: the Community server has one user.
+  ...(COMMUNITY
+    ? []
+    : [{ title: 'Manage sharing', url: '/sharing', icon: IconUsers, group: 'Vault' } as const]),
   // Billing is the Cloud Edition's: the Community server takes no payments.
   ...(COMMUNITY
     ? []

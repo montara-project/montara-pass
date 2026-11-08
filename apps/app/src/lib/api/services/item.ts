@@ -27,6 +27,8 @@ export const itemServices = {
     request<ApiItemResponse<Models.Item>>('PUT', `${path}/${id}/placement`, { body }),
   rotateKey: (id: string, body: ItemRotateKeyRequest) =>
     request<ApiItemResponse<Models.Item>>('PUT', `${path}/${id}/key`, { body }),
+  /** Every shared item, either way, with its members (Cloud Edition). */
+  shared: () => request<ApiListResponse<Models.SharedItem>>('GET', '/api/v1/sharing'),
   members: (id: string) =>
     request<ApiListResponse<Models.ItemMember>>('GET', `${path}/${id}/members`),
   share: (id: string, body: ItemShareRequest) =>

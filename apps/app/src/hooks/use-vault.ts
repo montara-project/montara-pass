@@ -70,6 +70,27 @@ export function useItems(params: ItemListParams) {
 }
 
 /**
+ * The items that are shared, either way, each with everyone who can open it,
+ * decrypted. Under the items key, so a share or a removal refreshes it.
+ */
+export function useSharedItems() {
+  const keys = useVaultKeys()
+
+  return useQuery({
+    queryKey: [ITEM_QUERY_KEY, 'sharing', 'decrypted'],
+    queryFn: async () => {
+      const res = await services.items.shared()
+      return Promise.all(
+        res.data.map(async (item) => ({
+          ...item,
+          secret: await decryptItem(keys, item).catch(() => null),
+        }))
+      )
+    },
+  })
+}
+
+/**
  * How many live items match each filter, from the server's totals alone: one
  * item is asked for and none is decrypted. Under the items key, so saving or
  * trashing an item recounts.

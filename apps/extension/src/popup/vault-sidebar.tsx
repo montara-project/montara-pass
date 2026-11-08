@@ -47,6 +47,7 @@ import {
   LockIcon,
   LogOutIcon,
   SettingsIcon,
+  ShareIcon,
   ShieldIcon,
   ShieldOutlineIcon,
   SortIcon,
@@ -54,7 +55,7 @@ import {
 import { UpdateButton } from './update-button'
 
 type Icon = typeof KeyIcon
-export type Tool = 'generator' | 'health' | 'activity' | 'billing'
+export type Tool = 'generator' | 'health' | 'activity' | 'billing' | 'sharing'
 
 // group is what the breadcrumb names above the page. Security is the
 // account's record of sign-ins and item changes.
@@ -64,11 +65,14 @@ const TOOLS: { value: Tool; label: string; group: string; icon: Icon }[] = [
   { value: 'activity', label: 'Security', group: 'Account', icon: ShieldIcon },
 ]
 
-// In the account menu. Billing is the Cloud Edition's only: the Community
-// Edition takes no payments.
+// In the account menu. Sharing and billing are the Cloud Edition's only: the
+// Community Edition has one user and takes no payments.
 const MENU_TOOLS: { value: Tool; label: string; group: string; icon: Icon }[] = COMMUNITY
   ? []
-  : [{ value: 'billing', label: 'Billing', group: 'Account', icon: CreditCardIcon }]
+  : [
+      { value: 'sharing', label: 'Manage sharing', group: 'Vault', icon: ShareIcon },
+      { value: 'billing', label: 'Billing', group: 'Account', icon: CreditCardIcon },
+    ]
 
 interface VaultSidebarProps<F extends string> {
   filters: { value: F; label: string; icon: Icon; count: number }[]

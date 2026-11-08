@@ -54,6 +54,7 @@ import ItemForm from './item-form'
 import PasswordGenerator from './password-generator'
 import PasswordHealth from './password-health'
 import ShareItem from './share-item'
+import Sharing from './sharing'
 
 interface FullVaultProps {
   keys: VaultKeys
@@ -178,6 +179,22 @@ export default function FullVault({
               <PasswordGenerator onNotice={setNotice} />
             ) : tool === 'billing' ? (
               <Billing onSignedOut={onSignedOut} />
+            ) : tool === 'sharing' ? (
+              <Sharing
+                items={items}
+                meEmail={user?.email}
+                onSignedOut={onSignedOut}
+                onManage={(id) => {
+                  setTool(null)
+                  setPane({ mode: 'share', id })
+                }}
+                onOpen={(id) => {
+                  setTool(null)
+                  setFilter('all')
+                  setSearch('')
+                  setPane({ mode: 'view', id })
+                }}
+              />
             ) : tool === 'activity' ? (
               <Security
                 items={items}

@@ -3,6 +3,7 @@ import {
   type ChangeMasterPasswordFormDto,
 } from '@montara-pass/shared/api/dtos/vault/schema'
 import { changeMasterPassword } from '@montara-pass/shared/crypto/vault'
+import { IconAlertTriangle } from '@tabler/icons-react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -12,6 +13,8 @@ import { useAppForm } from '@/hooks/form'
 import { toastApiError } from '@/lib/api/api-error'
 import { parseDto } from '@/lib/api/dtos/parse'
 import { queries } from '@/lib/api/queries'
+
+import { MONO_NOTE } from '../security/section'
 
 /**
  * Change the master password. Only the vault key is re-wrapped: every item,
@@ -55,13 +58,12 @@ export default function ChangeMasterPasswordForm() {
   })
 
   return (
-    <section aria-labelledby="master-password" className="flex flex-col gap-2">
-      {/* A section's name is a label for its card, quieter than what is in it. */}
-      <h2 id="master-password" className="text-muted-foreground pl-1 text-[13px] font-semibold">
+    <section aria-labelledby="master-password" className="flex flex-col gap-2.5">
+      <h2 id="master-password" className={MONO_NOTE}>
         Master password
       </h2>
       <form
-        className="rounded-card flex flex-col gap-4 border p-5"
+        className="rounded-card bg-panel flex flex-col gap-4 border p-4"
         noValidate
         onSubmit={(e) => {
           e.preventDefault()
@@ -69,7 +71,7 @@ export default function ChangeMasterPasswordForm() {
         }}
       >
         <p className="text-muted-foreground text-[13px]">
-          Separate from your account password, and never sent to the server. If you forget it, your
+          Separate from your account password, never sent to the server. If you forget it, your
           vault cannot be recovered.
         </p>
 
@@ -105,8 +107,24 @@ export default function ChangeMasterPasswordForm() {
           )}
         />
 
-        <div>
-          <Button type="submit" disabled={isLoading || !userKeys}>
+        {/* Only the vault key is wrapped again, so the items stay as they are. */}
+        <p className="bg-warn/10 text-warn flex items-start gap-2 rounded-md px-3 py-2.5 text-xs">
+          <IconAlertTriangle className="mt-px size-3.5 shrink-0" aria-hidden />
+          Other devices ask for the new master password the next time they unlock.
+        </p>
+
+        <div className="flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="border"
+            disabled={isLoading}
+            onClick={() => form.reset()}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" size="sm" disabled={isLoading || !userKeys}>
             {isLoading ? 'Changing…' : 'Change master password'}
           </Button>
         </div>

@@ -3668,3 +3668,57 @@ textarea,
     display: block;
   }
 }
+
+/* Manage sharing: who can open each shared item, as initials, and your role in it. */
+.share-sub {
+  text-transform: none;
+}
+
+.share-people {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.share-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: var(--hover);
+  box-shadow: 0 0 0 2px var(--panel);
+  color: var(--fg);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.share-avatar:first-child {
+  margin-left: 0;
+}
+
+.share-avatar.owner {
+  background: var(--avatar);
+  color: var(--avatar-fg);
+}
+
+.share-role {
+  width: 60px;
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--focus) 15%, transparent);
+  color: var(--focus);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.share-role.owner {
+  background: color-mix(in srgb, var(--good) 15%, transparent);
+  color: var(--good);
+}

@@ -55,6 +55,11 @@ export interface Item {
   last_used_at?: ISO8601DateString | null
 }
 
+/** A shared item with everyone who can open it (GET /api/v1/sharing). */
+export interface SharedItem extends Item {
+  members: ItemMember[]
+}
+
 export interface ItemMember {
   user_id: string
   name: string

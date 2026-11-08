@@ -20,6 +20,7 @@ import { Route as appGeneratorIndexRouteImport } from './routes/(app)/generator/
 import { Route as appHealthIndexRouteImport } from './routes/(app)/health/index'
 import { Route as appProfileIndexRouteImport } from './routes/(app)/profile/index'
 import { Route as appSecurityIndexRouteImport } from './routes/(app)/security/index'
+import { Route as appSharingIndexRouteImport } from './routes/(app)/sharing/index'
 import { Route as appTrashIndexRouteImport } from './routes/(app)/trash/index'
 import { Route as appVaultIndexRouteImport } from './routes/(app)/vault/index'
 import { Route as authForgotPasswordIndexRouteImport } from './routes/(auth)/forgot-password/index'
@@ -81,6 +82,11 @@ const appSecurityIndexRoute = appSecurityIndexRouteImport.update({
   path: '/security/',
   getParentRoute: () => appRouteRoute,
 } as any)
+const appSharingIndexRoute = appSharingIndexRouteImport.update({
+  id: '/sharing/',
+  path: '/sharing/',
+  getParentRoute: () => appRouteRoute,
+} as any)
 const appTrashIndexRoute = appTrashIndexRouteImport.update({
   id: '/trash/',
   path: '/trash/',
@@ -128,6 +134,7 @@ export interface FileRoutesByFullPath {
   '/health/': typeof appHealthIndexRoute
   '/profile/': typeof appProfileIndexRoute
   '/security/': typeof appSecurityIndexRoute
+  '/sharing/': typeof appSharingIndexRoute
   '/trash/': typeof appTrashIndexRoute
   '/vault/': typeof appVaultIndexRoute
   '/forgot-password/': typeof authForgotPasswordIndexRoute
@@ -146,6 +153,7 @@ export interface FileRoutesByTo {
   '/health': typeof appHealthIndexRoute
   '/profile': typeof appProfileIndexRoute
   '/security': typeof appSecurityIndexRoute
+  '/sharing': typeof appSharingIndexRoute
   '/trash': typeof appTrashIndexRoute
   '/vault': typeof appVaultIndexRoute
   '/forgot-password': typeof authForgotPasswordIndexRoute
@@ -167,6 +175,7 @@ export interface FileRoutesById {
   '/(app)/health/': typeof appHealthIndexRoute
   '/(app)/profile/': typeof appProfileIndexRoute
   '/(app)/security/': typeof appSecurityIndexRoute
+  '/(app)/sharing/': typeof appSharingIndexRoute
   '/(app)/trash/': typeof appTrashIndexRoute
   '/(app)/vault/': typeof appVaultIndexRoute
   '/(auth)/forgot-password/': typeof authForgotPasswordIndexRoute
@@ -187,6 +196,7 @@ export interface FileRouteTypes {
     | '/health/'
     | '/profile/'
     | '/security/'
+    | '/sharing/'
     | '/trash/'
     | '/vault/'
     | '/forgot-password/'
@@ -205,6 +215,7 @@ export interface FileRouteTypes {
     | '/health'
     | '/profile'
     | '/security'
+    | '/sharing'
     | '/trash'
     | '/vault'
     | '/forgot-password'
@@ -225,6 +236,7 @@ export interface FileRouteTypes {
     | '/(app)/health/'
     | '/(app)/profile/'
     | '/(app)/security/'
+    | '/(app)/sharing/'
     | '/(app)/trash/'
     | '/(app)/vault/'
     | '/(auth)/forgot-password/'
@@ -320,6 +332,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appSecurityIndexRouteImport
       parentRoute: typeof appRouteRoute
     }
+    '/(app)/sharing/': {
+      id: '/(app)/sharing/'
+      path: '/sharing'
+      fullPath: '/sharing/'
+      preLoaderRoute: typeof appSharingIndexRouteImport
+      parentRoute: typeof appRouteRoute
+    }
     '/(app)/trash/': {
       id: '/(app)/trash/'
       path: '/trash'
@@ -380,6 +399,7 @@ interface appRouteRouteChildren {
   appHealthIndexRoute: typeof appHealthIndexRoute
   appProfileIndexRoute: typeof appProfileIndexRoute
   appSecurityIndexRoute: typeof appSecurityIndexRoute
+  appSharingIndexRoute: typeof appSharingIndexRoute
   appTrashIndexRoute: typeof appTrashIndexRoute
   appVaultIndexRoute: typeof appVaultIndexRoute
   appSettingsIpBlocksIndexRoute: typeof appSettingsIpBlocksIndexRoute
@@ -393,6 +413,7 @@ const appRouteRouteChildren: appRouteRouteChildren = {
   appHealthIndexRoute: appHealthIndexRoute,
   appProfileIndexRoute: appProfileIndexRoute,
   appSecurityIndexRoute: appSecurityIndexRoute,
+  appSharingIndexRoute: appSharingIndexRoute,
   appTrashIndexRoute: appTrashIndexRoute,
   appVaultIndexRoute: appVaultIndexRoute,
   appSettingsIpBlocksIndexRoute: appSettingsIpBlocksIndexRoute,

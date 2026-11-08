@@ -17,6 +17,7 @@ export namespace Models {
   export type Item = import('./vault').Item
   export type ItemRole = import('./vault').ItemRole
   export type ItemMember = import('./vault').ItemMember
+  export type SharedItem = import('./vault').SharedItem
   export type Plan = import('./billing').Plan
   export type Subscription = import('./billing').Subscription
   export type Purchase = import('./billing').Purchase

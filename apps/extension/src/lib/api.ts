@@ -390,6 +390,11 @@ export async function updateItem(id: string, body: ItemUpdateRequest): Promise<M
   return res.data
 }
 
+/** Every shared item, either way, with everyone who can open it (Cloud Edition). */
+export async function listShared(): Promise<Models.SharedItem[]> {
+  return (await request<Envelope<Models.SharedItem[]>>('/api/v1/sharing')).data
+}
+
 /** The devices signed in to the account, the most recently active first. */
 export async function listSessions(): Promise<Models.Device[]> {
   return (await request<Envelope<Models.Device[]>>('/api/v1/sessions')).data
