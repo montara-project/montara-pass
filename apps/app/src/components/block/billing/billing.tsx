@@ -102,7 +102,7 @@ export default function BillingBlock() {
 
   return (
     <div className="mx-auto flex max-w-[1040px] flex-col">
-      <header className="border-border/60 flex flex-wrap items-center gap-x-4 gap-y-3 border-b px-5 pt-[22px] pb-[18px] sm:px-8">
+      <header className="border-border/60 flex flex-col items-start gap-x-4 gap-y-3 border-b px-5 pt-[22px] pb-[18px] sm:flex-row sm:flex-wrap sm:items-center sm:px-8">
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <p className={label}>Account · Billing</p>
           <h1 className="text-[22px] font-semibold tracking-[-0.01em]">Billing</h1>
@@ -361,7 +361,7 @@ export default function BillingBlock() {
               {purchases.map((purchase) => (
                 <li
                   key={purchase.id}
-                  className="flex min-h-[48px] items-center justify-between gap-4 px-4 py-3"
+                  className="flex min-h-[48px] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3"
                 >
                   <span className="text-[13px] font-medium">{planName(purchase.plan)}</span>
                   <span className="text-muted-foreground font-mono text-xs tabular-nums">
