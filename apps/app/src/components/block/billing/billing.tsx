@@ -1,3 +1,5 @@
+import type { Models } from '@montara-pass/shared/api/models'
+
 import { formatDate } from '@montara-pass/shared/date'
 import { formatPrice } from '@montara-pass/shared/money'
 import {
@@ -59,6 +61,14 @@ const CURRENCIES = ['USD', 'IDR'] as const
  * subscription renews by itself; an IDR one is paid a period at a time and
  * renewed by subscribing again.
  */
+/** When an active subscription's period ends, and whether it renews then. */
+function periodNote(subscription: Models.Subscription): string {
+  const end = formatDate(subscription.current_period_end)
+  // BorderPay charges once: its subscriptions end, never renew.
+  const ends = Boolean(subscription.canceled_at) || subscription.plan.provider === 'borderpay'
+  return ends ? `, ends ${end}` : `, renews ${end}`
+}
+
 export default function BillingBlock() {
   const {
     plan: chosen,
@@ -85,8 +95,8 @@ export default function BillingBlock() {
   // for is priced in, else USD.
   const region = plans.data?.region
   const chosenPlan = plans.data?.plans.find((plan) => plan.code === chosen)
-  const currency =
-    region ?? (asked === 'USD' || asked === 'IDR' ? asked : (chosenPlan?.currency ?? 'USD'))
+  const askedCurrency = asked === 'USD' || asked === 'IDR' ? asked : undefined
+  const currency = region ?? askedCurrency ?? chosenPlan?.currency ?? 'USD'
   const onOffer = plans.data?.plans.filter((plan) => plan.currency === currency) ?? []
   // The plan marked out: the one the website sent the user here for, when it
   // is of this tab, or else the yearly one.
@@ -99,6 +109,144 @@ export default function BillingBlock() {
   const priced = currency === 'IDR' ? 'IDR' : 'USD'
   const gateway = GATEWAY[priced]
   const QrOrCard = currency === 'IDR' ? IconQrcode : IconCreditCard
+
+  // The plans: loading, none on offer, or the cards.
+  const renderPlans = () => {
+    if (plans.isLoading) {
+      return <Skeleton className="rounded-card h-52 w-full" />
+    }
+    if (!onOffer.length) {
+      return <p className="text-muted-foreground text-[13px]">No plans are on offer yet.</p>
+    }
+    return (
+      <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2 lg:grid-cols-3">
+        {onOffer.map((plan) => {
+          const purchase = plan.billing === 'one_time' ? ownedPurchase(purchases, plan) : undefined
+          // One subscription at a time; another once this one has ended.
+          const subscribed = plan.billing === 'recurring' && subscription !== null
+          const marked = plan.id === featured?.id
+          const saving = planSaving(plan, onOffer)
+          const offer = planOffer(plan, formatPrice(plan.amount, plan.currency))
+          // What the plan offers: owned already, a payment to finish, or the way to buy.
+          const renderAction = () => {
+            if (purchase?.status === 'paid') {
+              return (
+                <span className="text-muted-foreground mt-auto text-[13px]">You own this.</span>
+              )
+            }
+            if (purchase?.checkout_url) {
+              return (
+                <Button asChild size="sm" className="mt-auto w-full">
+                  <a href={purchase.checkout_url}>Continue payment</a>
+                </Button>
+              )
+            }
+            const recurring = plan.billing === 'recurring'
+            return (
+              <Button
+                size="sm"
+                className={cn('mt-auto w-full', !marked && 'border')}
+                variant={marked ? 'primary' : 'secondary'}
+                disabled={busy || subscribed || overview.isLoading}
+                onClick={() => (recurring ? subscribe : buy).mutate(plan.id)}
+              >
+                {recurring ? 'Subscribe' : 'Buy once'}
+              </Button>
+            )
+          }
+
+          return (
+            <li
+              key={plan.id}
+              className={cn(
+                'rounded-card bg-panel flex flex-col overflow-hidden border',
+                // The featured plan: marked on the edge, in the one token
+                // that holds 3:1 on a card in both themes (--focus:
+                // Electric Blue on light, Arctic Cyan on dark).
+                marked && 'border-focus'
+              )}
+            >
+              <div className="border-border/60 flex items-center justify-between gap-2 border-b px-4 py-3">
+                <span className="text-[13px] font-semibold">{planName(plan)}</span>
+                <span className="flex items-center gap-1.5 whitespace-nowrap">
+                  {saving && saving.percent >= 1 && (
+                    <span
+                      className={cn(
+                        'rounded-sm border px-1.5 py-0.5 font-mono text-[10px] font-medium tabular-nums',
+                        marked ? 'bg-good/15 text-good border-transparent' : 'text-muted-foreground'
+                      )}
+                    >
+                      <span className="sr-only">Save </span>−{saving.percent}%
+                    </span>
+                  )}
+                  {isSandbox(plan) && (
+                    <span className="text-muted-foreground rounded-sm border px-1.5 py-0.5 font-mono text-[10px]">
+                      sandbox
+                    </span>
+                  )}
+                </span>
+              </div>
+              <div className="flex flex-1 flex-col gap-2 p-4">
+                {saving && (
+                  <p className={cn(label, 'tabular-nums')}>
+                    Was{' '}
+                    <s className="decoration-muted-foreground/70 normal-case">
+                      {formatPrice(saving.was, plan.currency)}
+                    </s>
+                  </p>
+                )}
+                <p className="flex flex-wrap items-baseline gap-x-2 font-mono tabular-nums">
+                  <span className="text-[26px] leading-none font-semibold tracking-[-0.01em]">
+                    {formatPrice(saving?.amount ?? plan.amount, plan.currency)}
+                  </span>
+                  <span className="text-muted-foreground text-xs">{planPeriod(plan)}</span>
+                </p>
+                {offer && <p className="font-mono text-xs">{offer}</p>}
+                <p className="text-muted-foreground mb-4 text-xs first-letter:uppercase">
+                  {planTerms(plan)}
+                </p>
+                {renderAction()}
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    )
+  }
+
+  // Beside the subscription: finish a payment, manage it, or the free tier mark.
+  const renderSubscriptionAction = () => {
+    if (subscription?.checkout_url) {
+      return (
+        <Button asChild size="sm">
+          <a href={subscription.checkout_url}>Continue payment</a>
+        </Button>
+      )
+    }
+    if (subscription) {
+      // BorderPay renews nothing by itself and has no portal: an IDR
+      // subscription is renewed by subscribing again.
+      const manageable =
+        subscription.status === 'active' && subscription.plan.provider !== 'borderpay'
+      if (!manageable) return null
+      return (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={portal.isPending}
+          onClick={() => portal.mutate()}
+        >
+          Manage subscription
+        </Button>
+      )
+    }
+    if (lifetime) return null
+    return (
+      <span className="bg-good/15 text-good rounded-sm px-2 py-1 font-mono text-[10px] font-medium tracking-[0.08em] uppercase">
+        Free tier
+      </span>
+    )
+  }
 
   return (
     <div className="mx-auto flex max-w-[1040px] flex-col">
@@ -142,11 +290,7 @@ export default function BillingBlock() {
                       <span className="text-[13px] font-medium">{planName(subscription.plan)}</span>
                       <span className="text-muted-foreground text-xs">
                         {BILLING_STATUS[subscription.status]}
-                        {subscription.status === 'active' &&
-                          // BorderPay charges once: its subscriptions end, never renew.
-                          (subscription.canceled_at || subscription.plan.provider === 'borderpay'
-                            ? `, ends ${formatDate(subscription.current_period_end)}`
-                            : `, renews ${formatDate(subscription.current_period_end)}`)}
+                        {subscription.status === 'active' && periodNote(subscription)}
                       </span>
                     </>
                   ) : (
@@ -160,31 +304,7 @@ export default function BillingBlock() {
                     </>
                   )}
                 </div>
-                {subscription?.checkout_url ? (
-                  <Button asChild size="sm">
-                    <a href={subscription.checkout_url}>Continue payment</a>
-                  </Button>
-                ) : subscription ? (
-                  subscription.status === 'active' &&
-                  subscription.plan.provider !== 'borderpay' && (
-                    // BorderPay renews nothing by itself and has no portal: an
-                    // IDR subscription is renewed by subscribing again.
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={portal.isPending}
-                      onClick={() => portal.mutate()}
-                    >
-                      Manage subscription
-                    </Button>
-                  )
-                ) : (
-                  !lifetime && (
-                    <span className="bg-good/15 text-good rounded-sm px-2 py-1 font-mono text-[10px] font-medium tracking-[0.08em] uppercase">
-                      Free tier
-                    </span>
-                  )
-                )}
+                {renderSubscriptionAction()}
               </>
             )}
           </div>
@@ -224,101 +344,7 @@ export default function BillingBlock() {
               </div>
             )}
           </div>
-          {plans.isLoading ? (
-            <Skeleton className="rounded-card h-52 w-full" />
-          ) : !onOffer.length ? (
-            <p className="text-muted-foreground text-[13px]">No plans are on offer yet.</p>
-          ) : (
-            <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2 lg:grid-cols-3">
-              {onOffer.map((plan) => {
-                const purchase =
-                  plan.billing === 'one_time' ? ownedPurchase(purchases, plan) : undefined
-                // One subscription at a time; another once this one has ended.
-                const subscribed = plan.billing === 'recurring' && subscription !== null
-                const marked = plan.id === featured?.id
-                const saving = planSaving(plan, onOffer)
-                const offer = planOffer(plan, formatPrice(plan.amount, plan.currency))
-                return (
-                  <li
-                    key={plan.id}
-                    className={cn(
-                      'rounded-card bg-panel flex flex-col overflow-hidden border',
-                      // The featured plan: marked on the edge, in the one token
-                      // that holds 3:1 on a card in both themes (--focus:
-                      // Electric Blue on light, Arctic Cyan on dark).
-                      marked && 'border-focus'
-                    )}
-                  >
-                    <div className="border-border/60 flex items-center justify-between gap-2 border-b px-4 py-3">
-                      <span className="text-[13px] font-semibold">{planName(plan)}</span>
-                      <span className="flex items-center gap-1.5 whitespace-nowrap">
-                        {saving && saving.percent >= 1 && (
-                          <span
-                            className={cn(
-                              'rounded-sm border px-1.5 py-0.5 font-mono text-[10px] font-medium tabular-nums',
-                              marked
-                                ? 'bg-good/15 text-good border-transparent'
-                                : 'text-muted-foreground'
-                            )}
-                          >
-                            <span className="sr-only">Save </span>−{saving.percent}%
-                          </span>
-                        )}
-                        {isSandbox(plan) && (
-                          <span className="text-muted-foreground rounded-sm border px-1.5 py-0.5 font-mono text-[10px]">
-                            sandbox
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex flex-1 flex-col gap-2 p-4">
-                      {saving && (
-                        <p className={cn(label, 'tabular-nums')}>
-                          Was{' '}
-                          <s className="decoration-muted-foreground/70 normal-case">
-                            {formatPrice(saving.was, plan.currency)}
-                          </s>
-                        </p>
-                      )}
-                      <p className="flex flex-wrap items-baseline gap-x-2 font-mono tabular-nums">
-                        <span className="text-[26px] leading-none font-semibold tracking-[-0.01em]">
-                          {formatPrice(saving?.amount ?? plan.amount, plan.currency)}
-                        </span>
-                        <span className="text-muted-foreground text-xs">{planPeriod(plan)}</span>
-                      </p>
-                      {offer && <p className="font-mono text-xs">{offer}</p>}
-                      <p className="text-muted-foreground mb-4 text-xs first-letter:uppercase">
-                        {planTerms(plan)}
-                      </p>
-                      {purchase?.status === 'paid' ? (
-                        <span className="text-muted-foreground mt-auto text-[13px]">
-                          You own this.
-                        </span>
-                      ) : purchase?.checkout_url ? (
-                        <Button asChild size="sm" className="mt-auto w-full">
-                          <a href={purchase.checkout_url}>Continue payment</a>
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          className={cn('mt-auto w-full', !marked && 'border')}
-                          variant={marked ? 'primary' : 'secondary'}
-                          disabled={busy || subscribed || overview.isLoading}
-                          onClick={() =>
-                            plan.billing === 'recurring'
-                              ? subscribe.mutate(plan.id)
-                              : buy.mutate(plan.id)
-                          }
-                        >
-                          {plan.billing === 'recurring' ? 'Subscribe' : 'Buy once'}
-                        </Button>
-                      )}
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
+          {renderPlans()}
         </section>
 
         <div className="grid items-start gap-x-12 gap-y-6 sm:grid-cols-2">

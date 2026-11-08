@@ -127,6 +127,66 @@ export default function Vault() {
   ]
   const typeOptions = [{ label: 'All types', value: ALL }, ...ItemTypeOptions]
 
+  // The rows' place: loading, the error, an empty list, or the items.
+  const renderRows = () => {
+    if (isLoading) {
+      return (
+        <ul className="m-0 list-none p-0" aria-hidden="true">
+          {Array.from({ length: 8 }, (_, index) => (
+            <li key={index} className="flex items-center gap-3 px-6 py-[11px]">
+              <Skeleton className="size-8 rounded-md" />
+              <span className="flex flex-1 flex-col gap-1.5">
+                <Skeleton className="h-3.5 w-40 max-w-full" />
+                <Skeleton className="h-3 w-28 max-w-full" />
+              </span>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+    if (isError) {
+      return (
+        <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
+          <p role="alert" className="text-danger text-[13px] whitespace-pre-line">
+            {apiErrorMessage(error)}
+          </p>
+          <Button variant="outline" size="sm" onClick={() => void refetch()}>
+            Try again
+          </Button>
+        </div>
+      )
+    }
+    if (items.length === 0) {
+      return (
+        // The list has its own edge, so what stands in for it has none.
+        <EmptyState
+          framed={false}
+          icon={filtered ? IconFilterOff : IconLock}
+          title={filtered ? 'No items match these filters' : 'Your vault is empty'}
+          description={
+            filtered
+              ? 'Change the search, the folder or the type above to see more.'
+              : 'Add your first login or secure note with New item.'
+          }
+        />
+      )
+    }
+    return (
+      <ul className="fade-in divide-border/60 m-0 list-none divide-y border-b border-border/60 p-0">
+        {items.map((item) => (
+          <li key={item.id}>
+            <ItemRow
+              item={item}
+              folders={folderList}
+              selected={item.id === selectedId}
+              onSelect={() => setUrl({ item: item.id })}
+            />
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
   return (
     <div className="@container/vault h-full">
       <div className="grid h-full grid-cols-[minmax(300px,1fr)_minmax(360px,600px)] @max-[760px]/vault:grid-cols-1">
@@ -208,53 +268,7 @@ export default function Vault() {
             </div>
 
             <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-              {isLoading ? (
-                <ul className="m-0 list-none p-0" aria-hidden="true">
-                  {Array.from({ length: 8 }, (_, index) => (
-                    <li key={index} className="flex items-center gap-3 px-6 py-[11px]">
-                      <Skeleton className="size-8 rounded-md" />
-                      <span className="flex flex-1 flex-col gap-1.5">
-                        <Skeleton className="h-3.5 w-40 max-w-full" />
-                        <Skeleton className="h-3 w-28 max-w-full" />
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              ) : isError ? (
-                <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
-                  <p role="alert" className="text-danger text-[13px] whitespace-pre-line">
-                    {apiErrorMessage(error)}
-                  </p>
-                  <Button variant="outline" size="sm" onClick={() => void refetch()}>
-                    Try again
-                  </Button>
-                </div>
-              ) : items.length === 0 ? (
-                // The list has its own edge, so what stands in for it has none.
-                <EmptyState
-                  framed={false}
-                  icon={filtered ? IconFilterOff : IconLock}
-                  title={filtered ? 'No items match these filters' : 'Your vault is empty'}
-                  description={
-                    filtered
-                      ? 'Change the search, the folder or the type above to see more.'
-                      : 'Add your first login or secure note with New item.'
-                  }
-                />
-              ) : (
-                <ul className="fade-in divide-border/60 m-0 list-none divide-y border-b border-border/60 p-0">
-                  {items.map((item) => (
-                    <li key={item.id}>
-                      <ItemRow
-                        item={item}
-                        folders={folderList}
-                        selected={item.id === selectedId}
-                        onSelect={() => setUrl({ item: item.id })}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              )}
+              {renderRows()}
               {more && !isLoading && !isError && (
                 <div
                   ref={moreRef}

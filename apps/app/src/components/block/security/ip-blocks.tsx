@@ -88,6 +88,140 @@ export default function IpBlocks() {
     }
   }
 
+  // The list's place: loading, the error, nothing blocked, or the blocks.
+  // Failed with nothing from before to show.
+  const unreadable = isError && blocks.length === 0
+  const renderList = () => {
+    if (isLoading) {
+      return <Skeleton className="rounded-card h-40" aria-hidden="true" />
+    }
+    if (unreadable) {
+      return (
+        <p role="alert" className="text-danger text-[13px]">
+          The IP blocks could not be read. Reload the page to try again.
+        </p>
+      )
+    }
+    if (blocks.length === 0) {
+      return (
+        <div className="rounded-card bg-panel fade-in flex flex-col items-center gap-3 border px-6 py-11 text-center">
+          <span className="bg-background text-good inline-flex size-11 items-center justify-center rounded-xl border">
+            <IconShieldCheck className="size-5" aria-hidden />
+          </span>
+          <p className="text-[15px] font-semibold">
+            {statusFilter ? `No ${statusFilter} block` : 'No IP is blocked'}
+          </p>
+          <p className="text-muted-foreground max-w-[48ch] text-[13px] text-balance">
+            An IP that fails too many requests is blocked on its own and shows up here; you can also
+            block one by hand.
+          </p>
+          <Button size="sm" className="mt-1" onClick={() => setOpenBlock(true)}>
+            <IconForbid />
+            Block IP
+          </Button>
+        </div>
+      )
+    }
+    return (
+      // The middle columns go when the page is too narrow to hold them.
+      <div className="rounded-card bg-panel fade-in @container/blocks overflow-hidden border">
+        <div
+          className={cn(
+            COLUMNS,
+            MONO_NOTE,
+            'border-border/60 border-b px-4 py-2.5 @max-[720px]/blocks:grid-cols-[minmax(0,1fr)_auto_88px]'
+          )}
+        >
+          <span>IP</span>
+          <span className="@max-[720px]/blocks:hidden">Source</span>
+          <span className="@max-[720px]/blocks:hidden">Reason</span>
+          <span>Status</span>
+          <span className="@max-[720px]/blocks:hidden">Blocked</span>
+          <span className="@max-[720px]/blocks:hidden">Until</span>
+          <span>Action</span>
+        </div>
+        <ul className="divide-border/60 m-0 list-none divide-y p-0">
+          {blocks.map((block) => (
+            <li
+              key={block.id}
+              className={cn(
+                COLUMNS,
+                'items-center px-4 py-3 text-[13px] @max-[720px]/blocks:grid-cols-[minmax(0,1fr)_auto_88px]'
+              )}
+            >
+              <span className="flex min-w-0 flex-col">
+                <span className="truncate font-mono text-[13px] font-medium">{block.ip}</span>
+                <span className={cn(MONO_NOTE, 'normal-case')}>{ipKind(block.ip)}</span>
+              </span>
+              <span className="@max-[720px]/blocks:hidden">{block.source}</span>
+              <span className="text-muted-foreground truncate @max-[720px]/blocks:hidden">
+                {block.reason ?? '—'}
+              </span>
+              <span>
+                <span
+                  className={cn(
+                    'inline-flex rounded-sm px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-[0.08em] uppercase',
+                    block.status === 'active'
+                      ? 'bg-warn/15 text-warn'
+                      : 'text-muted-foreground border'
+                  )}
+                >
+                  {block.status === 'active' ? 'Blocked' : block.status}
+                </span>
+              </span>
+              <span className="font-mono text-xs tabular-nums @max-[720px]/blocks:hidden">
+                {formatDateTime(block.created_at)}
+              </span>
+              <span className="font-mono text-xs tabular-nums @max-[720px]/blocks:hidden">
+                {block.blocked_until ? formatDateTime(block.blocked_until) : 'forever'}
+              </span>
+              <span>
+                {/* Only a live block has anything to lift. */}
+                {block.status === 'active' && (
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    className="w-full"
+                    disabled={unblock.isPending}
+                    onClick={() => setLifting(block)}
+                  >
+                    Unblock
+                  </Button>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <footer className="border-border/60 flex items-center gap-2 border-t px-4 py-2.5">
+          <span className={cn(MONO_NOTE, 'flex-1 tabular-nums')}>
+            {offset + 1}–{Math.min(offset + blocks.length, total)} of {total}
+          </span>
+          <Button
+            variant="ghost"
+            size="xs"
+            className="h-7 px-2 font-mono text-[10px] tracking-[0.08em] uppercase"
+            disabled={pageIndex <= 0}
+            onClick={() => search({ page: pageIndex - 1 || undefined })}
+          >
+            Prev
+          </Button>
+          <span className="bg-background inline-flex size-6 items-center justify-center rounded-sm border font-mono text-[11px] tabular-nums">
+            {pageIndex + 1}
+          </span>
+          <Button
+            variant="ghost"
+            size="xs"
+            className="h-7 px-2 font-mono text-[10px] tracking-[0.08em] uppercase"
+            disabled={pageIndex >= pages - 1}
+            onClick={() => search({ page: pageIndex + 1 })}
+          >
+            Next
+          </Button>
+        </footer>
+      </div>
+    )
+  }
+
   return (
     <div className="mx-auto flex max-w-[1040px] flex-col">
       <header className="border-border/60 flex flex-wrap items-center gap-x-4 gap-y-3 border-b px-5 pt-[22px] pb-[18px] sm:px-8">
@@ -125,129 +259,7 @@ export default function IpBlocks() {
         </div>
       </header>
 
-      <div className="px-5 pt-5 pb-8 sm:px-8">
-        {isLoading ? (
-          <Skeleton className="rounded-card h-40" aria-hidden="true" />
-        ) : isError && blocks.length === 0 ? (
-          <p role="alert" className="text-danger text-[13px]">
-            The IP blocks could not be read. Reload the page to try again.
-          </p>
-        ) : blocks.length === 0 ? (
-          <div className="rounded-card bg-panel fade-in flex flex-col items-center gap-3 border px-6 py-11 text-center">
-            <span className="bg-background text-good inline-flex size-11 items-center justify-center rounded-xl border">
-              <IconShieldCheck className="size-5" aria-hidden />
-            </span>
-            <p className="text-[15px] font-semibold">
-              {statusFilter ? `No ${statusFilter} block` : 'No IP is blocked'}
-            </p>
-            <p className="text-muted-foreground max-w-[48ch] text-[13px] text-balance">
-              An IP that fails too many requests is blocked on its own and shows up here; you can
-              also block one by hand.
-            </p>
-            <Button size="sm" className="mt-1" onClick={() => setOpenBlock(true)}>
-              <IconForbid />
-              Block IP
-            </Button>
-          </div>
-        ) : (
-          // The middle columns go when the page is too narrow to hold them.
-          <div className="rounded-card bg-panel fade-in @container/blocks overflow-hidden border">
-            <div
-              className={cn(
-                COLUMNS,
-                MONO_NOTE,
-                'border-border/60 border-b px-4 py-2.5 @max-[720px]/blocks:grid-cols-[minmax(0,1fr)_auto_88px]'
-              )}
-            >
-              <span>IP</span>
-              <span className="@max-[720px]/blocks:hidden">Source</span>
-              <span className="@max-[720px]/blocks:hidden">Reason</span>
-              <span>Status</span>
-              <span className="@max-[720px]/blocks:hidden">Blocked</span>
-              <span className="@max-[720px]/blocks:hidden">Until</span>
-              <span>Action</span>
-            </div>
-            <ul className="divide-border/60 m-0 list-none divide-y p-0">
-              {blocks.map((block) => (
-                <li
-                  key={block.id}
-                  className={cn(
-                    COLUMNS,
-                    'items-center px-4 py-3 text-[13px] @max-[720px]/blocks:grid-cols-[minmax(0,1fr)_auto_88px]'
-                  )}
-                >
-                  <span className="flex min-w-0 flex-col">
-                    <span className="truncate font-mono text-[13px] font-medium">{block.ip}</span>
-                    <span className={cn(MONO_NOTE, 'normal-case')}>{ipKind(block.ip)}</span>
-                  </span>
-                  <span className="@max-[720px]/blocks:hidden">{block.source}</span>
-                  <span className="text-muted-foreground truncate @max-[720px]/blocks:hidden">
-                    {block.reason ?? '—'}
-                  </span>
-                  <span>
-                    <span
-                      className={cn(
-                        'inline-flex rounded-sm px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-[0.08em] uppercase',
-                        block.status === 'active'
-                          ? 'bg-warn/15 text-warn'
-                          : 'text-muted-foreground border'
-                      )}
-                    >
-                      {block.status === 'active' ? 'Blocked' : block.status}
-                    </span>
-                  </span>
-                  <span className="font-mono text-xs tabular-nums @max-[720px]/blocks:hidden">
-                    {formatDateTime(block.created_at)}
-                  </span>
-                  <span className="font-mono text-xs tabular-nums @max-[720px]/blocks:hidden">
-                    {block.blocked_until ? formatDateTime(block.blocked_until) : 'forever'}
-                  </span>
-                  <span>
-                    {/* Only a live block has anything to lift. */}
-                    {block.status === 'active' && (
-                      <Button
-                        variant="outline"
-                        size="xs"
-                        className="w-full"
-                        disabled={unblock.isPending}
-                        onClick={() => setLifting(block)}
-                      >
-                        Unblock
-                      </Button>
-                    )}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <footer className="border-border/60 flex items-center gap-2 border-t px-4 py-2.5">
-              <span className={cn(MONO_NOTE, 'flex-1 tabular-nums')}>
-                {offset + 1}–{Math.min(offset + blocks.length, total)} of {total}
-              </span>
-              <Button
-                variant="ghost"
-                size="xs"
-                className="h-7 px-2 font-mono text-[10px] tracking-[0.08em] uppercase"
-                disabled={pageIndex <= 0}
-                onClick={() => search({ page: pageIndex - 1 || undefined })}
-              >
-                Prev
-              </Button>
-              <span className="bg-background inline-flex size-6 items-center justify-center rounded-sm border font-mono text-[11px] tabular-nums">
-                {pageIndex + 1}
-              </span>
-              <Button
-                variant="ghost"
-                size="xs"
-                className="h-7 px-2 font-mono text-[10px] tracking-[0.08em] uppercase"
-                disabled={pageIndex >= pages - 1}
-                onClick={() => search({ page: pageIndex + 1 })}
-              >
-                Next
-              </Button>
-            </footer>
-          </div>
-        )}
-      </div>
+      <div className="px-5 pt-5 pb-8 sm:px-8">{renderList()}</div>
 
       <SimpleAlertDialog
         title={`Let ${lifting?.ip ?? 'this IP'} through?`}

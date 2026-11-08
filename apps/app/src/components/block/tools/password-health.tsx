@@ -111,6 +111,49 @@ function Section({
   )
 }
 
+/** The all-clear: nothing reused and nothing weak, or no login to check at all. */
+function AllHealthy({
+  checked,
+  scanning,
+  onScan,
+}: {
+  checked: number
+  scanning: boolean
+  onScan: () => void
+}) {
+  const nothingToCheck = checked === 0
+  return (
+    <div className="rounded-card bg-panel fade-in flex flex-col items-center gap-3 border px-6 py-11 text-center">
+      <span className="bg-background text-good inline-flex size-11 items-center justify-center rounded-xl border">
+        <IconShieldCheck className="size-5" aria-hidden />
+      </span>
+      <p className="text-[15px] font-semibold">
+        {nothingToCheck ? 'Nothing to check yet.' : 'Every login looks healthy.'}
+      </p>
+      <p className="text-muted-foreground max-w-[44ch] text-[13px] text-balance">
+        {nothingToCheck
+          ? 'No login in the vault has a password. Add one, and its strength shows here.'
+          : 'Nothing is reused and nothing is weak. Run the scan again after you add new logins.'}
+      </p>
+      <div className="mt-1 flex flex-wrap justify-center gap-2">
+        <Button size="sm" disabled={scanning} onClick={onScan}>
+          <IconRefresh className={cn(scanning && 'animate-spin motion-reduce:animate-none')} />
+          {scanning ? 'Scanning…' : 'Run scan'}
+        </Button>
+        <Button asChild variant="secondary" size="sm" className="border">
+          <Link to="/vault">
+            <IconLayoutGrid />
+            Open vault
+          </Link>
+        </Button>
+      </div>
+      <p className={cn(MONO_NOTE, 'mt-1')}>
+        Scanned {checked} {checked === 1 ? 'login' : 'logins'} · 0 findings
+      </p>
+    </div>
+  )
+}
+
 /** Splits the groups in two, each half about as tall as the other. */
 function halves(groups: VaultItem[][]): [VaultItem[][], VaultItem[][]] {
   const halfway = groups.reduce((sum, group) => sum + group.length + 1, 0) / 2
@@ -137,6 +180,56 @@ export default function PasswordHealth() {
   const findings = reusedCount + health.weak.length
   const [left, right] = halves(health.reused)
 
+  // The page's body: loading, the error, the all-clear, or the findings.
+  const renderBody = () => {
+    if (isLoading) return <Skeleton className="rounded-card h-[276px]" aria-hidden="true" />
+    if (isError) {
+      return (
+        <p role="alert" className="text-danger text-[13px]">
+          Could not load your vault. Reload the page to try again.
+        </p>
+      )
+    }
+    if (findings === 0) {
+      return (
+        <AllHealthy checked={health.checked} scanning={isFetching} onScan={() => void refetch()} />
+      )
+    }
+    // Reused takes two columns when there are groups enough for two, weak the third.
+    return (
+      <div className="fade-in grid items-start gap-5 lg:grid-cols-3">
+        {health.reused.length > 0 && (
+          <Section
+            title="Reused passwords"
+            description="If one site leaks the password, the others are open too."
+            className={cn(right.length > 0 && 'lg:col-span-2')}
+          >
+            <div className={cn('grid items-start gap-5', right.length > 0 && 'sm:grid-cols-2')}>
+              <ReusedCard groups={left} onOpen={setOpen} />
+              {right.length > 0 && <ReusedCard groups={right} onOpen={setOpen} />}
+            </div>
+          </Section>
+        )}
+
+        {health.weak.length > 0 && (
+          <Section
+            title="Weak passwords"
+            description="Short, or made of few kinds of characters, so quick to guess."
+          >
+            <ul className="rounded-card bg-panel divide-border/60 m-0 list-none divide-y overflow-hidden border p-0">
+              {health.weak.map((item) => (
+                <Row key={item.id} item={item} weak onOpen={() => setOpen(item)} />
+              ))}
+            </ul>
+            <p className={cn(MONO_NOTE, 'tabular-nums')}>
+              {health.weak.length} of {health.checked} logins · open one to fix it
+            </p>
+          </Section>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="mx-auto flex max-w-[1200px] flex-col">
       <header className="border-border/60 flex flex-wrap items-center gap-x-4 gap-y-3 border-b px-5 pt-[22px] pb-[18px] sm:px-8">
@@ -156,78 +249,7 @@ export default function PasswordHealth() {
         )}
       </header>
 
-      <div className="px-5 pt-5 pb-7 sm:px-8">
-        {isLoading ? (
-          <Skeleton className="rounded-card h-[276px]" aria-hidden="true" />
-        ) : isError ? (
-          <p role="alert" className="text-danger text-[13px]">
-            Could not load your vault. Reload the page to try again.
-          </p>
-        ) : findings === 0 ? (
-          <div className="rounded-card bg-panel fade-in flex flex-col items-center gap-3 border px-6 py-11 text-center">
-            <span className="bg-background text-good inline-flex size-11 items-center justify-center rounded-xl border">
-              <IconShieldCheck className="size-5" aria-hidden />
-            </span>
-            <p className="text-[15px] font-semibold">
-              {health.checked === 0 ? 'Nothing to check yet.' : 'Every login looks healthy.'}
-            </p>
-            <p className="text-muted-foreground max-w-[44ch] text-[13px] text-balance">
-              {health.checked === 0
-                ? 'No login in the vault has a password. Add one, and its strength shows here.'
-                : 'Nothing is reused and nothing is weak. Run the scan again after you add new logins.'}
-            </p>
-            <div className="mt-1 flex flex-wrap justify-center gap-2">
-              <Button size="sm" disabled={isFetching} onClick={() => void refetch()}>
-                <IconRefresh
-                  className={cn(isFetching && 'animate-spin motion-reduce:animate-none')}
-                />
-                {isFetching ? 'Scanning…' : 'Run scan'}
-              </Button>
-              <Button asChild variant="secondary" size="sm" className="border">
-                <Link to="/vault">
-                  <IconLayoutGrid />
-                  Open vault
-                </Link>
-              </Button>
-            </div>
-            <p className={cn(MONO_NOTE, 'mt-1')}>
-              Scanned {health.checked} {health.checked === 1 ? 'login' : 'logins'} · 0 findings
-            </p>
-          </div>
-        ) : (
-          // Reused takes two columns when there are groups enough for two, weak the third.
-          <div className="fade-in grid items-start gap-5 lg:grid-cols-3">
-            {health.reused.length > 0 && (
-              <Section
-                title="Reused passwords"
-                description="If one site leaks the password, the others are open too."
-                className={cn(right.length > 0 && 'lg:col-span-2')}
-              >
-                <div className={cn('grid items-start gap-5', right.length > 0 && 'sm:grid-cols-2')}>
-                  <ReusedCard groups={left} onOpen={setOpen} />
-                  {right.length > 0 && <ReusedCard groups={right} onOpen={setOpen} />}
-                </div>
-              </Section>
-            )}
-
-            {health.weak.length > 0 && (
-              <Section
-                title="Weak passwords"
-                description="Short, or made of few kinds of characters, so quick to guess."
-              >
-                <ul className="rounded-card bg-panel divide-border/60 m-0 list-none divide-y overflow-hidden border p-0">
-                  {health.weak.map((item) => (
-                    <Row key={item.id} item={item} weak onOpen={() => setOpen(item)} />
-                  ))}
-                </ul>
-                <p className={cn(MONO_NOTE, 'tabular-nums')}>
-                  {health.weak.length} of {health.checked} logins · open one to fix it
-                </p>
-              </Section>
-            )}
-          </div>
-        )}
-      </div>
+      <div className="px-5 pt-5 pb-7 sm:px-8">{renderBody()}</div>
 
       {open && (
         <EditItemForm

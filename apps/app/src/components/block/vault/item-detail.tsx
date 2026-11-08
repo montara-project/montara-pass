@@ -9,6 +9,7 @@ import {
 } from '@montara-pass/shared/constants/vault'
 import { cardEnding } from '@montara-pass/shared/crypto/vault'
 import { passwordStrength } from '@montara-pass/shared/password'
+import { sharingLabel } from '@montara-pass/shared/sharing'
 import { linkOf } from '@montara-pass/shared/url'
 import {
   IconArrowLeft,
@@ -267,13 +268,7 @@ export default function ItemDetail({ item, folders, onClose }: ItemDetailProps) 
   const updated = WHEN.format(new Date(item.updated_at))
   // The owner counts itself among the members.
   const others = members ? members.data.length - 1 : undefined
-  const sharing = !isOwner
-    ? 'Shared with you'
-    : COMMUNITY || others === 0
-      ? 'Not shared'
-      : others
-        ? `Shared with ${others}`
-        : null
+  const sharing = sharingLabel(isOwner, others)
 
   // The note's text, blurred until asked for when the note is marked hidden.
   const noteBody = (

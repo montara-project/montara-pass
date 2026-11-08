@@ -44,6 +44,31 @@ export default function FolderTable() {
 
   const columns = FolderColumn({ loading })
 
+  // Loading, no folders yet, or the table.
+  const renderTable = () => {
+    if (isLoading) {
+      return <RowsSkeleton />
+    }
+    if (folders.length === 0) {
+      return (
+        <EmptyState
+          icon={IconFolder}
+          title="No folders yet"
+          description="Create a folder to group the items in your vault."
+        />
+      )
+    }
+    return (
+      <ReactTable
+        columns={columns}
+        data={rows}
+        total={total}
+        pageIndex={pageIndex}
+        pageSize={limit}
+      />
+    )
+  }
+
   return (
     <SectionCard
       title="Folders"
@@ -55,23 +80,7 @@ export default function FolderTable() {
         </Button>
       }
     >
-      {isLoading ? (
-        <RowsSkeleton />
-      ) : folders.length === 0 ? (
-        <EmptyState
-          icon={IconFolder}
-          title="No folders yet"
-          description="Create a folder to group the items in your vault."
-        />
-      ) : (
-        <ReactTable
-          columns={columns}
-          data={rows}
-          total={total}
-          pageIndex={pageIndex}
-          pageSize={limit}
-        />
-      )}
+      {renderTable()}
 
       <AddFolderForm open={openAdd} onOpenChange={setOpenAdd} />
     </SectionCard>

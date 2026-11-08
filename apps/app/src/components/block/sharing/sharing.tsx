@@ -117,6 +117,160 @@ export default function Sharing() {
     return { people: ids.size, editors, viewers }
   }, [items, meId])
 
+  // The list's place: loading, the error, nothing shared yet, or the items.
+  const renderList = () => {
+    if (isLoading) return <Skeleton className="rounded-card h-32" aria-hidden="true" />
+    if (isError) {
+      return (
+        <p role="alert" className="text-danger text-[13px]">
+          The shared items could not be read. Reload the page to try again.
+        </p>
+      )
+    }
+    if (items.length === 0) {
+      return (
+        <div className="rounded-card bg-panel fade-in flex flex-col items-center gap-3 border px-6 py-11 text-center">
+          <span className="bg-background inline-flex size-11 items-center justify-center rounded-xl border">
+            <IconUsers className="size-5" aria-hidden />
+          </span>
+          <p className="text-[15px] font-semibold">Nothing is shared yet</p>
+          <p className="text-muted-foreground max-w-[44ch] text-[13px] text-balance">
+            Share an item with someone who has a vault, and it shows here with everyone who can open
+            it.
+          </p>
+          <Button size="sm" className="mt-1" onClick={() => setPicking(true)}>
+            <IconShare />
+            Share item
+          </Button>
+        </div>
+      )
+    }
+    return (
+      <div className="rounded-card bg-panel fade-in overflow-hidden border">
+        <ul className="divide-border/60 m-0 list-none divide-y p-0">
+          {items.map((item) => {
+            const owner = item.role === ITEM_ROLE_OWNER
+            return (
+              <li key={item.id} className="flex items-center gap-3 px-4 py-2.5">
+                <ItemTile item={item} />
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <span className="truncate text-[13px] font-medium">
+                    {item.secret?.name ?? 'Unable to decrypt'}
+                  </span>
+                  <span className={cn(MONO_NOTE, 'truncate normal-case')}>
+                    {item.secret ? itemSubtitle(item) : ''}
+                  </span>
+                </div>
+                <People members={item.members} />
+                {/* What you may do with it: yours, or the role it was shared with you in. */}
+                <span
+                  className={cn(
+                    'inline-flex w-[60px] justify-center rounded-sm px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-[0.08em] uppercase',
+                    owner ? 'bg-good/15 text-good' : 'bg-focus/15 text-focus'
+                  )}
+                >
+                  {item.role}
+                </span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      mode="icon"
+                      size="icon"
+                      className="size-7"
+                      aria-label={`More for ${item.secret?.name ?? 'this item'}`}
+                    >
+                      <IconDots />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="min-w-44">
+                    {owner && item.secret && (
+                      <DropdownMenuItem onClick={() => setManaging(item)}>
+                        <IconUsers />
+                        Manage access
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem
+                      onClick={() => void navigate({ to: '/vault', search: { item: item.id } })}
+                    >
+                      <IconLayoutGrid />
+                      Open in vault
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </li>
+            )
+          })}
+        </ul>
+        <p className={cn(MONO_NOTE, 'border-border/60 border-t px-4 py-2.5 tabular-nums')}>
+          {items.length} shared {items.length === 1 ? 'item' : 'items'}
+        </p>
+      </div>
+    )
+  }
+
+  // The picker's place: loading, nothing of one's own to share, or the combobox.
+  const renderPicker = () => {
+    if (vault.isLoading) return <Skeleton className="h-9 w-full" />
+    if (owned.length === 0) {
+      return (
+        <p className="text-muted-foreground text-[13px]">You have no items of your own to share.</p>
+      )
+    }
+    // A combobox: a vault can hold many items, so they are searched by name.
+    return (
+      <Popover open={choosing} onOpenChange={setChoosing}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            mode="input"
+            role="combobox"
+            placeholder={!picked}
+            aria-expanded={choosing}
+            aria-controls={listId}
+            aria-label="Item to share"
+            className="w-full"
+          >
+            <span className="truncate">
+              {owned.find((item) => item.id === picked)?.secret?.name ?? 'Choose an item'}
+            </span>
+            <ButtonArrow />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent id={listId} className="w-(--radix-popper-anchor-width) p-0">
+          <Command>
+            <CommandInput placeholder="Search your items…" />
+            <CommandList>
+              <CommandEmpty>No item matches.</CommandEmpty>
+              <CommandGroup>
+                {owned.map((item) => (
+                  <CommandItem
+                    key={item.id}
+                    // Matched on the name and the line under it, chosen by id.
+                    value={item.id}
+                    keywords={[item.secret!.name, itemSubtitle(item)]}
+                    onSelect={() => {
+                      setPicked(item.id)
+                      setChoosing(false)
+                    }}
+                  >
+                    <span className="flex min-w-0 flex-col">
+                      <span className="truncate">{item.secret!.name}</span>
+                      <span className="text-muted-foreground truncate text-xs">
+                        {itemSubtitle(item)}
+                      </span>
+                    </span>
+                    {picked === item.id && <CommandCheck />}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    )
+  }
+
   if (COMMUNITY) {
     return (
       <p className="text-muted-foreground px-8 py-10 text-[13px]">
@@ -156,91 +310,7 @@ export default function Sharing() {
           <h2 id="shared-items" className={MONO_NOTE}>
             Shared items
           </h2>
-          {isLoading ? (
-            <Skeleton className="rounded-card h-32" aria-hidden="true" />
-          ) : isError ? (
-            <p role="alert" className="text-danger text-[13px]">
-              The shared items could not be read. Reload the page to try again.
-            </p>
-          ) : items.length === 0 ? (
-            <div className="rounded-card bg-panel fade-in flex flex-col items-center gap-3 border px-6 py-11 text-center">
-              <span className="bg-background inline-flex size-11 items-center justify-center rounded-xl border">
-                <IconUsers className="size-5" aria-hidden />
-              </span>
-              <p className="text-[15px] font-semibold">Nothing is shared yet</p>
-              <p className="text-muted-foreground max-w-[44ch] text-[13px] text-balance">
-                Share an item with someone who has a vault, and it shows here with everyone who can
-                open it.
-              </p>
-              <Button size="sm" className="mt-1" onClick={() => setPicking(true)}>
-                <IconShare />
-                Share item
-              </Button>
-            </div>
-          ) : (
-            <div className="rounded-card bg-panel fade-in overflow-hidden border">
-              <ul className="divide-border/60 m-0 list-none divide-y p-0">
-                {items.map((item) => {
-                  const owner = item.role === ITEM_ROLE_OWNER
-                  return (
-                    <li key={item.id} className="flex items-center gap-3 px-4 py-2.5">
-                      <ItemTile item={item} />
-                      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                        <span className="truncate text-[13px] font-medium">
-                          {item.secret?.name ?? 'Unable to decrypt'}
-                        </span>
-                        <span className={cn(MONO_NOTE, 'truncate normal-case')}>
-                          {item.secret ? itemSubtitle(item) : ''}
-                        </span>
-                      </div>
-                      <People members={item.members} />
-                      {/* What you may do with it: yours, or the role it was shared with you in. */}
-                      <span
-                        className={cn(
-                          'inline-flex w-[60px] justify-center rounded-sm px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-[0.08em] uppercase',
-                          owner ? 'bg-good/15 text-good' : 'bg-focus/15 text-focus'
-                        )}
-                      >
-                        {item.role}
-                      </span>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            mode="icon"
-                            size="icon"
-                            className="size-7"
-                            aria-label={`More for ${item.secret?.name ?? 'this item'}`}
-                          >
-                            <IconDots />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="min-w-44">
-                          {owner && item.secret && (
-                            <DropdownMenuItem onClick={() => setManaging(item)}>
-                              <IconUsers />
-                              Manage access
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem
-                            onClick={() =>
-                              void navigate({ to: '/vault', search: { item: item.id } })
-                            }
-                          >
-                            <IconLayoutGrid />
-                            Open in vault
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </li>
-                  )
-                })}
-              </ul>
-              <p className={cn(MONO_NOTE, 'border-border/60 border-t px-4 py-2.5 tabular-nums')}>
-                {items.length} shared {items.length === 1 ? 'item' : 'items'}
-              </p>
-            </div>
-          )}
+          {renderList()}
           <p className={MONO_NOTE}>
             Viewers read an item · editors can change it too · only its owner shares it
           </p>
@@ -268,64 +338,7 @@ export default function Sharing() {
           setManaging(item)
         }}
       >
-        {vault.isLoading ? (
-          <Skeleton className="h-9 w-full" />
-        ) : owned.length === 0 ? (
-          <p className="text-muted-foreground text-[13px]">
-            You have no items of your own to share.
-          </p>
-        ) : (
-          // A combobox: a vault can hold many items, so they are searched by name.
-          <Popover open={choosing} onOpenChange={setChoosing}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                mode="input"
-                role="combobox"
-                placeholder={!picked}
-                aria-expanded={choosing}
-                aria-controls={listId}
-                aria-label="Item to share"
-                className="w-full"
-              >
-                <span className="truncate">
-                  {owned.find((item) => item.id === picked)?.secret?.name ?? 'Choose an item'}
-                </span>
-                <ButtonArrow />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent id={listId} className="w-(--radix-popper-anchor-width) p-0">
-              <Command>
-                <CommandInput placeholder="Search your items…" />
-                <CommandList>
-                  <CommandEmpty>No item matches.</CommandEmpty>
-                  <CommandGroup>
-                    {owned.map((item) => (
-                      <CommandItem
-                        key={item.id}
-                        // Matched on the name and the line under it, chosen by id.
-                        value={item.id}
-                        keywords={[item.secret!.name, itemSubtitle(item)]}
-                        onSelect={() => {
-                          setPicked(item.id)
-                          setChoosing(false)
-                        }}
-                      >
-                        <span className="flex min-w-0 flex-col">
-                          <span className="truncate">{item.secret!.name}</span>
-                          <span className="text-muted-foreground truncate text-xs">
-                            {itemSubtitle(item)}
-                          </span>
-                        </span>
-                        {picked === item.id && <CommandCheck />}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-        )}
+        {renderPicker()}
       </SimpleAlertScrollableDialogForm>
 
       {managing && (

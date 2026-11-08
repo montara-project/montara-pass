@@ -1,3 +1,4 @@
+import { onOffLabel } from '@montara-pass/shared/string'
 import { useQuery } from '@tanstack/react-query'
 
 import { queries } from '@/lib/api/queries'
@@ -42,7 +43,7 @@ export default function AccountSecurity() {
           </p>
         </div>
         <dl className="m-0 flex flex-wrap items-center gap-2">
-          <Stat label="TOTP" value={totp === undefined ? '—' : totp ? 'On' : 'Off'} on={totp} />
+          <Stat label="TOTP" value={onOffLabel(totp)} on={totp} />
           <Stat label="Passkeys" value={passkeys?.length ?? '—'} />
           <Stat label="Sessions" value={sessions?.length ?? '—'} />
         </dl>

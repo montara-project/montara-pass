@@ -81,35 +81,10 @@ export default function TwoFactor() {
     },
   })
 
-  return (
-    <SecuritySection
-      id="two-factor"
-      title="Two-step verification (TOTP)"
-      description="A code from an authenticator app is asked for on every sign-in."
-      action={
-        !setup &&
-        !asking && (
-          <Button
-            size="sm"
-            variant={enabled ? 'outline' : 'primary'}
-            disabled={enabled === undefined}
-            onClick={() => setAsking(true)}
-          >
-            {enabled ? 'Turn off' : 'Turn on'}
-          </Button>
-        )
-      }
-    >
-      <div className="flex items-center gap-3 px-4 py-3.5">
-        <StatusChip on={enabled}>{enabled ? 'On' : 'Off'}</StatusChip>
-        <p className="text-[13px]">
-          {enabled
-            ? 'On. Signing in asks for a code from your authenticator app.'
-            : 'Not enabled. Sign-in asks for the account password only.'}
-        </p>
-      </div>
-
-      {setup ? (
+  // Under the status: the setup form, the password check, or what turning it on takes.
+  const renderStep = () => {
+    if (setup) {
+      return (
         <div className="border-border/60 border-t p-4">
           <form
             className="flex flex-col gap-4"
@@ -163,7 +138,10 @@ export default function TwoFactor() {
             </div>
           </form>
         </div>
-      ) : asking ? (
+      )
+    }
+    if (asking) {
+      return (
         <div className="border-border/60 border-t p-4">
           <form
             className="flex flex-col gap-4"
@@ -216,28 +194,61 @@ export default function TwoFactor() {
             </div>
           </form>
         </div>
-      ) : (
-        !enabled && (
-          // What turning it on takes, in order.
-          <ol className="border-border/60 m-0 grid list-none gap-2 border-t p-4 sm:grid-cols-3">
-            {[
-              'Scan the QR code with an authenticator app',
-              'Enter the 6-digit code to confirm',
-              'Store the 10 backup codes offline',
-            ].map((step, index) => (
-              <li
-                key={step}
-                className="bg-background rounded-md flex items-center gap-2.5 border px-3 py-2.5 text-xs"
-              >
-                <span className="text-muted-foreground font-mono text-[10px] tabular-nums">
-                  0{index + 1}
-                </span>
-                {step}
-              </li>
-            ))}
-          </ol>
+      )
+    }
+    return (
+      !enabled && (
+        // What turning it on takes, in order.
+        <ol className="border-border/60 m-0 grid list-none gap-2 border-t p-4 sm:grid-cols-3">
+          {[
+            'Scan the QR code with an authenticator app',
+            'Enter the 6-digit code to confirm',
+            'Store the 10 backup codes offline',
+          ].map((step, index) => (
+            <li
+              key={step}
+              className="bg-background rounded-md flex items-center gap-2.5 border px-3 py-2.5 text-xs"
+            >
+              <span className="text-muted-foreground font-mono text-[10px] tabular-nums">
+                0{index + 1}
+              </span>
+              {step}
+            </li>
+          ))}
+        </ol>
+      )
+    )
+  }
+
+  return (
+    <SecuritySection
+      id="two-factor"
+      title="Two-step verification (TOTP)"
+      description="A code from an authenticator app is asked for on every sign-in."
+      action={
+        !setup &&
+        !asking && (
+          <Button
+            size="sm"
+            variant={enabled ? 'outline' : 'primary'}
+            disabled={enabled === undefined}
+            onClick={() => setAsking(true)}
+          >
+            {enabled ? 'Turn off' : 'Turn on'}
+          </Button>
         )
-      )}
+      }
+    >
+      <div className="flex items-center gap-3 px-4 py-3.5">
+        <StatusChip on={enabled}>{enabled ? 'On' : 'Off'}</StatusChip>
+        <p className="text-[13px]">
+          {enabled
+            ? 'On. Signing in asks for a code from your authenticator app.'
+            : 'Not enabled. Sign-in asks for the account password only.'}
+        </p>
+      </div>
+
+      {renderStep()}
     </SecuritySection>
   )
 }

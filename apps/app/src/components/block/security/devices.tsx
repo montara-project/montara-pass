@@ -46,14 +46,15 @@ export default function Devices() {
   const confirm = async () => {
     const target = asking
     setAsking(null)
+    if (!target) return
     try {
       if (target === 'others') {
         await revokeOthers.mutateAsync()
         toast.success('Signed out of every other device')
-      } else if (target) {
-        await revoke.mutateAsync(target.id)
-        toast.success(`Signed out of ${name(target)}`)
+        return
       }
+      await revoke.mutateAsync(target.id)
+      toast.success(`Signed out of ${name(target)}`)
     } catch (err) {
       toastApiError(err)
     }

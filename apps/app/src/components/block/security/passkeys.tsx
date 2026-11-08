@@ -87,30 +87,17 @@ export default function Passkeys() {
 
   const count = passkeys?.length ?? 0
 
-  return (
-    <SecuritySection
-      id="passkeys"
-      title="Passkeys"
-      description="A fingerprint, face or security key replaces both the password and the code."
-      action={
-        passkeysSupported() &&
-        !adding && (
-          <Button
-            size="sm"
-            variant={count ? 'outline' : 'primary'}
-            disabled={!userKeys}
-            onClick={() => setAdding(true)}
-          >
-            Add a passkey
-          </Button>
-        )
-      }
-    >
-      {isLoading ? (
+  // The passkeys: loading, the list, or a line saying there are none.
+  const renderList = () => {
+    if (isLoading) {
+      return (
         <div className="flex min-h-[52px] items-center px-4 py-3">
           <Skeleton className="h-4 w-48" />
         </div>
-      ) : count > 0 ? (
+      )
+    }
+    if (count > 0) {
+      return (
         <ul className="divide-border/60 m-0 flex list-none flex-col divide-y p-0">
           {passkeys!.map((passkey) => (
             <li key={passkey.id} className="flex items-center gap-3 px-4 py-3">
@@ -140,16 +127,40 @@ export default function Passkeys() {
             </li>
           ))}
         </ul>
-      ) : (
-        <div className="flex items-center gap-3 px-4 py-3.5">
-          <StatusChip>None</StatusChip>
-          <p className="text-[13px]">
-            {passkeysSupported()
-              ? 'No passkey registered on this account yet.'
-              : 'This browser cannot use passkeys.'}
-          </p>
-        </div>
-      )}
+      )
+    }
+    return (
+      <div className="flex items-center gap-3 px-4 py-3.5">
+        <StatusChip>None</StatusChip>
+        <p className="text-[13px]">
+          {passkeysSupported()
+            ? 'No passkey registered on this account yet.'
+            : 'This browser cannot use passkeys.'}
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <SecuritySection
+      id="passkeys"
+      title="Passkeys"
+      description="A fingerprint, face or security key replaces both the password and the code."
+      action={
+        passkeysSupported() &&
+        !adding && (
+          <Button
+            size="sm"
+            variant={count ? 'outline' : 'primary'}
+            disabled={!userKeys}
+            onClick={() => setAdding(true)}
+          >
+            Add a passkey
+          </Button>
+        )
+      }
+    >
+      {renderList()}
 
       {adding && (
         <div className="border-border/60 border-t p-4">
