@@ -363,6 +363,27 @@ export async function listActivity(
   return { rows: page.data, total: page.metadata.total ?? page.data.length }
 }
 
+/** What one page of the vault is narrowed to; the server filters, it cannot search or sort. */
+export interface ItemPageParams {
+  offset: number
+  limit: number
+  type?: string
+  favorite?: boolean
+  folder_id?: string
+}
+
+/** One page of the live items, newest first, and how many match in all. */
+export async function listItemsPage(
+  params: ItemPageParams
+): Promise<{ rows: Models.Item[]; total: number }> {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== '') query.set(key, String(value))
+  }
+  const page = await request<ListEnvelope<Models.Item>>(`/api/v1/items?${query}`)
+  return { rows: page.data, total: page.metadata.total ?? page.data.length }
+}
+
 /** Every live item of the vault. */
 export function listItems(): Promise<Models.Item[]> {
   return listAll('/api/v1/items')

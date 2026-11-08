@@ -3,12 +3,28 @@ import type { VaultItem } from '@montara-pass/shared/types/vault'
 
 import { COMMUNITY } from '@montara-pass/shared/constants/edition'
 import { CARD_FIELDS, CONTACT_FIELDS, ITEM_TYPE_LABEL } from '@montara-pass/shared/constants/vault'
-import { cardEnding } from '@montara-pass/shared/crypto/vault'
+import { cardEnding, decryptItem } from '@montara-pass/shared/crypto/vault'
 import { passwordStrength } from '@montara-pass/shared/password'
 import { linkOf } from '@montara-pass/shared/url'
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { QueryClient, useInfiniteQuery } from '@tanstack/react-query'
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 
-import { listItemMembers, setItemPlacement, trashItem } from '../../lib/api'
+import {
+  listItemMembers,
+  listItemsPage,
+  setItemPlacement,
+  SignedOutError,
+  trashItem,
+} from '../../lib/api'
 import { getSettings } from '../../lib/storage'
 import { lastUsedAgo } from '../../lib/usage'
 import { maskUsername } from '../../lib/username'
@@ -95,6 +111,9 @@ const NotesView = lazy(() =>
 
 const MASK = '••••••••••••'
 
+/** Items asked for at a time. The server cannot sort or search, so the list grows as it comes. */
+const PAGE_SIZE = 25
+
 /**
  * The vault in a full browser tab: filters on the left, the list in the
  * middle, the selected item on the right. There is no page to fill from here,
@@ -108,7 +127,16 @@ export default function FullVault({
   onSettings,
 }: FullVaultProps) {
   const { items, user, error, load } = useVaultItems(keys, onSignedOut)
-  const { notice, setNotice, refreshing, refresh, act, copy } = useVaultActions(load, onSignedOut)
+  // One cache per open vault: locking unmounts this view, and the decrypted
+  // pages go with it.
+  const [queryClient] = useState(
+    () => new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  )
+  // A change reloads the whole vault and the pages of the list alike.
+  const reload = useCallback(async () => {
+    await Promise.all([load(), queryClient.invalidateQueries()])
+  }, [load, queryClient])
+  const { notice, setNotice, refreshing, refresh, act, copy } = useVaultActions(reload, onSignedOut)
 
   const [filter, setFilter] = useState<Filter>('all')
   const [sort, setSort] = useState<Sort>('name')
@@ -138,19 +166,99 @@ export default function FullVault({
     [readable]
   )
 
+  // The server cannot search ciphertext, so a search reads the whole vault,
+  // decrypted, and filters it here. Without one, the server hands the list
+  // over a page at a time as it is scrolled.
+  const term = search.trim()
+  const pageParams = useMemo(
+    () => ({
+      limit: PAGE_SIZE,
+      ...(filter === 'favorite' ? { favorite: true } : filter !== 'all' ? { type: filter } : {}),
+      ...(folder ? { folder_id: folder } : {}),
+    }),
+    [filter, folder]
+  )
+  const list = useInfiniteQuery(
+    {
+      queryKey: ['items', 'list', pageParams],
+      enabled: !term,
+      initialPageParam: 0,
+      queryFn: async ({ pageParam }) => {
+        const page = await listItemsPage({ ...pageParams, offset: pageParam })
+        const rows = await Promise.all(
+          page.rows.map(async (item) => ({
+            ...item,
+            secret: await decryptItem(keys, item).catch(() => null),
+          }))
+        )
+        return { rows, total: page.total }
+      },
+      // The next page starts where the rows so far end, until the total is in.
+      getNextPageParam: (last, pages) => {
+        const loaded = pages.reduce((sum, page) => sum + page.rows.length, 0)
+        return last.rows.length > 0 && loaded < last.total ? loaded : undefined
+      },
+    },
+    queryClient
+  )
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = list
+  useEffect(() => {
+    if (list.error instanceof SignedOutError) onSignedOut()
+  }, [list.error, onSignedOut])
+
+  const total = list.data?.pages.at(-1)?.total ?? 0
+  const loaded = useMemo(() => {
+    // The whole vault, once read, has the newer copy of a row (an icon fetched since).
+    const latest = new Map(readable.map((item) => [item.id, item]))
+    return (list.data?.pages ?? [])
+      .flatMap((page) => page.rows)
+      .map((row) => latest.get(row.id) ?? row)
+      .filter((item) => item.secret !== null)
+  }, [list.data, readable])
+
+  // In the chosen order. Without a search that is the order of the pages read
+  // so far: a row from a later page may land above the ones already shown.
   const visible = useMemo(
     () =>
-      searchAndSort(
-        readable.filter((item) => inFilter(item, filter) && (!folder || item.folder_id === folder)),
-        search,
-        sort
-      ),
-    [readable, filter, folder, search, sort]
+      term
+        ? searchAndSort(
+            readable.filter(
+              (item) => inFilter(item, filter) && (!folder || item.folder_id === folder)
+            ),
+            search,
+            sort
+          )
+        : searchAndSort(loaded, '', sort),
+    [term, readable, loaded, filter, folder, search, sort]
   )
+  const listLoading = term ? items === null : list.isLoading
+  const listError =
+    error ||
+    (list.error && !(list.error instanceof SignedOutError) ? 'Could not load your vault' : '')
+  const vaultEmpty = term ? readable.length === 0 : filter === 'all' && !folder && total === 0
+
+  // The next page is asked for as the end of the list scrolls into view, a
+  // little before it gets there.
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const moreRef = useRef<HTMLParagraphElement>(null)
+  const more = !term && hasNextPage
+  useEffect(() => {
+    const end = moreRef.current
+    if (!more || isFetchingNextPage || !end) return
+    const observer = new IntersectionObserver(
+      ([entry]) => entry?.isIntersecting && void fetchNextPage(),
+      { root: scrollRef.current, rootMargin: '200px' }
+    )
+    observer.observe(end)
+    return () => observer.disconnect()
+  }, [more, isFetchingNextPage, fetchNextPage])
 
   const selectedId = pane.mode === 'new' ? null : pane.id
   const folderNames = useMemo(() => new Map(folders.map((f) => [f.id, f.name])), [folders])
-  const selected = readable.find((item) => item.id === selectedId) ?? null
+  const selected =
+    readable.find((item) => item.id === selectedId) ??
+    loaded.find((item) => item.id === selectedId) ??
+    null
   // On a narrow window the pane covers the list, so it needs to know when it is in use.
   const paneOpen = pane.mode !== 'view' || selected !== null
   // Folders are kept in the web app; there is no editor for them here.
@@ -297,22 +405,22 @@ export default function FullVault({
               <div className="list-table">
                 {/* The headings scroll with the rows, so their columns line up
                   with the rows' whatever the scrollbar takes, and stay on top. */}
-                <div className="list-scroll">
+                <div className="list-scroll" ref={scrollRef}>
                   <div className="list-head" aria-hidden="true">
                     <span>Name</span>
                     <span className="col">Folder</span>
                     <span className="col">Last used</span>
                   </div>
 
-                  {error && (
+                  {listError && (
                     <p className="error list-message" role="alert">
-                      {error}
+                      {listError}
                     </p>
                   )}
-                  {items === null && !error && <p className="muted list-message">Decrypting…</p>}
-                  {items !== null && visible.length === 0 && (
+                  {listLoading && !listError && <p className="muted list-message">Decrypting…</p>}
+                  {!listLoading && !listError && visible.length === 0 && (
                     <p className="muted list-message">
-                      {readable.length === 0 ? 'Your vault is empty.' : 'Nothing matches.'}
+                      {vaultEmpty ? 'Your vault is empty.' : 'Nothing matches.'}
                     </p>
                   )}
 
@@ -337,11 +445,19 @@ export default function FullVault({
                       </li>
                     ))}
                   </ul>
+                  {more && !listLoading && (
+                    <p className="muted list-message list-more" ref={moreRef}>
+                      {isFetchingNextPage ? 'Loading more…' : `${total - loaded.length} more`}
+                    </p>
+                  )}
                 </div>
 
                 <footer className="list-foot">
                   <span className="list-count">
-                    {items !== null && `${visible.length} of ${readable.length} items`}
+                    {!listLoading &&
+                      (term
+                        ? `${visible.length} of ${readable.length} items`
+                        : `${visible.length} of ${total} items`)}
                   </span>
                   {foldersUrl && (
                     <a
@@ -387,7 +503,7 @@ export default function FullVault({
                   onSaved={(id) => {
                     setNotice('Item saved')
                     setPane({ mode: 'view', id })
-                    void load()
+                    void reload()
                   }}
                 />
               ) : selected ? (

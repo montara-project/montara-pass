@@ -5,7 +5,6 @@ import { matchesSearch } from '@montara-pass/shared/crypto/vault'
 import { formatDate } from '@montara-pass/shared/date'
 import {
   IconBook,
-  IconChevronLeft,
   IconChevronRight,
   IconFilterOff,
   IconKey,
@@ -15,7 +14,7 @@ import {
   IconStarFilled,
 } from '@tabler/icons-react'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import type { VaultSearch } from '@/routes/(app)/vault'
 
@@ -24,7 +23,7 @@ import SelectInput from '@/components/block/common/select-input'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useAllItems, useFolders, useItems } from '@/hooks/use-vault'
+import { useAllItems, useFolders, useInfiniteItems } from '@/hooks/use-vault'
 import { apiErrorMessage } from '@/lib/api/api-error'
 import { cn } from '@/lib/utils'
 
@@ -35,7 +34,7 @@ import ItemTile, { itemSubtitle } from './item-tile'
 /** Select value standing for "no filter": a select item cannot be empty. */
 const ALL = 'all'
 
-/** Items to a page. The server cannot sort or search, so the list is paged as it comes. */
+/** Items asked for at a time. The server cannot sort or search, so the list grows as it comes. */
 const PAGE_SIZE = 25
 
 /**
@@ -49,7 +48,6 @@ export default function Vault() {
     folder: folderId,
     type,
     favorite,
-    page = 0,
     item: selectedId,
   } = useSearch({ from: '/(app)/vault/' })
   const navigate = useNavigate({ from: '/vault/' })
@@ -66,21 +64,22 @@ export default function Vault() {
 
   const params = useMemo(
     () => ({
-      offset: Math.max(page, 0) * PAGE_SIZE,
       limit: PAGE_SIZE,
       ...(folderId ? { folder_id: folderId } : {}),
       ...(type ? { type } : {}),
       ...(favorite ? { favorite } : {}),
     }),
-    [page, folderId, type, favorite]
+    [folderId, type, favorite]
   )
 
   const { data: folders } = useFolders()
   // The server cannot search ciphertext, so a search reads the whole vault,
-  // decrypted, and filters and pages it here. Without one, the server pages.
-  const paged = useItems(params)
+  // decrypted, and filters it here. Without one, the server hands the list
+  // over a page at a time as it is scrolled.
+  const list = useInfiniteItems(params)
   const everything = useAllItems({ enabled: Boolean(term) || searchFocused })
-  const { isLoading, isError, error, refetch } = term ? everything : paged
+  const { isLoading, isError, error, refetch } = term ? everything : list
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = list
   const found = useMemo(
     () =>
       (everything.data ?? []).filter(
@@ -92,22 +91,35 @@ export default function Vault() {
       ),
     [everything.data, folderId, type, favorite, term]
   )
-  const total = term ? found.length : (paged.data?.metadata?.total ?? 0)
-  const items = term
-    ? found.slice(params.offset, params.offset + PAGE_SIZE)
-    : (paged.data?.data ?? [])
+  const pages = list.data?.pages
+  const total = term ? found.length : (pages?.at(-1)?.metadata?.total ?? 0)
+  const items = useMemo(
+    () => (term ? found : (pages?.flatMap((page) => page.data) ?? [])),
+    [term, found, pages]
+  )
   const filtered = Boolean(folderId || type || favorite || term)
   const folderList = useMemo(() => folders ?? [], [folders])
 
   const selected = items.find((item) => item.id === selectedId) ?? null
-  const pages = Math.ceil(total / PAGE_SIZE)
-  const from = total === 0 ? 0 : params.offset + 1
-  const to = Math.min(params.offset + items.length, total)
 
   // A filter starts the list over, and what was open may not be in it.
-  const filter = (next: VaultSearch) => setUrl({ ...next, page: undefined, item: undefined })
+  const filter = (next: VaultSearch) => setUrl({ ...next, item: undefined })
 
-  const turn = (next: number) => setUrl({ page: next === 0 ? undefined : next, item: undefined })
+  // The next page is asked for as the end of the list scrolls into view, a
+  // little before it gets there.
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const moreRef = useRef<HTMLDivElement>(null)
+  const more = !term && hasNextPage
+  useEffect(() => {
+    const end = moreRef.current
+    if (!more || isFetchingNextPage || !end) return
+    const observer = new IntersectionObserver(
+      ([entry]) => entry?.isIntersecting && void fetchNextPage(),
+      { root: scrollRef.current, rootMargin: '200px' }
+    )
+    observer.observe(end)
+    return () => observer.disconnect()
+  }, [more, isFetchingNextPage, fetchNextPage])
 
   const folderOptions = [
     { label: 'All folders', value: ALL },
@@ -195,7 +207,7 @@ export default function Vault() {
                 <span>Updated</span>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+              <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                 {isLoading ? (
                   <ul className="m-0 list-none p-0" aria-hidden="true">
                     {Array.from({ length: 8 }, (_, index) => (
@@ -243,37 +255,20 @@ export default function Vault() {
                     ))}
                   </ul>
                 )}
+                {more && !isLoading && !isError && (
+                  <div
+                    ref={moreRef}
+                    className="text-muted-foreground px-4 py-3 text-center font-mono text-[10px] tracking-[0.05em] uppercase"
+                  >
+                    {isFetchingNextPage ? 'Loading more…' : `${total - items.length} more`}
+                  </div>
+                )}
               </div>
 
               <footer className="flex shrink-0 items-center gap-1 border-t px-4 py-2">
                 <span className="text-muted-foreground flex-1 font-mono text-[10px] tracking-[0.05em] uppercase tabular-nums">
-                  {!isLoading &&
-                    (pages > 1 ? `${from}–${to} of ${total} items` : `${total} of ${total} items`)}
+                  {!isLoading && `${items.length} of ${total} items`}
                 </span>
-                {pages > 1 && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      mode="icon"
-                      size="icon"
-                      aria-label="Previous page"
-                      disabled={page <= 0}
-                      onClick={() => turn(page - 1)}
-                    >
-                      <IconChevronLeft />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      mode="icon"
-                      size="icon"
-                      aria-label="Next page"
-                      disabled={page >= pages - 1}
-                      onClick={() => turn(page + 1)}
-                    >
-                      <IconChevronRight />
-                    </Button>
-                  </>
-                )}
                 <Button
                   asChild
                   variant="outline"
