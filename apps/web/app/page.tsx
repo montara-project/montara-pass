@@ -10,7 +10,7 @@ import { Pricing } from "@/components/home/pricing";
 import { Steps } from "@/components/home/steps";
 import { TrustStrip } from "@/components/home/trust-strip";
 import { REPO_URL } from "@/components/links";
-import { getTiers } from "@/components/pricing/offer";
+import { getTiers, visitorRegion } from "@/components/pricing/offer";
 import { META_IMAGE, META_URL, pageMeta } from "@/lib/constants/meta";
 
 export const metadata: Metadata = pageMeta({ path: "/" });
@@ -38,7 +38,7 @@ const jsonLd = {
 };
 
 export default async function Home() {
-  const tiers = await getTiers();
+  const [tiers, region] = await Promise.all([getTiers(), visitorRegion()]);
 
   return (
     <main>
@@ -52,7 +52,7 @@ export default async function Home() {
       <FeatureMatrix />
       <Ownership />
       <Steps />
-      <Pricing tiers={tiers} />
+      <Pricing tiers={tiers} region={region} />
       <Faq />
       <FinalCta />
     </main>

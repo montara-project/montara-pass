@@ -21,6 +21,7 @@
   "dependencies": {
     "@montara-pass/shared": "workspace:*",
     "@tanstack/react-form": "1.33.5",
+    "@tanstack/react-query": "5.104.1",
     "input-otp": "1.5.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",

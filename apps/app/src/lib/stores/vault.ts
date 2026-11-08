@@ -20,9 +20,26 @@ const state: VaultStore = {
   lock: () => setKeys(null),
 }
 
+// How many times the vault has locked: an unlock begun before the last lock
+// is stale.
+let locks = 0
+
 function setKeys(keys: VaultKeys | null) {
+  if (!keys) locks++
   state.keys = keys
   for (const listener of listeners) listener()
+}
+
+/**
+ * Begins an unlock that takes a while (a key derivation, a passkey prompt) and
+ * answers how to finish it: with the keys, unless the vault locked meanwhile,
+ * by signing out or the auto-lock. Then the keys are dropped, not restored.
+ */
+export function startUnlock(): (keys: VaultKeys) => void {
+  const begun = locks
+  return (keys) => {
+    if (locks === begun) setKeys(keys)
+  }
 }
 
 function subscribe(listener: () => void) {

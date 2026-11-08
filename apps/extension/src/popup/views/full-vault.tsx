@@ -3,25 +3,46 @@ import type { VaultItem } from '@montara-pass/shared/types/vault'
 
 import { COMMUNITY } from '@montara-pass/shared/constants/edition'
 import { CARD_FIELDS, CONTACT_FIELDS, ITEM_TYPE_LABEL } from '@montara-pass/shared/constants/vault'
-import { cardEnding } from '@montara-pass/shared/crypto/vault'
+import { cardEnding, decryptItem } from '@montara-pass/shared/crypto/vault'
+import { passwordStrength } from '@montara-pass/shared/password'
+import { sharingLabel } from '@montara-pass/shared/sharing'
 import { linkOf } from '@montara-pass/shared/url'
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { QueryClient, useInfiniteQuery } from '@tanstack/react-query'
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 
-import { setItemPlacement, trashItem } from '../../lib/api'
+import {
+  listItemMembers,
+  listItemsPage,
+  setItemPlacement,
+  SignedOutError,
+  trashItem,
+} from '../../lib/api'
 import { getSettings } from '../../lib/storage'
 import { lastUsedAgo } from '../../lib/usage'
 import { maskUsername } from '../../lib/username'
 import {
   ArrowLeftIcon,
+  ArrowUpRightIcon,
+  BookOpenIcon,
   CardIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
   CopyIcon,
-  ExternalLinkIcon,
   EyeIcon,
   EyeOffIcon,
   FilterIcon,
   GridIcon,
-  KeyholeIcon,
   KeyIcon,
+  KeyRoundIcon,
   MoreIcon,
   NoteIcon,
   PencilIcon,
@@ -44,11 +65,13 @@ import {
   type Sort,
 } from '../use-vault-items'
 import { VaultSidebar, type Tool } from '../vault-sidebar'
+import Security from './activity'
 import Billing from './billing'
 import ItemForm from './item-form'
 import PasswordGenerator from './password-generator'
 import PasswordHealth from './password-health'
 import ShareItem from './share-item'
+import Sharing from './sharing'
 
 interface FullVaultProps {
   keys: VaultKeys
@@ -69,7 +92,7 @@ type Pane =
 
 const FILTERS: { value: Filter; label: string; icon: typeof GridIcon }[] = [
   { value: 'all', label: 'All items', icon: GridIcon },
-  { value: 'login', label: 'Logins', icon: KeyIcon },
+  { value: 'login', label: 'Logins', icon: KeyRoundIcon },
   { value: 'secure_note', label: 'Secure notes', icon: NoteIcon },
   { value: 'card', label: 'Cards', icon: CardIcon },
   { value: 'contact', label: 'Contacts', icon: UserIcon },
@@ -89,6 +112,16 @@ const NotesView = lazy(() =>
 
 const MASK = '••••••••••••'
 
+/** A card field as shown. Hidden, a card number still shows its last four digits. */
+function cardFieldText(key: string, value: string, hidden: boolean): string {
+  if (!hidden) return value
+  if (key === 'number') return cardEnding(value) || MASK
+  return MASK
+}
+
+/** Items asked for at a time. The server cannot sort or search, so the list grows as it comes. */
+const PAGE_SIZE = 25
+
 /**
  * The vault in a full browser tab: filters on the left, the list in the
  * middle, the selected item on the right. There is no page to fill from here,
@@ -102,11 +135,22 @@ export default function FullVault({
   onSettings,
 }: FullVaultProps) {
   const { items, user, error, load } = useVaultItems(keys, onSignedOut)
-  const { notice, setNotice, refreshing, refresh, act, copy } = useVaultActions(load, onSignedOut)
+  // One cache per open vault: locking unmounts this view, and the decrypted
+  // pages go with it.
+  const [queryClient] = useState(
+    () => new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  )
+  // A change reloads the whole vault and the pages of the list alike.
+  const reload = useCallback(async () => {
+    await Promise.all([load(), queryClient.invalidateQueries()])
+  }, [load, queryClient])
+  const { notice, setNotice, refreshing, refresh, act, copy } = useVaultActions(reload, onSignedOut)
 
   const [filter, setFilter] = useState<Filter>('all')
   const [sort, setSort] = useState<Sort>('name')
   const [search, setSearch] = useState('')
+  // '' is every folder.
+  const [folder, setFolder] = useState('')
   const [pane, setPane] = useState<Pane>({ mode: 'view', id: null })
   // A tool takes the place of the list and the item beside it.
   const [tool, setTool] = useState<Tool | null>(null)
@@ -130,21 +174,232 @@ export default function FullVault({
     [readable]
   )
 
+  // The server cannot search ciphertext, so a search reads the whole vault,
+  // decrypted, and filters it here. Without one, the server hands the list
+  // over a page at a time as it is scrolled.
+  const term = search.trim()
+  const pageParams = useMemo(
+    () => ({
+      limit: PAGE_SIZE,
+      ...(filter === 'favorite' ? { favorite: true } : filter !== 'all' ? { type: filter } : {}),
+      ...(folder ? { folder_id: folder } : {}),
+    }),
+    [filter, folder]
+  )
+  const list = useInfiniteQuery(
+    {
+      queryKey: ['items', 'list', pageParams],
+      enabled: !term,
+      initialPageParam: 0,
+      queryFn: async ({ pageParam }) => {
+        const page = await listItemsPage({ ...pageParams, offset: pageParam })
+        const rows = await Promise.all(
+          page.rows.map(async (item) => ({
+            ...item,
+            secret: await decryptItem(keys, item).catch(() => null),
+          }))
+        )
+        return { rows, total: page.total }
+      },
+      // The next page starts where the rows so far end, until the total is in.
+      getNextPageParam: (last, pages) => {
+        const loaded = pages.reduce((sum, page) => sum + page.rows.length, 0)
+        return last.rows.length > 0 && loaded < last.total ? loaded : undefined
+      },
+    },
+    queryClient
+  )
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = list
+  useEffect(() => {
+    if (list.error instanceof SignedOutError) onSignedOut()
+  }, [list.error, onSignedOut])
+
+  const total = list.data?.pages.at(-1)?.total ?? 0
+  const loaded = useMemo(() => {
+    // The whole vault, once read, has the newer copy of a row (an icon fetched since).
+    const latest = new Map(readable.map((item) => [item.id, item]))
+    return (list.data?.pages ?? [])
+      .flatMap((page) => page.rows)
+      .map((row) => latest.get(row.id) ?? row)
+      .filter((item) => item.secret !== null)
+  }, [list.data, readable])
+
+  // In the chosen order. Without a search that is the order of the pages read
+  // so far: a row from a later page may land above the ones already shown.
   const visible = useMemo(
     () =>
-      searchAndSort(
-        readable.filter((item) => inFilter(item, filter)),
-        search,
-        sort
-      ),
-    [readable, filter, search, sort]
+      term
+        ? searchAndSort(
+            readable.filter(
+              (item) => inFilter(item, filter) && (!folder || item.folder_id === folder)
+            ),
+            search,
+            sort
+          )
+        : searchAndSort(loaded, '', sort),
+    [term, readable, loaded, filter, folder, search, sort]
   )
+  const listLoading = term ? items === null : list.isLoading
+  const listError =
+    error ||
+    (list.error && !(list.error instanceof SignedOutError) ? 'Could not load your vault' : '')
+  const vaultEmpty = term ? readable.length === 0 : filter === 'all' && !folder && total === 0
+
+  // The next page is asked for as the end of the list scrolls into view, a
+  // little before it gets there.
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const moreRef = useRef<HTMLParagraphElement>(null)
+  const more = !term && hasNextPage
+  useEffect(() => {
+    const end = moreRef.current
+    if (!more || isFetchingNextPage || !end) return
+    const observer = new IntersectionObserver(
+      ([entry]) => entry?.isIntersecting && void fetchNextPage(),
+      { root: scrollRef.current, rootMargin: '200px' }
+    )
+    observer.observe(end)
+    return () => observer.disconnect()
+  }, [more, isFetchingNextPage, fetchNextPage])
 
   const selectedId = pane.mode === 'new' ? null : pane.id
   const folderNames = useMemo(() => new Map(folders.map((f) => [f.id, f.name])), [folders])
-  const selected = readable.find((item) => item.id === selectedId) ?? null
+  const selected =
+    readable.find((item) => item.id === selectedId) ??
+    loaded.find((item) => item.id === selectedId) ??
+    null
   // On a narrow window the pane covers the list, so it needs to know when it is in use.
   const paneOpen = pane.mode !== 'view' || selected !== null
+  // Folders are kept in the web app; there is no editor for them here.
+  const foldersUrl = appUrl && `${appUrl.replace(/\/$/, '')}/folders`
+
+  // The tool in place of the list and the item.
+  const renderTool = () => {
+    if (tool === 'generator') {
+      return <PasswordGenerator onNotice={setNotice} />
+    }
+    if (tool === 'billing') {
+      return <Billing onSignedOut={onSignedOut} />
+    }
+    if (tool === 'sharing') {
+      return (
+        <Sharing
+          items={items}
+          meEmail={user?.email}
+          onSignedOut={onSignedOut}
+          onManage={(id) => {
+            setTool(null)
+            setPane({ mode: 'share', id })
+          }}
+          onOpen={(id) => {
+            setTool(null)
+            setFilter('all')
+            setSearch('')
+            setPane({ mode: 'view', id })
+          }}
+        />
+      )
+    }
+    if (tool === 'activity') {
+      return (
+        <Security items={items} appUrl={appUrl} onSignedOut={onSignedOut} onNotice={setNotice} />
+      )
+    }
+    return (
+      <PasswordHealth
+        items={items}
+        onOpen={(id) => {
+          setTool(null)
+          setFilter('all')
+          setSearch('')
+          setPane({ mode: 'view', id })
+        }}
+        onRescan={() => void refresh()}
+        rescanning={refreshing}
+        onOpenVault={() => setTool(null)}
+      />
+    )
+  }
+
+  // The pane: sharing, the form, the item, or a prompt to pick one.
+  const renderPane = () => {
+    if (pane.mode === 'share' && selected) {
+      return (
+        <ShareItem
+          key={selected.id}
+          keys={keys}
+          item={selected}
+          onDone={() => setPane({ mode: 'view', id: selected.id })}
+          onSignedOut={onSignedOut}
+          onNotice={setNotice}
+        />
+      )
+    }
+    if (pane.mode !== 'view') {
+      return (
+        <ItemForm
+          // A different item is a different form, with its own fields.
+          key={pane.mode === 'edit' ? pane.id : 'new'}
+          keys={keys}
+          item={pane.mode === 'edit' ? (selected ?? undefined) : undefined}
+          folders={folders}
+          onCancel={() => setPane({ mode: 'view', id: selectedId })}
+          onSignedOut={onSignedOut}
+          onSaved={(id) => {
+            setNotice('Item saved')
+            setPane({ mode: 'view', id })
+            void reload()
+          }}
+        />
+      )
+    }
+    if (selected) {
+      return (
+        <ItemDetail
+          key={selected.id}
+          item={selected}
+          onCopy={(value, label) => void copy(value, label)}
+          onEdit={() => setPane({ mode: 'edit', id: selected.id })}
+          onShare={() => setPane({ mode: 'share', id: selected.id })}
+          onFavorite={() =>
+            void act(
+              () =>
+                setItemPlacement(selected.id, {
+                  folder_id: selected.folder_id,
+                  favorite: !selected.favorite,
+                }),
+              selected.favorite ? 'Removed from favorites' : 'Added to favorites'
+            )
+          }
+          onTrash={() =>
+            void act(
+              () => trashItem(selected.id),
+              'Moved to the trash. The web app can restore it.'
+            )
+          }
+        />
+      )
+    }
+    return (
+      <div className="detail-empty">
+        <span className="tile">
+          <KeyIcon />
+        </span>
+        <p className="muted">Select an item to see it, or create a new one.</p>
+        <div className="detail-empty-actions">
+          <button onClick={() => setPane({ mode: 'new' })}>
+            <PlusIcon width={14} height={14} />
+            New item
+          </button>
+          {foldersUrl && (
+            <a className="button secondary" href={foldersUrl} target="_blank" rel="noreferrer">
+              <BookOpenIcon width={14} height={14} />
+              Browse folders
+            </a>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <VaultSidebar
@@ -165,38 +420,62 @@ export default function FullVault({
       <div className={['full', paneOpen && 'pane-open'].filter(Boolean).join(' ')}>
         {tool ? (
           <section className="detail-col tool-col" aria-label="Tools">
-            {tool === 'generator' ? (
-              <PasswordGenerator onNotice={setNotice} />
-            ) : tool === 'billing' ? (
-              <Billing onSignedOut={onSignedOut} />
-            ) : (
-              <PasswordHealth
-                items={items}
-                onOpen={(id) => {
-                  setTool(null)
-                  setFilter('all')
-                  setSearch('')
-                  setPane({ mode: 'view', id })
-                }}
-              />
-            )}
+            {renderTool()}
           </section>
         ) : (
           <>
             <section className="list-col" aria-label="Items">
-              {/* One bar: what to look for, how to order it, and what to add. */}
+              {/* Three parts, a line under each: what the page is, what narrows
+                  the list, and the list. */}
+              <header className="list-head-page">
+                <div className="list-title">
+                  <p className="eyebrow">Vault</p>
+                  <h1>Vault</h1>
+                  <p className="muted">
+                    Your items and the ones shared with you, decrypted in this browser only.
+                  </p>
+                </div>
+                <button
+                  className="new-item"
+                  aria-label="New item"
+                  title="New item"
+                  onClick={() => setPane({ mode: 'new' })}
+                >
+                  <PlusIcon width={16} height={16} />
+                  <span className="new-item-label">New item</span>
+                </button>
+              </header>
+
+              {/* What to look for, where, and in what order. */}
               <div className="list-tools">
                 <label className="search">
                   <SearchIcon />
                   <input
                     type="search"
-                    placeholder="Search all items"
+                    placeholder="Search name, username or URL"
                     aria-label="Search all items"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     autoFocus
                   />
                 </label>
+                {folders.length > 0 && (
+                  <div className="select-box folder-filter">
+                    <select
+                      aria-label="Folder"
+                      value={folder}
+                      onChange={(e) => setFolder(e.target.value)}
+                    >
+                      <option value="">All folders</option>
+                      {folders.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDownIcon width={14} height={14} />
+                  </div>
+                )}
                 {/* The order it is in is named on hover and to a screen reader;
                     pressing it takes the other one. */}
                 <button
@@ -216,61 +495,79 @@ export default function FullVault({
                 >
                   <RefreshIcon className={refreshing ? 'spin' : undefined} />
                 </button>
-                <button
-                  className="new-item"
-                  aria-label="New item"
-                  title="New item"
-                  onClick={() => setPane({ mode: 'new' })}
-                >
-                  <PlusIcon width={18} height={18} />
-                  <span className="new-item-label">New item</span>
-                </button>
               </div>
 
-              {error && (
-                <p className="error list-message" role="alert">
-                  {error}
-                </p>
-              )}
-              {items === null && !error && <p className="muted list-message">Decrypting…</p>}
-              {items !== null && visible.length === 0 && (
-                <p className="muted list-message">
-                  {readable.length === 0 ? 'Your vault is empty.' : 'Nothing matches.'}
-                </p>
-              )}
-
-              {/* The headings scroll with the rows, so their columns line up
+              {/* The list as a table in its own card: headings, rows, and a
+                  footer with the count and the way to the folders. */}
+              <div className="list-table">
+                {/* The headings scroll with the rows, so their columns line up
                   with the rows' whatever the scrollbar takes, and stay on top. */}
-              <div className="list-scroll">
-                {visible.length > 0 && (
+                <div className="list-scroll" ref={scrollRef}>
                   <div className="list-head" aria-hidden="true">
                     <span>Name</span>
                     <span className="col">Folder</span>
                     <span className="col">Last used</span>
                   </div>
-                )}
 
-                <ul className="items">
-                  {visible.map((item) => (
-                    <li key={item.id}>
-                      <button
-                        className="item-row"
-                        aria-current={item.id === selectedId ? 'true' : undefined}
-                        onClick={() => setPane({ mode: 'view', id: item.id })}
-                      >
-                        <ItemTile item={item} />
-                        <span className="item-text">
-                          <span className="item-name">{item.secret!.name}</span>
-                          <span className="muted">{itemSubtitle(item)}</span>
-                        </span>
-                        <span className="col muted">
-                          {folderNames.get(item.folder_id ?? '') ?? '—'}
-                        </span>
-                        <span className="col muted">{lastUsedAgo(item.last_used_at) ?? '—'}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                  {listError && (
+                    <p className="error list-message" role="alert">
+                      {listError}
+                    </p>
+                  )}
+                  {listLoading && !listError && <p className="muted list-message">Decrypting…</p>}
+                  {!listLoading && !listError && visible.length === 0 && (
+                    <p className="muted list-message">
+                      {vaultEmpty ? 'Your vault is empty.' : 'Nothing matches.'}
+                    </p>
+                  )}
+
+                  <ul className="items">
+                    {visible.map((item) => (
+                      <li key={item.id}>
+                        <button
+                          className="item-row"
+                          aria-current={item.id === selectedId ? 'true' : undefined}
+                          onClick={() => setPane({ mode: 'view', id: item.id })}
+                        >
+                          <ItemTile item={item} />
+                          <span className="item-text">
+                            <span className="item-name">{item.secret!.name}</span>
+                            <span className="muted">{itemSubtitle(item)}</span>
+                          </span>
+                          <span className="col muted">
+                            {folderNames.get(item.folder_id ?? '') ?? '—'}
+                          </span>
+                          <span className="col muted">{lastUsedAgo(item.last_used_at) ?? '—'}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  {more && !listLoading && (
+                    <p className="muted list-message list-more" ref={moreRef}>
+                      {isFetchingNextPage ? 'Loading more…' : `${total - loaded.length} more`}
+                    </p>
+                  )}
+                </div>
+
+                <footer className="list-foot">
+                  <span className="list-count">
+                    {!listLoading &&
+                      (term
+                        ? `${visible.length} of ${readable.length} items`
+                        : `${visible.length} of ${total} items`)}
+                  </span>
+                  {foldersUrl && (
+                    <a
+                      className="button secondary small"
+                      href={foldersUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Manage folders
+                      <ChevronRightIcon width={12} height={12} />
+                    </a>
+                  )}
+                </footer>
               </div>
             </section>
 
@@ -282,62 +579,7 @@ export default function FullVault({
                 </button>
               )}
 
-              {pane.mode === 'share' && selected ? (
-                <ShareItem
-                  key={selected.id}
-                  keys={keys}
-                  item={selected}
-                  onDone={() => setPane({ mode: 'view', id: selected.id })}
-                  onSignedOut={onSignedOut}
-                  onNotice={setNotice}
-                />
-              ) : pane.mode !== 'view' ? (
-                <ItemForm
-                  // A different item is a different form, with its own fields.
-                  key={pane.mode === 'edit' ? pane.id : 'new'}
-                  keys={keys}
-                  item={pane.mode === 'edit' ? (selected ?? undefined) : undefined}
-                  folders={folders}
-                  onCancel={() => setPane({ mode: 'view', id: selectedId })}
-                  onSignedOut={onSignedOut}
-                  onSaved={(id) => {
-                    setNotice('Item saved')
-                    setPane({ mode: 'view', id })
-                    void load()
-                  }}
-                />
-              ) : selected ? (
-                <ItemDetail
-                  key={selected.id}
-                  item={selected}
-                  onCopy={(value, label) => void copy(value, label)}
-                  onEdit={() => setPane({ mode: 'edit', id: selected.id })}
-                  onShare={() => setPane({ mode: 'share', id: selected.id })}
-                  onFavorite={() =>
-                    void act(
-                      () =>
-                        setItemPlacement(selected.id, {
-                          folder_id: selected.folder_id,
-                          favorite: !selected.favorite,
-                        }),
-                      selected.favorite ? 'Removed from favorites' : 'Added to favorites'
-                    )
-                  }
-                  onTrash={() =>
-                    void act(
-                      () => trashItem(selected.id),
-                      'Moved to the trash. The web app can restore it.'
-                    )
-                  }
-                />
-              ) : (
-                <div className="detail-empty">
-                  <span className="tile">
-                    <KeyholeIcon />
-                  </span>
-                  <p className="muted">Select an item to see it, or create a new one.</p>
-                </div>
-              )}
+              {renderPane()}
             </section>
           </>
         )}
@@ -393,183 +635,188 @@ function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: Item
   // Only http(s) addresses become links.
   const website = linkOf(secret.url)
 
+  // Who else has it: only the owner may ask, and the Community server never
+  // shares. The owner counts itself among the members.
+  const [others, setOthers] = useState<number | null>(null)
+  useEffect(() => {
+    if (item.role !== 'owner' || COMMUNITY) return
+    listItemMembers(item.id)
+      .then((members) => setOthers(members.length - 1))
+      .catch(() => setOthers(null))
+  }, [item.id, item.role])
+  const sharing = sharingLabel(item.role === 'owner', others)
+  // Masked as the list shows it, until asked for.
+  const username =
+    secret.username && (showUsername ? secret.username : maskUsername(secret.username))
+
   return (
-    <div className="stack detail-body">
+    <div className="stack detail-body item-view">
       <header className="detail-head">
         <ItemTile item={item} large />
         <div className="item-text">
-          <h2 className="detail-title">{secret.name}</h2>
-          <span className="muted">
+          <p className="eyebrow">
             {ITEM_TYPE_LABEL[item.type] ?? item.type}
             {item.role !== 'owner' && ` · shared with you (${item.role})`}
+          </p>
+          <h2 className="detail-title">{secret.name}</h2>
+          {/* The type is named above: a note says what it is and when it changed. */}
+          <span className="muted">
+            {isNote ? (
+              <>
+                Encrypted note · updated <When at={item.updated_at} />
+              </>
+            ) : (
+              itemSubtitle(item)
+            )}
           </span>
         </div>
-        {/* As the web app has them: the star, the one common action as a
-            button, and the rest behind More. */}
-        <button
-          className="icon-button"
-          aria-label={item.favorite ? 'Remove from favorites' : 'Add to favorites'}
-          aria-pressed={item.favorite}
-          title={item.favorite ? 'Remove from favorites' : 'Add to favorites'}
-          onClick={onFavorite}
-        >
-          <StarIcon fill={item.favorite ? 'currentColor' : 'none'} />
-        </button>
-        {canEdit && (
-          <button className="secondary" onClick={onEdit}>
-            <PencilIcon width={18} height={18} />
-            Edit
+        {/* As the web app has them: the star, More, and the one common action
+            as a button. */}
+        <div className="detail-actions">
+          <button
+            className="icon-button outlined"
+            aria-label={item.favorite ? 'Remove from favorites' : 'Add to favorites'}
+            aria-pressed={item.favorite}
+            title={item.favorite ? 'Remove from favorites' : 'Add to favorites'}
+            onClick={onFavorite}
+          >
+            <StarIcon fill={item.favorite ? 'currentColor' : 'none'} />
           </button>
-        )}
-        {/* Only the owner hands an item on, or throws it away. */}
-        {item.role === 'owner' && (
-          <div className="menu-anchor" ref={menuRef}>
-            <button
-              className="icon-button"
-              aria-label="More"
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-              onClick={() => setMenuOpen((open) => !open)}
-            >
-              <MoreIcon />
-            </button>
-            {menuOpen && (
-              <div className="menu" role="menu">
-                {!COMMUNITY && (
+          {/* Only the owner hands an item on, or throws it away. */}
+          {item.role === 'owner' && (
+            <div className="menu-anchor" ref={menuRef}>
+              <button
+                className="icon-button outlined"
+                aria-label="More"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen((open) => !open)}
+              >
+                <MoreIcon />
+              </button>
+              {menuOpen && (
+                <div className="menu" role="menu">
+                  {!COMMUNITY && (
+                    <button
+                      role="menuitem"
+                      className="menu-item"
+                      onClick={() => {
+                        setMenuOpen(false)
+                        onShare()
+                      }}
+                    >
+                      <ShareIcon />
+                      Share
+                    </button>
+                  )}
                   <button
                     role="menuitem"
-                    className="menu-item"
+                    className="menu-item menu-danger"
                     onClick={() => {
                       setMenuOpen(false)
-                      onShare()
+                      onTrash()
                     }}
                   >
-                    <ShareIcon />
-                    Share
+                    <TrashIcon />
+                    Move to trash
                   </button>
-                )}
-                <button
-                  role="menuitem"
-                  className="menu-item menu-danger"
-                  onClick={() => {
-                    setMenuOpen(false)
-                    onTrash()
-                  }}
-                >
-                  <TrashIcon />
-                  Move to trash
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+                </div>
+              )}
+            </div>
+          )}
+          {canEdit && (
+            <button className="edit" onClick={onEdit}>
+              <PencilIcon width={14} height={14} />
+              Edit
+            </button>
+          )}
+        </div>
       </header>
 
-      <dl className="fields">
-        {isLogin && (
-          <>
-            <div className="field">
-              <dt>Username</dt>
-              <dd>
-                {secret.username ? (
-                  showUsername ? (
-                    secret.username
-                  ) : (
-                    maskUsername(secret.username)
-                  )
-                ) : (
-                  <span className="muted">None</span>
-                )}
-              </dd>
-              {secret.username && (
-                <button
-                  className="icon-button"
-                  aria-label={showUsername ? 'Hide username' : 'Show username'}
-                  aria-pressed={showUsername}
-                  title={showUsername ? 'Hide username' : 'Show username'}
-                  onClick={() => setShowUsername((value) => !value)}
-                >
-                  {showUsername ? <EyeOffIcon /> : <EyeIcon />}
-                </button>
-              )}
+      {isLogin && (
+        <FieldGroup title="Credentials" count={secret.passkey ? 3 : 2}>
+          <div className="field">
+            <dt>Username</dt>
+            <dd>{username || <span className="muted">None</span>}</dd>
+            {secret.username && (
               <button
                 className="icon-button"
-                aria-label="Copy username"
-                title="Copy username"
-                onClick={() => onCopy(secret.username, 'username')}
+                aria-label={showUsername ? 'Hide username' : 'Show username'}
+                aria-pressed={showUsername}
+                title={showUsername ? 'Hide username' : 'Show username'}
+                onClick={() => setShowUsername((value) => !value)}
               >
-                <CopyIcon />
+                {showUsername ? <EyeOffIcon /> : <EyeIcon />}
               </button>
-            </div>
-
-            <div className="field">
-              <dt>Password</dt>
-              <dd className="mono">
-                {secret.password ? (
-                  revealed ? (
-                    secret.password
-                  ) : (
-                    MASK
-                  )
-                ) : (
-                  <span className="muted">None</span>
-                )}
-              </dd>
-              <button
-                className="icon-button"
-                aria-label={revealed ? 'Hide password' : 'Show password'}
-                aria-pressed={revealed}
-                title={revealed ? 'Hide password' : 'Show password'}
-                onClick={() => setRevealed((value) => !value)}
-              >
-                {revealed ? <EyeOffIcon /> : <EyeIcon />}
-              </button>
-              <button
-                className="icon-button"
-                aria-label="Copy password"
-                title="Copy password"
-                onClick={() => onCopy(secret.password, 'password')}
-              >
-                <CopyIcon />
-              </button>
-            </div>
-
-            <div className="field">
-              <dt>Website</dt>
-              <dd>
-                {website ? (
-                  <a href={website} target="_blank" rel="noreferrer">
-                    {secret.url}
-                  </a>
-                ) : (
-                  secret.url || <span className="muted">None</span>
-                )}
-              </dd>
-              {website && (
-                <a
-                  className="icon-button"
-                  href={website}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label="Open website"
-                  title="Open website"
-                >
-                  <ExternalLinkIcon />
-                </a>
-              )}
-            </div>
-
-            {secret.passkey && (
-              <div className="field">
-                <dt>Passkey</dt>
-                <dd>Signs in to {secret.passkey.rpId}</dd>
-              </div>
             )}
-          </>
-        )}
+            <button
+              className="icon-button"
+              aria-label="Copy username"
+              title="Copy username"
+              onClick={() => onCopy(secret.username, 'username')}
+            >
+              <CopyIcon />
+            </button>
+          </div>
 
-        {item.type === 'contact' &&
-          CONTACT_FIELDS.map(({ key, label }) => {
+          <div className="field">
+            <dt>Password</dt>
+            <dd className={secret.password ? 'mono' : undefined}>
+              {secret.password ? (
+                <>
+                  {revealed ? secret.password : MASK}
+                  <Strength password={secret.password} />
+                </>
+              ) : (
+                <span className="muted">None</span>
+              )}
+            </dd>
+            <button
+              className="icon-button"
+              aria-label={revealed ? 'Hide password' : 'Show password'}
+              aria-pressed={revealed}
+              title={revealed ? 'Hide password' : 'Show password'}
+              onClick={() => setRevealed((value) => !value)}
+            >
+              {revealed ? <EyeOffIcon /> : <EyeIcon />}
+            </button>
+            <button
+              className="icon-button"
+              aria-label="Copy password"
+              title="Copy password"
+              onClick={() => onCopy(secret.password, 'password')}
+            >
+              <CopyIcon />
+            </button>
+          </div>
+
+          {secret.passkey && (
+            <div className="field">
+              <dt>Passkey</dt>
+              <dd>Signs in to {secret.passkey.rpId}</dd>
+            </div>
+          )}
+        </FieldGroup>
+      )}
+
+      {isLogin && secret.url && (
+        <FieldGroup title="Website" count={1}>
+          <div className="field">
+            <dt>Website</dt>
+            <dd className="mono">{secret.url}</dd>
+            {website && (
+              <a className="button secondary small" href={website} target="_blank" rel="noreferrer">
+                Open
+                <ArrowUpRightIcon width={12} height={12} />
+              </a>
+            )}
+          </div>
+        </FieldGroup>
+      )}
+
+      {item.type === 'contact' && (
+        <FieldGroup title="Contact" count={CONTACT_FIELDS.length}>
+          {CONTACT_FIELDS.map(({ key, label }) => {
             const value = secret.contact?.[key]
             return (
               <div key={key} className="field">
@@ -588,9 +835,12 @@ function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: Item
               </div>
             )
           })}
+        </FieldGroup>
+      )}
 
-        {item.type === 'card' &&
-          CARD_FIELDS.map((cardField) => {
+      {item.type === 'card' && (
+        <FieldGroup title="Card" count={CARD_FIELDS.length}>
+          {CARD_FIELDS.map((cardField) => {
             const { key, label } = cardField
             const value = secret.card?.[key]
             const isSecret = 'secret' in cardField
@@ -600,11 +850,7 @@ function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: Item
                 <dd className={value && isSecret ? 'mono' : undefined}>
                   {/* Hidden, a card number still shows its last four digits. */}
                   {value ? (
-                    isSecret && !revealed ? (
-                      (key === 'number' && cardEnding(value)) || MASK
-                    ) : (
-                      value
-                    )
+                    cardFieldText(key, value, isSecret && !revealed)
                   ) : (
                     <span className="muted">None</span>
                   )}
@@ -635,12 +881,45 @@ function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: Item
               </div>
             )
           })}
+        </FieldGroup>
+      )}
 
-        {(secret.notes || isNote) && (
-          <div className="field field-notes">
-            <dt>Notes</dt>
+      {(secret.notes || isNote) && (
+        <section className="field-group">
+          <header className="field-group-head">
+            <h3>{isNote ? 'Note' : 'Notes'}</h3>
+            {/* Hidden, not even its length is told. */}
+            {isNote && (
+              <span>{noteHidden ? 'Protected' : `${(secret.notes ?? '').length} chars`}</span>
+            )}
+            {hidesNote && revealed && (
+              <button
+                className="icon-button"
+                aria-label="Hide note"
+                title="Hide note"
+                onClick={() => setRevealed(false)}
+              >
+                <EyeOffIcon />
+              </button>
+            )}
+            {secret.notes && (
+              <button
+                className="icon-button"
+                aria-label="Copy notes"
+                title="Copy notes"
+                onClick={() => onCopy(secret.notes, 'notes')}
+              >
+                <CopyIcon />
+              </button>
+            )}
+          </header>
+          <div
+            className={['note-body', isNote && 'note-main', noteHidden && 'hidden-note']
+              .filter(Boolean)
+              .join(' ')}
+          >
             {/* Out of reach while blurred: not selectable, not read aloud. */}
-            <dd
+            <div
               className={noteHidden ? 'blurred' : undefined}
               inert={noteHidden}
               aria-hidden={noteHidden}
@@ -654,7 +933,7 @@ function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: Item
                   <NotesView key={secret.notes} value={secret.notes} />
                 </Suspense>
               )}
-            </dd>
+            </div>
             {/* Hidden, the note says so itself and offers to be shown. */}
             {noteHidden && (
               <div className="note-veil">
@@ -666,36 +945,72 @@ function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: Item
                 </button>
               </div>
             )}
-            {hidesNote && revealed && (
-              <button
-                className="icon-button"
-                aria-label="Hide note"
-                title="Hide note"
-                onClick={() => setRevealed(false)}
-              >
-                <EyeOffIcon />
-              </button>
-            )}
-            <button
-              className="icon-button"
-              aria-label="Copy notes"
-              title="Copy notes"
-              onClick={() => onCopy(secret.notes, 'notes')}
-            >
-              <CopyIcon />
-            </button>
           </div>
-        )}
-      </dl>
+          {isNote && (
+            <footer className="field-group-foot">
+              <span>AES-256 · client side</span>
+              {sharing && <span>{sharing}</span>}
+            </footer>
+          )}
+        </section>
+      )}
 
-      <p className="muted meta">
-        {item.last_used_at && (
-          <>
-            Last used <When at={item.last_used_at} /> ·{' '}
-          </>
-        )}
-        Last updated <When at={item.updated_at} />
-      </p>
+      {/* A note says when it changed under its name, and who has it in its card. */}
+      {!isNote && (
+        <p className="item-meta">
+          {item.last_used_at && (
+            <>
+              Last used <When at={item.last_used_at} /> ·{' '}
+            </>
+          )}
+          Updated <When at={item.updated_at} />
+          {sharing && ` · ${sharing}`}
+        </p>
+      )}
     </div>
+  )
+}
+
+/** A titled card of fields: what it holds, and how many. */
+function FieldGroup({
+  title,
+  count,
+  children,
+}: {
+  title: string
+  count: number
+  children: ReactNode
+}) {
+  return (
+    <section className="field-group">
+      <header className="field-group-head">
+        <h3>{title}</h3>
+        <span>
+          {count} {count === 1 ? 'field' : 'fields'}
+        </span>
+      </header>
+      <dl className="fields">{children}</dl>
+    </section>
+  )
+}
+
+/** How many of the four bars a password's strength fills. */
+const STRENGTH = {
+  weak: { label: 'Weak', bars: 1 },
+  fair: { label: 'Fair', bars: 3 },
+  strong: { label: 'Strong', bars: 4 },
+} as const
+
+function Strength({ password }: { password: string }) {
+  const level = passwordStrength(password)
+  return (
+    <span className={`pw-strength strength-label strength-${level}`}>
+      <span aria-hidden="true">
+        {[1, 2, 3, 4].map((bar) => (
+          <i key={bar} className={bar <= STRENGTH[level].bars ? 'on' : undefined} />
+        ))}
+      </span>
+      {STRENGTH[level].label}
+    </span>
   )
 }

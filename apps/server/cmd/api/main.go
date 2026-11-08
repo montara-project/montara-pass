@@ -13,7 +13,10 @@ import (
 	"montara-pass/server/internal/config"
 	"montara-pass/server/internal/emails"
 	"montara-pass/server/internal/handlers"
+	"montara-pass/server/internal/lib/borderpay"
 	"montara-pass/server/internal/lib/lemonsqueezy"
+	"montara-pass/server/internal/lib/passkey"
+	"montara-pass/server/internal/middlewares"
 	"montara-pass/server/internal/repositories"
 	"montara-pass/server/internal/seeders"
 
@@ -84,6 +87,18 @@ func run() error {
 		logger.Info("billing through lemon squeezy", "store", cfg.Billing.LemonSqueezyStoreID, "currency", payments.Currency)
 	}
 
+	// BorderPay takes the IDR plans: one payment each, through QRIS. Nothing
+	// to read at boot — its client is stateless and the plans are seeded.
+	var borderPay *borderpay.Client
+	switch {
+	case config.Community():
+	case cfg.Billing.BorderPayAPIKey == "":
+		logger.Warn("IDR billing checkout disabled: borderpay-api-key is not set")
+	default:
+		borderPay = borderpay.New(cfg.Billing.BorderPayAPIKey, cfg.Billing.BorderPayBaseURL, cfg.Billing.BorderPayWebhookToken)
+		logger.Info("billing through borderpay", "base_url", borderPay.BaseURL)
+	}
+
 	application := &app.Application{
 		Config:       cfg,
 		Logger:       logger,
@@ -91,6 +106,37 @@ func run() error {
 		Repositories: repos,
 		Redis:        cache,
 		Payments:     payments,
+		BorderPay:    borderPay,
+		IPKV:         middlewares.NewIPKV(middlewares.NewStore(cache)),
+	}
+	// Passkey ceremonies wait between their two requests in the same store.
+	application.Passkeys, err = passkey.New(cfg.Auth.PasskeyRPID, "Montara Pass", cfg.Auth.BaseURL, application.IPKV)
+	if err != nil {
+		return fmt.Errorf("passkeys: %w", err)
+	}
+
+	// The blocks outlive the store's own memory: a restart, or a Redis that
+	// lost its keys, is answered from the record.
+	syncCtx, syncCancel := context.WithTimeout(context.Background(), 15*time.Second)
+	active, err := repos.IPBlock.Active(syncCtx)
+	syncCancel()
+	if err != nil {
+		return fmt.Errorf("restore ip blocks: %w", err)
+	}
+	restored := 0
+	for _, b := range active {
+		var until time.Time
+		if b.BlockedUntil != nil {
+			until = *b.BlockedUntil
+		}
+		if err := middlewares.BlockIP(application.IPKV, b.IP, until); err != nil {
+			logger.Error("restore ip block", "ip", b.IP, "error", err)
+			continue
+		}
+		restored++
+	}
+	if len(active) > 0 {
+		logger.Info("restored ip blocks", "restored", restored, "of", len(active))
 	}
 
 	// Authula reads its email templates when it is built.
@@ -99,8 +145,9 @@ func run() error {
 	}
 
 	// Creating the instance runs Authula's own migrations.
-	auth := newAuth(cfg, mirror, saveCustomer(application), logger)
+	auth := newAuth(cfg, mirror, saveCustomer(application), recordSignIn(&repos.Activity), logger)
 	application.Auth = auth
+	registerPasskeyRoutes(auth, application)
 	defer auth.CloseSystems()
 	defer auth.ClosePlugins()
 
@@ -156,7 +203,27 @@ func run() error {
 		go syncCatalogEvery(application, catalogSyncInterval)
 	}
 
+	// The activity log keeps 90 days whether or not anyone reads it.
+	go pruneActivityEvery(application, activityPruneInterval)
+
 	return serve(application)
+}
+
+// activityPruneInterval is how often rows past the activity log's 90 days
+// are deleted.
+const activityPruneInterval = time.Hour
+
+// pruneActivityEvery deletes the activity log's expired rows every interval,
+// for as long as the process runs.
+// ponytail: every replica prunes on its own clock; the delete is idempotent.
+func pruneActivityEvery(application *app.Application, interval time.Duration) {
+	for range time.Tick(interval) {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+		if err := application.Repositories.Activity.Prune(ctx); err != nil {
+			application.Logger.Warn("prune activity log", "error", err)
+		}
+		cancel()
+	}
 }
 
 // catalogSyncInterval is how often the plans follow the Lemon Squeezy

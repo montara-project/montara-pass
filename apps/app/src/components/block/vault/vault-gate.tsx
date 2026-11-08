@@ -5,12 +5,15 @@ import {
   SetupVaultFormSchema,
   UnlockFormSchema,
 } from '@montara-pass/shared/api/dtos/vault/schema'
+import { passkeyCancelled, passkeysSupported } from '@montara-pass/shared/auth/passkey'
 import {
   createUserKeys,
   unlockVault,
   WrongMasterPasswordError,
+  WrongPasskeyError,
 } from '@montara-pass/shared/crypto/vault'
-import { initials } from '@montara-pass/shared/string'
+import { errorMessage, initials } from '@montara-pass/shared/string'
+import { IconFingerprint } from '@tabler/icons-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 
@@ -23,7 +26,8 @@ import { apiErrorMessage } from '@/lib/api/api-error'
 import { queries } from '@/lib/api/queries'
 import { FOLDER_QUERY_KEY } from '@/lib/api/queries/folder'
 import { ITEM_QUERY_KEY } from '@/lib/api/queries/item'
-import { AUTO_LOCK_MINUTES, useVaultStore } from '@/lib/stores/vault'
+import { unlockWithPasskey } from '@/lib/auth/passkey-auth'
+import { AUTO_LOCK_MINUTES, startUnlock, useVaultStore } from '@/lib/stores/vault'
 
 interface VaultGateProps {
   children: React.ReactNode
@@ -106,9 +110,31 @@ function Account() {
 }
 
 function UnlockForm({ userKeys }: { userKeys: Models.UserKeys }) {
-  const unlock = useVaultStore((state) => state.unlock)
   // What unlocking said, as opposed to what the field says about itself.
   const [error, setError] = useState('')
+  const [passkeyBusy, setPasskeyBusy] = useState(false)
+  // Only offered when a passkey seals the vault key and the browser has passkeys.
+  const { data: passkeys } = useQuery({ ...queries.passkeys.list(), enabled: passkeysSupported() })
+  const canUsePasskey = passkeys?.some((p) => p.encrypted_vault_key) ?? false
+
+  const unlockPasskey = async () => {
+    setError('')
+    setPasskeyBusy(true)
+    // Signing out while the passkey prompt is open must not unlock afterwards.
+    const finish = startUnlock()
+    try {
+      finish(await unlockWithPasskey(userKeys, passkeys ?? []))
+    } catch (err) {
+      if (passkeyCancelled(err)) return
+      setError(
+        err instanceof WrongPasskeyError
+          ? err.message
+          : errorMessage(err, 'The vault could not be unlocked.')
+      )
+    } finally {
+      setPasskeyBusy(false)
+    }
+  }
 
   const form = useAppForm({
     defaultValues: { master_password: '' },
@@ -116,11 +142,12 @@ function UnlockForm({ userKeys }: { userKeys: Models.UserKeys }) {
     validators: { onDynamic: UnlockFormSchema },
     onSubmit: async ({ value }) => {
       setError('')
+      const finish = startUnlock()
 
       try {
         // The master password is used here and nowhere else: it is not stored
         // and not sent anywhere. Taken as typed: a space is part of it.
-        unlock(await unlockVault(value.master_password, userKeys))
+        finish(await unlockVault(value.master_password, userKeys))
       } catch (err) {
         setError(
           err instanceof WrongMasterPasswordError ? err.message : 'The vault could not be unlocked.'
@@ -168,6 +195,20 @@ function UnlockForm({ userKeys }: { userKeys: Models.UserKeys }) {
         </form.AppForm>
       </form>
 
+      {canUsePasskey && (
+        <Button
+          type="button"
+          variant="outline"
+          size="lg"
+          className="w-full"
+          disabled={passkeyBusy}
+          onClick={() => void unlockPasskey()}
+        >
+          <IconFingerprint />
+          {passkeyBusy ? 'Waiting for your passkey…' : 'Unlock with a passkey'}
+        </Button>
+      )}
+
       <p className="text-muted-foreground text-center text-[13px] text-balance">
         Locks again after {AUTO_LOCK_MINUTES} minutes without use, and when this page is reloaded.
       </p>
@@ -176,7 +217,6 @@ function UnlockForm({ userKeys }: { userKeys: Models.UserKeys }) {
 }
 
 function SetupForm() {
-  const unlock = useVaultStore((state) => state.unlock)
   const mutation = useMutation(queries.keys.create())
   const [error, setError] = useState('')
 
@@ -186,11 +226,12 @@ function SetupForm() {
     validators: { onDynamic: SetupVaultFormSchema },
     onSubmit: async ({ value }) => {
       setError('')
+      const finish = startUnlock()
 
       try {
         const { request, keys } = await createUserKeys(value.master_password)
         await mutation.mutateAsync(request)
-        unlock(keys)
+        finish(keys)
       } catch (err) {
         setError(apiErrorMessage(err))
       }

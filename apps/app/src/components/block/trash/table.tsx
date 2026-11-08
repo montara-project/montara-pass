@@ -27,28 +27,38 @@ export default function TrashTable() {
 
   const columns = TrashColumn({ loading })
 
-  return (
-    <SectionCard
-      title="Trash"
-      description="Items you own and moved to the trash. They stay here until you restore or delete them."
-    >
-      {isLoading ? (
-        <RowsSkeleton />
-      ) : !loading && items.length === 0 ? (
+  // Loading, an empty trash, or the table.
+  const empty = !loading && items.length === 0
+  const renderTable = () => {
+    if (isLoading) {
+      return <RowsSkeleton />
+    }
+    if (empty) {
+      return (
         <EmptyState
           icon={IconTrash}
           title="The trash is empty"
           description="An item you move to the trash from the vault waits here, where you can restore it or delete it for good."
         />
-      ) : (
-        <ReactTable
-          columns={columns}
-          data={items}
-          total={total}
-          pageIndex={pageIndex}
-          pageSize={limit}
-        />
-      )}
+      )
+    }
+    return (
+      <ReactTable
+        columns={columns}
+        data={items}
+        total={total}
+        pageIndex={pageIndex}
+        pageSize={limit}
+      />
+    )
+  }
+
+  return (
+    <SectionCard
+      title="Trash"
+      description="Items you own and moved to the trash. They stay here until you restore or delete them."
+    >
+      {renderTable()}
     </SectionCard>
   )
 }

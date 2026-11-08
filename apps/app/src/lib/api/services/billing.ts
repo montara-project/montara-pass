@@ -1,12 +1,18 @@
 import type { Models } from '@montara-pass/shared/api/models'
 
-import type { ApiItemResponse } from '@/types/api'
+import type { ApiItemResponse, ApiListResponse, Metadata } from '@/types/api'
 
 import { request } from '../client-fetch'
 
+/**
+ * The plan list's metadata: the only currency the caller may buy in, where
+ * the server knows their country (IDR in Indonesia, USD elsewhere).
+ */
+export type PlanListMeta = Metadata & { currency?: 'USD' | 'IDR' }
+
 export const billingServices = {
   /** The plans on offer; public. */
-  plans: () => request<ApiItemResponse<Models.Plan[]>>('GET', '/api/v1/plans'),
+  plans: () => request<ApiListResponse<Models.Plan, PlanListMeta>>('GET', '/api/v1/plans'),
   overview: () => request<ApiItemResponse<Models.BillingOverview>>('GET', '/api/v1/billing'),
   /** Answers the subscription with the checkout_url to pay at. */
   subscribe: (planId: string) =>

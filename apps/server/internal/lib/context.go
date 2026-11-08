@@ -18,3 +18,13 @@ func ContextGetUID(c fiber.Ctx) (uuid.UUID, error) {
 func ContextSetUID(c fiber.Ctx, uid uuid.UUID) {
 	fiber.Locals[uuid.UUID](c, "uid", uid)
 }
+
+// ContextGetSessionID returns the Authula session the request is signed in
+// with, set by the Authorization middleware, or "" for none.
+func ContextGetSessionID(c fiber.Ctx) string {
+	return fiber.Locals[string](c, "sid")
+}
+
+func ContextSetSessionID(c fiber.Ctx, id string) {
+	fiber.Locals[string](c, "sid", id)
+}

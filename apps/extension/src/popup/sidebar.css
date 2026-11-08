@@ -1,6 +1,7 @@
-/* Tailwind for the full tab's sidebar only: the web app's shadcn sidebar,
-   shared through the `@` alias. No preflight and no layers: the rest of the
-   popup is styles.css, and a reset would undo it. Only the files below are
+/* Tailwind for the full tab's sidebar and the Security page's audit log
+   only: the web app's own components, shared through the `@` alias. No
+   preflight and no layers: the rest of the popup is styles.css, and a reset
+   would undo it. Only the files below are
    read for classes, so none of the popup's own class names turn into a
    utility by accident. */
 @import 'tailwindcss/theme.css';
@@ -14,6 +15,14 @@
 @source '../../../app/src/components/ui/separator.tsx';
 @source '../../../app/src/components/ui/breadcrumb.tsx';
 @source '../../../app/src/components/ui/dropdown-menu.tsx';
+@source '../../../app/src/components/layout/server-time.tsx';
+@source '../../../app/src/components/block/common/react-table.tsx';
+@source '../../../app/src/components/block/security/audit-table.tsx';
+@source '../../../app/src/components/block/security/section.tsx';
+@source '../../../app/src/components/ui/data-grid.tsx';
+@source '../../../app/src/components/ui/data-grid-table.tsx';
+@source '../../../app/src/components/ui/scroll-area.tsx';
+@source '../../../app/src/components/ui/skeleton.tsx';
 
 /* The roles of styles.css under the names the shared components use. */
 @theme inline {
@@ -26,6 +35,9 @@
   --color-accent: var(--hover);
   --color-accent-foreground: var(--fg);
   --color-hover: var(--hover);
+  --color-card: var(--card);
+  --color-good: var(--good);
+  --color-skeleton: var(--hover);
   --color-popover: var(--card);
   --color-popover-foreground: var(--fg);
   --color-ring: var(--focus);
@@ -41,6 +53,8 @@
   --color-sidebar-border: var(--border);
   --color-sidebar-ring: var(--focus);
 
+  --radius-sm: 6px;
+  --radius-md: 8px;
   --radius-control: 10px;
   --radius-row: 12px;
   --shadow-float: var(--shadow);

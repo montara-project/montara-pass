@@ -1,4 +1,4 @@
-import { ItemFormSchema } from '@montara-pass/shared/api/dtos/vault/schema'
+import { ItemEditFormSchema, ItemFormSchema } from '@montara-pass/shared/api/dtos/vault/schema'
 import { optionalString } from '@montara-pass/shared/validation'
 import z from 'zod'
 
@@ -15,27 +15,29 @@ const NOT_A_URL = DEV
   ? 'Enter an http(s) URL, like https://vault.example.com'
   : 'Enter an https URL, like https://vault.example.com'
 const NOT_HTTPS =
-  'The server must use https: over http the account password and the session would cross the network unencrypted.'
+  'The server must use https: over http the account password and the session would cross the network unencrypted. Only a server on this computer (localhost) may use http.'
 
 /**
  * Where the extension finds its server. A released build asks for one URL,
- * and only when it is self-hosted; a development build asks for two.
+ * and only when it is self-hosted; a development build in dev mode asks for two.
  */
 export const ServerFormSchema = z
   .object({
     selfHosted: z.boolean(),
+    devMode: z.boolean(),
     apiUrl: z.string(),
     appUrl: z.string(),
   })
   .superRefine((value, ctx) => {
-    if (DEV || value.selfHosted) {
+    const dev = DEV && value.devMode
+    if (dev || value.selfHosted) {
       const origin = originOf(value.apiUrl)
       if (!origin) ctx.addIssue({ code: 'custom', path: ['apiUrl'], message: NOT_A_URL })
       else if (!serverAllowed(origin)) {
         ctx.addIssue({ code: 'custom', path: ['apiUrl'], message: NOT_HTTPS })
       }
     }
-    if (DEV && !originOf(value.appUrl)) {
+    if (dev && !originOf(value.appUrl)) {
       ctx.addIssue({ code: 'custom', path: ['appUrl'], message: NOT_A_URL })
     }
   })
@@ -63,3 +65,15 @@ export const SaveLoginFormSchema = z.object({
 })
 
 export type SaveLoginFormDto = z.infer<typeof SaveLoginFormSchema>
+
+/**
+ * The save prompt for a contact or a card: its name and the fields the page
+ * sent, put right. A card's number is the page's.
+ */
+export const SaveDetailsFormSchema = ItemEditFormSchema.pick({
+  name: true,
+  contact: true,
+  card: true,
+})
+
+export type SaveDetailsFormDto = z.infer<typeof SaveDetailsFormSchema>

@@ -53,6 +53,15 @@ The API accepts extension origins without a CORS entry.
 
 ## The popup
 
+**Sign in with a passkey** signs in with a passkey on the account, made in
+the web app under **Account → Passkeys**. Where that passkey can unlock the
+vault too, the popup opens unlocked; otherwise it asks for the master
+password. Locked again, the popup offers **Unlock with a passkey**. The popup
+asks the browser itself, which an extension may do for the hosts it has
+permission for from Chrome 122 and Firefox 150. On Montara Pass's own site
+the extension does not offer to keep a passkey in the vault: the account's
+passkey belongs on the device's authenticator.
+
 After signing in and unlocking, the popup shows:
 
 - **Logins for the current site**, each with a **Fill** button.
@@ -163,6 +172,41 @@ closing the tab or five minutes without an answer drop the login.
 A form the site refuses is offered as well: the extension sees that a form
 was sent, not what the site answered.
 
+## Saving a contact as it is submitted
+
+A form without a password that holds someone's details, such as a shipping
+address or a profile, is offered the same way, as a contact. The extension
+reads the fields of the form that was sent by their `autocomplete` value
+(`given-name`, `street-address`, `postal-code` and so on), or by their name
+or id when they have none, in English or Indonesian (`alamat`, `kota`,
+`kode_pos`). It counts as a contact when it has a name and at least one of
+an address, a city, a state, a postal code, a country, a phone or a company.
+A name with only an email is a sign-up or a message, and is not offered.
+
+The prompt shows the fields the page sent, and each can be corrected before
+**Save**. Nothing is shown when a contact in the vault already holds all of
+them. Locked, signed out, the Montara Pass app itself, **Not now** and the
+five minutes work as they do for a login. A tab holds one login, card or
+contact at a time: whichever was sent last.
+
+## Saving a card as it is submitted
+
+A form without a password that holds a card number is offered as a card. The
+fields are read by `autocomplete` (`cc-name`, `cc-number`, `cc-exp`,
+`cc-exp-month`, `cc-exp-year`), or by name or id when they have none. The
+number must have 12 to 19 digits and pass the Luhn check, so another number
+field is not mistaken for one. The expiry is kept as `MM/YY`, or left empty
+when it does not read as a date. A checkout that holds a card and an address
+is offered the card.
+
+The security code is never taken from the page: it can be added to the card
+in the vault. The prompt shows the last four digits of the number, which
+cannot be changed there, and lets the name, the cardholder and the expiry be
+corrected. Nothing is shown when the vault has a card with that number.
+
+A card typed into a payment provider's frame, such as Stripe's, is not seen:
+the content script runs in the top frame only.
+
 ## Site icons and last use
 
 A login keeps the icon of its site inside its encrypted content, as a PNG
@@ -193,7 +237,7 @@ without the route is ignored: the login is filled all the same.
 | Access and refresh tokens | `chrome.storage.local` | on sign out |
 | Unlocked vault keys | `chrome.storage.session` (in memory) | after 15 minutes without use, when the browser closes, on **Lock** |
 | Master password | nowhere | used once to unlock |
-| A login just submitted, until it is saved or declined | `chrome.storage.session` (in memory) | on save, on **Not now**, when the tab closes, after 5 minutes |
+| A login, a card (without its security code) or a contact just submitted, until it is saved or declined | `chrome.storage.session` (in memory) | on save, on **Not now**, when the tab closes, after 5 minutes |
 | A copied username or password | the system clipboard | after 1 minute, by the background script |
 
 ## Permissions

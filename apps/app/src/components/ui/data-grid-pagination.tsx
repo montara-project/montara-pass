@@ -48,7 +48,11 @@ function DataGridPagination({
   const search: PaginationSearch = useSearch({ strict: false })
   const navigate = useNavigate()
   const setSearch = (next: PaginationSearch) =>
-    void navigate({ to: '.', search: (prev) => ({ ...prev, ...next }), replace: true })
+    void navigate({
+      to: '.',
+      search: (prev: Record<string, unknown>) => ({ ...prev, ...next }),
+      replace: true,
+    })
 
   const newPageIndex = search.page ?? pageIndex
   const newPageSize = search.pageSize ?? pageSize

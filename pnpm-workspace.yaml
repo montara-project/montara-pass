@@ -50,3 +50,8 @@ overrides:
   'seroval@>=1.5.5 <1.6.11': 1.6.12
   # GHSA-86w9-cpqp-85rv: node-forge RSA signature check, via Expo and web-ext.
   'node-forge@<1.4.1': 1.4.2
+  # GHSA-3g3m-2fjr-6pw4: glob AbortSignal bypass, and minimatch globparts
+  # DoS, via @expo/cli. glob 14 keeps 13's API and engines; it only moves to
+  # minimatch 11, which drops nothing glob or Expo use.
+  'glob@>=13.0.0 <14.0.2': 14.0.3
+  'minimatch@>=10.0.0 <11.0.1': 11.0.4

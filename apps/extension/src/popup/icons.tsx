@@ -112,6 +112,13 @@ export const FilterIcon = icon(
   </>
 )
 
+export const BookOpenIcon = icon(
+  <>
+    <path d="M12 7v14" />
+    <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" />
+  </>
+)
+
 export const ChevronDownIcon = icon(<path d="m6 9 6 6 6-6" />)
 
 export const LogOutIcon = icon(
@@ -143,6 +150,35 @@ export const ShieldIcon = icon(
   <>
     <path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6l-7-3Z" />
     <path d="m9 12 2 2 4-4" />
+  </>
+)
+
+/** The plain shield, for password health; the checked one is Security. */
+export const ShieldOutlineIcon = icon(
+  <path d="M12 3 5 6v5c0 4.5 3 8.3 7 10 4-1.7 7-5.5 7-10V6l-7-3Z" />
+)
+
+export const KeyRoundIcon = icon(
+  <>
+    <path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z" />
+    <circle cx="16.5" cy="7.5" r=".5" fill="currentColor" />
+  </>
+)
+
+export const HistoryIcon = icon(
+  <>
+    <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+    <path d="M3 3v5h5M12 7v5l3 3" />
+  </>
+)
+
+export const FingerprintIcon = icon(
+  <>
+    <path d="M18.9 7a8 8 0 0 1 1.1 5v1a6 6 0 0 0 .8 3" />
+    <path d="M8 11a4 4 0 0 1 8 0v1a10 10 0 0 0 2 6" />
+    <path d="M12 11v2a14 14 0 0 0 2.5 8" />
+    <path d="M8 15a18 18 0 0 0 1.8 6" />
+    <path d="M4.9 19a22 22 0 0 1 -.9 -7v-1a8 8 0 0 1 12 -6.95" />
   </>
 )
 
@@ -224,6 +260,24 @@ export const TrashIcon = icon(
 )
 
 export const CheckIcon = icon(<path d="m5 12 5 5L20 7" />)
+
+export const ArrowUpRightIcon = icon(<path d="M7 7h10v10M7 17 17 7" />)
+
+export const GlobeIcon = icon(
+  <>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20" />
+  </>
+)
+
+export const QrIcon = icon(
+  <>
+    <rect width="5" height="5" x="3" y="3" rx="1" />
+    <rect width="5" height="5" x="16" y="3" rx="1" />
+    <rect width="5" height="5" x="3" y="16" rx="1" />
+    <path d="M21 16h-3a2 2 0 0 0-2 2v3M21 21v.01M12 7v3a2 2 0 0 1-2 2H7M3 12h.01M12 3h.01M12 16v.01M16 12h1M21 12v.01M12 21v-1" />
+  </>
+)
 
 export const ChevronRightIcon = icon(<path d="m9 6 6 6-6 6" />)
 

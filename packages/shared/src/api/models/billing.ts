@@ -3,6 +3,9 @@ import type { ISO8601DateString } from '../../types/time'
 // Billing, Cloud Edition only (apps/server internal/models/billing.go).
 // Amounts are in the currency's minor unit; see formatPrice.
 
+/** The provider a plan's checkout is opened at (apps/server models/billing.go). */
+export type PlanProvider = 'lemonsqueezy' | 'borderpay'
+
 export interface Plan {
   id: string
   code: string
@@ -14,6 +17,7 @@ export interface Plan {
   /** What it is marked down from, above amount; set by hand, as Lemon Squeezy has no such price. */
   compare_at_amount: number | null
   currency: string
+  provider: PlanProvider
   active: boolean
   /** The Lemon Squeezy variant it is synced from; null for a plan from before the sync. */
   variant_id: string | null
@@ -30,8 +34,10 @@ export interface Plan {
 }
 
 /**
- * A recurring plan, renewed by Lemon Squeezy. Active to current_period_end:
- * the next renewal, or the end once canceled_at says it will not renew.
+ * A recurring plan. Lemon Squeezy's renews by itself; a BorderPay one is
+ * paid one period at a time, and the user subscribes again once it has
+ * ended. Active to current_period_end: the next renewal, or the end once
+ * canceled_at says it will not renew.
  */
 export interface Subscription {
   id: string

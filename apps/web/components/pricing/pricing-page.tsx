@@ -12,7 +12,7 @@ import {
 } from "@/components/icons";
 import { docsUrl } from "@/components/links";
 import { PricingLedger } from "@/components/pricing/ledger-panel";
-import { formatAmount, SELF_HOST_HREF, TERMS, type Tier } from "@/components/pricing/plans";
+import { formatAmount, SELF_HOST_HREF, terms, type Tier } from "@/components/pricing/plans";
 import { card, pill } from "@/components/shared";
 
 /**
@@ -25,18 +25,30 @@ import { card, pill } from "@/components/shared";
  * The tiers come from the route, which read the plans on the server; this
  * component only holds the selection.
  */
-export function PricingPage({ tiers }: { tiers: Tier[] }) {
+export function PricingPage({
+  tiers,
+  region,
+}: {
+  tiers: Tier[];
+  /** The only currency on sale to the visitor, where their country is known. */
+  region?: "USD" | "IDR";
+}) {
   // The tier the foot action offers; none chosen yet means the yearly one, the
   // row marked best value. Matched by its billing rather than by code, because
   // the live plans' codes are the store's, not the authored ones.
   const [chosen, setChosen] = useState<string>();
-  const yearly = tiers.find((tier) => tier.per === "/ year");
+  // The currency of the rows on the tape: the USD plans are paid through
+  // Lemon Squeezy, the IDR ones through BorderPay's QRIS. Where the visitor's
+  // country is known, only its currency is on sale.
+  const [tab, setCurrency] = useState<"USD" | "IDR">("USD");
+  const currency = region ?? tab;
+  const rows = tiers.filter((tier) => tier.kind === "free" || tier.currency === currency);
+  const yearly = rows.find((tier) => tier.per === "/ year");
   const selected =
-    tiers.find((tier) => tier.code === chosen) ??
+    rows.find((tier) => tier.code === chosen) ??
     yearly ??
-    tiers.find((tier) => tier.kind !== "free") ??
-    tiers[0];
-  const currency = "USD";
+    rows.find((tier) => tier.kind !== "free") ??
+    rows[0];
 
   return (
     <main>
@@ -44,7 +56,30 @@ export function PricingPage({ tiers }: { tiers: Tier[] }) {
         <section className="tape">
           <div className="tape-head">
             <p className="tape-slug">Montara Pass — pricing</p>
-            <p className="tape-slug">billed in {currency}</p>
+            <p className="tape-slug flex items-center gap-2">
+              billed in
+              {region ? (
+                <span className="font-mono">{region}</span>
+              ) : (
+                <span role="group" aria-label="Currency" className="inline-flex gap-1">
+                  {(["USD", "IDR"] as const).map((code) => (
+                    <button
+                      key={code}
+                      type="button"
+                      onClick={() => setCurrency(code)}
+                      aria-pressed={currency === code}
+                      className={`rounded-full border px-2 py-0.5 font-mono text-[11px] tracking-[0.12em] uppercase ${
+                        currency === code
+                          ? "border-accent-bright text-accent-bright"
+                          : "border-line text-mist hover:text-accent-bright"
+                      }`}
+                    >
+                      {code}
+                    </button>
+                  ))}
+                </span>
+              )}
+            </p>
           </div>
 
           <h1 className="tape-title">Four prices. One vault.</h1>
@@ -59,7 +94,7 @@ export function PricingPage({ tiers }: { tiers: Tier[] }) {
               <span>Plan</span>
               <span>Price</span>
             </p>
-            {tiers.map((tier) => {
+            {rows.map((tier) => {
               const on = tier.code === selected.code;
               return (
                 <label key={tier.code} className="tape-line" data-on={on || undefined}>
@@ -91,10 +126,10 @@ export function PricingPage({ tiers }: { tiers: Tier[] }) {
                     {tier.offer ? (
                       <s className="tape-was">
                         <span className="sr-only">was </span>
-                        {formatAmount(tier.offer.was, currency)}
+                        {formatAmount(tier.offer.was, tier.currency)}
                       </s>
                     ) : null}
-                    {formatAmount(tier.offer?.amount ?? tier.amount, currency)}{" "}
+                    {formatAmount(tier.offer?.amount ?? tier.amount, tier.currency)}{" "}
                     <small>{tier.per}</small>
                   </span>
                 </label>
@@ -112,7 +147,7 @@ export function PricingPage({ tiers }: { tiers: Tier[] }) {
             </a>
           </div>
           <p className="tape-fineprint">
-            {TERMS[selected.kind]}
+            {terms(selected.kind, currency)}
             {selected.kind !== "free" ? (
               <span>No refunds: access runs to the end of the period you paid for.</span>
             ) : null}
@@ -121,14 +156,14 @@ export function PricingPage({ tiers }: { tiers: Tier[] }) {
           {/* The foot changes with the selection; announce it rather than let it
               change silently for anyone not watching the tape. */}
           <p role="status" aria-live="polite" className="sr-only">
-            {selected.name}: {selected.action.label}. {TERMS[selected.kind]}
+            {selected.name}: {selected.action.label}. {terms(selected.kind, currency)}
           </p>
         </section>
 
         <PricingLedger />
       </div>
 
-      <PricingBelow />
+      <PricingBelow currency={currency} />
     </main>
   );
 }
@@ -158,6 +193,22 @@ const gates = [
   },
 ];
 
+const billingIDR = [
+  {
+    icon: CreditCardIcon,
+    text: "BorderPay handles the payment, by QRIS from any Indonesian bank or e-wallet.",
+  },
+  {
+    icon: SyncIcon,
+    text: "A monthly or annual plan is paid one period at a time. Nothing renews by itself: subscribe again when it ends.",
+  },
+  {
+    icon: InfinityIcon,
+    text: "The lifetime plan is one payment. It does not renew, and it does not expire.",
+  },
+  { icon: ReceiptIcon, text: "We do not refund. There is no trial period on the paid tiers." },
+];
+
 const billing = [
   {
     icon: CreditCardIcon,
@@ -177,7 +228,7 @@ const billing = [
 const heading = "font-heading text-2xl font-medium tracking-tight";
 const below = "border-t border-line px-6 py-20 sm:px-10 sm:py-24";
 
-function PricingBelow() {
+function PricingBelow({ currency }: { currency: "USD" | "IDR" }) {
   return (
     <>
       <section aria-labelledby="included" className={below}>
@@ -242,10 +293,10 @@ function PricingBelow() {
               Billing, plainly
             </h2>
             <p className="mt-4 text-[15px] leading-7 text-mist">
-              Four things worth knowing before you enter a card. No surprises, no dark patterns.
+              Four things worth knowing before you pay. No surprises, no dark patterns.
             </p>
             <ul className="mt-6 flex flex-col gap-5">
-              {billing.map((item) => (
+              {(currency === "IDR" ? billingIDR : billing).map((item) => (
                 <li key={item.text} className="flex items-start gap-3.5">
                   <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md border border-line bg-card text-accent-bright">
                     <item.icon className="size-3.5" />

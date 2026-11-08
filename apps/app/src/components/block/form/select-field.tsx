@@ -43,6 +43,9 @@ export default function SelectField<TData>({
 
   const isInvalid = !!errors?.length
 
+  // While loading, or with nothing to pick, one disabled line says why.
+  const noOptions = loading || options.length === 0
+
   return (
     <Field data-invalid={isInvalid} className="gap-1.5">
       <FieldLabel htmlFor={field.name} className="gap-1">
@@ -71,21 +74,16 @@ export default function SelectField<TData>({
           <SelectValue placeholder={loading ? 'Loading...' : placeholder} />
         </SelectTrigger>
         <SelectContent position="popper">
-          {loading ? (
+          {noOptions ? (
             <SelectItem disabled value="-">
-              Loading...
+              {loading ? 'Loading...' : 'No options available'}
             </SelectItem>
-          ) : options.length > 0 ? (
+          ) : (
             options.map((option) => (
               <SelectItem key={option.value} value={option.value}>
-                {itemRender && itemRender(option)}
-                {!itemRender && option.label}
+                {itemRender ? itemRender(option) : option.label}
               </SelectItem>
             ))
-          ) : (
-            <SelectItem disabled value="-">
-              No options available
-            </SelectItem>
           )}
         </SelectContent>
       </Select>

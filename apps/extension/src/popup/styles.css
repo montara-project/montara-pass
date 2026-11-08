@@ -889,6 +889,12 @@ a.icon-button {
   padding: 16px;
 }
 
+/* The passkey prompt's buttons: in a narrow frame, the last ones go to a
+   second line rather than past its edge. */
+.inline-note.row {
+  flex-wrap: wrap;
+}
+
 /* ---------- sign-in and unlock ---------- */
 
 .auth {
@@ -1337,37 +1343,132 @@ a.set-row svg {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding-top: 16px;
   background: var(--panel);
   border-right: 1px solid var(--border);
+}
+
+/* What the page is: a small label, its name, what it holds. */
+.list-head-page {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.list-title {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.list-title .muted {
+  font-size: 13px;
+}
+
+.eyebrow {
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
 
 .list-tools {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 12px 12px;
+  padding: 14px 24px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.list-tools select {
+  height: 36px;
+  font-size: 13px;
+}
+
+.folder-filter {
+  width: 160px;
+  flex-shrink: 0;
+}
+
+/* The list in its own card, under the bars, with the page's gutter round it. */
+/* The list runs into the page, on the page's own gutter: headings pinned
+   at its top, the count at its bottom, the rows scrolling between. */
+.list-table {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.list-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 24px;
+  border-top: 1px solid var(--border);
+}
+
+.list-foot .list-count {
+  flex: 1;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+a.button.small,
+button.small {
+  height: 26px;
+  padding: 0 10px;
+  gap: 4px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+a.button.small svg,
+button.small svg {
+  color: var(--muted);
 }
 
 /* The search takes the bar's room; the buttons beside it stand as tall. */
 .list-tools .search {
   flex: 1;
   min-width: 0;
+  height: 36px;
   margin: 0;
 }
 
 .list-tools .icon-button {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
 }
 
 .new-item {
-  height: 40px;
+  height: 36px;
   padding: 0 14px;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .list-message {
-  padding: 8px 20px;
+  padding: 14px 16px;
+}
+
+/* Where the list ends while the server has more: in view, the next page is asked for. */
+.list-more {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-align: center;
+  text-transform: uppercase;
 }
 
 /* The rows' scroller keeps its scrollbar 4px off the line beside it, where a
@@ -1377,27 +1478,57 @@ a.set-row svg {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  scrollbar-gutter: stable;
-  margin-right: 4px;
-  padding: 0 4px 8px 8px;
+  overscroll-behavior: contain;
 }
 
-/* Here the whole row is the control, so the row itself is not padded. */
+/* Here the whole row is the control, so the row itself is not padded. Rows
+   run edge to edge with a faint line between them, as a table's do. */
+.list-col .items {
+  gap: 0;
+}
+
 .list-col .items li {
   padding: 0;
+  border-radius: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.list-col .tile {
+  width: 32px;
+  height: 32px;
+  margin-right: 0;
+  border-radius: 8px;
+}
+
+.list-col .tile svg {
+  width: 16px;
+  height: 16px;
+}
+
+.list-col .tile-favicon {
+  padding: 4px;
+}
+
+.list-col .item-name {
+  font-size: 13.5px;
+}
+
+.list-col .item-text .muted {
+  font-size: 12px;
 }
 
 .item-row {
   width: 100%;
   height: auto;
-  padding: 8px 12px;
+  padding: 11px 24px;
   justify-content: flex-start;
   gap: 0;
+  column-gap: 12px;
   background: none;
   color: var(--fg);
   font-weight: 400;
   text-align: left;
-  border-radius: 12px;
+  border-radius: 0;
 }
 
 /* The list as a table: name, folder, last used. The two extra columns go
@@ -1425,34 +1556,34 @@ a.set-row svg {
   position: sticky;
   top: 0;
   z-index: 1;
-  margin-bottom: 4px;
-  padding: 4px 12px 8px;
+  column-gap: 12px;
+  padding: 10px 24px;
+  border-bottom: 1px solid var(--border);
   background: var(--panel);
   color: var(--muted);
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.list-head::after {
-  content: '';
-  position: absolute;
-  inset: auto 12px 0;
-  height: 1px;
-  background: var(--border);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
 
 .col {
-  padding-left: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: 12px;
+}
+
+.item-row .col:last-child {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
 }
 
 @container (max-width: 520px) {
   /* New item keeps its sign and gives its words to the search beside it. */
   .new-item {
-    width: 40px;
+    width: 36px;
     padding: 0;
   }
 
@@ -1460,11 +1591,13 @@ a.set-row svg {
     display: none;
   }
 
-  /* The headings go; the line under them stays: it is where the list begins.
-     The pixel of padding gives the line a box to sit in, inside the scroller
-     rather than clipped above it. */
+  .folder-filter {
+    width: 120px;
+  }
+
+  /* The headings go; the line under them stays: it is where the list begins. */
   .list-head {
-    padding: 0 0 1px;
+    padding: 0;
   }
 
   .list-head > span {
@@ -1508,57 +1641,211 @@ a.set-row svg {
   margin-inline: auto;
 }
 
-/* The generator: the password on one side, what shapes it on the other. */
-.gen-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-  gap: 16px;
+/* The generator, as the web app has it: a page head with a line under it,
+   then the password and its length beside what it is made of. */
+.detail-body.gen-page {
+  gap: 0;
+  padding: 0;
   container-type: inline-size;
 }
 
-.generated,
-.gen-options {
+.tool-page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 22px 32px 18px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.tool-page-head h1 {
+  font-size: 22px;
+}
+
+/* Too narrow for the stats beside the title: they go under it. */
+@container (max-width: 620px) {
+  .tool-page-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.gen-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  align-items: start;
+  gap: 18px;
+  padding: 24px 32px 28px;
+}
+
+.gen-main {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 20px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
+  gap: 18px;
+  min-width: 0;
 }
 
-.generated {
-  background: var(--card);
+/* A tool's cards keep its grid's own gap, not the tighter one of a form. */
+.gen-page .field-group + .field-group {
+  margin-top: 0;
 }
 
-/* Rows in one card, as a setting's are: the length, then a line to each
-   kind of character. No box inside the box. */
-.gen-options {
-  gap: 0;
-  overflow: hidden;
-  padding: 0;
+/* Card heads as the web app has them: the count is flush with the card's
+   padding, and the character set's head stands taller. */
+.gen-grid .field-group-head {
+  padding: 9px 16px;
 }
 
-.gen-options > label {
-  padding: 20px;
+.gen-grid .field-group-head > span {
+  padding-right: 0;
 }
 
-/* The password has the middle of whatever room the card is given: the card
-   is as tall as the options beside it. */
-.generated output {
+.gen-grid > .field-group > .field-group-head {
+  padding-block: 12px;
+}
+
+.gen-output {
   display: flex;
-  flex: 1;
   align-items: center;
-  min-height: 112px;
+  min-height: 66px;
+  padding: 18px 16px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 26px;
+  font-size: 23px;
   font-weight: 500;
-  line-height: 1.5;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
   word-break: break-all;
   user-select: all;
 }
 
+/* The strength in its own color, for the word and the bars it fills.
+   (With .strength-label, whose weight is the meter's elsewhere.) */
+.gen-strength.strength-label {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 0 16px 16px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.gen-strength .muted {
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.gen-bars {
+  display: flex;
+  gap: 4px;
+}
+
+.gen-bars i {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  transition: background-color 200ms ease-out;
+}
+
+.gen-bars i.on {
+  background: currentColor;
+}
+
+.gen-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.gen-foot button {
+  height: 36px;
+  padding: 0 14px;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.gen-foot button.secondary {
+  background: var(--card);
+}
+
+.gen-length-head {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.gen-length-head label {
+  flex: 1;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Digits of one width, so the box holds still while the slider moves. */
+.gen-length {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.gen-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 16px 14px;
+}
+
+.gen-kinds .toggle.option {
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 0;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.gen-kinds .toggle.option + .toggle.option {
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+/* Name over its sample. */
+.gen-kinds .toggle > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gen-kinds .toggle .mono {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+
+.gen-kinds .toggle.gen-ambiguous {
+  color: var(--muted);
+  font-weight: 400;
+}
+
 /* Each character is a box of its own, so it can be moved. */
-.generated output span span {
+.gen-output span span {
   display: inline-block;
 }
 
@@ -1614,75 +1901,8 @@ a.set-row svg {
   color: var(--good);
 }
 
-.meter {
-  height: 6px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--hover);
-}
-
-.meter-fill {
-  height: 100%;
-  border-radius: 999px;
-  transition: width 0.2s;
-}
-
-.meter-fill.strength-weak {
-  background: var(--danger);
-}
-
-.meter-fill.strength-fair {
-  background: var(--warn);
-}
-
-.meter-fill.strength-strong {
-  background: var(--good);
-}
-
-.gen-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-/* Digits of one width, so the line holds still while the slider moves. */
-.gen-length {
-  color: var(--fg);
-  font-size: 15px;
-  font-variant-numeric: tabular-nums;
-}
-
-.gen-kinds {
-  border-top: 1px solid var(--border);
-}
-
-.gen-kinds .toggle.option {
-  justify-content: space-between;
-  padding: 14px 20px;
-  border: 0;
-  border-radius: 0;
-}
-
-.gen-kinds .toggle.option + .toggle.option {
-  border-top: 1px solid var(--border);
-}
-
-/* Name and sample side by side: the row is one line. */
-.gen-kinds .toggle span {
-  flex-direction: row;
-  align-items: baseline;
-  gap: 8px;
-}
-
-@container (max-width: 620px) {
-  .generated,
-  .gen-options {
-    grid-column: 1 / -1;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .meter-fill {
+  .gen-bars i {
     transition: none;
   }
 }
@@ -1770,161 +1990,113 @@ input.range:active::-moz-range-thumb {
   border-radius: 12px;
 }
 
-.stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin: 0;
-}
-
-.stats > div {
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--card);
-}
-
-.stats dt {
-  font-size: 12px;
-}
-
-.stats dd {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
 .section-title {
   margin: 8px 0 0;
   font-size: 15px;
 }
 
-/* The two lists of the report, side by side where each has room; one alone
-   has the width to itself. */
-.health-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
-  align-items: start;
-  column-gap: 32px;
-}
-
-/* A part of the report: further from the part above it than its own
-   heading is from what it says. */
-.health-section {
-  margin-top: 12px;
-}
-
-.health-section > header {
+/* Billing, Cloud Edition only, as the web app has it: the subscription,
+   the plans on offer, what every plan includes and how paying works. */
+.billing-body {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 24px;
+  padding: 24px 32px 32px;
 }
 
-.health-title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.health-section > header .muted {
-  font-size: 13px;
-}
-
-/* Names the card under it, in line with what the card holds. */
-.health-group {
-  margin-bottom: 8px;
-  padding-left: 4px;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Logins that belong together sit in one card, a line between them: the
-   ones that share a password are seen to. */
-/* Billing, Cloud Edition only: the subscription, the plans on offer, and what
-   was bought, each on the card tone. */
 .billing-section {
-  gap: 8px;
-}
-
-.billing-head {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-}
-
-.billing-head .detail-title {
-  display: flex;
-  align-items: center;
   gap: 10px;
 }
 
-.billing-head .detail-title svg {
-  flex-shrink: 0;
+.billing-section h2 {
+  margin: 0;
+}
+
+.billing-gateway {
   color: var(--focus);
-}
-
-/* A section's heading is a mono caption on the cards' edge. */
-.billing-title {
-  margin: 0;
-  padding-left: 4px;
-  color: var(--muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  font-weight: 400;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.billing-section > p.muted {
-  margin: 0;
-  font-size: 13px;
 }
 
 .billing-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  min-height: 64px;
-  padding: 12px 12px 12px 16px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--card);
+  gap: 12px 16px;
+  padding: 12px 16px;
 }
 
-.billing-row .item-text,
-.billing-none {
-  flex: 1;
-  min-width: 0;
+.billing-row .tile {
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  border-radius: 8px;
+}
+
+.billing-row .tile svg {
+  width: 16px;
+  height: 16px;
+}
+
+.billing-row .item-name {
+  font-size: 13px;
+}
+
+.billing-row .item-text .muted {
+  font-size: 12px;
 }
 
 .billing-pill {
-  padding: 2px 10px;
-  border-radius: 999px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--good) 15%, transparent);
+  color: var(--good);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.billing-plans-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.plan-tabs {
+  display: flex;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.plan-tab {
+  height: auto;
+  padding: 4px 12px;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+}
+
+.plan-tab:hover {
+  color: var(--fg);
+}
+
+.plan-tab[data-on] {
   background: color-mix(in srgb, var(--focus) 15%, transparent);
   color: var(--focus);
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.billing-row button.secondary {
-  flex-shrink: 0;
-  justify-content: center;
-  height: 36px;
-  padding: 0 14px;
-  font-weight: 500;
-}
-
-.plan-card button {
-  width: 100%;
-  font-weight: 500;
 }
 
 .plan-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
   margin: 0;
   padding: 0;
@@ -1934,147 +2106,122 @@ input.range:active::-moz-range-thumb {
 .plan-card {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 20px;
+  overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 14px;
-  background: var(--card);
+  background: var(--panel);
 }
 
-/* The yearly plan: marked on the edge in --focus, which holds 3:1 on a card
-   in both themes, with the solid button. */
+/* The featured plan: marked on the edge, in the token that holds 3:1. */
 .plan-card[data-featured] {
   border-color: var(--focus);
-  background: var(--hover);
-}
-
-.plan-card[data-featured] button.secondary {
-  border-color: transparent;
-  background: var(--fg);
-  color: var(--panel);
-}
-
-.plan-card[data-featured] button.secondary:hover {
-  opacity: 0.9;
 }
 
 .plan-head {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.plan-head .item-name {
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .plan-chips {
   display: flex;
-  align-items: center;
   gap: 6px;
   white-space: nowrap;
 }
 
 .plan-chip {
-  padding: 2px 10px;
+  padding: 2px 6px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 6px;
   color: var(--muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
 }
 
-.plan-price,
-.plan-notes {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-variant-numeric: tabular-nums;
+.plan-card[data-featured] .plan-save {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--good) 15%, transparent);
+  color: var(--good);
+}
+
+.plan-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+}
+
+.plan-was {
+  text-transform: none;
 }
 
 .plan-price {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 28px;
-  font-weight: 500;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 26px;
+  font-weight: 600;
   line-height: 1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
 }
 
-.plan-price small,
-.plan-was,
+.plan-price small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.plan-offer {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
 .plan-terms {
+  margin-bottom: 16px;
   color: var(--muted);
   font-size: 12px;
 }
 
-/* What a marked-down plan cost before. */
-.plan-was {
-  font-weight: 400;
-  text-decoration-color: color-mix(in srgb, var(--muted) 70%, transparent);
+.plan-terms::first-letter {
+  text-transform: uppercase;
 }
 
-/* Read aloud, not shown: what a struck-through price is. */
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+.plan-action {
+  width: 100%;
+  height: 36px;
+  margin-top: auto;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
 }
 
-/* A discount's terms over the plan's, read together. */
-.plan-notes {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 16px;
+.plan-action.secondary {
+  background: var(--card);
+}
+
+.billing-hint {
   font-size: 12px;
 }
 
-/* The action sits at the foot of every card, however long its description. */
-.plan-card > :last-child {
-  margin-top: auto;
-}
-
-.billing-list {
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--card);
-  list-style: none;
-}
-
-.billing-list li {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 4px 12px;
-  padding: 12px 16px;
-}
-
-.billing-list li + li {
-  border-top: 1px solid var(--border);
-}
-
-.billing-list .muted {
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-}
-
-/* What every plan includes and how billing works: two ticked lists, side by
-   side in a full tab, stacked in the popup. */
 .billing-facts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  align-items: start;
   gap: 24px 48px;
 }
 
 .billing-checks {
   margin: 0;
   padding: 0;
-  border-block: 1px solid var(--border);
   list-style: none;
 }
 
@@ -2082,13 +2229,12 @@ input.range:active::-moz-range-thumb {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 12px 4px;
-  color: var(--muted);
+  padding: 10px 16px;
   font-size: 13px;
 }
 
 .billing-checks li + li {
-  border-top: 1px solid var(--border);
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
 }
 
 .billing-checks svg {
@@ -2096,64 +2242,38 @@ input.range:active::-moz-range-thumb {
   width: 16px;
   height: 16px;
   margin-top: 1px;
-  color: var(--focus);
+  color: var(--good);
+}
+
+.billing-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.billing-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 16px;
+  padding: 12px 16px;
+}
+
+.billing-list li + li {
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.billing-list .item-name {
+  font-size: 13px;
+}
+
+.billing-list .muted {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Grouped rows: one card, divided by hairlines rather than gaps. */
-.health-list {
-  gap: 0;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--card);
-}
-
-/* The row is the button, so the row itself is not padded or rounded. */
-.health-list li {
-  padding: 0;
-  border-radius: 0;
-}
-
-.health-list li + li {
-  border-top: 1px solid var(--border);
-}
-
-.health-row {
-  width: 100%;
-  height: auto;
-  padding: 10px 12px 10px 14px;
-  justify-content: flex-start;
-  gap: 0;
-  border-radius: 0;
-  background: none;
-  color: var(--fg);
-  font-weight: 400;
-  text-align: left;
-}
-
-/* Says the row leads somewhere; lit with the row. */
-.health-row > svg {
-  flex-shrink: 0;
-  margin-left: 8px;
-  color: var(--muted);
-  transition: color 120ms ease-out;
-}
-
-.health-row:hover > svg,
-.health-row:focus-visible > svg {
-  color: var(--fg);
-}
-
-/* The card cuts off what is outside it, so the ring is drawn inside. */
-.health-row:focus-visible {
-  outline-offset: -2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .health-row > svg {
-    transition: none;
-  }
-}
 
 .detail-body {
   max-width: 640px;
@@ -2357,18 +2477,46 @@ input.range:active::-moz-range-thumb {
   text-align: center;
 }
 
-.detail-empty .tile {
-  margin: 0;
-  opacity: 0.6;
+.detail-empty {
+  gap: 14px;
 }
 
-button.secondary {
+.detail-empty .tile {
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.detail-empty .muted {
+  font-size: 13px;
+}
+
+.detail-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.detail-empty-actions > * {
+  height: 36px;
+  padding: 0 14px;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+button.secondary,
+a.button.secondary {
   border: 1px solid var(--border);
   background: none;
   color: var(--fg);
 }
 
-button.secondary:hover {
+button.secondary:hover,
+a.button.secondary:hover {
   background: var(--hover);
 }
 
@@ -2829,7 +2977,7 @@ textarea,
 
 /* In a tab, the form's heading stands a little apart from its fields, and
    the way out of a long form stays in reach at the bottom of the pane. */
-.detail-col .detail-body > header:not(.detail-head) {
+.detail-col .detail-body > header:not(.detail-head, .tool-page-head) {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -2904,4 +3052,704 @@ textarea,
   .detail-body {
     padding: 20px;
   }
+}
+
+/* A row of the activity log: read, not pressed, so the row itself is padded. */
+
+.activity-row .item-name {
+  white-space: normal;
+}
+
+/* An item, read (the full tab): its head, then its fields in titled cards,
+   then when it changed. Scoped here: the head and field rules above are
+   shared with the tools and the share form. */
+.item-view {
+  gap: 18px;
+  padding: 24px 26px 20px;
+}
+
+.item-view .detail-head {
+  flex-wrap: wrap;
+  gap: 12px 14px;
+}
+
+.item-view .detail-head .tile {
+  width: 44px;
+  height: 44px;
+  margin-right: 0;
+  border-radius: 12px;
+}
+
+.item-view .item-text {
+  gap: 3px;
+}
+
+.item-view .detail-title {
+  font-size: 18px;
+}
+
+.item-view .item-text .muted {
+  font-size: 12px;
+}
+
+.detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.icon-button.outlined {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.icon-button.outlined svg {
+  width: 16px;
+  height: 16px;
+}
+
+.detail-actions .edit {
+  height: 32px;
+  padding: 0 12px;
+  gap: 6px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.field-group {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+.field-group + .field-group {
+  margin-top: -6px;
+}
+
+.field-group-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 4px 8px 4px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.field-group-head h3 {
+  flex: 1;
+  margin: 0;
+  font: inherit;
+}
+
+.field-group-head > span {
+  padding-right: 6px;
+}
+
+.item-view .fields {
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.item-view .field {
+  column-gap: 2px;
+  padding: 11px 10px 11px 14px;
+}
+
+.item-view .field + .field {
+  border-top-color: color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.item-view .field dt {
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.item-view .field dd {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.item-view .field dd.mono {
+  letter-spacing: 0.02em;
+}
+
+.item-view .icon-button:not(.outlined) {
+  width: 28px;
+  height: 28px;
+}
+
+.item-view .icon-button:not(.outlined) svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Website's Open sits where the icon buttons would, centered on both rows. */
+.item-view .field > a.button {
+  grid-row: 1 / span 2;
+  grid-column: 3;
+}
+
+/* Four bars and a word: how hard the password is to guess. */
+.pw-strength {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pw-strength > span {
+  display: flex;
+  gap: 3px;
+}
+
+.pw-strength i {
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.pw-strength i.on {
+  background: currentColor;
+}
+
+.note-body {
+  position: relative;
+  padding: 12px 14px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+/* Hidden, the note is tall enough for what it says about itself. */
+.note-body.hidden-note {
+  min-height: 156px;
+}
+
+.note-body .blurred {
+  max-height: 200px;
+  overflow: hidden;
+  filter: blur(9px);
+  opacity: 0.7;
+  user-select: none;
+}
+
+.note-body .note-veil {
+  position: absolute;
+  inset: 0;
+  justify-content: center;
+  white-space: normal;
+}
+
+.item-meta {
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+.field-group-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 14px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* A secure note's own text: more room around it, and hidden it keeps the
+   height of a page rather than of a line. */
+.note-body.note-main {
+  padding: 16px 18px 14px;
+  line-height: 1.65;
+}
+
+.note-body.note-main.hidden-note {
+  min-height: 320px;
+}
+
+/* Read in its card, a note's headings stand out and its code is set apart
+   on the page's own tone, as a terminal is. */
+.note-body .notes-content > :is(h1, h2, h3) {
+  color: var(--fg);
+  font-size: 15px;
+}
+
+.note-body .notes-content > h1 {
+  font-size: 16px;
+}
+
+.note-body .notes-content hr {
+  margin: 16px 0;
+  border-top-color: color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.note-body .notes-content.notes-view pre {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: color-mix(in srgb, var(--fg) 85%, transparent);
+  font-size: 11.5px;
+  line-height: 1.6;
+  white-space: pre;
+}
+
+.note-body .notes-content a {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.92em;
+  text-underline-offset: 3px;
+}
+
+.note-body .notes-content.notes-view pre code {
+  padding: 0;
+  background: none;
+}
+
+/* Too narrow for two columns: what it is made of goes under the password. */
+@container (max-width: 760px) {
+  .gen-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Password health, as the web app has it: counts in the page head, then the
+   reused logins in two cards and the weak ones in a third. */
+.health-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
+
+.health-stats > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.health-stats dt {
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.health-stats dd {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.health-good {
+  color: var(--good);
+}
+
+.health-bad {
+  color: var(--warn);
+}
+
+.health-body {
+  padding: 20px 32px 28px;
+}
+
+.health-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 44px 24px;
+  text-align: center;
+}
+
+.health-empty .tile {
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  border-radius: 12px;
+  color: var(--good);
+}
+
+.health-empty-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.health-empty .muted {
+  max-width: 44ch;
+  font-size: 13px;
+  text-wrap: balance;
+}
+
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 20px;
+}
+
+.health-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.health-section.wide {
+  grid-column: span 2;
+}
+
+.health-section > header h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.health-section > header .muted {
+  font-size: 12px;
+}
+
+.health-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 20px;
+}
+
+.health-group + .health-group {
+  border-top: 1px solid var(--border);
+}
+
+.health-group > .field-group-head {
+  padding: 9px 12px;
+}
+
+.health-group > .field-group-head > span {
+  padding-right: 0;
+}
+
+.health-group-name {
+  flex: 1;
+  color: color-mix(in srgb, var(--fg) 80%, transparent);
+}
+
+.health-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.health-rows li + li {
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+/* The whole row opens the login. */
+.health-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: auto;
+  padding: 11px 12px;
+  border-radius: 0;
+  background: none;
+  color: var(--fg);
+  font-weight: 400;
+  text-align: left;
+  transition: background-color 120ms ease-out;
+}
+
+.health-row:hover {
+  background: var(--hover);
+}
+
+/* The card cuts off what is outside it, so the ring is drawn inside. */
+.health-row:focus-visible {
+  outline-offset: -2px;
+}
+
+.health-row .tile {
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  border-radius: 8px;
+}
+
+.health-row .tile svg {
+  width: 16px;
+  height: 16px;
+}
+
+.health-row .item-name {
+  font-size: 13px;
+}
+
+.health-row .item-text .muted {
+  font-size: 12px;
+}
+
+.health-weak {
+  color: var(--warn);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .health-row {
+    transition: none;
+  }
+}
+
+/* Too narrow for three columns: the lists go one under the other. */
+@container (max-width: 900px) {
+  .health-grid,
+  .health-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .health-section.wide {
+    grid-column: auto;
+  }
+}
+
+/* Security, as the web app has it: a section a line of what it is and its
+   action, then its card; the audit log as a table. */
+.sec-body {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding: 24px 32px 32px;
+}
+
+.sec-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sec-section > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.sec-section > header > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.sec-section h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.sec-section > header .muted {
+  font-size: 12px;
+}
+
+.sec-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  font-size: 13px;
+}
+
+.sec-chip {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sec-chip.on,
+.sec-this {
+  color: var(--good);
+}
+
+.sec-this {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sec-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sec-rows li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.sec-rows li + li {
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.sec-rows .tile {
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  border-radius: 8px;
+}
+
+.sec-rows .tile svg {
+  width: 16px;
+  height: 16px;
+}
+
+.sec-rows .item-name {
+  font-size: 13px;
+}
+
+/* Prev, the page, Next: as quiet as the count beside them. */
+.sec-pager {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sec-pager button {
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 6px;
+  background: none;
+  color: var(--fg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sec-pager button:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.sec-page {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sec-log-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 16px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+/* Manage sharing: who can open each shared item, as initials, and your role in it. */
+.share-sub {
+  text-transform: none;
+}
+
+.share-people {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.share-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: var(--hover);
+  box-shadow: 0 0 0 2px var(--panel);
+  color: var(--fg);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.share-avatar:first-child {
+  margin-left: 0;
+}
+
+.share-avatar.owner {
+  background: var(--avatar);
+  color: var(--avatar-fg);
+}
+
+.share-role {
+  width: 60px;
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--focus) 15%, transparent);
+  color: var(--focus);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.share-role.owner {
+  background: color-mix(in srgb, var(--good) 15%, transparent);
+  color: var(--good);
 }

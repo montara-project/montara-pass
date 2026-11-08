@@ -64,7 +64,7 @@ func (h *itemHandler) List(c fiber.Ctx) error {
 	}
 	q.Clamp()
 
-	params := repositories.ItemListParams{UserID: uid, Offset: q.Offset, Limit: q.Limit, Type: q.Type, Trashed: q.Trashed}
+	params := repositories.ItemListParams{UserID: uid, Offset: q.Offset, Limit: q.Limit, Type: q.Type, Trashed: q.Trashed, Favorite: q.Favorite}
 	if q.FolderID != "" {
 		// Validated as a UUID above.
 		folderID := uuid.MustParse(q.FolderID)
@@ -118,6 +118,8 @@ func (h *itemHandler) Create(c fiber.Ctx) error {
 		return err
 	}
 
+	h.record(c, models.ActivityItemCreated, item, nil, "")
+
 	// Re-read so the response carries the DB-set timestamps.
 	item, err = h.repo().Get(c.Context(), item.ID, uid)
 	if err != nil {
@@ -151,6 +153,11 @@ func (h *itemHandler) Update(c fiber.Ctx) error {
 	if err := h.repo().Update(c.Context(), update, uid); err != nil {
 		return err
 	}
+	// The row names the type the item has now.
+	if body.Type != "" {
+		item.Type = body.Type
+	}
+	h.record(c, models.ActivityItemUpdated, item, nil, "")
 
 	item, err = h.repo().Get(c.Context(), item.ID, uid)
 	if err != nil {
@@ -243,18 +250,18 @@ func (h *itemHandler) MarkUsed(c fiber.Ctx) error {
 
 // Delete moves the item to the owner's trash, hiding it from every member.
 func (h *itemHandler) Delete(c fiber.Ctx) error {
-	return h.ownerWrite(c, h.repo().Trash, "item moved to trash")
+	return h.ownerWrite(c, h.repo().Trash, models.ActivityItemTrashed, "item moved to trash")
 }
 
 func (h *itemHandler) Restore(c fiber.Ctx) error {
-	return h.ownerWrite(c, h.repo().Restore, "item restored")
+	return h.ownerWrite(c, h.repo().Restore, models.ActivityItemRestored, "item restored")
 }
 
 func (h *itemHandler) DeletePermanently(c fiber.Ctx) error {
-	return h.ownerWrite(c, h.repo().ForceDelete, "item permanently deleted")
+	return h.ownerWrite(c, h.repo().ForceDelete, models.ActivityItemDeleted, "item permanently deleted")
 }
 
-func (h *itemHandler) ownerWrite(c fiber.Ctx, fn func(context.Context, uuid.UUID, uuid.UUID) error, message string) error {
+func (h *itemHandler) ownerWrite(c fiber.Ctx, fn func(context.Context, uuid.UUID, uuid.UUID) error, action, message string) error {
 	item, uid, err := h.owner(c)
 	if err != nil {
 		return err
@@ -262,7 +269,29 @@ func (h *itemHandler) ownerWrite(c fiber.Ctx, fn func(context.Context, uuid.UUID
 	if err := fn(c.Context(), item.ID, uid); err != nil {
 		return err
 	}
+	h.record(c, action, item, nil, "")
 	return dtos.Message(c, fiber.StatusOK, message)
+}
+
+// record notes in the activity log what the caller did to item, and to which
+// member when it was about one. A row that cannot be written is logged, and
+// the request still succeeds: the change itself is made.
+func (h *itemHandler) record(c fiber.Ctx, action string, item models.Item, subject *uuid.UUID, role string) {
+	uid, err := currentUser(c)
+	if err != nil {
+		return
+	}
+	err = h.app.Repositories.Activity.Record(c.Context(), repositories.ActivityEntry{
+		ActorID:   uid,
+		Action:    action,
+		ItemID:    &item.ID,
+		ItemType:  item.Type,
+		SubjectID: subject,
+		Role:      role,
+	})
+	if err != nil {
+		h.app.Logger.Warn("record activity", "action", action, "item", item.ID, "error", err)
+	}
 }
 
 // Members lists who the item is shared with; any member may look.
@@ -277,6 +306,34 @@ func (h *itemHandler) Members(c fiber.Ctx) error {
 		return err
 	}
 	return dtos.List(c, members, dtos.Metadata{"total": len(members)})
+}
+
+// SharedItem is an item with everyone who can open it.
+type SharedItem struct {
+	models.Item
+	Members []models.ItemMember `json:"members"`
+}
+
+// Shared lists the caller's items that are shared, either way, each with its
+// members: the Manage sharing page in one request.
+func (h *itemHandler) Shared(c fiber.Ctx) error {
+	uid, err := currentUser(c)
+	if err != nil {
+		return err
+	}
+	items, err := h.repo().ListShared(c.Context(), uid)
+	if err != nil {
+		return err
+	}
+	members, err := h.repo().ListSharedMembers(c.Context(), uid)
+	if err != nil {
+		return err
+	}
+	shared := make([]SharedItem, len(items))
+	for i, item := range items {
+		shared[i] = SharedItem{Item: item, Members: members[item.ID]}
+	}
+	return dtos.List(c, shared, dtos.Metadata{"total": len(shared)})
 }
 
 // errNoPaidPlan refuses handing an item on, naming the problem and the way
@@ -340,6 +397,7 @@ func (h *itemHandler) Share(c fiber.Ctx) error {
 	if err := h.repo().AddMember(c.Context(), item.ID, body.UserID, uid, body.Role, body.EncryptedItemKey); err != nil {
 		return err
 	}
+	h.record(c, models.ActivityItemShared, item, &body.UserID, body.Role)
 	return dtos.Message(c, fiber.StatusCreated, "item shared")
 }
 
@@ -361,6 +419,7 @@ func (h *itemHandler) SetMemberRole(c fiber.Ctx) error {
 	if err := h.repo().SetMemberRole(c.Context(), item.ID, memberID, body.Role); err != nil {
 		return err
 	}
+	h.record(c, models.ActivityItemRoleChanged, item, &memberID, body.Role)
 	return dtos.Message(c, fiber.StatusOK, "member role updated")
 }
 
@@ -387,6 +446,8 @@ func (h *itemHandler) RemoveMember(c fiber.Ctx) error {
 	if err := h.repo().RemoveMember(c.Context(), item.ID, memberID); err != nil {
 		return err
 	}
+	// A member who removed themselves left the item: actor and subject agree.
+	h.record(c, models.ActivityItemMemberRemoved, item, &memberID, "")
 	return dtos.Message(c, fiber.StatusOK, "member removed")
 }
 

@@ -15,6 +15,13 @@ const (
 	PlanOneTime   = "one_time"
 )
 
+// Payment providers, as stored in plans.provider. Each plan is sold through
+// one: the IDR plans through BorderPay, the rest through Lemon Squeezy.
+const (
+	PlanLemonSqueezy = "lemonsqueezy"
+	PlanBorderPay    = "borderpay"
+)
+
 // Subscription statuses. Lemon Squeezy renews a subscription by itself; it
 // is active while it grants its plan, to current_period_end.
 const (
@@ -42,7 +49,9 @@ type Plan struct {
 	// What it is marked down from; set by hand, above Amount, or nil.
 	CompareAtAmount *int64 `db:"compare_at_amount" json:"compare_at_amount"`
 	Currency        string `db:"currency" json:"currency"`
-	Active          bool   `db:"active" json:"active"`
+	// The provider a checkout of this plan is opened at.
+	Provider string `db:"provider" json:"provider"`
+	Active   bool   `db:"active" json:"active"`
 	// The Lemon Squeezy variant it is sold as; without one it cannot be bought.
 	VariantID *string `db:"variant_id" json:"variant_id"`
 	// The public discount code filled in at its checkout, from the catalog

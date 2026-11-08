@@ -19,9 +19,10 @@ import (
 // counts, answers and locks; without it each keeps its own, in memory, which
 // is right for a single instance.
 type Store struct {
-	// Both are nil without Redis, which makes Fiber fall back to memory.
+	// All nil without Redis, which makes Fiber fall back to memory.
 	storage fiber.Storage
 	lock    idempotency.Locker
+	client  redis.UniversalClient
 }
 
 // NewStore builds the store on a Redis client, or in memory when it is nil.
@@ -33,6 +34,7 @@ func NewStore(client redis.UniversalClient) Store {
 	return Store{
 		storage: redisstorage.NewFromConnection(client),
 		lock:    &redisLock{client: client},
+		client:  client,
 	}
 }
 

@@ -12,10 +12,14 @@ export const Route = createFileRoute('/(app)/billing/')({
     if (COMMUNITY) throw redirect({ to: HOME_PATH, replace: true })
   },
   // ?plan= names the plan the website sent the user here for; the checkout
-  // sends the browser back with ?checkout=done.
-  validateSearch: (search: Record<string, unknown>): { plan?: string; checkout?: string } => ({
+  // sends the browser back with ?checkout=done; ?currency= names the tab,
+  // where a ?plan= of the other currency implies its own.
+  validateSearch: (
+    search: Record<string, unknown>
+  ): { plan?: string; checkout?: string; currency?: string } => ({
     plan: searchText(search.plan),
     checkout: searchText(search.checkout),
+    currency: searchText(search.currency),
   }),
   component: BillingBlock,
   pendingComponent: PageSkeleton,

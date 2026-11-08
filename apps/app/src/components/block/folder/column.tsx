@@ -1,6 +1,6 @@
 import type { VaultFolder } from '@montara-pass/shared/types/vault'
 
-import { formatDateTime } from '@montara-pass/shared/date'
+import { formatDate } from '@montara-pass/shared/date'
 import { useMutation } from '@tanstack/react-query'
 import React, { useMemo, useState } from 'react'
 import { toast } from 'sonner'
@@ -15,7 +15,10 @@ import RowColumnAction from '../common/row-column-action'
 import SimpleAlertDialog from '../common/simple-alert-dialog'
 import { EditFolderForm } from './form'
 
-type ColumnType = AppColumnDef<VaultFolder>
+/** A folder row with its item count merged in: the server counts it, nothing is decrypted. */
+export type FolderRow = VaultFolder & { itemCount?: number }
+
+type ColumnType = AppColumnDef<FolderRow>
 
 // Declared once, and never swapped for a skeleton: the cell owns the row's open
 // dialogs, so remounting it on a background refetch would discard them.
@@ -27,26 +30,29 @@ export function FolderColumn({ loading }: BaseColumnProps) {
       {
         accessorKey: 'name',
         header: 'Name',
-        cell: (info) => {
-          const value = info.getValue() as string
-          return (
-            <CellItem loading={loading}>
-              <span>{value}</span>
-            </CellItem>
-          )
-        },
+        cell: ({ row }) => (
+          <CellItem loading={loading}>
+            <span>{row.original.name}</span>
+          </CellItem>
+        ),
+      },
+      {
+        accessorKey: 'itemCount',
+        header: 'Items',
+        cell: ({ row }) => (
+          <CellItem loading={loading}>
+            <span>{row.original.itemCount ?? '…'}</span>
+          </CellItem>
+        ),
       },
       {
         accessorKey: 'updated_at',
         header: 'Updated',
-        cell: (info) => {
-          const value = info.getValue() as string
-          return (
-            <CellItem loading={loading}>
-              <span>{formatDateTime(value)}</span>
-            </CellItem>
-          )
-        },
+        cell: (info) => (
+          <CellItem loading={loading}>
+            <span>{formatDate(info.getValue() as string)}</span>
+          </CellItem>
+        ),
       },
       {
         accessorKey: 'actions',
@@ -62,22 +68,22 @@ export function FolderColumn({ loading }: BaseColumnProps) {
 }
 
 interface ActionCellProps {
-  record: VaultFolder
+  record: FolderRow
 }
 
 function ActionCell({ record }: ActionCellProps) {
   const [openEdit, setOpenEdit] = useState(false)
   const [openDelete, setOpenDelete] = useState(false)
 
-  const deleteMutation = useMutation(queries.folders.delete())
+  const remove = useMutation(queries.folders.delete())
 
   const handleDelete = async () => {
     try {
-      await deleteMutation.mutateAsync(record.id)
-      toast.success('Folder deleted successfully')
+      await remove.mutateAsync(record.id)
+      toast.success(`Deleted ${record.name}`)
       setOpenDelete(false)
     } catch (error) {
-      toastApiError(error as Error)
+      toastApiError(error)
     }
   }
 
@@ -85,8 +91,12 @@ function ActionCell({ record }: ActionCellProps) {
     <React.Fragment>
       <RowColumnAction onEdit={() => setOpenEdit(true)} onDelete={() => setOpenDelete(true)} />
 
+      {openEdit && (
+        <EditFolderForm open onOpenChange={(open) => !open && setOpenEdit(false)} record={record} />
+      )}
+
       <SimpleAlertDialog
-        title="Do you want to delete this folder?"
+        title={`Delete ${record.name}?`}
         description="The items in it are kept and move out of the folder."
         open={openDelete}
         onOpenChange={setOpenDelete}
@@ -94,8 +104,6 @@ function ActionCell({ record }: ActionCellProps) {
         confirmText="Delete"
         variant="destructive"
       />
-
-      <EditFolderForm open={openEdit} onOpenChange={setOpenEdit} record={record} />
     </React.Fragment>
   )
 }

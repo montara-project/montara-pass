@@ -120,6 +120,8 @@ type ItemListQuery struct {
 	FolderID string `query:"folder_id"`
 	Type     string `query:"type"`
 	Trashed  bool   `query:"trashed"`
+	// Favorite lists only the items the user starred.
+	Favorite bool `query:"favorite"`
 }
 
 func (dto ItemListQuery) Validate(v *validator.MapValidator) {
@@ -128,6 +130,7 @@ func (dto ItemListQuery) Validate(v *validator.MapValidator) {
 	v.Field("folder_id").UUID()
 	v.Field("type").Regex(itemTypePattern)
 	v.Field("trashed").Regex(`^(true|false)$`)
+	v.Field("favorite").Regex(`^(true|false)$`)
 }
 
 // Clamp applies the shared pagination bounds.

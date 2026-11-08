@@ -31,7 +31,7 @@ bind parameter, setiap akses item lewat `item_members`, dan error 500 tidak memb
 | M-3 | Terbuka | Butuh keputusan desain (fingerprint atau penyematan kunci) |
 | M-4 | Sebagian | Limiter per email 10/menit di rute auth, IP diblokir 1 jam setelah 20 kegagalan (`01cab11`), dan TOTP opsional (`1618cda`). Belum ada lockout per akun; minimum password masih 8 |
 | M-5 | Diperbaiki | Web app mengunci setelah 15 menit tanpa klik atau ketikan |
-| M-6 | Sebagian | `fflate` bersih, `katex` di-override ke 0.18.10, modul Go bersih (`govulncheck`: 0 yang terjangkau). 2026-10-30: `seroval` dan `node-forge` di-override; tinggal `deepmerge` (low), versi perbaikannya belum terbit di npm |
+| M-6 | Sebagian | `fflate` bersih, `katex` di-override ke 0.18.10, modul Go bersih (`govulncheck`: 0 yang terjangkau). 2026-10-30: `seroval` dan `node-forge` di-override; tinggal `deepmerge` (low), versi perbaikannya belum terbit di npm. 2026-11-04: `glob` (GHSA-3g3m-2fjr-6pw4) dan `minimatch` via `@expo/cli` di-override ke 14.0.3 dan 11.0.4; `expo config` dan `expo export` jalan. `pnpm audit --prod`: tinggal `deepmerge` |
 | L-1 | Sebagian | `PUT /keys` kini meminta account password (`8d1579a`), jadi sesi curian saja tidak cukup. Revisi dan salinan untuk pemulihan belum ada |
 | L-2 | Terbuka | Butuh format cipher baru dan migrasi |
 | L-3 | Diperbaiki | Event sintetis diabaikan |
@@ -41,7 +41,7 @@ bind parameter, setiap akses item lewat `item_members`, dan error 500 tidak memb
 | L-7 | Diperbaiki | Web app dan ekstensi mengosongkan clipboard satu menit setelah menyalin (`135b912`, `db77a6a`). Isinya tidak dibaca dulu, jadi salinan lain dalam menit itu ikut terhapus |
 | L-8 | Terbuka | |
 | L-9 | Terbuka | |
-| M-7 | Diperbaiki | Tiap frame diberi token rahasia lewat `postMessage` dan content script hanya mendengar pesan yang membawanya. Diuji di Chromium; Firefox belum |
+| M-7 | Diperbaiki | Tiap frame diberi token rahasia lewat `postMessage` dan content script hanya mendengar pesan yang membawanya. Diuji di Chromium dan Firefox 159 (di Firefox frame meminjam API dari background, lihat `src/inline/firefox.ts`) |
 | M-8 | Terbuka | Urutan rilis menutup web app; ekstensi lama butuh versi klien minimum di server |
 | L-10 | Diperbaiki | `rpIdFor` menolak sufiks publik (`tldts`) |
 | L-11 | Diperbaiki | Item bukan milik sendiri diberi label "Shared with you" di menu inline dan prompt passkey |
@@ -432,3 +432,122 @@ Sisa yang dibiarkan: ekspor salinan shadcn/reui di `components/ui` (lihat daftar
 dan tipe `MarkdownEditorActive`/`MarkdownEditorOptions`.
 
 net: ±-290 baris, -4 dependency.
+
+## Review CodeRabbit (2026-11-04)
+
+Review atas `dev` @ `f48f8ba` (`coderabbit review --agent`). Tiap temuan dicek ke kode saat ini.
+Yang benar diperbaiki (belum di-commit); sisanya dilewati dengan alasan. Integration test
+(`TEST_DB_DSN`) kini lolos penuh untuk pertama kalinya: CR-1 adalah penyebab kegagalan lama
+`billingFlow` ("discounted purchase: 0, checkout code LAUNCH20").
+
+| ID | Lokasi | Temuan | Status | Catatan |
+| --- | --- | --- | --- | --- |
+| CR-1 | `handlers/billing.go` `planCheckout` | `settled` 0 bila checkout pertama berhasil, lalu harga order ditulis 0 | Diperbaiki | `settled` mulai dari `amount` |
+| CR-2 | `handlers/billing.go` webhook BorderPay | Purchase yang sudah `failed` tidak bisa jadi `paid` saat webhook paid datang belakangan | Diperbaiki | Coba `failed → paid` setelah `pending → paid` |
+| CR-3 | `handlers/billing.go` webhook BorderPay | Subscription BorderPay yang kedaluwarsa menahan `Subscribe` sampai 25 jam | Diperbaiki | `payment.expired`/`failed` langsung meng-expire subscription pending; webhook paid yang telat tetap menyelesaikan subscription yang belum pernah dibayar |
+| CR-4 | `repositories/billing.go` `ExpireEnded` | Kembalikan jendela 65 menit untuk BorderPay | Dilewati | Disengaja: virtual account BorderPay bisa dibayar sehari. CR-3 menutup masalah yang memicu temuan ini |
+| CR-5 | `migrations/cloud/000006_borderpay.down.sql` | `DELETE FROM plans` melanggar FK subscriptions/purchases | Diperbaiki | Plan yang punya order disimpan dan dinonaktifkan; sisanya dihapus |
+| CR-6 | `middlewares/ip_block.go` | Error `kv.Set` diabaikan sebelum `OnBlock` | Diperbaiki | Gagal simpan = tidak ada blok dan tidak dicatat |
+| CR-7 | `middlewares/ip_block.go`, `cmd/api/main.go` | `BlockIP` menelan error; restore saat boot melaporkan semua berhasil | Diperbaiki | `BlockIP` mengembalikan error; boot mencatat `restored`/`of` |
+| CR-8 | `middlewares/ip_block.go`, `handlers/ip_block.go` | `UnblockIP` menelan error hapus, `Destroy` tetap melapor sukses | Diperbaiki | Key dihapus dulu; gagal = record tetap aktif dan request error |
+| CR-9 | `handlers/ip_block.go` | Alamat IPv6 tidak dikanonikalkan | Diperbaiki | Disimpan sebagai `net.ParseIP(...).String()` |
+| CR-10 | `handlers/ip_block.go` | Blok manual untuk IP exempt tercatat tapi tidak berlaku | Diperbaiki | Ditolak 400 bila ada di `RATE_LIMIT_EXEMPT_IPS`. Loopback di development tidak dicek |
+| CR-11 | `repositories/ip_block.go` | Blok otomatis tidak dipulihkan setelah restart | Diperbaiki | `ActiveManual` → `Active`, memulihkan semua blok aktif |
+| CR-12 | `repositories/ip_block.go` | Blok otomatis mengubah source blok manual | Diperbaiki | Source `manual` dipertahankan. KV tidak bisa tertimpa: IP yang diblok tidak sampai ke penghitung |
+| CR-13 | `middlewares/ip_block.go` `permanentFor` | Blok tanpa akhir harus berlaku selamanya di KV | Dilewati | 10 tahun di KV, dan boot memulihkannya dari database |
+| CR-14 | `app/application.go` | Redis kehilangan key → blok manual tidak berlaku | Dilewati | Urusan operasional (persistensi Redis); boot memulihkan dari database |
+| CR-15 | `cmd/api/routes.go` `OnBlock` | Insert dibuat async | Dilewati | Jarang terjadi, timeout 5 detik |
+| CR-16 | `middlewares/ip_block.go` `OnBlock` | Gagal insert record harus diulang | Dilewati | Blok tetap berlaku di KV; kegagalan dicatat di log |
+| CR-17 | `handlers/ip_block.go` | Race `Destroy` vs `Create` untuk IP yang sama | Dilewati | Hanya aksi super user, jendela sangat kecil |
+| CR-18 | `handlers/activity.go` | Prune hanya jalan saat log dibaca | Diperbaiki | Juga tiap jam (`pruneActivityEvery` di `cmd/api/main.go`), supaya IP sign-in tidak tersimpan melewati 90 hari |
+| CR-19 | `repositories/activity.go` | Prune dalam batch 1.000 | Dilewati | Dengan prune tiap jam, satu delete tetap kecil |
+| CR-20 | `handlers/item.go` | Activity update mencatat tipe lama | Diperbaiki | |
+| CR-21 | `lib/borderpay/borderpay_test.go` | `ReturnURL` tidak dites | Diperbaiki | |
+| CR-22 | `middlewares/ip_block_test.go` | Tes lewat handler `Create` | Dilewati | Butuh database; integration test (`ipBlockFlow`) sudah mencakupnya |
+| CR-23 | `app` `activity-log.tsx` | Empty state di halaman kosong menyembunyikan paginasi | Diperbaiki | Cek `total === 0` |
+| CR-24 | `app` `billing.tsx`, `extension` `billing.tsx` | Subscription BorderPay aktif tertulis "renews" | Diperbaiki | Tertulis "ends" |
+| CR-25 | `extension` `billing.tsx` | Empty state memakai `plans.length`, bukan tab yang dipilih | Diperbaiki | |
+| CR-26 | `app` `block-form.tsx` | IPv6 berisi IPv4 (`::ffff:1.2.3.4`) ditolak form | Diperbaiki | |
+| CR-27 | `app` `ip-blocks.tsx` | Ganti filter status tidak reset halaman | Diperbaiki | |
+| CR-28 | `app` `ip-blocks.tsx` | Gagal muat tampil sebagai "No IP is blocked" | Diperbaiki | |
+| CR-29 | `app` `queries/security.ts` | Role lama dari cache dipakai setelah sign-in | Diperbaiki | Query role dibuang setiap sign-in (`storeSignIn`) |
+| CR-30 | `extension` `background.ts` | Save yang tertunda bisa ditawarkan ke akun lain | Diperbaiki | Semua `pending:*` dibuang saat sign-in dan sign-out |
+| CR-31 | `extension` `content.ts` | Select bulan/tahun mengirim label, bukan value | Diperbaiki | Value dikirim; label hanya dipakai untuk negara |
+| CR-32 | `extension` `content.ts` | Kontrol di luar form dengan atribut `form=` terlewat | Diperbaiki | Pakai `form.elements` |
+| CR-33 | `extension` `content.ts`, `card-capture.ts` | `<input type="month">` tidak dibaca | Diperbaiki | `YYYY-MM` dibaca sebagai expiry |
+| CR-34 | `extension` `content.ts` | Password yang terisi di tempat lain mengubah checkout jadi login | Diperbaiki | Password dicari di form yang dikirim; tanpa form, di seluruh halaman |
+| CR-35 | `extension` `content.ts` | Tanpa form, seluruh dokumen dibaca | Dilewati | Disengaja: checkout tanpa `<form>` (SPA). Ditandai `ponytail:` |
+| CR-36 | `extension` `card-capture.ts` | Hanya field nomor pertama yang dicek | Diperbaiki | Field pertama yang lolos Luhn |
+| CR-37 | `extension` `card-capture.ts` | Expiry yang tidak terbaca tidak jatuh ke bulan/tahun | Diperbaiki | |
+| CR-38 | `extension` `contact-capture.ts` | Alamat shipping dan billing digabung | Diperbaiki | Hanya bagian alamat pertama |
+| CR-39 | `extension` `contact-capture.ts` | Nama lengkap tidak mengisi nama belakang bila nama depan ada | Diperbaiki | |
+| CR-40 | `extension` `inline/main.tsx` | Nama default kontak bisa > 200 karakter | Diperbaiki | |
+| CR-41 | `extension` `inline/main.tsx` | Submission baru tidak mengganti prompt yang terbuka | Diperbaiki | `setPending(found)`, form di-remount lewat `key` |
+| CR-42 | `extension` `inline/main.tsx` | Kosongkan `pending` saat entry hilang | Dilewati | Sudah ditutup lewat `expired`; mengosongkan `pending` memotong pesan "Saved to Montara Pass." |
+| CR-43 | `extension` `views/activity.tsx` | Offset halaman dari baris yang tampil, bukan yang diambil; baris ganda | Diperbaiki | Offset dari jumlah yang diambil, baris dedup per `id` |
+| CR-44 | `extension` `views/activity.tsx` | Error profile diabaikan | Sebagian | `SignedOutError` → `onSignedOut`; retry dilewati (hanya untuk label "You") |
+| CR-45 | `web` `home/pricing.tsx` | Harga selalu diformat USD | Diperbaiki | Pakai mata uang tier; IDR bila tidak ada tier USD |
+| CR-46 | `web` `pricing/offer.ts` | Syarat perpanjangan menurut mata uang, bukan provider | Diperbaiki | `plan.provider` |
+| CR-47 | `web` `pricing-page.tsx` | Teks billing Lemon Squeezy tampil untuk IDR | Diperbaiki | Daftar BorderPay/QRIS untuk IDR |
+| CR-48 | `shared` `activity.ts` | `CriOS`/`EdgiOS` terbaca Safari | Diperbaiki | Juga `FxiOS`, `EdgA`; kasusnya ditambah di `activity.check.ts` |
+| CR-49 | `shared` `plan.ts` `billingTerms` | Syarat menurut mata uang, bukan provider | Dilewati | Plan IDR lewat Lemon Squeezy tidak bisa dijual: checkout menolak mata uang selain milik toko |
+| CR-50 | `shared` `tsconfig.json` | `*.check.ts` tidak di-typecheck | Dilewati | Dijalankan dengan Node; typecheck butuh `@types/node` di shared hanya untuk itu |
+
+### Review CodeRabbit lanjutan (2026-11-04)
+
+| ID | Lokasi | Temuan | Status | Catatan |
+| --- | --- | --- | --- | --- |
+| CR-51 | `handlers/billing.go` `regionCurrency` | Di luar Indonesia selalu "USD", walau toko Lemon Squeezy memakai mata uang lain; klien yang memfilter per mata uang tidak menemukan plan | Diperbaiki | Memakai `Payments.Currency` bila ada, USD bila tidak |
+| CR-52 | `handlers/billing.go` `soldIn` | Cocokkan provider juga, supaya plan IDR Lemon Squeezy tidak dijual ke Indonesia | Dilewati | Checkout memilih provider dari plan, bukan dari negara; plan Lemon Squeezy hanya bisa dalam mata uang toko |
+| CR-53 | `web` `home/pricing.tsx` | Intro "cancel anytime" untuk pengunjung IDR | Diperbaiki | "paid one period at a time" untuk IDR |
+| CR-54 | `web` `home/pricing.tsx` | Kartu Cloud kosong bila belum ada plan live di mata uang pengunjung | Diperbaiki | Tier authored di mata uang yang sama menggantikan |
+| CR-55 | `web` `pricing/offer.ts` `visitorRegion` | Baca header dari `COUNTRY_HEADER`, bukan `cf-ipcountry` | Dilewati | Website berjalan di Cloudflare Workers, yang selalu mengisi `cf-ipcountry` sendiri; `COUNTRY_HEADER` adalah konfigurasi proxy di depan API |
+| CR-56 | `handlers/billing_region_test.go` | Integration test untuk penjaga negara di checkout | Dilewati | `soldIn` dan `regionCurrency` dites unit; penjaganya satu baris di `customer()`. Mengaktifkan `COUNTRY_HEADER` di integration test mengubah seluruh `billingFlow` |
+
+## Audit dependensi (2026-11-08)
+
+`govulncheck ./...` (`apps/server`) dan `pnpm audit --prod` (root), di branch `dev` @ `2d3954e`.
+
+| ID | Modul | Temuan | Status | Catatan |
+| --- | --- | --- | --- | --- |
+| DEP-1 | `github.com/klauspost/compress` v1.20.1 | GO-2026-6865: panic pada frame dua blok. Terjangkau dari kode kita lewat `redis.NewScript` di `middlewares/store.go` | Diperbaiki | Naik ke v1.20.2 |
+| DEP-2 | `golang.org/x/net` v0.60.0 | GO-2026-6866 dan GO-2026-6860; tidak dipanggil kode kita | Diperbaiki | Naik ke v0.62.0 (ikut: `x/sync`, `x/sys`, `x/text`) |
+| DEP-3 | `golang.org/x/crypto` v0.57.0 | GO-2026-5932: paket `openpgp` tidak dirawat. Tidak di-import | Diterima | Naik ke v0.58.0 (rilis terbaru). Perbaikannya, menghapus paket itu, baru ada di commit yang belum dirilis; ikut naik di rilis x/crypto berikutnya |
+| DEP-4 | `deepmerge` 4.3.1 | GHSA-gcqx-w48m-w2h4 (low): prototype poisoning di `mergeObject()`, lewat `apps/mobile` > `expo` > `@expo/cli` > `@expo/config` | Diterima | Belum ada versi yang diperbaiki (4.3.1 adalah rilis terakhir). Hanya berjalan di CLI Expo saat build, menggabungkan config milik developer, bukan input pengguna |
+
+Setelah perbaikan: `govulncheck` melaporkan 0 kerentanan yang terjangkau kode kita; `go build`,
+`go vet`, `go test ./...` dan integration test (`montara_pass_test`) lolos.
+
+## Review CodeRabbit passkey (2026-11-08)
+
+| ID | Lokasi | Temuan | Status | Catatan |
+| --- | --- | --- | --- | --- |
+| CR-57 | `app` `security/devices.tsx`, `extension` `views/activity.tsx` | Konfirmasi "sign out" menyiratkan hanya password yang bisa masuk lagi | Diperbaiki | Menyebut password atau passkey, dan menyarankan ganti password serta hapus passkey yang tidak dikenali. Pindah dari `profile/devices.tsx` |
+| CR-58 | `app` `vault/vault-gate.tsx` | Hasil passkey yang datang setelah sign out membuka vault lagi | Diperbaiki | `startUnlock()` di `stores/vault.ts`: setiap lock menaikkan hitungan, unlock yang dimulai sebelum lock terakhir dibuang. Dipakai juga oleh unlock master password, pembuatan vault dan `signInWithPasskey` |
+| CR-59 | `server` `routes.go` `failedAttempt` | 401/403 dari `POST /v1/passkeys/register/begin` (password akun salah) tidak dihitung untuk blokir IP | Diperbaiki | Masuk `guessPaths`; rate limit per IP tetap |
+| CR-60 | `server` `handlers/passkey.go` `RegisterFinish` | `maxPasskeys` hanya dicek di begin: ceremony yang dimulai bersamaan bisa melewati batas | Diperbaiki | `PasskeyRepository.Create` menghitung dan menyimpan dalam satu transaksi di bawah `pg_advisory_xact_lock` per akun; `ErrPasskeyLimit` dijawab 400 |
+| CR-61 | `server` `lib/passkey` `Take` | Gagal menghapus ceremony diabaikan, sign-in tetap jalan | Diperbaiki | Lewat CR-62: ceremony diambil dan dihapus dalam satu langkah; error berarti `ErrCeremony` |
+| CR-62 | `server` `lib/passkey` `Take` | Get lalu delete tidak atomik: dua request bisa memakai ceremony yang sama | Diperbaiki | `lib.IPKV.Take`: Redis `GETDEL`, memori di bawah lock. Dites unit (`TestMemoryKVTake`) dan integration test dengan Redis |
+| CR-63 | `shared` `auth/passkey.ts` `createPasskey` | Sentuhan kedua untuk PRF yang gagal membatalkan pendaftaran passkey yang sudah dibuat | Diperbaiki | Kegagalan ditangkap; passkey tetap didaftarkan, tanpa membuka vault |
+| CR-64 | `extension` `entrypoints/background.ts` `passkey:available` | Kecualikan juga origin web app, bukan hanya API | Dilewati | `ownSite()` sudah membandingkan dengan `apiUrl` dan `appUrl` dari settings |
+| CR-65 | `server` `integration_test.go` | Ceremony passkey lewat Redis saat `TEST_REDIS_URL` diset | Diperbaiki | `NewIPKV(NewStore(application.Redis))`; tanpa Redis tetap memori |
+| CR-66 | `server` `passkey_test.go` | Tes round-trip PRF dengan `sealVaultKeyForPasskey` / `unlockVaultMaterialWithPasskey` | Dilewati | Fungsi itu TypeScript (`packages/shared/src/crypto/vault.ts`), tidak terjangkau dari tes Go, dan self-check `node` tidak bisa memuat `vault.ts` (import tanpa ekstensi). Round-trip diverifikasi sekali secara manual: kunci yang disegel dengan PRF terbuka dengan PRF yang sama dan ditolak dengan PRF lain |
+| CR-67 | `server` `middlewares/ip_block.go` `BlockIP` | Sisa waktu blok dihitung dua kali: bacaan jam kedua bisa memberi expiry ≤ 0 setelah pengecekan | Diperbaiki | Sisa waktu dihitung sekali dan dipakai untuk pengecekan dan `Set` |
+| CR-68 | `migrations/cloud/000006_borderpay` | Setelah rollback, plan IDR yang disimpan (punya order) kembali di-up sebagai `lemonsqueezy` dan nonaktif | Diperbaiki | `up` memakai `ON CONFLICT (code) DO UPDATE SET provider, active`: plan kembali ke BorderPay dan dijual lagi; harga dan order tidak disentuh. Diuji up → down → up di database sementara dengan satu purchase |
+| CR-69 | Docstring coverage | Fungsi tanpa docstring | Diperbaiki | `memoryKV` `Get`/`Set`/`Take`/`Delete` |
+
+Validasi: `go build`, `go vet`, `go test ./...`, integration test (`montara_pass_test`, dengan dan tanpa Redis db 15); `tsc` untuk `apps/app`, `apps/extension` dan `packages/shared`; `oxlint` bersih.
+
+### Review CodeRabbit billing ulang (2026-11-08)
+
+Temuan yang sama dengan CR-51 sampai CR-56 datang lagi; dicek ulang terhadap kode saat ini.
+
+| ID | Lokasi | Temuan | Status | Catatan |
+| --- | --- | --- | --- | --- |
+| CR-67 | `handlers/billing.go` `soldIn` | Untuk pembeli di luar Indonesia, `soldIn` membandingkan IDR/non-IDR, sedangkan `regionCurrency` dan klien memakai mata uang toko Lemon Squeezy | Diperbaiki | `plan.Currency == currency`; tabel tes ditambah kasus toko EUR |
+| CR-52 | `handlers/billing.go` `soldIn` | Cocokkan provider juga | Tetap dilewati | Alasan yang sama: checkout memilih provider dari plan |
+| CR-53, CR-54 | `web` `home/pricing.tsx` | Intro "cancel anytime" untuk IDR; tier authored sebagai pengganti | Sudah diperbaiki | Kode saat ini sudah memuat keduanya |
+| CR-55 | `web` `pricing/offer.ts` `visitorRegion` | Baca `COUNTRY_HEADER` | Tetap dilewati | Website di Cloudflare Workers selalu punya `cf-ipcountry`; `COUNTRY_HEADER` untuk proxy di depan API |
+| CR-56 | `handlers/billing_region_test.go` | Integration test penjaga negara di checkout | Tetap dilewati | Alasan yang sama dengan CR-56 |
+
+Validasi: `go build`, `go vet`, tes unit `handlers` dan integration test (`montara_pass_test`) lolos.

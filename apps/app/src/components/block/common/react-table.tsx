@@ -30,12 +30,13 @@ import {
   type RowSelectionState,
   type SortingState,
 } from '@tanstack/react-table'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 
-import { DataGrid, DataGridContainer } from '@/components/ui/data-grid'
+import { DataGrid, DataGridContainer, type DataGridProps } from '@/components/ui/data-grid'
 import { DataGridPagination } from '@/components/ui/data-grid-pagination'
 import { DataGridTable } from '@/components/ui/data-grid-table'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
+import { cn } from '@/lib/utils'
 
 export const features = tableFeatures({
   columnFilteringFeature,
@@ -65,6 +66,15 @@ interface ReactTableProps<T extends RowData> {
   onPageSizeChange?: (pageSize: number) => void
   globalFilterFn?: FilterFnOption<typeof features, T>
   getRowId?: (row: T) => string
+  /** Stands in for the page links under the table, for a page that turns its own way. */
+  footer?: ReactNode
+  /** Off when the table sits in a card of the page's own. */
+  bordered?: boolean
+  /** Skeleton rows (each column's `meta.skeleton`) while the first page loads. */
+  isLoading?: boolean
+  emptyMessage?: ReactNode
+  tableLayout?: DataGridProps<T>['tableLayout']
+  tableClassNames?: DataGridProps<T>['tableClassNames']
 }
 
 export default function ReactTable<T extends RowData>({
@@ -78,6 +88,12 @@ export default function ReactTable<T extends RowData>({
   getRowId,
   onPageChange,
   onPageSizeChange,
+  footer,
+  bordered = true,
+  isLoading,
+  emptyMessage,
+  tableLayout,
+  tableClassNames,
 }: ReactTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>(columnSort)
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
@@ -126,30 +142,38 @@ export default function ReactTable<T extends RowData>({
     <DataGrid
       table={table as unknown as ReactTable<any, any>}
       recordCount={total}
+      isLoading={isLoading}
+      emptyMessage={emptyMessage}
       tableLayout={{
         columnsVisibility: true,
         columnsResizable: true,
         columnsPinnable: true,
         columnsMovable: true,
+        ...tableLayout,
       }}
       tableClassNames={{
         edgeCell: 'px-5',
+        ...tableClassNames,
       }}
     >
-      <div className="fade-in w-full space-y-2.5">
-        <DataGridContainer>
+      <div className={cn('fade-in w-full', footer === undefined && 'space-y-2.5')}>
+        <DataGridContainer border={bordered}>
           <ScrollArea>
             <DataGridTable />
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
         </DataGridContainer>
-        <DataGridPagination
-          total={total}
-          pageSize={pagination.pageSize}
-          pageIndex={pagination.pageIndex}
-          onPageChange={onPageChange}
-          onPageSizeChange={onPageSizeChange}
-        />
+        {footer === undefined ? (
+          <DataGridPagination
+            total={total}
+            pageSize={pagination.pageSize}
+            pageIndex={pagination.pageIndex}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
+          />
+        ) : (
+          footer
+        )}
       </div>
     </DataGrid>
   )

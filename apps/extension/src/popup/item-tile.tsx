@@ -18,11 +18,11 @@ export function ItemTile({ item, large }: { item: VaultItem; large?: boolean }) 
   const icon = item.type === 'login' ? itemIcon(item.secret) : null
   const Icon = TYPE_ICON[item.type] ?? NoteIcon
 
-  return (
-    <span className={`tile${large ? ' tile-large' : ''}${icon ? ' tile-favicon' : ''}`}>
-      {icon ? <img src={icon} alt="" /> : <Icon />}
-    </span>
-  )
+  const className = ['tile', large && 'tile-large', icon && 'tile-favicon']
+    .filter(Boolean)
+    .join(' ')
+
+  return <span className={className}>{icon ? <img src={icon} alt="" /> : <Icon />}</span>
 }
 
 /** A row's second line: the masked username, email or card ending, else the item's type. */

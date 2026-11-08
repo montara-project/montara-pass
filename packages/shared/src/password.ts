@@ -10,6 +10,8 @@ export interface PasswordOptions {
   lowercase: boolean
   digits: boolean
   symbols: boolean
+  /** Lets in the characters easy to confuse: 0 and O, 1, l and I. */
+  ambiguous: boolean
 }
 
 export const MIN_PASSWORD_LENGTH = 8
@@ -21,15 +23,19 @@ export const DEFAULT_PASSWORD_OPTIONS: PasswordOptions = {
   lowercase: true,
   digits: true,
   symbols: true,
+  ambiguous: false,
 }
 
-/** Characters that are easy to confuse (0/O, 1/l/I) are left out. */
+/** Characters that are easy to confuse (0/O, 1/l/I) are left out... */
 const SETS = {
   uppercase: 'ABCDEFGHJKLMNPQRSTUVWXYZ',
   lowercase: 'abcdefghijkmnopqrstuvwxyz',
   digits: '23456789',
   symbols: '!@#$%^&*-_=+',
 } as const
+
+/** ...unless they are asked for. */
+const AMBIGUOUS = { uppercase: 'IO', lowercase: 'l', digits: '01', symbols: '' } as const
 
 function draw(charset: string, length: number): string {
   // Bytes that would bias the choice are thrown away, not wrapped.
@@ -51,7 +57,9 @@ function draw(charset: string, length: number): string {
 export function generatePassword(options: Partial<PasswordOptions> = {}): string {
   const wanted = { ...DEFAULT_PASSWORD_OPTIONS, ...options }
   const chosen = (Object.keys(SETS) as (keyof typeof SETS)[]).filter((kind) => wanted[kind])
-  const sets = (chosen.length > 0 ? chosen : (['lowercase'] as const)).map((kind) => SETS[kind])
+  const sets = (chosen.length > 0 ? chosen : (['lowercase'] as const)).map(
+    (kind) => SETS[kind] + (wanted.ambiguous ? AMBIGUOUS[kind] : '')
+  )
   const length = Math.min(Math.max(Math.floor(wanted.length), sets.length), MAX_PASSWORD_LENGTH)
 
   // Drawn again until every kind is there: any other way of forcing one in
@@ -86,7 +94,9 @@ export function passwordBits(password: string): number {
     for (let i = 0; i < password.length; i++) {
       const step = i > 0 ? password.charCodeAt(i) - password.charCodeAt(i - 1) : NaN
       const repeats = period > 0 && i >= period && password[i] === password[i - period]
-      if (!repeats && step !== 0 && step !== 1 && step !== -1) count++
+      // The same character again (0), or the next one in a run like abc or 321 (±1).
+      const inSequence = Math.abs(step) <= 1
+      if (!repeats && !inSequence) count++
     }
     return count
   }
@@ -111,12 +121,16 @@ export const STRONG_BITS = 80
 
 export function passwordStrength(password: string): PasswordStrength {
   const bits = passwordBits(password)
-  return bits < FAIR_BITS ? 'weak' : bits < STRONG_BITS ? 'fair' : 'strong'
+  if (bits < FAIR_BITS) return 'weak'
+  if (bits < STRONG_BITS) return 'fair'
+  return 'strong'
 }
 
 /** What a character is, so a password can be shown with its kinds told apart. */
 export function characterKind(char: string): 'letter' | 'digit' | 'symbol' {
-  return /\d/.test(char) ? 'digit' : /[a-zA-Z]/.test(char) ? 'letter' : 'symbol'
+  if (/\d/.test(char)) return 'digit'
+  if (/[a-zA-Z]/.test(char)) return 'letter'
+  return 'symbol'
 }
 
 export interface PasswordHealth {

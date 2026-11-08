@@ -57,7 +57,10 @@ export function parseRequest(raw: unknown): PasskeyRequest | null {
   const challenge = encoded(from.challenge, 2048)
   // A user handle is at most 64 bytes.
   const userId = encoded(user.id, 86)
-  if (!id || !kind || !challenge || (kind === 'create' && !userId)) return null
+  const incomplete = !id || !kind || !challenge
+  // Creating a passkey names the user it is for.
+  const createsWithoutUser = kind === 'create' && !userId
+  if (incomplete || createsWithoutUser) return null
 
   const list = (value: unknown) => (Array.isArray(value) ? value : [])
   return {

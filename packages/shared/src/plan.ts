@@ -33,16 +33,32 @@ export const PLAN_INCLUDES = [
   'Share items with other people, as editor or viewer',
   'Logins, secure notes, cards, contacts and passkeys',
   'Fill and save logins in Chrome and Firefox',
+  'Activity log of sign-ins and changes to shared items',
   'Encrypted on your device; the server never reads your vault',
 ] as const
 
-/** How paying works, listed beside what every plan includes. */
+/** A plan sold through BorderPay, which takes the IDR plans, in QRIS. */
+export const isIDR = (plan: Models.Plan) => plan.provider === 'borderpay'
+
+/** How paying works on the USD plans, listed beside what every plan includes. */
 export const BILLING_TERMS = [
   'Payments are handled by Lemon Squeezy',
   'Monthly and yearly plans renew by themselves',
   'Cancel any time from Manage subscription',
   'A one-time plan is paid once and never renews',
 ] as const
+
+/** How paying works, listed beside what every plan includes, per currency. */
+export function billingTerms(currency: string) {
+  if (currency === 'IDR') {
+    return [
+      'Payments are handled by BorderPay, by QRIS',
+      'A subscription is paid one period at a time; subscribe again to renew',
+      'A one-time plan is paid once and never renews',
+    ] as const
+  }
+  return BILLING_TERMS
+}
 
 /** A plan's purchase that is paid or still being paid, if there is one. */
 export function ownedPurchase(purchases: Models.Purchase[], plan: Models.Plan) {
@@ -78,8 +94,14 @@ const TERMS = {
   year: 'renews yearly · cancel any time',
 } as const
 
+/** What paying commits to on a BorderPay plan, in a line: it charges once. */
+const TERMS_IDR = 'one period · renew by subscribing again'
+
 /** What paying commits to, in a line. */
 export function planTerms(plan: Models.Plan) {
+  if (isIDR(plan)) {
+    return plan.billing_interval ? TERMS_IDR : 'one payment · does not renew'
+  }
   return plan.billing_interval ? TERMS[plan.billing_interval] : 'one payment · does not renew'
 }
 

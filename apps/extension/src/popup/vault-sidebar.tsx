@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 import { COMMUNITY } from '@montara-pass/shared/constants/edition'
 import { initials } from '@montara-pass/shared/string'
 
+import ServerTime from '@/components/layout/server-time'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -19,7 +20,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Separator } from '@/components/ui/separator'
 import {
   Sidebar,
   SidebarContent,
@@ -35,6 +35,7 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarRail,
+  SidebarSeparator,
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar'
@@ -46,23 +47,32 @@ import {
   LockIcon,
   LogOutIcon,
   SettingsIcon,
+  ShareIcon,
   ShieldIcon,
+  ShieldOutlineIcon,
   SortIcon,
 } from './icons'
 import { UpdateButton } from './update-button'
 
 type Icon = typeof KeyIcon
-export type Tool = 'generator' | 'health' | 'billing'
+export type Tool = 'generator' | 'health' | 'activity' | 'billing' | 'sharing'
 
-// group is what the breadcrumb names above the page. Billing is the Cloud
-// Edition's only: the Community Edition takes no payments.
+// group is what the breadcrumb names above the page. Security is the
+// account's record of sign-ins and item changes.
 const TOOLS: { value: Tool; label: string; group: string; icon: Icon }[] = [
   { value: 'generator', label: 'Password generator', group: 'Tools', icon: KeyIcon },
-  { value: 'health', label: 'Password health', group: 'Tools', icon: ShieldIcon },
-  ...(COMMUNITY
-    ? []
-    : [{ value: 'billing' as const, label: 'Billing', group: 'Account', icon: CreditCardIcon }]),
+  { value: 'health', label: 'Password health', group: 'Tools', icon: ShieldOutlineIcon },
+  { value: 'activity', label: 'Security', group: 'Account', icon: ShieldIcon },
 ]
+
+// In the account menu. Sharing and billing are the Cloud Edition's only: the
+// Community Edition has one user and takes no payments.
+const MENU_TOOLS: { value: Tool; label: string; group: string; icon: Icon }[] = COMMUNITY
+  ? []
+  : [
+      { value: 'sharing', label: 'Manage sharing', group: 'Vault', icon: ShareIcon },
+      { value: 'billing', label: 'Billing', group: 'Account', icon: CreditCardIcon },
+    ]
 
 interface VaultSidebarProps<F extends string> {
   filters: { value: F; label: string; icon: Icon; count: number }[]
@@ -97,7 +107,7 @@ export function VaultSidebar<F extends string>({
   onSignOut,
   children,
 }: VaultSidebarProps<F>) {
-  const active = TOOLS.find((t) => t.value === tool)
+  const active = [...TOOLS, ...MENU_TOOLS].find((t) => t.value === tool)
   const current = active
     ? { group: active.group, title: active.label }
     : { group: 'Vault', title: filters.find((f) => f.value === filter)?.label }
@@ -109,7 +119,9 @@ export function VaultSidebar<F extends string>({
       className="h-full min-h-0"
     >
       <Sidebar variant="inset" collapsible="icon">
-        <SidebarHeader>
+        {/* As tall as the page's header, with its line along the bottom: the
+            two lines meet as one, open or folded. */}
+        <SidebarHeader className="relative h-14 shrink-0 justify-center gap-0 py-0">
           <SidebarMenu>
             <SidebarMenuItem>
               {/* The name, not a control: there is nowhere else in the extension to go. */}
@@ -117,16 +129,19 @@ export function VaultSidebar<F extends string>({
                 <div>
                   <img src="/icons/128.png" alt="" className="size-8 rounded-lg" />
                   <div className="grid flex-1 text-left leading-tight">
-                    <span className="text-foreground truncate font-semibold">Montara Pass</span>
-                    <span className="truncate text-xs">Your vault</span>
+                    <span className="text-foreground truncate text-[15px] font-semibold tracking-[-0.01em]">
+                      Montara Pass
+                    </span>
+                    <span className="truncate text-xs font-normal">Your vault</span>
                   </div>
                 </div>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
+          <SidebarSeparator className="absolute inset-x-0 bottom-0 mx-0 w-auto" />
         </SidebarHeader>
 
-        <SidebarContent>
+        <SidebarContent className="pt-2">
           <SidebarGroup>
             <SidebarGroupLabel>Vault</SidebarGroupLabel>
             <SidebarMenu>
@@ -171,16 +186,22 @@ export function VaultSidebar<F extends string>({
           </SidebarGroup>
         </SidebarContent>
 
-        <SidebarFooter>
-          <Account user={user} onSettings={onSettings} onLock={onLock} onSignOut={onSignOut} />
+        <SidebarFooter className="gap-1">
+          <SidebarSeparator className="mx-0.5 bg-sidebar-border/50" />
+          <Account
+            user={user}
+            onTool={onTool}
+            onSettings={onSettings}
+            onLock={onLock}
+            onSignOut={onSignOut}
+          />
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>
 
       <SidebarInset className="bg-panel min-h-0 overflow-hidden">
         <header className="bg-panel border-border sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b px-3 sm:px-6 md:rounded-t-sheet">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
+          <SidebarTrigger className="-ml-2" />
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">{current.group}</BreadcrumbItem>
@@ -190,7 +211,8 @@ export function VaultSidebar<F extends string>({
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
-          <UpdateButton className="ml-auto" />
+          <ServerTime className="ml-auto" />
+          <UpdateButton />
         </header>
         {/* Passes the inset's height on: the list scrolls inside it, not past it.
             No padding of its own: the columns pad themselves, so the line
@@ -234,10 +256,11 @@ function Item({
 /** The foot of the sidebar: who is signed in, and the ways out. */
 function Account({
   user,
+  onTool,
   onSettings,
   onLock,
   onSignOut,
-}: Pick<VaultSidebarProps<string>, 'user' | 'onSettings' | 'onLock' | 'onSignOut'>) {
+}: Pick<VaultSidebarProps<string>, 'user' | 'onTool' | 'onSettings' | 'onLock' | 'onSignOut'>) {
   const { isMobile } = useSidebar()
 
   return (
@@ -252,15 +275,15 @@ function Account({
             >
               <span
                 aria-hidden="true"
-                className="bg-avatar text-avatar-foreground inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold"
+                className="bg-avatar text-avatar-foreground inline-flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold"
               >
                 {user ? initials(user.name || user.email) : ''}
               </span>
               <div className="grid flex-1 text-left leading-tight">
-                <span className="text-foreground truncate font-semibold">
+                <span className="text-foreground truncate text-sm font-semibold">
                   {user?.name || 'Account'}
                 </span>
-                {user && <span className="truncate text-xs">{user.email}</span>}
+                {user && <span className="truncate text-[13px] font-normal">{user.email}</span>}
               </div>
               <SortIcon className="ml-auto size-4" />
             </SidebarMenuButton>
@@ -275,6 +298,13 @@ function Account({
               <SettingsIcon />
               Settings
             </DropdownMenuItem>
+            {MENU_TOOLS.map(({ value, label, icon: Icon }) => (
+              <DropdownMenuItem key={value} onClick={() => onTool(value)}>
+                <Icon />
+                {label}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onLock}>
               <LockIcon />
               Lock vault

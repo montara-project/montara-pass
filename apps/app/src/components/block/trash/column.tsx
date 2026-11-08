@@ -1,7 +1,7 @@
 import type { VaultItem } from '@montara-pass/shared/types/vault'
 
+import { ITEM_TYPE_LABEL } from '@montara-pass/shared/constants/vault'
 import { formatDateTime } from '@montara-pass/shared/date'
-import { capitalizeFirstLetter } from '@montara-pass/shared/string'
 import { IconRestore } from '@tabler/icons-react'
 import { useMutation } from '@tanstack/react-query'
 import React, { useMemo, useState } from 'react'
@@ -16,6 +16,7 @@ import { queries } from '@/lib/api/queries'
 import CellItem from '../common/cell-item'
 import RowColumnAction from '../common/row-column-action'
 import SimpleAlertDialog from '../common/simple-alert-dialog'
+import ItemTile, { itemSubtitle } from '../vault/item-tile'
 
 type ColumnType = AppColumnDef<VaultItem>
 
@@ -27,11 +28,26 @@ export function TrashColumn({ loading }: BaseColumnProps) {
   const columns = useMemo<ColumnType[]>(
     () => [
       {
-        accessorKey: 'name',
+        // The decrypted name: accessorKey 'name' would read a field the item
+        // does not have, so sorting it could never work.
+        id: 'name',
+        accessorFn: (item) => item.secret?.name ?? '',
         header: 'Name',
         cell: ({ row }) => (
           <CellItem loading={loading}>
-            <span>{row.original.secret?.name ?? 'Unable to decrypt'}</span>
+            <div className="flex items-center gap-3">
+              <ItemTile item={row.original} />
+              <span className="flex min-w-0 flex-col">
+                {row.original.secret ? (
+                  <span className="truncate font-medium">{row.original.secret.name}</span>
+                ) : (
+                  <span className="text-danger">Unable to decrypt</span>
+                )}
+                <span className="text-muted-foreground truncate text-xs">
+                  {itemSubtitle(row.original)}
+                </span>
+              </span>
+            </div>
           </CellItem>
         ),
       },
@@ -40,7 +56,7 @@ export function TrashColumn({ loading }: BaseColumnProps) {
         header: 'Type',
         cell: (info) => (
           <CellItem loading={loading}>
-            <span>{capitalizeFirstLetter(info.getValue() as string)}</span>
+            <span>{ITEM_TYPE_LABEL[info.getValue() as string] ?? (info.getValue() as string)}</span>
           </CellItem>
         ),
       },

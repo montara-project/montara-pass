@@ -62,6 +62,25 @@ type ConfigBilling struct {
 	// RequirePaidSharing gates sharing an item on a paid plan. It needs
 	// payments, so that the plan can be bought.
 	RequirePaidSharing bool
+	// BorderPay sells the plans priced in IDR, through QRIS. Without an API
+	// key those plans are still listed, but nothing can be bought through
+	// them.
+	BorderPayAPIKey string
+	// The verification token of the BorderPay project's webhook, checked on
+	// every webhook it POSTs.
+	BorderPayWebhookToken string
+	// Overrides the API's base URL; tests point it elsewhere.
+	BorderPayBaseURL string
+	// Where BorderPay sends the browser back once a payment is done: the web
+	// app's billing page. Defaults to the API's own /billing, right when the
+	// API serves the web app.
+	BorderPayReturnURL string
+	// CountryHeader names the request header that carries the client's
+	// country as two letters (Cloudflare's CF-IPCountry), set by the proxy in
+	// front of the API. With it, Indonesia is sold only the IDR plans, through
+	// BorderPay, and everywhere else only the others. Empty offers every plan
+	// to everyone.
+	CountryHeader string
 }
 
 // ConfigAuth configures the embedded Authula server. Without a Resend key,
@@ -72,6 +91,10 @@ type ConfigAuth struct {
 	ResendAPIKey       string
 	GoogleClientID     string
 	GoogleClientSecret string
+	// PasskeyRPID is the domain account passkeys are made for. A passkey
+	// works on that domain and its subdomains only, so changing it orphans
+	// every passkey made before. Defaults to the host of BaseURL.
+	PasskeyRPID string
 }
 
 type ConfigApp struct {
