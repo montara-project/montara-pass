@@ -503,3 +503,17 @@ Yang benar diperbaiki (belum di-commit); sisanya dilewati dengan alasan. Integra
 | CR-54 | `web` `home/pricing.tsx` | Kartu Cloud kosong bila belum ada plan live di mata uang pengunjung | Diperbaiki | Tier authored di mata uang yang sama menggantikan |
 | CR-55 | `web` `pricing/offer.ts` `visitorRegion` | Baca header dari `COUNTRY_HEADER`, bukan `cf-ipcountry` | Dilewati | Website berjalan di Cloudflare Workers, yang selalu mengisi `cf-ipcountry` sendiri; `COUNTRY_HEADER` adalah konfigurasi proxy di depan API |
 | CR-56 | `handlers/billing_region_test.go` | Integration test untuk penjaga negara di checkout | Dilewati | `soldIn` dan `regionCurrency` dites unit; penjaganya satu baris di `customer()`. Mengaktifkan `COUNTRY_HEADER` di integration test mengubah seluruh `billingFlow` |
+
+## Audit dependensi (2026-11-08)
+
+`govulncheck ./...` (`apps/server`) dan `pnpm audit --prod` (root), di branch `dev` @ `2d3954e`.
+
+| ID | Modul | Temuan | Status | Catatan |
+| --- | --- | --- | --- | --- |
+| DEP-1 | `github.com/klauspost/compress` v1.20.1 | GO-2026-6865: panic pada frame dua blok. Terjangkau dari kode kita lewat `redis.NewScript` di `middlewares/store.go` | Diperbaiki | Naik ke v1.20.2 |
+| DEP-2 | `golang.org/x/net` v0.60.0 | GO-2026-6866 dan GO-2026-6860; tidak dipanggil kode kita | Diperbaiki | Naik ke v0.62.0 (ikut: `x/sync`, `x/sys`, `x/text`) |
+| DEP-3 | `golang.org/x/crypto` v0.57.0 | GO-2026-5932: paket `openpgp` tidak dirawat. Tidak di-import | Diterima | Naik ke v0.58.0 (rilis terbaru). Perbaikannya, menghapus paket itu, baru ada di commit yang belum dirilis; ikut naik di rilis x/crypto berikutnya |
+| DEP-4 | `deepmerge` 4.3.1 | GHSA-gcqx-w48m-w2h4 (low): prototype poisoning di `mergeObject()`, lewat `apps/mobile` > `expo` > `@expo/cli` > `@expo/config` | Diterima | Belum ada versi yang diperbaiki (4.3.1 adalah rilis terakhir). Hanya berjalan di CLI Expo saat build, menggabungkan config milik developer, bukan input pengguna |
+
+Setelah perbaikan: `govulncheck` melaporkan 0 kerentanan yang terjangkau kode kita; `go build`,
+`go vet`, `go test ./...` dan integration test (`montara_pass_test`) lolos.
