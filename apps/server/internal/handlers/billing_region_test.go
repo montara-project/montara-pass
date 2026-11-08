@@ -59,7 +59,7 @@ func TestRegionCurrency(t *testing.T) {
 		}
 	}
 
-	idr, usd := models.Plan{Currency: "IDR"}, models.Plan{Currency: "USD"}
+	idr, usd, eur := models.Plan{Currency: "IDR"}, models.Plan{Currency: "USD"}, models.Plan{Currency: "EUR"}
 	for _, c := range []struct {
 		plan     models.Plan
 		currency string
@@ -68,6 +68,8 @@ func TestRegionCurrency(t *testing.T) {
 		{idr, "IDR", true}, {usd, "IDR", false},
 		{idr, "USD", false}, {usd, "USD", true},
 		{idr, "", true}, {usd, "", true},
+		// A Lemon Squeezy store in euros sells abroad in euros only.
+		{eur, "EUR", true}, {usd, "EUR", false}, {idr, "EUR", false},
 	} {
 		if got := soldIn(c.plan, c.currency); got != c.want {
 			t.Errorf("soldIn(%s plan, %q) = %v, want %v", c.plan.Currency, c.currency, got, c.want)

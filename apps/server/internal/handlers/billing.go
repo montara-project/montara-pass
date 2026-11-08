@@ -100,9 +100,10 @@ func (h *billingHandler) regionCurrency(c fiber.Ctx) string {
 }
 
 // soldIn reports whether plan may be bought by a caller who buys in currency,
-// as regionCurrency answers it: every plan when it is "".
+// as regionCurrency answers it: every plan when it is "", else the plans in
+// that currency, which are the ones the clients show for it.
 func soldIn(plan models.Plan, currency string) bool {
-	return currency == "" || (plan.Currency == currencyIndonesia) == (currency == currencyIndonesia)
+	return currency == "" || plan.Currency == currency
 }
 
 // ListAllPlans answers every plan, retired ones included, for a super user.

@@ -517,3 +517,37 @@ Yang benar diperbaiki (belum di-commit); sisanya dilewati dengan alasan. Integra
 
 Setelah perbaikan: `govulncheck` melaporkan 0 kerentanan yang terjangkau kode kita; `go build`,
 `go vet`, `go test ./...` dan integration test (`montara_pass_test`) lolos.
+
+## Review CodeRabbit passkey (2026-11-08)
+
+| ID | Lokasi | Temuan | Status | Catatan |
+| --- | --- | --- | --- | --- |
+| CR-57 | `app` `security/devices.tsx`, `extension` `views/activity.tsx` | Konfirmasi "sign out" menyiratkan hanya password yang bisa masuk lagi | Diperbaiki | Menyebut password atau passkey, dan menyarankan ganti password serta hapus passkey yang tidak dikenali. Pindah dari `profile/devices.tsx` |
+| CR-58 | `app` `vault/vault-gate.tsx` | Hasil passkey yang datang setelah sign out membuka vault lagi | Diperbaiki | `startUnlock()` di `stores/vault.ts`: setiap lock menaikkan hitungan, unlock yang dimulai sebelum lock terakhir dibuang. Dipakai juga oleh unlock master password, pembuatan vault dan `signInWithPasskey` |
+| CR-59 | `server` `routes.go` `failedAttempt` | 401/403 dari `POST /v1/passkeys/register/begin` (password akun salah) tidak dihitung untuk blokir IP | Diperbaiki | Masuk `guessPaths`; rate limit per IP tetap |
+| CR-60 | `server` `handlers/passkey.go` `RegisterFinish` | `maxPasskeys` hanya dicek di begin: ceremony yang dimulai bersamaan bisa melewati batas | Diperbaiki | `PasskeyRepository.Create` menghitung dan menyimpan dalam satu transaksi di bawah `pg_advisory_xact_lock` per akun; `ErrPasskeyLimit` dijawab 400 |
+| CR-61 | `server` `lib/passkey` `Take` | Gagal menghapus ceremony diabaikan, sign-in tetap jalan | Diperbaiki | Lewat CR-62: ceremony diambil dan dihapus dalam satu langkah; error berarti `ErrCeremony` |
+| CR-62 | `server` `lib/passkey` `Take` | Get lalu delete tidak atomik: dua request bisa memakai ceremony yang sama | Diperbaiki | `lib.IPKV.Take`: Redis `GETDEL`, memori di bawah lock. Dites unit (`TestMemoryKVTake`) dan integration test dengan Redis |
+| CR-63 | `shared` `auth/passkey.ts` `createPasskey` | Sentuhan kedua untuk PRF yang gagal membatalkan pendaftaran passkey yang sudah dibuat | Diperbaiki | Kegagalan ditangkap; passkey tetap didaftarkan, tanpa membuka vault |
+| CR-64 | `extension` `entrypoints/background.ts` `passkey:available` | Kecualikan juga origin web app, bukan hanya API | Dilewati | `ownSite()` sudah membandingkan dengan `apiUrl` dan `appUrl` dari settings |
+| CR-65 | `server` `integration_test.go` | Ceremony passkey lewat Redis saat `TEST_REDIS_URL` diset | Diperbaiki | `NewIPKV(NewStore(application.Redis))`; tanpa Redis tetap memori |
+| CR-66 | `server` `passkey_test.go` | Tes round-trip PRF dengan `sealVaultKeyForPasskey` / `unlockVaultMaterialWithPasskey` | Dilewati | Fungsi itu TypeScript (`packages/shared/src/crypto/vault.ts`), tidak terjangkau dari tes Go, dan self-check `node` tidak bisa memuat `vault.ts` (import tanpa ekstensi). Round-trip diverifikasi sekali secara manual: kunci yang disegel dengan PRF terbuka dengan PRF yang sama dan ditolak dengan PRF lain |
+| CR-67 | `server` `middlewares/ip_block.go` `BlockIP` | Sisa waktu blok dihitung dua kali: bacaan jam kedua bisa memberi expiry ≤ 0 setelah pengecekan | Diperbaiki | Sisa waktu dihitung sekali dan dipakai untuk pengecekan dan `Set` |
+| CR-68 | `migrations/cloud/000006_borderpay` | Setelah rollback, plan IDR yang disimpan (punya order) kembali di-up sebagai `lemonsqueezy` dan nonaktif | Diperbaiki | `up` memakai `ON CONFLICT (code) DO UPDATE SET provider, active`: plan kembali ke BorderPay dan dijual lagi; harga dan order tidak disentuh. Diuji up → down → up di database sementara dengan satu purchase |
+| CR-69 | Docstring coverage | Fungsi tanpa docstring | Diperbaiki | `memoryKV` `Get`/`Set`/`Take`/`Delete` |
+
+Validasi: `go build`, `go vet`, `go test ./...`, integration test (`montara_pass_test`, dengan dan tanpa Redis db 15); `tsc` untuk `apps/app`, `apps/extension` dan `packages/shared`; `oxlint` bersih.
+
+### Review CodeRabbit billing ulang (2026-11-08)
+
+Temuan yang sama dengan CR-51 sampai CR-56 datang lagi; dicek ulang terhadap kode saat ini.
+
+| ID | Lokasi | Temuan | Status | Catatan |
+| --- | --- | --- | --- | --- |
+| CR-67 | `handlers/billing.go` `soldIn` | Untuk pembeli di luar Indonesia, `soldIn` membandingkan IDR/non-IDR, sedangkan `regionCurrency` dan klien memakai mata uang toko Lemon Squeezy | Diperbaiki | `plan.Currency == currency`; tabel tes ditambah kasus toko EUR |
+| CR-52 | `handlers/billing.go` `soldIn` | Cocokkan provider juga | Tetap dilewati | Alasan yang sama: checkout memilih provider dari plan |
+| CR-53, CR-54 | `web` `home/pricing.tsx` | Intro "cancel anytime" untuk IDR; tier authored sebagai pengganti | Sudah diperbaiki | Kode saat ini sudah memuat keduanya |
+| CR-55 | `web` `pricing/offer.ts` `visitorRegion` | Baca `COUNTRY_HEADER` | Tetap dilewati | Website di Cloudflare Workers selalu punya `cf-ipcountry`; `COUNTRY_HEADER` untuk proxy di depan API |
+| CR-56 | `handlers/billing_region_test.go` | Integration test penjaga negara di checkout | Tetap dilewati | Alasan yang sama dengan CR-56 |
+
+Validasi: `go build`, `go vet`, tes unit `handlers` dan integration test (`montara_pass_test`) lolos.
