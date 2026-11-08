@@ -195,93 +195,87 @@ export default function Vault() {
             />
           </div>
 
-          {/* The list as a table in its own card: headings, rows, and a footer
-              with the count and the way to the folders. The two extra columns
-              go when the list is too narrow to hold them. */}
-          <div className="flex min-h-0 flex-1 flex-col px-6 pt-4 pb-5">
-            <div className="rounded-card bg-panel flex min-h-0 flex-1 flex-col overflow-hidden border">
-              {/* The line under the headings stays when they go: it is where the list begins. */}
-              <div className="text-muted-foreground grid shrink-0 grid-cols-[minmax(0,1fr)_140px_120px] gap-3 border-b px-4 py-2.5 font-mono text-[10px] tracking-[0.09em] uppercase @max-[560px]/list:[&>span]:hidden">
-                <span>Name</span>
-                <span>Folder</span>
-                <span>Updated</span>
-              </div>
-
-              <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-                {isLoading ? (
-                  <ul className="m-0 list-none p-0" aria-hidden="true">
-                    {Array.from({ length: 8 }, (_, index) => (
-                      <li key={index} className="flex items-center gap-3 px-4 py-[11px]">
-                        <Skeleton className="size-8 rounded-md" />
-                        <span className="flex flex-1 flex-col gap-1.5">
-                          <Skeleton className="h-3.5 w-40 max-w-full" />
-                          <Skeleton className="h-3 w-28 max-w-full" />
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : isError ? (
-                  <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
-                    <p role="alert" className="text-danger text-[13px] whitespace-pre-line">
-                      {apiErrorMessage(error)}
-                    </p>
-                    <Button variant="outline" size="sm" onClick={() => void refetch()}>
-                      Try again
-                    </Button>
-                  </div>
-                ) : items.length === 0 ? (
-                  // The list has its own edge, so what stands in for it has none.
-                  <EmptyState
-                    framed={false}
-                    icon={filtered ? IconFilterOff : IconLock}
-                    title={filtered ? 'No items match these filters' : 'Your vault is empty'}
-                    description={
-                      filtered
-                        ? 'Change the search, the folder or the type above to see more.'
-                        : 'Add your first login or secure note with New item.'
-                    }
-                  />
-                ) : (
-                  <ul className="fade-in divide-border/60 m-0 list-none divide-y border-b border-border/60 p-0">
-                    {items.map((item) => (
-                      <li key={item.id}>
-                        <ItemRow
-                          item={item}
-                          folders={folderList}
-                          selected={item.id === selectedId}
-                          onSelect={() => setUrl({ item: item.id })}
-                        />
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {more && !isLoading && !isError && (
-                  <div
-                    ref={moreRef}
-                    className="text-muted-foreground px-4 py-3 text-center font-mono text-[10px] tracking-[0.05em] uppercase"
-                  >
-                    {isFetchingNextPage ? 'Loading more…' : `${total - items.length} more`}
-                  </div>
-                )}
-              </div>
-
-              <footer className="flex shrink-0 items-center gap-1 border-t px-4 py-2">
-                <span className="text-muted-foreground flex-1 font-mono text-[10px] tracking-[0.05em] uppercase tabular-nums">
-                  {!isLoading && `${items.length} of ${total} items`}
-                </span>
-                <Button
-                  asChild
-                  variant="outline"
-                  size="xs"
-                  className="h-[26px] gap-1 px-2.5 text-xs"
-                >
-                  <Link to="/folders">
-                    Manage folders
-                    <IconChevronRight className="text-muted-foreground size-3" />
-                  </Link>
-                </Button>
-              </footer>
+          {/* The list runs into the page on its gutter: headings pinned at the
+              top, rows scrolling under them, and a footer at the bottom with
+              the count and the way to the folders. The two extra columns go
+              when the list is too narrow to hold them. */}
+          <div className="flex min-h-0 flex-1 flex-col">
+            {/* The line under the headings stays when they go: it is where the list begins. */}
+            <div className="text-muted-foreground grid shrink-0 grid-cols-[minmax(0,1fr)_140px_120px] gap-3 border-b px-6 py-2.5 font-mono text-[10px] tracking-[0.09em] uppercase @max-[560px]/list:[&>span]:hidden">
+              <span>Name</span>
+              <span>Folder</span>
+              <span>Updated</span>
             </div>
+
+            <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+              {isLoading ? (
+                <ul className="m-0 list-none p-0" aria-hidden="true">
+                  {Array.from({ length: 8 }, (_, index) => (
+                    <li key={index} className="flex items-center gap-3 px-6 py-[11px]">
+                      <Skeleton className="size-8 rounded-md" />
+                      <span className="flex flex-1 flex-col gap-1.5">
+                        <Skeleton className="h-3.5 w-40 max-w-full" />
+                        <Skeleton className="h-3 w-28 max-w-full" />
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : isError ? (
+                <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
+                  <p role="alert" className="text-danger text-[13px] whitespace-pre-line">
+                    {apiErrorMessage(error)}
+                  </p>
+                  <Button variant="outline" size="sm" onClick={() => void refetch()}>
+                    Try again
+                  </Button>
+                </div>
+              ) : items.length === 0 ? (
+                // The list has its own edge, so what stands in for it has none.
+                <EmptyState
+                  framed={false}
+                  icon={filtered ? IconFilterOff : IconLock}
+                  title={filtered ? 'No items match these filters' : 'Your vault is empty'}
+                  description={
+                    filtered
+                      ? 'Change the search, the folder or the type above to see more.'
+                      : 'Add your first login or secure note with New item.'
+                  }
+                />
+              ) : (
+                <ul className="fade-in divide-border/60 m-0 list-none divide-y border-b border-border/60 p-0">
+                  {items.map((item) => (
+                    <li key={item.id}>
+                      <ItemRow
+                        item={item}
+                        folders={folderList}
+                        selected={item.id === selectedId}
+                        onSelect={() => setUrl({ item: item.id })}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {more && !isLoading && !isError && (
+                <div
+                  ref={moreRef}
+                  className="text-muted-foreground px-4 py-3 text-center font-mono text-[10px] tracking-[0.05em] uppercase"
+                >
+                  {isFetchingNextPage ? 'Loading more…' : `${total - items.length} more`}
+                </div>
+              )}
+            </div>
+
+            <footer className="flex shrink-0 items-center gap-1 border-t px-6 py-2">
+              <span className="text-muted-foreground flex-1 font-mono text-[10px] tracking-[0.05em] uppercase tabular-nums">
+                {!isLoading && `${items.length} of ${total} items`}
+              </span>
+              <Button asChild variant="outline" size="xs" className="h-[26px] gap-1 px-2.5 text-xs">
+                <Link to="/folders">
+                  Manage folders
+                  <IconChevronRight className="text-muted-foreground size-3" />
+                </Link>
+              </Button>
+            </footer>
           </div>
         </section>
 
@@ -343,7 +337,7 @@ function ItemRow({ item, folders, selected, onSelect }: ItemRowProps) {
       type="button"
       aria-current={selected ? 'true' : undefined}
       onClick={onSelect}
-      className="hover:bg-hover aria-[current=true]:bg-card grid w-full grid-cols-[auto_minmax(0,1fr)_140px_120px] items-center gap-3 px-4 py-[11px] text-left transition-colors duration-[120ms] motion-reduce:transition-none @max-[560px]/list:grid-cols-[auto_minmax(0,1fr)]"
+      className="hover:bg-hover aria-[current=true]:bg-card grid w-full grid-cols-[auto_minmax(0,1fr)_140px_120px] items-center gap-3 px-6 py-[11px] text-left transition-colors duration-[120ms] motion-reduce:transition-none @max-[560px]/list:grid-cols-[auto_minmax(0,1fr)]"
     >
       <ItemTile item={item} />
       <span className="flex min-w-0 flex-col">

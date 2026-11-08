@@ -1395,22 +1395,21 @@ a.set-row svg {
 }
 
 /* The list in its own card, under the bars, with the page's gutter round it. */
+/* The list runs into the page, on the page's own gutter: headings pinned
+   at its top, the count at its bottom, the rows scrolling between. */
 .list-table {
   display: flex;
   flex: 1;
   flex-direction: column;
   min-height: 0;
-  margin: 16px 24px 20px;
   overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 14px;
 }
 
 .list-foot {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 16px;
+  padding: 7px 24px;
   border-top: 1px solid var(--border);
 }
 
@@ -1521,7 +1520,7 @@ button.small svg {
 .item-row {
   width: 100%;
   height: auto;
-  padding: 11px 16px;
+  padding: 11px 24px;
   justify-content: flex-start;
   gap: 0;
   column-gap: 12px;
@@ -1558,7 +1557,7 @@ button.small svg {
   top: 0;
   z-index: 1;
   column-gap: 12px;
-  padding: 10px 16px;
+  padding: 10px 24px;
   border-bottom: 1px solid var(--border);
   background: var(--panel);
   color: var(--muted);
