@@ -830,6 +830,14 @@ func vaultFlow(
 	if status, out := call(http.MethodGet, itemPath+"/members", otherToken, nil); status != http.StatusOK || len(out["data"].([]any)) != 2 {
 		t.Fatalf("members: %d %v", status, out)
 	}
+	// Both sides see it on the sharing page, with its two members.
+	for _, token := range []string{ownerToken, otherToken} {
+		status, out := call(http.MethodGet, "/api/v1/sharing", token, nil)
+		rows, _ := out["data"].([]any)
+		if status != http.StatusOK || len(rows) != 1 || len(rows[0].(map[string]any)["members"].([]any)) != 2 {
+			t.Fatalf("sharing: %d %v", status, out)
+		}
+	}
 
 	// Each member files the item in their own folders.
 	want(http.StatusNotFound, http.MethodPut, itemPath+"/placement", otherToken, map[string]any{"folder_id": ownerFolder})

@@ -341,3 +341,49 @@ func (r *ItemRepository) RemoveMember(ctx context.Context, id, userID uuid.UUID)
 	}
 	return requireAffected(res, "member")
 }
+
+// sharedFilter keeps a user's live items that someone else can open too.
+const sharedFilter = `m.user_id = $1 AND i.deleted_at IS NULL
+	AND EXISTS (SELECT 1 FROM item_members o WHERE o.item_id = i.id AND o.user_id <> $1)`
+
+// ListShared returns the user's live items that are shared, either way:
+// theirs that others can open, and others' that they can. Newest first.
+func (r *ItemRepository) ListShared(ctx context.Context, userID uuid.UUID) ([]models.Item, error) {
+	query := fmt.Sprintf(`SELECT %s FROM %s WHERE %s ORDER BY i.id DESC`, itemColumns, itemSource, sharedFilter)
+	rows, err := r.queryContext(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	return collectRows(rows, scanItem)
+}
+
+// ListSharedMembers returns everyone who can open the user's shared items, by
+// item, the owner first. One query for the whole list, not one per item.
+func (r *ItemRepository) ListSharedMembers(ctx context.Context, userID uuid.UUID) (map[uuid.UUID][]models.ItemMember, error) {
+	rows, err := r.queryContext(ctx, fmt.Sprintf(`
+		SELECT m2.item_id, m2.user_id, u.name, u.email, m2.role, m2.created_at
+		FROM %s
+		JOIN item_members m2 ON m2.item_id = i.id
+		JOIN users u ON u.id = m2.user_id
+		WHERE %s
+		ORDER BY (m2.role = 'owner') DESC, m2.created_at`, itemSource, sharedFilter), userID)
+	if err != nil {
+		return nil, err
+	}
+	type row struct {
+		itemID uuid.UUID
+		member models.ItemMember
+	}
+	list, err := collectRows(rows, func(s rowScanner) (row, error) {
+		var x row
+		return x, s.Scan(&x.itemID, &x.member.UserID, &x.member.Name, &x.member.Email, &x.member.Role, &x.member.CreatedAt)
+	})
+	if err != nil {
+		return nil, err
+	}
+	byItem := make(map[uuid.UUID][]models.ItemMember, len(list))
+	for _, x := range list {
+		byItem[x.itemID] = append(byItem[x.itemID], x.member)
+	}
+	return byItem, nil
+}

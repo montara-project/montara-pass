@@ -198,6 +198,8 @@ func routes(r *fiber.App, app *app.Application) {
 		items.Post("/:id/members", h.Item.Share)
 		items.Put("/:id/members/:userId", h.Item.SetMemberRole)
 		items.Delete("/:id/members/:userId", h.Item.RemoveMember)
+		// Every shared item with its members, for the Manage sharing page.
+		v1.Get("/sharing", m.Authorization, h.Item.Shared)
 
 		// Billing. The plans are public, for the website; they are the Lemon
 		// Squeezy store's catalog, which a super user syncs at once after

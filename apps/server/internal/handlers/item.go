@@ -308,6 +308,34 @@ func (h *itemHandler) Members(c fiber.Ctx) error {
 	return dtos.List(c, members, dtos.Metadata{"total": len(members)})
 }
 
+// SharedItem is an item with everyone who can open it.
+type SharedItem struct {
+	models.Item
+	Members []models.ItemMember `json:"members"`
+}
+
+// Shared lists the caller's items that are shared, either way, each with its
+// members: the Manage sharing page in one request.
+func (h *itemHandler) Shared(c fiber.Ctx) error {
+	uid, err := currentUser(c)
+	if err != nil {
+		return err
+	}
+	items, err := h.repo().ListShared(c.Context(), uid)
+	if err != nil {
+		return err
+	}
+	members, err := h.repo().ListSharedMembers(c.Context(), uid)
+	if err != nil {
+		return err
+	}
+	shared := make([]SharedItem, len(items))
+	for i, item := range items {
+		shared[i] = SharedItem{Item: item, Members: members[item.ID]}
+	}
+	return dtos.List(c, shared, dtos.Metadata{"total": len(shared)})
+}
+
 // errNoPaidPlan refuses handing an item on, naming the problem and the way
 // out.
 var errNoPaidPlan = apperr.New(apperr.KindForbidden, "sharing an item needs a paid plan: subscribe in Billing, or run Montara Pass yourself")
