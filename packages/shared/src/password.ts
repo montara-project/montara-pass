@@ -94,7 +94,9 @@ export function passwordBits(password: string): number {
     for (let i = 0; i < password.length; i++) {
       const step = i > 0 ? password.charCodeAt(i) - password.charCodeAt(i - 1) : NaN
       const repeats = period > 0 && i >= period && password[i] === password[i - period]
-      if (!repeats && step !== 0 && step !== 1 && step !== -1) count++
+      // The same character again (0), or the next one in a run like abc or 321 (±1).
+      const inSequence = Math.abs(step) <= 1
+      if (!repeats && !inSequence) count++
     }
     return count
   }
@@ -119,12 +121,16 @@ export const STRONG_BITS = 80
 
 export function passwordStrength(password: string): PasswordStrength {
   const bits = passwordBits(password)
-  return bits < FAIR_BITS ? 'weak' : bits < STRONG_BITS ? 'fair' : 'strong'
+  if (bits < FAIR_BITS) return 'weak'
+  if (bits < STRONG_BITS) return 'fair'
+  return 'strong'
 }
 
 /** What a character is, so a password can be shown with its kinds told apart. */
 export function characterKind(char: string): 'letter' | 'digit' | 'symbol' {
-  return /\d/.test(char) ? 'digit' : /[a-zA-Z]/.test(char) ? 'letter' : 'symbol'
+  if (/\d/.test(char)) return 'digit'
+  if (/[a-zA-Z]/.test(char)) return 'letter'
+  return 'symbol'
 }
 
 export interface PasswordHealth {

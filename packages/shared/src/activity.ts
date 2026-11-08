@@ -84,5 +84,6 @@ export function ipKind(ip: string): string {
   const local = v6
     ? /^(::1$|fe80:|f[cd])/i.test(ip)
     : /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip)
-  return `${v6 ? 'IPv6' : 'IPv4'}${local ? ' · local' : ''}`
+  const family = v6 ? 'IPv6' : 'IPv4'
+  return local ? `${family} · local` : family
 }

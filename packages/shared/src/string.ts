@@ -29,3 +29,9 @@ export function initials(name: string): string {
       .join('') || '?'
   )
 }
+
+/** "On" or "Off" for a setting, or "—" while it is not known yet. */
+export function onOffLabel(on: boolean | undefined): string {
+  if (on === undefined) return '—'
+  return on ? 'On' : 'Off'
+}
