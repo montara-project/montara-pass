@@ -3,6 +3,45 @@
 All notable changes to this project are documented in this file. Versions follow the git tags (`v*`); Docker images are published to ghcr.io with the same version.
 
 
+## [2.11.0](https://github.com/montara-project/montara-pass/compare/v2.10.0...v2.11.0) (2026-11-08)
+
+### Features
+
+* add design ([edcf2d4](https://github.com/montara-project/montara-pass/commit/edcf2d46dd2ea679d37958c2a1af51ce86e1b5ab))
+* **api:** list customer accounts for the admin ([6547317](https://github.com/montara-project/montara-pass/commit/6547317a0b6d70c19778f9abab7c189912209230))
+* **auth:** sign in and unlock with a passkey, and sign out other devices ([f48f8ba](https://github.com/montara-project/montara-pass/commit/f48f8baed64ffc40fb97da773a19484d91519d5d))
+* **billing:** accept IDR payments through BorderPay (QRIS) ([2f53b86](https://github.com/montara-project/montara-pass/commit/2f53b867c5e0512d474f253192d5352f8c3d6f30))
+* **billing:** bring the billing page to the Wiring design ([7c5fd7e](https://github.com/montara-project/montara-pass/commit/7c5fd7e4487454f236553de2639c496402adb73f))
+* **billing:** sell IDR plans in Indonesia and USD plans elsewhere ([668a64f](https://github.com/montara-project/montara-pass/commit/668a64f2f59eff1a78d26d4ec08f08d0f33c7190))
+* **extension:** offer to save a card when a form is submitted ([71497a3](https://github.com/montara-project/montara-pass/commit/71497a3f9b6cbabd8a9df5ef5d2ef5ebb5dc0e68))
+* **extension:** offer to save a contact when a form is submitted ([8bc4b52](https://github.com/montara-project/montara-pass/commit/8bc4b52efc2bd575ffc47f59099344bf77659592)), references [#save](https://github.com/montara-project/montara-pass/issues/save)
+* **security:** manual and visible IP blocks for the super user ([5381cb8](https://github.com/montara-project/montara-pass/commit/5381cb829d754fb6a62ea181d0997854a61d1c21))
+* **server:** add an activity log of sign-ins and item changes ([c3c9d2c](https://github.com/montara-project/montara-pass/commit/c3c9d2c5af12d20cd230113b853d17069ae137b5))
+* **server:** filter the item list to the user's favorites ([0a123d6](https://github.com/montara-project/montara-pass/commit/0a123d6443e867fe4414d6e5a5d47cc53ffb7c91))
+* **server:** list shared items with their members ([40c6b9f](https://github.com/montara-project/montara-pass/commit/40c6b9f1ba3a206cc67bf3ad478eb2fa59f9e0a2))
+* **ui:** bring item detail, notes, tools and security to the Wiring design ([53e865e](https://github.com/montara-project/montara-pass/commit/53e865eb8e9b6a86bf9c979d98c97288e7a270c4))
+* **ui:** bring the vault, sidebar and header to the Wiring design ([5a8b96f](https://github.com/montara-project/montara-pass/commit/5a8b96f6c9464f900a136a6ee69b646b4d1db619))
+* **ui:** profile, IP blocks, folders and sharing pages in the Wiring design ([2372a33](https://github.com/montara-project/montara-pass/commit/2372a33407898bbb5226706013b98141c9cf7c9b))
+* **vault:** load the vault list a page at a time as it scrolls ([3fa406b](https://github.com/montara-project/montara-pass/commit/3fa406b32c18a85a59c8d59ae111bd1da97f371c))
+
+### Bug Fixes
+
+* address the CodeRabbit review of billing, IP blocks and capture ([533a7c4](https://github.com/montara-project/montara-pass/commit/533a7c4bf769c10aaf4a7a4cfa900b95a7eed31a))
+* **extension:** accept plain http for a server on this computer ([f8ba574](https://github.com/montara-project/montara-pass/commit/f8ba57453de83d988ddeb795c2325b71cc7c5512))
+* **extension:** wrap the passkey prompt buttons in a narrow frame ([a1cdcc7](https://github.com/montara-project/montara-pass/commit/a1cdcc7d969dfa6933ea2f2ac93f72053cd2d61d))
+* match the tool and security pages across app and extension ([4fa951e](https://github.com/montara-project/montara-pass/commit/4fa951ee62d0225d1585759c52ffc48e9bb472e6))
+* no unlock after sign-out, and passkeys that survive a skipped PRF ([4b23e03](https://github.com/montara-project/montara-pass/commit/4b23e039141db2bc0cf0382958b8ec3fa8c86748))
+* **server:** finish a passkey ceremony once and keep the passkey limit ([08eb45d](https://github.com/montara-project/montara-pass/commit/08eb45ded8b35acce98a5ea73bd7288b79bcd70e))
+* **server:** reach BorderPay's payments API and return to the web app ([22e48e3](https://github.com/montara-project/montara-pass/commit/22e48e3c9994008a23b6f37d3498c3b0d413b9d3))
+* **server:** sell a region only the plans in its currency ([250b1bc](https://github.com/montara-project/montara-pass/commit/250b1bc58d41d23b8faf7d4d3d8ed9a9a91d858a))
+* **server:** update Go modules flagged by govulncheck ([7c4db26](https://github.com/montara-project/montara-pass/commit/7c4db266a2e8f5cf32be283acfbbbd184d2959a9))
+* update design dan migrations ([ab03322](https://github.com/montara-project/montara-pass/commit/ab033222b5d3851927e73d224875541c1789d23f))
+* update extension sidebar ([5d520ae](https://github.com/montara-project/montara-pass/commit/5d520aec7c74071c56ad74afd9ff29552eca0cc8))
+* update folder page ([f697069](https://github.com/montara-project/montara-pass/commit/f6970695e0e1dbdd8a14ddfe188f41b60cfcee50))
+* update minor ([2fd20d4](https://github.com/montara-project/montara-pass/commit/2fd20d410965d6eab9baf59291f34e6e9e9486da))
+* update redirect access ip blocks ([5d5a4d4](https://github.com/montara-project/montara-pass/commit/5d5a4d443635f2174ec5d45ab16322b8e6a8941f))
+* update table vault ([32f46c8](https://github.com/montara-project/montara-pass/commit/32f46c82813c2fd4a67b0320e9a4e488850e4265))
+
 ## [2.10.0](https://github.com/montara-project/montara-pass/compare/v2.9.0...v2.10.0) (2026-10-30)
 
 ### Features
