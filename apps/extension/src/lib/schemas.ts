@@ -15,7 +15,7 @@ const NOT_A_URL = DEV
   ? 'Enter an http(s) URL, like https://vault.example.com'
   : 'Enter an https URL, like https://vault.example.com'
 const NOT_HTTPS =
-  'The server must use https: over http the account password and the session would cross the network unencrypted.'
+  'The server must use https: over http the account password and the session would cross the network unencrypted. Only a server on this computer (localhost) may use http.'
 
 /**
  * Where the extension finds its server. A released build asks for one URL,

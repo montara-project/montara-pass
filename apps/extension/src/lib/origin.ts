@@ -14,12 +14,27 @@ export function hostOf(url: string | undefined): string | null {
 }
 
 /**
+ * Whether a hostname is this machine itself: localhost, *.localhost, 127.x.x.x
+ * or [::1]. What is sent there never reaches the network.
+ */
+export function isLoopback(hostname: string): boolean {
+  return (
+    hostname === 'localhost' ||
+    hostname.endsWith('.localhost') ||
+    hostname === '[::1]' ||
+    /^127(\.\d{1,3}){3}$/.test(hostname)
+  )
+}
+
+/**
  * Whether the extension may talk to a server at origin. A release build does
  * over https only: the account password, the session tokens and TOTP codes
- * cross the network. A development build talks to http://localhost.
+ * cross the network. The exception is a server on this machine (a local
+ * self-hosted one), over http too. A development build talks to any http.
  */
 export function serverAllowed(origin: string): boolean {
-  return import.meta.env.MODE === 'development' || origin.startsWith('https:')
+  if (import.meta.env.MODE === 'development' || origin.startsWith('https:')) return true
+  return isLoopback(hostOf(origin) ?? '')
 }
 
 /** The origin of an http(s) URL, or null for anything else. */
