@@ -19,16 +19,16 @@ export default function ServerTime({ className }: { className?: string }) {
   }, [])
 
   return (
-    <div className={cn('hidden items-center gap-2 sm:flex', className)}>
-      <span className="bg-good/15 text-good inline-flex h-[18px] items-center gap-1.5 rounded-sm px-2 font-mono text-[10px] font-medium tracking-[0.06em]">
-        <span aria-hidden className="size-[5px] rounded-full bg-current" />
+    <div className={cn('hidden items-center gap-3 sm:flex', className)}>
+      <span className="bg-good/15 text-good inline-flex h-6 items-center gap-2 rounded-md px-2.5 font-mono text-[10.5px] font-medium tracking-[0.08em]">
+        <span aria-hidden className="size-1.5 rounded-full bg-current" />
         LIVE
       </span>
-      <span className="bg-background inline-flex h-7 items-center gap-[7px] rounded-md border px-2.5">
-        <IconClock aria-hidden className="text-muted-foreground size-3" />
+      <span className="bg-background inline-flex h-8 items-center gap-2.5 rounded-md border px-3">
+        <IconClock aria-hidden className="text-muted-foreground size-3.5" />
         <time
           dateTime={now.toISOString()}
-          className="font-mono text-xs font-medium tracking-[0.03em] tabular-nums"
+          className="font-mono text-[13px] font-medium tracking-[0.04em] tabular-nums"
         >
           {utc(now)}
         </time>

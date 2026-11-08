@@ -10,6 +10,8 @@ export interface PasswordOptions {
   lowercase: boolean
   digits: boolean
   symbols: boolean
+  /** Lets in the characters easy to confuse: 0 and O, 1, l and I. */
+  ambiguous: boolean
 }
 
 export const MIN_PASSWORD_LENGTH = 8
@@ -21,15 +23,19 @@ export const DEFAULT_PASSWORD_OPTIONS: PasswordOptions = {
   lowercase: true,
   digits: true,
   symbols: true,
+  ambiguous: false,
 }
 
-/** Characters that are easy to confuse (0/O, 1/l/I) are left out. */
+/** Characters that are easy to confuse (0/O, 1/l/I) are left out... */
 const SETS = {
   uppercase: 'ABCDEFGHJKLMNPQRSTUVWXYZ',
   lowercase: 'abcdefghijkmnopqrstuvwxyz',
   digits: '23456789',
   symbols: '!@#$%^&*-_=+',
 } as const
+
+/** ...unless they are asked for. */
+const AMBIGUOUS = { uppercase: 'IO', lowercase: 'l', digits: '01', symbols: '' } as const
 
 function draw(charset: string, length: number): string {
   // Bytes that would bias the choice are thrown away, not wrapped.
@@ -51,7 +57,9 @@ function draw(charset: string, length: number): string {
 export function generatePassword(options: Partial<PasswordOptions> = {}): string {
   const wanted = { ...DEFAULT_PASSWORD_OPTIONS, ...options }
   const chosen = (Object.keys(SETS) as (keyof typeof SETS)[]).filter((kind) => wanted[kind])
-  const sets = (chosen.length > 0 ? chosen : (['lowercase'] as const)).map((kind) => SETS[kind])
+  const sets = (chosen.length > 0 ? chosen : (['lowercase'] as const)).map(
+    (kind) => SETS[kind] + (wanted.ambiguous ? AMBIGUOUS[kind] : '')
+  )
   const length = Math.min(Math.max(Math.floor(wanted.length), sets.length), MAX_PASSWORD_LENGTH)
 
   // Drawn again until every kind is there: any other way of forcing one in

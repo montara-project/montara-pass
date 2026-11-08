@@ -1423,7 +1423,8 @@ a.set-row svg {
   text-transform: uppercase;
 }
 
-a.button.small {
+a.button.small,
+button.small {
   height: 26px;
   padding: 0 10px;
   gap: 4px;
@@ -1432,7 +1433,8 @@ a.button.small {
   font-weight: 500;
 }
 
-a.button.small svg {
+a.button.small svg,
+button.small svg {
   color: var(--muted);
 }
 
@@ -1631,53 +1633,181 @@ a.button.small svg {
   margin-inline: auto;
 }
 
-/* The generator: the password on one side, what shapes it on the other. */
-.gen-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-  gap: 16px;
+/* The generator, as the web app has it: a page head with a line under it,
+   then the password and its length beside what it is made of. */
+.gen-page {
+  gap: 0;
+  padding: 0;
   container-type: inline-size;
 }
 
-.generated,
-.gen-options {
+.tool-page-head {
   display: flex;
-  flex-direction: column;
-  gap: 20px;
-  padding: 20px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 22px 32px 18px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
 }
 
-.generated {
+.tool-page-head h1 {
+  font-size: 22px;
+}
+
+.gen-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  align-items: start;
+  gap: 18px;
+  padding: 24px 32px 28px;
+}
+
+.gen-main {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+.gen-output {
+  display: flex;
+  align-items: center;
+  min-height: 66px;
+  padding: 18px 16px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 23px;
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: 0.02em;
+  word-break: break-all;
+  user-select: all;
+}
+
+/* The strength in its own color, for the word and the bars it fills. */
+.gen-strength {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 0 16px 16px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.gen-strength .muted {
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.gen-bars {
+  display: flex;
+  gap: 4px;
+}
+
+.gen-bars i {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  transition: background-color 200ms ease-out;
+}
+
+.gen-bars i.on {
+  background: currentColor;
+}
+
+.gen-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.gen-foot button {
+  height: 34px;
+  padding: 0 13px;
+  gap: 7px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.gen-foot button.secondary {
   background: var(--card);
 }
 
-/* Rows in one card, as a setting's are: the length, then a line to each
-   kind of character. No box inside the box. */
-.gen-options {
-  gap: 0;
-  overflow: hidden;
-  padding: 0;
-}
-
-.gen-options > label {
-  padding: 20px;
-}
-
-/* The password has the middle of whatever room the card is given: the card
-   is as tall as the options beside it. */
-.generated output {
+.gen-length-head {
   display: flex;
-  flex: 1;
   align-items: center;
-  min-height: 112px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 26px;
+  padding: 12px 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.gen-length-head label {
+  flex: 1;
+  color: var(--muted);
+  font-size: 13px;
   font-weight: 500;
-  line-height: 1.5;
-  word-break: break-all;
-  user-select: all;
+}
+
+/* Digits of one width, so the box holds still while the slider moves. */
+.gen-length {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.gen-slider {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 16px 14px;
+}
+
+.gen-kinds .toggle.option {
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 0;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.gen-kinds .toggle.option + .toggle.option {
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+/* Name over its sample. */
+.gen-kinds .toggle > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gen-kinds .toggle .mono {
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+
+.gen-kinds .gen-ambiguous {
+  color: var(--muted);
+  font-weight: 400;
 }
 
 /* Each character is a box of its own, so it can be moved. */
@@ -1737,75 +1867,8 @@ a.button.small svg {
   color: var(--good);
 }
 
-.meter {
-  height: 6px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--hover);
-}
-
-.meter-fill {
-  height: 100%;
-  border-radius: 999px;
-  transition: width 0.2s;
-}
-
-.meter-fill.strength-weak {
-  background: var(--danger);
-}
-
-.meter-fill.strength-fair {
-  background: var(--warn);
-}
-
-.meter-fill.strength-strong {
-  background: var(--good);
-}
-
-.gen-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-/* Digits of one width, so the line holds still while the slider moves. */
-.gen-length {
-  color: var(--fg);
-  font-size: 15px;
-  font-variant-numeric: tabular-nums;
-}
-
-.gen-kinds {
-  border-top: 1px solid var(--border);
-}
-
-.gen-kinds .toggle.option {
-  justify-content: space-between;
-  padding: 14px 20px;
-  border: 0;
-  border-radius: 0;
-}
-
-.gen-kinds .toggle.option + .toggle.option {
-  border-top: 1px solid var(--border);
-}
-
-/* Name and sample side by side: the row is one line. */
-.gen-kinds .toggle span {
-  flex-direction: row;
-  align-items: baseline;
-  gap: 8px;
-}
-
-@container (max-width: 620px) {
-  .generated,
-  .gen-options {
-    grid-column: 1 / -1;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .meter-fill {
+  .gen-bars i {
     transition: none;
   }
 }
@@ -1893,31 +1956,6 @@ input.range:active::-moz-range-thumb {
   border-radius: 12px;
 }
 
-.stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin: 0;
-}
-
-.stats > div {
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--card);
-}
-
-.stats dt {
-  font-size: 12px;
-}
-
-.stats dd {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
 .section-title {
   margin: 8px 0 0;
   font-size: 15px;
@@ -1925,44 +1963,11 @@ input.range:active::-moz-range-thumb {
 
 /* The two lists of the report, side by side where each has room; one alone
    has the width to itself. */
-.health-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
-  align-items: start;
-  column-gap: 32px;
-}
 
 /* A part of the report: further from the part above it than its own
    heading is from what it says. */
-.health-section {
-  margin-top: 12px;
-}
-
-.health-section > header {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.health-title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.health-section > header .muted {
-  font-size: 13px;
-}
 
 /* Names the card under it, in line with what the card holds. */
-.health-group {
-  margin-bottom: 8px;
-  padding-left: 4px;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 500;
-  font-variant-numeric: tabular-nums;
-}
 
 /* Logins that belong together sit in one card, a line between them: the
    ones that share a password are seen to. */
@@ -2249,60 +2254,6 @@ input.range:active::-moz-range-thumb {
 }
 
 /* Grouped rows: one card, divided by hairlines rather than gaps. */
-.health-list {
-  gap: 0;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--card);
-}
-
-/* The row is the button, so the row itself is not padded or rounded. */
-.health-list li {
-  padding: 0;
-  border-radius: 0;
-}
-
-.health-list li + li {
-  border-top: 1px solid var(--border);
-}
-
-.health-row {
-  width: 100%;
-  height: auto;
-  padding: 10px 12px 10px 14px;
-  justify-content: flex-start;
-  gap: 0;
-  border-radius: 0;
-  background: none;
-  color: var(--fg);
-  font-weight: 400;
-  text-align: left;
-}
-
-/* Says the row leads somewhere; lit with the row. */
-.health-row > svg {
-  flex-shrink: 0;
-  margin-left: 8px;
-  color: var(--muted);
-  transition: color 120ms ease-out;
-}
-
-.health-row:hover > svg,
-.health-row:focus-visible > svg {
-  color: var(--fg);
-}
-
-/* The card cuts off what is outside it, so the ring is drawn inside. */
-.health-row:focus-visible {
-  outline-offset: -2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .health-row > svg {
-    transition: none;
-  }
-}
 
 .detail-body {
   max-width: 640px;
@@ -3084,10 +3035,650 @@ textarea,
 }
 
 /* A row of the activity log: read, not pressed, so the row itself is padded. */
-.health-list li.activity-row {
-  padding: 10px 14px;
-}
 
 .activity-row .item-name {
   white-space: normal;
+}
+
+/* An item, read (the full tab): its head, then its fields in titled cards,
+   then when it changed. Scoped here: the head and field rules above are
+   shared with the tools and the share form. */
+.item-view {
+  gap: 18px;
+  padding: 24px 26px 20px;
+}
+
+.item-view .detail-head {
+  flex-wrap: wrap;
+  gap: 12px 14px;
+}
+
+.item-view .detail-head .tile {
+  width: 44px;
+  height: 44px;
+  margin-right: 0;
+  border-radius: 12px;
+}
+
+.item-view .item-text {
+  gap: 3px;
+}
+
+.item-view .detail-title {
+  font-size: 18px;
+}
+
+.item-view .item-text .muted {
+  font-size: 12px;
+}
+
+.detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.icon-button.outlined {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.icon-button.outlined svg {
+  width: 16px;
+  height: 16px;
+}
+
+.detail-actions .edit {
+  height: 32px;
+  padding: 0 12px;
+  gap: 6px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.field-group {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+.field-group + .field-group {
+  margin-top: -6px;
+}
+
+.field-group-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 4px 8px 4px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.field-group-head h3 {
+  flex: 1;
+  margin: 0;
+  font: inherit;
+}
+
+.field-group-head > span {
+  padding-right: 6px;
+}
+
+.item-view .fields {
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.item-view .field {
+  column-gap: 2px;
+  padding: 11px 10px 11px 14px;
+}
+
+.item-view .field + .field {
+  border-top-color: color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.item-view .field dt {
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.item-view .field dd {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.item-view .field dd.mono {
+  letter-spacing: 0.02em;
+}
+
+.item-view .icon-button:not(.outlined) {
+  width: 28px;
+  height: 28px;
+}
+
+.item-view .icon-button:not(.outlined) svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Website's Open sits where the icon buttons would, centered on both rows. */
+.item-view .field > a.button {
+  grid-row: 1 / span 2;
+  grid-column: 3;
+}
+
+/* Four bars and a word: how hard the password is to guess. */
+.pw-strength {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pw-strength > span {
+  display: flex;
+  gap: 3px;
+}
+
+.pw-strength i {
+  width: 18px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.pw-strength i.on {
+  background: currentColor;
+}
+
+.note-body {
+  position: relative;
+  padding: 12px 14px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+/* Hidden, the note is tall enough for what it says about itself. */
+.note-body.hidden-note {
+  min-height: 156px;
+}
+
+.note-body .blurred {
+  max-height: 200px;
+  overflow: hidden;
+  filter: blur(9px);
+  opacity: 0.7;
+  user-select: none;
+}
+
+.note-body .note-veil {
+  position: absolute;
+  inset: 0;
+  justify-content: center;
+  white-space: normal;
+}
+
+.item-meta {
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+
+.field-group-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 14px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* A secure note's own text: more room around it, and hidden it keeps the
+   height of a page rather than of a line. */
+.note-body.note-main {
+  padding: 16px 18px 14px;
+  line-height: 1.65;
+}
+
+.note-body.note-main.hidden-note {
+  min-height: 320px;
+}
+
+/* Read in its card, a note's headings stand out and its code is set apart
+   on the page's own tone, as a terminal is. */
+.note-body .notes-content > :is(h1, h2, h3) {
+  color: var(--fg);
+  font-size: 15px;
+}
+
+.note-body .notes-content > h1 {
+  font-size: 16px;
+}
+
+.note-body .notes-content hr {
+  margin: 16px 0;
+  border-top-color: color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.note-body .notes-content.notes-view pre {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: color-mix(in srgb, var(--fg) 85%, transparent);
+  font-size: 11.5px;
+  line-height: 1.6;
+  white-space: pre;
+}
+
+.note-body .notes-content a {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.92em;
+  text-underline-offset: 3px;
+}
+
+.note-body .notes-content.notes-view pre code {
+  padding: 0;
+  background: none;
+}
+
+/* Too narrow for two columns: what it is made of goes under the password. */
+@container (max-width: 760px) {
+  .gen-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Password health, as the web app has it: counts in the page head, then the
+   reused logins in two cards and the weak ones in a third. */
+.health-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+}
+
+.health-stats > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.health-stats dt {
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.health-stats dd {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.health-good {
+  color: var(--good);
+}
+
+.health-bad {
+  color: var(--warn);
+}
+
+.health-body {
+  padding: 20px 32px 28px;
+}
+
+.health-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 44px 24px;
+  text-align: center;
+}
+
+.health-empty .tile {
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  border-radius: 12px;
+  color: var(--good);
+}
+
+.health-empty-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.health-empty .muted {
+  max-width: 44ch;
+  font-size: 13px;
+  text-wrap: balance;
+}
+
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 20px;
+}
+
+.health-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.health-section.wide {
+  grid-column: span 2;
+}
+
+.health-section > header h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.health-section > header .muted {
+  font-size: 12px;
+}
+
+.health-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 20px;
+}
+
+.health-group + .health-group {
+  border-top: 1px solid var(--border);
+}
+
+.health-group-name {
+  flex: 1;
+  color: color-mix(in srgb, var(--fg) 80%, transparent);
+}
+
+.health-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.health-rows li + li {
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+/* The whole row opens the login. */
+.health-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  height: auto;
+  padding: 11px 12px;
+  border-radius: 0;
+  background: none;
+  color: var(--fg);
+  font-weight: 400;
+  text-align: left;
+  transition: background-color 120ms ease-out;
+}
+
+.health-row:hover {
+  background: var(--hover);
+}
+
+/* The card cuts off what is outside it, so the ring is drawn inside. */
+.health-row:focus-visible {
+  outline-offset: -2px;
+}
+
+.health-row .tile {
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  border-radius: 8px;
+}
+
+.health-row .tile svg {
+  width: 16px;
+  height: 16px;
+}
+
+.health-row .item-name {
+  font-size: 13px;
+}
+
+.health-row .item-text .muted {
+  font-size: 12px;
+}
+
+.health-weak {
+  color: var(--warn);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .health-row {
+    transition: none;
+  }
+}
+
+/* Too narrow for three columns: the lists go one under the other. */
+@container (max-width: 900px) {
+  .health-grid,
+  .health-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .health-section.wide {
+    grid-column: auto;
+  }
+}
+
+/* Security, as the web app has it: a section a line of what it is and its
+   action, then its card; the audit log as a table. */
+.sec-body {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding: 24px 32px 32px;
+}
+
+.sec-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sec-section > header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.sec-section > header > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.sec-section h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.sec-section > header .muted {
+  font-size: 12px;
+}
+
+.sec-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  font-size: 13px;
+}
+
+.sec-chip {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sec-chip.on,
+.sec-this {
+  color: var(--good);
+}
+
+.sec-this {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sec-rows,
+.sec-log-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sec-rows li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.sec-rows li + li,
+.sec-log-list li + li {
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.sec-rows .tile {
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  border-radius: 8px;
+}
+
+.sec-rows .tile svg {
+  width: 16px;
+  height: 16px;
+}
+
+.sec-rows .item-name,
+.sec-log .item-name {
+  font-size: 13px;
+}
+
+.sec-log {
+  container-type: inline-size;
+}
+
+.sec-log-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.8fr) minmax(0, 1.6fr) minmax(0, 0.9fr);
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  font-size: 13px;
+}
+
+.sec-log-head {
+  padding-block: 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.sec-log-row .mono {
+  font-size: 12px;
+}
+
+.sec-when {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Wide, what happened has a column of its own. */
+.sec-narrow {
+  display: none;
+}
+
+.sec-log-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 16px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+@container (max-width: 640px) {
+  .sec-log-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .sec-log-row .col {
+    display: none;
+  }
+
+  .sec-narrow {
+    display: block;
+  }
 }

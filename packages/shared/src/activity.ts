@@ -74,3 +74,15 @@ export function deviceName(userAgent: string | null): string {
   ].find(([pattern]) => (pattern as RegExp).test(ua))?.[1]
   return [browser, system].filter(Boolean).join(' on ')
 }
+
+/**
+ * What kind of address a sign-in came from: "IPv4" or "IPv6", and "local"
+ * when it is this machine or a private network rather than the internet.
+ */
+export function ipKind(ip: string): string {
+  const v6 = ip.includes(':')
+  const local = v6
+    ? /^(::1$|fe80:|f[cd])/i.test(ip)
+    : /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip)
+  return `${v6 ? 'IPv6' : 'IPv4'}${local ? ' · local' : ''}`
+}

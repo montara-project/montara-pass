@@ -8,13 +8,14 @@ import {
   ITEM_TYPE_LABEL,
 } from '@montara-pass/shared/constants/vault'
 import { cardEnding } from '@montara-pass/shared/crypto/vault'
+import { passwordStrength } from '@montara-pass/shared/password'
 import { linkOf } from '@montara-pass/shared/url'
 import {
   IconArrowLeft,
+  IconArrowUpRight,
   IconCopy,
   IconDoorExit,
   IconDots,
-  IconExternalLink,
   IconEye,
   IconEyeOff,
   IconPencil,
@@ -41,7 +42,7 @@ import { copySecret } from '@/lib/clipboard'
 import { cn } from '@/lib/utils'
 
 import { EditItemForm } from './form'
-import ItemTile from './item-tile'
+import ItemTile, { itemSubtitle } from './item-tile'
 import { ShareItemForm } from './share-form'
 
 // Notes are Markdown, and the renderer is the editor: fetched when a note is
@@ -80,18 +81,48 @@ interface FieldProps {
   mono?: boolean
 }
 
-/** A row of the item's card: a label over its value. Lit under the pointer. */
+/** A row of a section: a label over its value. Lit under the pointer. */
 function Field({ label, children, actions, mono }: FieldProps) {
   return (
-    <div className="hover:bg-hover flex items-center gap-1 py-3 pr-3 pl-4 transition-colors duration-[120ms] motion-reduce:transition-none">
-      <div className="flex min-w-0 flex-1 flex-col">
-        <dt className="text-muted-foreground text-xs font-medium">{label}</dt>
-        <dd className={cn('m-0 text-[15px] [overflow-wrap:anywhere]', mono && 'font-mono')}>
+    <div className="hover:bg-hover flex items-center gap-3 px-3.5 py-[11px] transition-colors duration-[120ms] motion-reduce:transition-none">
+      <div className="flex min-w-0 flex-1 flex-col gap-px">
+        <dt className="text-muted-foreground text-[11px]">{label}</dt>
+        <dd
+          className={cn(
+            'm-0 text-[13px] font-medium [overflow-wrap:anywhere]',
+            mono && 'font-mono tracking-[0.02em]'
+          )}
+        >
           {children}
         </dd>
       </div>
-      {actions}
+      {actions && <div className="flex shrink-0 items-center gap-0.5">{actions}</div>}
     </div>
+  )
+}
+
+/** A titled card of fields: what it holds, and how many. */
+function Section({
+  title,
+  count,
+  children,
+}: {
+  title: string
+  count?: number
+  children: React.ReactNode
+}) {
+  return (
+    <section className="rounded-card bg-panel overflow-hidden border">
+      <header className="border-border/60 text-muted-foreground flex items-center justify-between border-b px-3.5 py-[9px] font-mono text-[10px] tracking-[0.08em] uppercase">
+        <h3 className="font-normal">{title}</h3>
+        {count !== undefined && (
+          <span>
+            {count} {count === 1 ? 'field' : 'fields'}
+          </span>
+        )}
+      </header>
+      <dl className="divide-border/60 m-0 divide-y">{children}</dl>
+    </section>
   )
 }
 
@@ -111,6 +142,7 @@ function IconAction({
       variant="ghost"
       mode="icon"
       size="icon"
+      className="size-7 [&_svg]:size-3.5!"
       aria-label={label}
       aria-pressed={pressed}
       title={label}
@@ -118,6 +150,40 @@ function IconAction({
     >
       {children}
     </Button>
+  )
+}
+
+/** How a password's strength is drawn: how many of the four bars it fills. */
+const STRENGTH = {
+  weak: { label: 'Weak', bars: 1, text: 'text-danger', bar: 'bg-danger' },
+  fair: { label: 'Fair', bars: 3, text: 'text-warn', bar: 'bg-warn' },
+  strong: { label: 'Strong', bars: 4, text: 'text-good', bar: 'bg-good' },
+} as const
+
+function Strength({ password }: { password: string }) {
+  const strength = STRENGTH[passwordStrength(password)]
+  return (
+    <span className="flex items-center gap-2 pt-1.5">
+      <span className="flex gap-[3px]" aria-hidden>
+        {[1, 2, 3, 4].map((bar) => (
+          <span
+            key={bar}
+            className={cn(
+              'h-[3px] w-[18px] rounded-full',
+              bar <= strength.bars ? strength.bar : 'bg-border'
+            )}
+          />
+        ))}
+      </span>
+      <span
+        className={cn(
+          'font-mono text-[10px] font-medium tracking-[0.08em] uppercase',
+          strength.text
+        )}
+      >
+        {strength.label}
+      </span>
+    </span>
   )
 }
 
@@ -147,6 +213,11 @@ export default function ItemDetail({ item, folders, onClose }: ItemDetailProps) 
   const [openLeave, setOpenLeave] = useState(false)
 
   const { data: profile } = useQuery(queries.auth.profile())
+  // Who else has it: only the owner may ask, and the Community server never shares.
+  const { data: members } = useQuery({
+    ...queries.items.members(item.id),
+    enabled: item.role === ITEM_ROLE_OWNER && !COMMUNITY,
+  })
   const placement = useMutation(queries.items.setPlacement(item.id))
   const deleteMutation = useMutation(queries.items.delete())
   const leaveMutation = useMutation(queries.items.removeMember(item.id))
@@ -193,9 +264,70 @@ export default function ItemDetail({ item, folders, onClose }: ItemDetailProps) 
   }
 
   const Star = item.favorite ? IconStarFilled : IconStar
+  const updated = WHEN.format(new Date(item.updated_at))
+  // The owner counts itself among the members.
+  const others = members ? members.data.length - 1 : undefined
+  const sharing = !isOwner
+    ? 'Shared with you'
+    : COMMUNITY || others === 0
+      ? 'Not shared'
+      : others
+        ? `Shared with ${others}`
+        : null
+
+  // The note's text, blurred until asked for when the note is marked hidden.
+  const noteBody = (
+    <>
+      {/* A note is read, not acted on: the body does not light up. Hidden,
+                  it is tall enough for what it says about itself, however short. */}
+      <div
+        className={cn(
+          'relative',
+          isNote ? 'px-[18px] pt-4 pb-3.5' : 'px-3.5 py-3',
+          noteHidden && (isNote ? 'min-h-[320px]' : 'min-h-[156px]')
+        )}
+      >
+        {/* Out of reach while blurred: not selectable, not read aloud. Only
+                    the top of the note is there: its length would say something too. */}
+        <div
+          className={cn(
+            'text-muted-foreground text-[13px] leading-[1.65]',
+            noteHidden && 'max-h-[200px] overflow-hidden opacity-70 blur-[9px] select-none'
+          )}
+          inert={noteHidden}
+          aria-hidden={noteHidden}
+        >
+          {!secret?.notes ? (
+            none
+          ) : (
+            // Until the renderer has loaded, the text shows as it is.
+            <Suspense fallback={<span className="whitespace-pre-wrap">{secret.notes}</span>}>
+              <MarkdownView key={secret.notes} value={secret.notes} />
+            </Suspense>
+          )}
+        </div>
+        {/* Hidden, the note says so itself and offers to be shown. */}
+        {noteHidden && (
+          <div className="text-muted-foreground absolute inset-0 flex flex-col items-center justify-center gap-2 font-medium">
+            <IconEyeOff className="size-5" />
+            <p>This note is hidden.</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-panel mt-1"
+              onClick={() => setRevealed(true)}
+            >
+              <IconEye />
+              Show note
+            </Button>
+          </div>
+        )}
+      </div>
+    </>
+  )
 
   return (
-    <div className="flex max-w-[640px] flex-col gap-4 p-5 sm:px-8 sm:pb-8">
+    <div className="flex max-w-[640px] flex-col gap-[18px] px-5 pt-6 pb-5 sm:px-[26px]">
       <Button
         variant="ghost"
         mode="icon"
@@ -207,37 +339,49 @@ export default function ItemDetail({ item, folders, onClose }: ItemDetailProps) 
         <IconArrowLeft />
       </Button>
 
-      <header className="flex flex-wrap items-center gap-x-3 gap-y-3">
+      <header className="flex flex-wrap items-center gap-x-3.5 gap-y-3">
         <ItemTile item={item} large />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <h2 className="truncate text-[22px] font-semibold tracking-[-0.01em]">
-            {secret ? secret.name : 'Unable to decrypt'}
-          </h2>
-          <span className="text-muted-foreground text-[13px]">
+        <div className="flex min-w-0 flex-1 flex-col gap-[3px]">
+          <p className="text-muted-foreground font-mono text-[10px] tracking-[0.09em] uppercase">
             {ITEM_TYPE_LABEL[item.type] ?? item.type}
             {!isOwner && ` · shared with you (${item.role})`}
-          </span>
+          </p>
+          <h2 className="truncate text-lg font-semibold tracking-[-0.01em]">
+            {secret ? secret.name : 'Unable to decrypt'}
+          </h2>
+          {/* The type is named above: a note says what it is and when it changed. */}
+          {secret && (
+            <p className="text-muted-foreground truncate text-xs">
+              {isNote
+                ? `Encrypted note${folder ? ` in ${folder.name}` : ''} · updated ${updated}`
+                : itemSubtitle(item)}
+            </p>
+          )}
         </div>
 
         {/* Beside the item's name the buttons are a size down: the name leads. */}
-        <div className="flex items-center gap-1">
-          <IconAction
-            label={item.favorite ? 'Remove from favorites' : 'Add to favorites'}
-            pressed={item.favorite}
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="outline"
+            mode="icon"
+            size="icon"
+            className="size-8 [&_svg]:size-4!"
+            aria-label={item.favorite ? 'Remove from favorites' : 'Add to favorites'}
+            aria-pressed={item.favorite}
+            title={item.favorite ? 'Remove from favorites' : 'Add to favorites'}
             onClick={() => void toggleFavorite()}
           >
             <Star className={item.favorite ? 'text-foreground' : undefined} />
-          </IconAction>
-          {secret && (
-            <Button variant="outline" size="sm" onClick={() => setOpenEdit(true)}>
-              <IconPencil />
-              {/* A viewer may still choose their own folder for the item. */}
-              {canEdit ? 'Edit' : 'Folder'}
-            </Button>
-          )}
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" mode="icon" size="icon" aria-label="More">
+              <Button
+                variant="outline"
+                mode="icon"
+                size="icon"
+                className="size-8 [&_svg]:size-4!"
+                aria-label="More"
+              >
                 <IconDots />
               </Button>
             </DropdownMenuTrigger>
@@ -262,6 +406,13 @@ export default function ItemDetail({ item, folders, onClose }: ItemDetailProps) 
               )}
             </DropdownMenuContent>
           </DropdownMenu>
+          {secret && (
+            <Button size="sm" className="h-8 px-3" onClick={() => setOpenEdit(true)}>
+              <IconPencil />
+              {/* A viewer may still choose their own folder for the item. */}
+              {canEdit ? 'Edit' : 'Folder'}
+            </Button>
+          )}
         </div>
       </header>
 
@@ -271,9 +422,9 @@ export default function ItemDetail({ item, folders, onClose }: ItemDetailProps) 
           reload the page and unlock the vault again.
         </p>
       ) : (
-        <dl className="rounded-card bg-card m-0 divide-y overflow-hidden border">
+        <div className="flex flex-col gap-3">
           {isLogin && (
-            <>
+            <Section title="Credentials" count={secret.passkey ? 3 : 2}>
               <Field
                 label="Username"
                 actions={
@@ -309,161 +460,150 @@ export default function ItemDetail({ item, folders, onClose }: ItemDetailProps) 
                   </>
                 }
               >
-                {secret.password ? (revealed ? secret.password : MASK) : none}
+                {secret.password ? (
+                  <>
+                    {revealed ? secret.password : MASK}
+                    <Strength password={secret.password} />
+                  </>
+                ) : (
+                  none
+                )}
               </Field>
 
+              {secret.passkey && <Field label="Passkey">Signs in to {secret.passkey.rpId}</Field>}
+            </Section>
+          )}
+
+          {isLogin && secret.url && (
+            <Section title="Website" count={1}>
               <Field
                 label="Website"
+                mono
                 actions={
                   website && (
-                    <Button variant="ghost" mode="icon" size="icon" asChild>
-                      <a
-                        href={website}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label="Open website"
-                        title="Open website"
-                      >
-                        <IconExternalLink />
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      className="h-[26px] gap-1 px-2.5 text-xs"
+                      asChild
+                    >
+                      <a href={website} target="_blank" rel="noreferrer">
+                        Open
+                        <IconArrowUpRight className="text-muted-foreground size-3" />
                       </a>
                     </Button>
                   )
                 }
               >
-                {website ? (
-                  <a
-                    href={website}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-focus decoration-focus/40 underline underline-offset-[3px] hover:decoration-current"
-                  >
-                    {secret.url}
-                  </a>
-                ) : (
-                  secret.url || none
-                )}
+                {secret.url}
               </Field>
-
-              {secret.passkey && <Field label="Passkey">Signs in to {secret.passkey.rpId}</Field>}
-            </>
+            </Section>
           )}
 
-          {item.type === 'contact' &&
-            CONTACT_FIELDS.map(({ key, label }) => {
-              const value = secret.contact?.[key]
-              return (
-                <Field
-                  key={key}
-                  label={label}
-                  actions={
-                    value && (
-                      <IconAction
-                        label={`Copy ${label.toLowerCase()}`}
-                        onClick={() => void copy(value, label.toLowerCase())}
-                      >
-                        <IconCopy />
-                      </IconAction>
-                    )
-                  }
-                >
-                  {value || none}
-                </Field>
-              )
-            })}
-
-          {item.type === 'card' &&
-            CARD_FIELDS.map((cardField) => {
-              const { key, label } = cardField
-              const value = secret.card?.[key]
-              const masked = 'secret' in cardField && !revealed
-              return (
-                <Field
-                  key={key}
-                  label={label}
-                  mono={!!value && 'secret' in cardField}
-                  actions={
-                    value && (
-                      <>
-                        {'secret' in cardField && (
-                          <IconAction
-                            label={
-                              revealed
-                                ? `Hide ${label.toLowerCase()}`
-                                : `Show ${label.toLowerCase()}`
-                            }
-                            pressed={revealed}
-                            onClick={() => setRevealed((shown) => !shown)}
-                          >
-                            {revealed ? <IconEyeOff /> : <IconEye />}
-                          </IconAction>
-                        )}
+          {item.type === 'contact' && (
+            <Section title="Contact" count={CONTACT_FIELDS.length}>
+              {CONTACT_FIELDS.map(({ key, label }) => {
+                const value = secret.contact?.[key]
+                return (
+                  <Field
+                    key={key}
+                    label={label}
+                    actions={
+                      value && (
                         <IconAction
                           label={`Copy ${label.toLowerCase()}`}
                           onClick={() => void copy(value, label.toLowerCase())}
                         >
                           <IconCopy />
                         </IconAction>
-                      </>
-                    )
-                  }
-                >
-                  {/* Hidden, a card number still shows its last four digits. */}
-                  {value ? cardFieldText(key, value, masked) : none}
-                </Field>
-              )
-            })}
-
-          {(secret.notes || isNote) && (
-            // A note is read, not acted on: the row does not light up.
-            // Hidden, the row is tall enough for what it says about itself, however
-            // short the note.
-            <div className={cn('relative px-4 py-3', noteHidden && 'min-h-[156px]')}>
-              <dt className="text-muted-foreground mb-2 text-xs font-medium">Notes</dt>
-              {/* Out of reach while blurred: not selectable, not read aloud. Only
-                  the top of the note is there: its length would say something too. */}
-              <dd
-                className={cn(
-                  'm-0 text-sm leading-[1.6]',
-                  noteHidden && 'max-h-[200px] overflow-hidden opacity-70 blur-[9px] select-none'
-                )}
-                inert={noteHidden}
-                aria-hidden={noteHidden}
-              >
-                {!secret.notes ? (
-                  none
-                ) : (
-                  // Until the renderer has loaded, the text shows as it is.
-                  <Suspense fallback={<span className="whitespace-pre-wrap">{secret.notes}</span>}>
-                    <MarkdownView key={secret.notes} value={secret.notes} />
-                  </Suspense>
-                )}
-              </dd>
-              {/* Hidden, the note says so itself and offers to be shown. */}
-              {noteHidden && (
-                <div className="text-muted-foreground absolute inset-0 flex flex-col items-center justify-center gap-2 font-medium">
-                  <IconEyeOff className="size-5" />
-                  <p>This note is hidden.</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="bg-panel mt-1"
-                    onClick={() => setRevealed(true)}
+                      )
+                    }
                   >
-                    <IconEye />
-                    Show note
-                  </Button>
-                </div>
-              )}
-            </div>
+                    {value || none}
+                  </Field>
+                )
+              })}
+            </Section>
           )}
-        </dl>
+
+          {item.type === 'card' && (
+            <Section title="Card" count={CARD_FIELDS.length}>
+              {CARD_FIELDS.map((cardField) => {
+                const { key, label } = cardField
+                const value = secret.card?.[key]
+                const masked = 'secret' in cardField && !revealed
+                return (
+                  <Field
+                    key={key}
+                    label={label}
+                    mono={!!value && 'secret' in cardField}
+                    actions={
+                      value && (
+                        <>
+                          {'secret' in cardField && (
+                            <IconAction
+                              label={
+                                revealed
+                                  ? `Hide ${label.toLowerCase()}`
+                                  : `Show ${label.toLowerCase()}`
+                              }
+                              pressed={revealed}
+                              onClick={() => setRevealed((shown) => !shown)}
+                            >
+                              {revealed ? <IconEyeOff /> : <IconEye />}
+                            </IconAction>
+                          )}
+                          <IconAction
+                            label={`Copy ${label.toLowerCase()}`}
+                            onClick={() => void copy(value, label.toLowerCase())}
+                          >
+                            <IconCopy />
+                          </IconAction>
+                        </>
+                      )
+                    }
+                  >
+                    {/* Hidden, a card number still shows its last four digits. */}
+                    {value ? cardFieldText(key, value, masked) : none}
+                  </Field>
+                )
+              })}
+            </Section>
+          )}
+
+          {isNote ? (
+            <section className="rounded-card bg-panel overflow-hidden border">
+              <header className="border-border/60 text-muted-foreground flex items-center justify-between border-b px-3.5 py-[9px] font-mono text-[10px] tracking-[0.08em] uppercase">
+                <h3 className="font-normal">Note</h3>
+                {/* Hidden, not even its length is told. */}
+                <span>{noteHidden ? 'Protected' : `${(secret.notes ?? '').length} chars`}</span>
+              </header>
+              {noteBody}
+              <footer className="border-border/60 text-muted-foreground flex items-center justify-between border-t px-3.5 py-[9px] font-mono text-[10px] tracking-[0.08em] uppercase">
+                <span>AES-256 · client side</span>
+                {sharing && <span>{sharing}</span>}
+              </footer>
+            </section>
+          ) : (
+            secret.notes && (
+              <section className="rounded-card bg-panel overflow-hidden border">
+                <h3 className="border-border/60 text-muted-foreground border-b px-3.5 py-[9px] font-mono text-[10px] font-normal tracking-[0.08em] uppercase">
+                  Notes
+                </h3>
+                {noteBody}
+              </section>
+            )
+          )}
+        </div>
       )}
 
-      {/* Under the card, in line with what the card holds. */}
-      <p className="text-muted-foreground pl-[17px] text-xs tabular-nums">
-        {folder ? `In ${folder.name} · ` : ''}
-        Updated <time dateTime={item.updated_at}>{WHEN.format(new Date(item.updated_at))}</time>
-      </p>
+      {!isNote && (
+        <p className="text-muted-foreground font-mono text-[10px] tracking-[0.06em] uppercase tabular-nums">
+          {folder ? `In ${folder.name} · ` : ''}
+          Updated <time dateTime={item.updated_at}>{updated}</time>
+          {sharing && ` · ${sharing}`}
+        </p>
+      )}
 
       <SimpleAlertDialog
         title="Move this item to the trash?"

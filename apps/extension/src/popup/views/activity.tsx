@@ -1,34 +1,80 @@
 import type { Models } from '@montara-pass/shared/api/models'
 import type { VaultItem } from '@montara-pass/shared/types/vault'
 
-import { describeActivity, deviceName } from '@montara-pass/shared/activity'
-import { formatDateTime } from '@montara-pass/shared/date'
+import { describeActivity, deviceName, ipKind } from '@montara-pass/shared/activity'
+import { formatDate, formatDateTime } from '@montara-pass/shared/date'
 import { errorMessage } from '@montara-pass/shared/string'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 
-import { getProfile, listActivity, SignedOutError } from '../../lib/api'
-import { HistoryIcon } from '../icons'
+import {
+  getProfile,
+  listActivity,
+  listPasskeys,
+  listSessions,
+  revokeSession,
+  SignedOutError,
+} from '../../lib/api'
+import { ExternalLinkIcon, GlobeIcon, KeyIcon } from '../icons'
 
-interface ActivityLogProps {
+interface SecurityProps {
   /** The decrypted vault, which names the items; null while it loads. */
   items: VaultItem[] | null
+  /** The web app's address: two-step verification and passkeys are set up there. */
+  appUrl: string
   /** The session ended underneath the page. */
   onSignedOut: () => void
+  onNotice: (notice: string) => void
+}
+
+/** A part of the page: what it is, its one action, and its card. */
+function Section({
+  title,
+  description,
+  action,
+  children,
+}: {
+  title: string
+  description: string
+  action?: ReactNode
+  children: ReactNode
+}) {
+  return (
+    <section className="sec-section">
+      <header>
+        <div>
+          <h2>{title}</h2>
+          <p className="muted">{description}</p>
+        </div>
+        {action}
+      </header>
+      <div className="field-group">{children}</div>
+    </section>
+  )
 }
 
 /**
- * The signed-in user's activity log: their sign-ins, what they did to items,
- * and what others did to the items they share. The server names an item by
- * id only; its name comes from the vault decrypted here.
+ * How the account signs in, where it is signed in, and what happened. The
+ * second factor and passkeys are set up in the web app; here they are shown,
+ * and other devices can be signed out.
  */
-export default function ActivityLog({ items, onSignedOut }: ActivityLogProps) {
+export default function Security({ items, appUrl, onSignedOut, onNotice }: SecurityProps) {
+  const [profile, setProfile] = useState<Models.Profile | null>(null)
+  const [passkeys, setPasskeys] = useState<Models.AccountPasskey[] | null>(null)
+  const [sessions, setSessions] = useState<Models.Device[] | null>(null)
   const [rows, setRows] = useState<Models.Activity[] | null>(null)
   // How many rows the server has handed over: the next page starts there.
   const [fetched, setFetched] = useState(0)
   const [total, setTotal] = useState(0)
-  const [meId, setMeId] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+
+  const failed = useCallback(
+    (err: unknown, what: string) => {
+      if (err instanceof SignedOutError) onSignedOut()
+      else setError(errorMessage(err, what))
+    },
+    [onSignedOut]
+  )
 
   const load = useCallback(
     async (offset: number) => {
@@ -43,73 +89,237 @@ export default function ActivityLog({ items, onSignedOut }: ActivityLogProps) {
           return [...kept, ...page.rows.filter((row) => !seen.has(row.id))]
         })
         setTotal(page.total)
-        setError('')
       } catch (err) {
-        if (err instanceof SignedOutError) onSignedOut()
-        else setError(errorMessage(err, 'The activity could not be read'))
+        failed(err, 'The activity could not be read')
       } finally {
         setBusy(false)
       }
     },
-    [onSignedOut]
+    [failed]
   )
 
   useEffect(() => {
     void load(0)
-    void getProfile()
-      .then((profile) => setMeId(profile.user.id))
-      .catch((err) => {
-        if (err instanceof SignedOutError) onSignedOut()
-      })
-  }, [load, onSignedOut])
+    getProfile().then(setProfile, (err) => failed(err, 'Your account could not be read'))
+    listPasskeys().then(setPasskeys, (err) => failed(err, 'Your passkeys could not be read'))
+    listSessions().then(setSessions, (err) => failed(err, 'Your devices could not be read'))
+  }, [load, failed])
 
   const names = useMemo(
     () => new Map((items ?? []).map((item) => [item.id, item.secret?.name])),
     [items]
   )
 
+  const revoke = async (device: Models.Device) => {
+    const name = deviceName(device.user_agent) || 'this device'
+    // Signed out at once; it takes the password to sign in again.
+    if (!confirm(`Sign out of ${name}? It needs your password to sign in again.`)) return
+    try {
+      await revokeSession(device.id)
+      setSessions((prev) => prev?.filter((d) => d.id !== device.id) ?? null)
+      onNotice(`Signed out of ${name}`)
+    } catch (err) {
+      failed(err, 'The device could not be signed out')
+    }
+  }
+
+  const totp = profile?.totp_enabled
+  const webApp = (label: string) =>
+    appUrl && (
+      <a
+        className="button secondary small"
+        href={`${appUrl.replace(/\/$/, '')}/security`}
+        target="_blank"
+        rel="noreferrer"
+      >
+        {label}
+        <ExternalLinkIcon width={12} height={12} />
+      </a>
+    )
+
   return (
-    <div className="stack detail-body tool-body">
-      <header className="detail-head">
-        <span className="tile tile-large">
-          <HistoryIcon />
-        </span>
-        <div className="item-text">
-          <h2 className="detail-title">Activity</h2>
-          <span className="muted">
-            Your sign-ins, and who changed or shared your items. Kept for 90 days.
-          </span>
+    <div className="stack detail-body tool-body gen-page">
+      <header className="tool-page-head">
+        <div className="list-title">
+          <p className="eyebrow">Security · Account</p>
+          <h1>Security</h1>
+          <p className="muted">
+            How this account signs in, where it is signed in, and what happened.
+          </p>
         </div>
+        <dl className="health-stats">
+          <div>
+            <dt>TOTP</dt>
+            <dd className={totp ? 'health-good' : undefined}>
+              {totp === undefined ? '—' : totp ? 'On' : 'Off'}
+            </dd>
+          </div>
+          <div>
+            <dt>Passkeys</dt>
+            <dd>{passkeys?.length ?? '—'}</dd>
+          </div>
+          <div>
+            <dt>Sessions</dt>
+            <dd>{sessions?.length ?? '—'}</dd>
+          </div>
+        </dl>
       </header>
 
-      {error && <p className="error">{error}</p>}
-      {rows === null && !error && <p className="muted">Loading…</p>}
-      {rows?.length === 0 && <p className="muted">No activity yet.</p>}
+      <div className="sec-body">
+        {error && <p className="error">{error}</p>}
 
-      {rows && rows.length > 0 && (
-        <ul className="items health-list">
-          {rows.map((row) => (
-            <li key={row.id} className="activity-row">
-              <span className="item-text">
-                <span className="item-name">
-                  {describeActivity(row, meId, row.item_id ? names.get(row.item_id) : undefined)}
-                </span>
-                <span className="muted">
-                  {formatDateTime(row.created_at)}
-                  {row.action === 'sign_in' &&
-                    ` · ${deviceName(row.user_agent) || 'Unknown device'}${row.ip ? ` · ${row.ip}` : ''}`}
-                </span>
+        <Section
+          title="Two-step verification (TOTP)"
+          description="A code from an authenticator app is asked for on every sign-in."
+          action={webApp(totp ? 'Manage in web app' : 'Turn on in web app')}
+        >
+          <p className="sec-status">
+            <span className={totp ? 'sec-chip on' : 'sec-chip'}>{totp ? 'On' : 'Off'}</span>
+            {totp
+              ? 'On. Signing in asks for a code from your authenticator app.'
+              : 'Not enabled. Sign-in asks for the account password only.'}
+          </p>
+        </Section>
+
+        <Section
+          title="Passkeys"
+          description="A fingerprint, face or security key replaces both the password and the code."
+          action={webApp(passkeys?.length ? 'Manage in web app' : 'Add in web app')}
+        >
+          {passkeys && passkeys.length > 0 ? (
+            <ul className="sec-rows">
+              {passkeys.map((passkey) => (
+                <li key={passkey.id}>
+                  <span className="tile">
+                    <KeyIcon />
+                  </span>
+                  <span className="item-text">
+                    <span className="item-name">{passkey.name}</span>
+                    <span className="eyebrow">
+                      {passkey.encrypted_vault_key ? 'Signs in and unlocks' : 'Signs in only'} ·
+                      Added {formatDate(passkey.created_at)}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="sec-status">
+              <span className="sec-chip">None</span>
+              No passkey registered on this account yet.
+            </p>
+          )}
+        </Section>
+
+        <Section
+          title="Active sessions"
+          description="Every device signed in to this account, most recently active first."
+        >
+          {sessions === null ? (
+            <p className="sec-status muted">Loading…</p>
+          ) : (
+            <ul className="sec-rows">
+              {sessions.map((device) => (
+                <li key={device.id}>
+                  <span className="tile">
+                    <GlobeIcon />
+                  </span>
+                  <span className="item-text">
+                    <span className="item-name">
+                      {deviceName(device.user_agent) || 'Unknown device'}
+                    </span>
+                    <span className="eyebrow">
+                      {[
+                        device.ip,
+                        device.current ? 'Active now' : formatDateTime(device.updated_at),
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
+                  </span>
+                  {/* This device signs out the usual way, from the account menu. */}
+                  {device.current ? (
+                    <span className="sec-this">This device</span>
+                  ) : (
+                    <button className="secondary small" onClick={() => void revoke(device)}>
+                      Revoke
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
+
+        <Section
+          title="Audit log"
+          description="Sign-ins and changes to the items you have access to, kept 90 days."
+        >
+          <div className="sec-log">
+            <div className="sec-log-row sec-log-head eyebrow" aria-hidden="true">
+              <span>Device</span>
+              <span className="col">IP address</span>
+              <span className="col">Activity</span>
+              <span>When</span>
+            </div>
+            {rows === null ? (
+              <p className="sec-status muted">Loading…</p>
+            ) : rows.length === 0 ? (
+              <p className="sec-status muted">
+                No activity yet. Signing in and changing items shows up here.
+              </p>
+            ) : (
+              <ul className="sec-log-list">
+                {rows.map((row) => {
+                  const what = describeActivity(
+                    row,
+                    profile?.user.id ?? '',
+                    row.item_id ? names.get(row.item_id) : undefined
+                  )
+                  return (
+                    <li key={row.id} className="sec-log-row">
+                      <span className="item-text">
+                        <span className="item-name">
+                          {row.action === 'sign_in'
+                            ? deviceName(row.user_agent) || 'Unknown device'
+                            : '—'}
+                        </span>
+                        <span className="muted sec-narrow">{what}</span>
+                      </span>
+                      <span className="col item-text">
+                        {row.ip ? (
+                          <>
+                            <span className="mono">{row.ip}</span>
+                            <span className="eyebrow">{ipKind(row.ip)}</span>
+                          </>
+                        ) : (
+                          <span className="muted">—</span>
+                        )}
+                      </span>
+                      <span className="col">{what}</span>
+                      <span className="mono sec-when">{formatDateTime(row.created_at)}</span>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+            <footer className="sec-log-foot">
+              <span className="eyebrow">
+                {rows?.length ?? 0} of {total}
               </span>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {rows && fetched < total && (
-        <button className="link" disabled={busy} onClick={() => void load(fetched)}>
-          {busy ? 'Loading…' : 'Show more'}
-        </button>
-      )}
+              {rows && fetched < total && (
+                <button
+                  className="secondary small"
+                  disabled={busy}
+                  onClick={() => void load(fetched)}
+                >
+                  {busy ? 'Loading…' : 'Show more'}
+                </button>
+              )}
+            </footer>
+          </div>
+        </Section>
+      </div>
     </div>
   )
 }

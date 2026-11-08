@@ -2,6 +2,7 @@ import type { Models } from '@montara-pass/shared/api/models'
 
 import { deviceName } from '@montara-pass/shared/activity'
 import { formatDateTime } from '@montara-pass/shared/date'
+import { IconWorld } from '@tabler/icons-react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
@@ -11,6 +12,9 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toastApiError } from '@/lib/api/api-error'
 import { queries } from '@/lib/api/queries'
+import { cn } from '@/lib/utils'
+
+import { MONO_NOTE, SecuritySection } from './section'
 
 /**
  * The devices signed in to the account, the most recently active first, and
@@ -49,59 +53,56 @@ export default function Devices() {
   }
 
   return (
-    <section aria-labelledby="devices" className="flex flex-col gap-2">
-      <h2 id="devices" className="text-muted-foreground pl-1 text-[13px] font-semibold">
-        Signed-in devices
-      </h2>
-      <div className="rounded-card flex flex-col border">
-        <ul className="m-0 flex list-none flex-col divide-y p-0">
-          {isLoading ? (
-            <li className="flex min-h-[60px] items-center px-4 py-3">
-              <Skeleton className="h-4 w-48" />
+    <SecuritySection
+      id="devices"
+      title="Active sessions"
+      description="Every device signed in to this account, most recently active first."
+    >
+      <ul className="divide-border/60 m-0 flex list-none flex-col divide-y p-0">
+        {isLoading ? (
+          <li className="flex min-h-[56px] items-center px-4 py-3">
+            <Skeleton className="h-4 w-48" />
+          </li>
+        ) : (
+          devices.map((device) => (
+            <li key={device.id} className="flex items-center gap-3 px-4 py-3">
+              <span className="bg-background inline-flex size-8 shrink-0 items-center justify-center rounded-md border">
+                <IconWorld className="size-4" aria-hidden />
+              </span>
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="truncate text-[13px] font-medium">{name(device)}</span>
+                <span className={cn(MONO_NOTE, 'truncate tabular-nums')}>
+                  {[device.ip, device.current ? 'Active now' : formatDateTime(device.updated_at)]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+              </div>
+              {/* This device signs out the usual way, from the account menu. */}
+              {device.current ? (
+                <span className="text-good font-mono text-[10px] font-medium tracking-[0.08em] uppercase">
+                  This device
+                </span>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="xs"
+                  disabled={busy}
+                  onClick={() => setAsking(device)}
+                >
+                  Revoke
+                </Button>
+              )}
             </li>
-          ) : (
-            devices.map((device) => (
-              <li
-                key={device.id}
-                className="flex min-h-[60px] items-center justify-between gap-4 px-4 py-3"
-              >
-                <div className="flex min-w-0 flex-col gap-0.5">
-                  <span className="flex items-center gap-2 font-medium">
-                    <span className="truncate">{name(device)}</span>
-                    {device.current && (
-                      <span className="text-primary shrink-0 rounded-full border px-2 py-0.5 text-[11px]">
-                        This device
-                      </span>
-                    )}
-                  </span>
-                  <span className="text-muted-foreground truncate text-[13px] tabular-nums">
-                    {[device.ip, `Last active ${formatDateTime(device.updated_at)}`]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </span>
-                </div>
-                {!device.current && (
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    disabled={busy}
-                    onClick={() => setAsking(device)}
-                  >
-                    Sign out
-                  </Button>
-                )}
-              </li>
-            ))
-          )}
-        </ul>
-        {others > 1 && (
-          <div className="border-t px-4 py-3">
-            <Button variant="outline" size="sm" disabled={busy} onClick={() => setAsking('others')}>
-              Sign out of every other device
-            </Button>
-          </div>
+          ))
         )}
-      </div>
+      </ul>
+      {others > 1 && (
+        <div className="border-border/60 border-t px-4 py-3">
+          <Button variant="outline" size="sm" disabled={busy} onClick={() => setAsking('others')}>
+            Sign out of every other device
+          </Button>
+        </div>
+      )}
 
       <SimpleAlertDialog
         title={
@@ -115,7 +116,7 @@ export default function Devices() {
         onConfirm={() => void confirm()}
         confirmText="Sign out"
       />
-    </section>
+    </SecuritySection>
   )
 }
 

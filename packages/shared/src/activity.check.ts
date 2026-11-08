@@ -6,7 +6,7 @@ import assert from 'node:assert/strict'
 import type { Activity } from './api/models/activity'
 
 // By address, so Node finds the file without the bundler's resolution.
-const { describeActivity, deviceName } = (await import(
+const { describeActivity, deviceName, ipKind } = (await import(
   new URL('./activity.ts', import.meta.url).href
 )) as typeof import('./activity')
 
@@ -95,5 +95,13 @@ assert.equal(
 )
 assert.equal(deviceName('Go-http-client/1.1'), '')
 assert.equal(deviceName(null), '')
+
+assert.equal(ipKind('127.0.0.1'), 'IPv4 · local')
+assert.equal(ipKind('192.168.1.20'), 'IPv4 · local')
+assert.equal(ipKind('172.20.0.1'), 'IPv4 · local')
+assert.equal(ipKind('172.32.0.1'), 'IPv4')
+assert.equal(ipKind('203.0.113.9'), 'IPv4')
+assert.equal(ipKind('::1'), 'IPv6 · local')
+assert.equal(ipKind('2001:db8::1'), 'IPv6')
 
 console.log('activity: ok')

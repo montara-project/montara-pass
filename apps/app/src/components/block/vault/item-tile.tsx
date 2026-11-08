@@ -1,6 +1,7 @@
 import type { VaultItem } from '@montara-pass/shared/types/vault'
 
-import { itemIcon } from '@montara-pass/shared/crypto/vault'
+import { ITEM_TYPE_LABEL } from '@montara-pass/shared/constants/vault'
+import { cardEnding, itemIcon } from '@montara-pass/shared/crypto/vault'
 import { IconCreditCard, IconKey, IconNote, IconUser } from '@tabler/icons-react'
 
 import { cn } from '@/lib/utils'
@@ -22,7 +23,7 @@ export default function ItemTile({ item, large }: { item: VaultItem; large?: boo
       className={cn(
         // On the page's own tone, so a favicon reads on any surface.
         'bg-background text-foreground inline-flex shrink-0 items-center justify-center border',
-        large ? 'rounded-card size-12' : 'size-8 rounded-md',
+        large ? 'size-11 rounded-xl' : 'size-8 rounded-md',
         icon && (large ? 'p-1.5' : 'p-1')
       )}
     >
@@ -33,4 +34,13 @@ export default function ItemTile({ item, large }: { item: VaultItem; large?: boo
       )}
     </span>
   )
+}
+
+/** A row's second line: the username, email or card ending, else the item's type. */
+export function itemSubtitle(item: VaultItem) {
+  if (item.type === 'login') return item.secret?.username || 'No username'
+  if (!item.secret) return ''
+  if (item.type === 'contact' && item.secret.contact?.email) return item.secret.contact.email
+  if (item.type === 'card') return cardEnding(item.secret.card?.number) ?? ITEM_TYPE_LABEL.card
+  return ITEM_TYPE_LABEL[item.type]
 }

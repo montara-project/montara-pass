@@ -4,21 +4,22 @@ import type { VaultItem } from '@montara-pass/shared/types/vault'
 import { COMMUNITY } from '@montara-pass/shared/constants/edition'
 import { CARD_FIELDS, CONTACT_FIELDS, ITEM_TYPE_LABEL } from '@montara-pass/shared/constants/vault'
 import { cardEnding } from '@montara-pass/shared/crypto/vault'
+import { passwordStrength } from '@montara-pass/shared/password'
 import { linkOf } from '@montara-pass/shared/url'
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
-import { setItemPlacement, trashItem } from '../../lib/api'
+import { listItemMembers, setItemPlacement, trashItem } from '../../lib/api'
 import { getSettings } from '../../lib/storage'
 import { lastUsedAgo } from '../../lib/usage'
 import { maskUsername } from '../../lib/username'
 import {
   ArrowLeftIcon,
+  ArrowUpRightIcon,
   BookOpenIcon,
   CardIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   CopyIcon,
-  ExternalLinkIcon,
   EyeIcon,
   EyeOffIcon,
   FilterIcon,
@@ -47,7 +48,7 @@ import {
   type Sort,
 } from '../use-vault-items'
 import { VaultSidebar, type Tool } from '../vault-sidebar'
-import ActivityLog from './activity'
+import Security from './activity'
 import Billing from './billing'
 import ItemForm from './item-form'
 import PasswordGenerator from './password-generator'
@@ -178,7 +179,12 @@ export default function FullVault({
             ) : tool === 'billing' ? (
               <Billing onSignedOut={onSignedOut} />
             ) : tool === 'activity' ? (
-              <ActivityLog items={items} onSignedOut={onSignedOut} />
+              <Security
+                items={items}
+                appUrl={appUrl}
+                onSignedOut={onSignedOut}
+                onNotice={setNotice}
+              />
             ) : (
               <PasswordHealth
                 items={items}
@@ -188,6 +194,9 @@ export default function FullVault({
                   setSearch('')
                   setPane({ mode: 'view', id })
                 }}
+                onRescan={() => void refresh()}
+                rescanning={refreshing}
+                onOpenVault={() => setTool(null)}
               />
             )}
           </section>
@@ -468,183 +477,202 @@ function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: Item
   // Only http(s) addresses become links.
   const website = linkOf(secret.url)
 
+  // Who else has it: only the owner may ask, and the Community server never
+  // shares. The owner counts itself among the members.
+  const [others, setOthers] = useState<number | null>(null)
+  useEffect(() => {
+    if (item.role !== 'owner' || COMMUNITY) return
+    listItemMembers(item.id)
+      .then((members) => setOthers(members.length - 1))
+      .catch(() => setOthers(null))
+  }, [item.id, item.role])
+  const sharing =
+    item.role !== 'owner'
+      ? 'Shared with you'
+      : COMMUNITY || others === 0
+        ? 'Not shared'
+        : others
+          ? `Shared with ${others}`
+          : null
+
   return (
-    <div className="stack detail-body">
+    <div className="stack detail-body item-view">
       <header className="detail-head">
         <ItemTile item={item} large />
         <div className="item-text">
-          <h2 className="detail-title">{secret.name}</h2>
-          <span className="muted">
+          <p className="eyebrow">
             {ITEM_TYPE_LABEL[item.type] ?? item.type}
             {item.role !== 'owner' && ` · shared with you (${item.role})`}
+          </p>
+          <h2 className="detail-title">{secret.name}</h2>
+          {/* The type is named above: a note says what it is and when it changed. */}
+          <span className="muted">
+            {isNote ? (
+              <>
+                Encrypted note · updated <When at={item.updated_at} />
+              </>
+            ) : (
+              itemSubtitle(item)
+            )}
           </span>
         </div>
-        {/* As the web app has them: the star, the one common action as a
-            button, and the rest behind More. */}
-        <button
-          className="icon-button"
-          aria-label={item.favorite ? 'Remove from favorites' : 'Add to favorites'}
-          aria-pressed={item.favorite}
-          title={item.favorite ? 'Remove from favorites' : 'Add to favorites'}
-          onClick={onFavorite}
-        >
-          <StarIcon fill={item.favorite ? 'currentColor' : 'none'} />
-        </button>
-        {canEdit && (
-          <button className="secondary" onClick={onEdit}>
-            <PencilIcon width={18} height={18} />
-            Edit
+        {/* As the web app has them: the star, More, and the one common action
+            as a button. */}
+        <div className="detail-actions">
+          <button
+            className="icon-button outlined"
+            aria-label={item.favorite ? 'Remove from favorites' : 'Add to favorites'}
+            aria-pressed={item.favorite}
+            title={item.favorite ? 'Remove from favorites' : 'Add to favorites'}
+            onClick={onFavorite}
+          >
+            <StarIcon fill={item.favorite ? 'currentColor' : 'none'} />
           </button>
-        )}
-        {/* Only the owner hands an item on, or throws it away. */}
-        {item.role === 'owner' && (
-          <div className="menu-anchor" ref={menuRef}>
-            <button
-              className="icon-button"
-              aria-label="More"
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-              onClick={() => setMenuOpen((open) => !open)}
-            >
-              <MoreIcon />
-            </button>
-            {menuOpen && (
-              <div className="menu" role="menu">
-                {!COMMUNITY && (
+          {/* Only the owner hands an item on, or throws it away. */}
+          {item.role === 'owner' && (
+            <div className="menu-anchor" ref={menuRef}>
+              <button
+                className="icon-button outlined"
+                aria-label="More"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen((open) => !open)}
+              >
+                <MoreIcon />
+              </button>
+              {menuOpen && (
+                <div className="menu" role="menu">
+                  {!COMMUNITY && (
+                    <button
+                      role="menuitem"
+                      className="menu-item"
+                      onClick={() => {
+                        setMenuOpen(false)
+                        onShare()
+                      }}
+                    >
+                      <ShareIcon />
+                      Share
+                    </button>
+                  )}
                   <button
                     role="menuitem"
-                    className="menu-item"
+                    className="menu-item menu-danger"
                     onClick={() => {
                       setMenuOpen(false)
-                      onShare()
+                      onTrash()
                     }}
                   >
-                    <ShareIcon />
-                    Share
+                    <TrashIcon />
+                    Move to trash
                   </button>
-                )}
-                <button
-                  role="menuitem"
-                  className="menu-item menu-danger"
-                  onClick={() => {
-                    setMenuOpen(false)
-                    onTrash()
-                  }}
-                >
-                  <TrashIcon />
-                  Move to trash
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+                </div>
+              )}
+            </div>
+          )}
+          {canEdit && (
+            <button className="edit" onClick={onEdit}>
+              <PencilIcon width={14} height={14} />
+              Edit
+            </button>
+          )}
+        </div>
       </header>
 
-      <dl className="fields">
-        {isLogin && (
-          <>
-            <div className="field">
-              <dt>Username</dt>
-              <dd>
-                {secret.username ? (
-                  showUsername ? (
-                    secret.username
-                  ) : (
-                    maskUsername(secret.username)
-                  )
+      {isLogin && (
+        <FieldGroup title="Credentials" count={secret.passkey ? 3 : 2}>
+          <div className="field">
+            <dt>Username</dt>
+            <dd>
+              {secret.username ? (
+                showUsername ? (
+                  secret.username
                 ) : (
-                  <span className="muted">None</span>
-                )}
-              </dd>
-              {secret.username && (
-                <button
-                  className="icon-button"
-                  aria-label={showUsername ? 'Hide username' : 'Show username'}
-                  aria-pressed={showUsername}
-                  title={showUsername ? 'Hide username' : 'Show username'}
-                  onClick={() => setShowUsername((value) => !value)}
-                >
-                  {showUsername ? <EyeOffIcon /> : <EyeIcon />}
-                </button>
+                  maskUsername(secret.username)
+                )
+              ) : (
+                <span className="muted">None</span>
               )}
+            </dd>
+            {secret.username && (
               <button
                 className="icon-button"
-                aria-label="Copy username"
-                title="Copy username"
-                onClick={() => onCopy(secret.username, 'username')}
+                aria-label={showUsername ? 'Hide username' : 'Show username'}
+                aria-pressed={showUsername}
+                title={showUsername ? 'Hide username' : 'Show username'}
+                onClick={() => setShowUsername((value) => !value)}
               >
-                <CopyIcon />
+                {showUsername ? <EyeOffIcon /> : <EyeIcon />}
               </button>
-            </div>
-
-            <div className="field">
-              <dt>Password</dt>
-              <dd className="mono">
-                {secret.password ? (
-                  revealed ? (
-                    secret.password
-                  ) : (
-                    MASK
-                  )
-                ) : (
-                  <span className="muted">None</span>
-                )}
-              </dd>
-              <button
-                className="icon-button"
-                aria-label={revealed ? 'Hide password' : 'Show password'}
-                aria-pressed={revealed}
-                title={revealed ? 'Hide password' : 'Show password'}
-                onClick={() => setRevealed((value) => !value)}
-              >
-                {revealed ? <EyeOffIcon /> : <EyeIcon />}
-              </button>
-              <button
-                className="icon-button"
-                aria-label="Copy password"
-                title="Copy password"
-                onClick={() => onCopy(secret.password, 'password')}
-              >
-                <CopyIcon />
-              </button>
-            </div>
-
-            <div className="field">
-              <dt>Website</dt>
-              <dd>
-                {website ? (
-                  <a href={website} target="_blank" rel="noreferrer">
-                    {secret.url}
-                  </a>
-                ) : (
-                  secret.url || <span className="muted">None</span>
-                )}
-              </dd>
-              {website && (
-                <a
-                  className="icon-button"
-                  href={website}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label="Open website"
-                  title="Open website"
-                >
-                  <ExternalLinkIcon />
-                </a>
-              )}
-            </div>
-
-            {secret.passkey && (
-              <div className="field">
-                <dt>Passkey</dt>
-                <dd>Signs in to {secret.passkey.rpId}</dd>
-              </div>
             )}
-          </>
-        )}
+            <button
+              className="icon-button"
+              aria-label="Copy username"
+              title="Copy username"
+              onClick={() => onCopy(secret.username, 'username')}
+            >
+              <CopyIcon />
+            </button>
+          </div>
 
-        {item.type === 'contact' &&
-          CONTACT_FIELDS.map(({ key, label }) => {
+          <div className="field">
+            <dt>Password</dt>
+            <dd className={secret.password ? 'mono' : undefined}>
+              {secret.password ? (
+                <>
+                  {revealed ? secret.password : MASK}
+                  <Strength password={secret.password} />
+                </>
+              ) : (
+                <span className="muted">None</span>
+              )}
+            </dd>
+            <button
+              className="icon-button"
+              aria-label={revealed ? 'Hide password' : 'Show password'}
+              aria-pressed={revealed}
+              title={revealed ? 'Hide password' : 'Show password'}
+              onClick={() => setRevealed((value) => !value)}
+            >
+              {revealed ? <EyeOffIcon /> : <EyeIcon />}
+            </button>
+            <button
+              className="icon-button"
+              aria-label="Copy password"
+              title="Copy password"
+              onClick={() => onCopy(secret.password, 'password')}
+            >
+              <CopyIcon />
+            </button>
+          </div>
+
+          {secret.passkey && (
+            <div className="field">
+              <dt>Passkey</dt>
+              <dd>Signs in to {secret.passkey.rpId}</dd>
+            </div>
+          )}
+        </FieldGroup>
+      )}
+
+      {isLogin && secret.url && (
+        <FieldGroup title="Website" count={1}>
+          <div className="field">
+            <dt>Website</dt>
+            <dd className="mono">{secret.url}</dd>
+            {website && (
+              <a className="button secondary small" href={website} target="_blank" rel="noreferrer">
+                Open
+                <ArrowUpRightIcon width={12} height={12} />
+              </a>
+            )}
+          </div>
+        </FieldGroup>
+      )}
+
+      {item.type === 'contact' && (
+        <FieldGroup title="Contact" count={CONTACT_FIELDS.length}>
+          {CONTACT_FIELDS.map(({ key, label }) => {
             const value = secret.contact?.[key]
             return (
               <div key={key} className="field">
@@ -663,9 +691,12 @@ function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: Item
               </div>
             )
           })}
+        </FieldGroup>
+      )}
 
-        {item.type === 'card' &&
-          CARD_FIELDS.map((cardField) => {
+      {item.type === 'card' && (
+        <FieldGroup title="Card" count={CARD_FIELDS.length}>
+          {CARD_FIELDS.map((cardField) => {
             const { key, label } = cardField
             const value = secret.card?.[key]
             const isSecret = 'secret' in cardField
@@ -710,12 +741,45 @@ function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: Item
               </div>
             )
           })}
+        </FieldGroup>
+      )}
 
-        {(secret.notes || isNote) && (
-          <div className="field field-notes">
-            <dt>Notes</dt>
+      {(secret.notes || isNote) && (
+        <section className="field-group">
+          <header className="field-group-head">
+            <h3>{isNote ? 'Note' : 'Notes'}</h3>
+            {/* Hidden, not even its length is told. */}
+            {isNote && (
+              <span>{noteHidden ? 'Protected' : `${(secret.notes ?? '').length} chars`}</span>
+            )}
+            {hidesNote && revealed && (
+              <button
+                className="icon-button"
+                aria-label="Hide note"
+                title="Hide note"
+                onClick={() => setRevealed(false)}
+              >
+                <EyeOffIcon />
+              </button>
+            )}
+            {secret.notes && (
+              <button
+                className="icon-button"
+                aria-label="Copy notes"
+                title="Copy notes"
+                onClick={() => onCopy(secret.notes, 'notes')}
+              >
+                <CopyIcon />
+              </button>
+            )}
+          </header>
+          <div
+            className={['note-body', isNote && 'note-main', noteHidden && 'hidden-note']
+              .filter(Boolean)
+              .join(' ')}
+          >
             {/* Out of reach while blurred: not selectable, not read aloud. */}
-            <dd
+            <div
               className={noteHidden ? 'blurred' : undefined}
               inert={noteHidden}
               aria-hidden={noteHidden}
@@ -729,7 +793,7 @@ function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: Item
                   <NotesView key={secret.notes} value={secret.notes} />
                 </Suspense>
               )}
-            </dd>
+            </div>
             {/* Hidden, the note says so itself and offers to be shown. */}
             {noteHidden && (
               <div className="note-veil">
@@ -741,36 +805,72 @@ function ItemDetail({ item, onCopy, onEdit, onShare, onFavorite, onTrash }: Item
                 </button>
               </div>
             )}
-            {hidesNote && revealed && (
-              <button
-                className="icon-button"
-                aria-label="Hide note"
-                title="Hide note"
-                onClick={() => setRevealed(false)}
-              >
-                <EyeOffIcon />
-              </button>
-            )}
-            <button
-              className="icon-button"
-              aria-label="Copy notes"
-              title="Copy notes"
-              onClick={() => onCopy(secret.notes, 'notes')}
-            >
-              <CopyIcon />
-            </button>
           </div>
-        )}
-      </dl>
+          {isNote && (
+            <footer className="field-group-foot">
+              <span>AES-256 · client side</span>
+              {sharing && <span>{sharing}</span>}
+            </footer>
+          )}
+        </section>
+      )}
 
-      <p className="muted meta">
-        {item.last_used_at && (
-          <>
-            Last used <When at={item.last_used_at} /> ·{' '}
-          </>
-        )}
-        Last updated <When at={item.updated_at} />
-      </p>
+      {/* A note says when it changed under its name, and who has it in its card. */}
+      {!isNote && (
+        <p className="item-meta">
+          {item.last_used_at && (
+            <>
+              Last used <When at={item.last_used_at} /> ·{' '}
+            </>
+          )}
+          Updated <When at={item.updated_at} />
+          {sharing && ` · ${sharing}`}
+        </p>
+      )}
     </div>
+  )
+}
+
+/** A titled card of fields: what it holds, and how many. */
+function FieldGroup({
+  title,
+  count,
+  children,
+}: {
+  title: string
+  count: number
+  children: ReactNode
+}) {
+  return (
+    <section className="field-group">
+      <header className="field-group-head">
+        <h3>{title}</h3>
+        <span>
+          {count} {count === 1 ? 'field' : 'fields'}
+        </span>
+      </header>
+      <dl className="fields">{children}</dl>
+    </section>
+  )
+}
+
+/** How many of the four bars a password's strength fills. */
+const STRENGTH = {
+  weak: { label: 'Weak', bars: 1 },
+  fair: { label: 'Fair', bars: 3 },
+  strong: { label: 'Strong', bars: 4 },
+} as const
+
+function Strength({ password }: { password: string }) {
+  const level = passwordStrength(password)
+  return (
+    <span className={`pw-strength strength-label strength-${level}`}>
+      <span aria-hidden="true">
+        {[1, 2, 3, 4].map((bar) => (
+          <i key={bar} className={bar <= STRENGTH[level].bars ? 'on' : undefined} />
+        ))}
+      </span>
+      {STRENGTH[level].label}
+    </span>
   )
 }

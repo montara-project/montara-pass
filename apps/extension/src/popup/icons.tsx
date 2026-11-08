@@ -261,6 +261,15 @@ export const TrashIcon = icon(
 
 export const CheckIcon = icon(<path d="m5 12 5 5L20 7" />)
 
+export const ArrowUpRightIcon = icon(<path d="M7 7h10v10M7 17 17 7" />)
+
+export const GlobeIcon = icon(
+  <>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20" />
+  </>
+)
+
 export const ChevronRightIcon = icon(<path d="m9 6 6 6-6 6" />)
 
 /** A folder with something taken out of it. */

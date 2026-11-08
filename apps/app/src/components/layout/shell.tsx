@@ -80,8 +80,8 @@ const VAULT_VIEWS: {
 const TOOLS = [
   { title: 'Password generator', url: '/generator', icon: IconPassword, group: 'Tools' },
   { title: 'Password health', url: '/health', icon: IconShield, group: 'Tools' },
-  // Sign-ins and changes to items: the account's security record.
-  { title: 'Security', url: '/activity', icon: IconShieldCheck, group: 'Account' },
+  // How the account signs in, where it is signed in, and what happened.
+  { title: 'Security', url: '/security', icon: IconShieldCheck, group: 'Account' },
 ] as const
 
 /** In the account menu: the vault's other pages and the account's own. */

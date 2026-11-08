@@ -33,20 +33,20 @@ const CONTENT_CLASS = () =>
 
 /** Tailwind resets headings and lists, so written text is styled from here. */
 const PROSE_CLASS = cn(
-  '[&_p]:mb-2 [&_p:last-child]:mb-0',
-  '[&_h1]:mb-2 [&_h1]:text-xl [&_h1]:font-semibold',
-  '[&_h2]:mb-2 [&_h2]:text-lg [&_h2]:font-semibold',
-  '[&_h3]:mb-2 [&_h3]:font-semibold',
-  '[&_strong]:font-semibold',
-  '[&_ul]:mb-2 [&_ul]:list-disc [&_ul]:pl-5',
-  '[&_ol]:mb-2 [&_ol]:list-decimal [&_ol]:pl-5',
+  '[&_p]:mb-3 [&_p:last-child]:mb-0',
+  '[&_:is(h1,h2,h3)]:text-foreground [&_:is(h1,h2,h3)]:mb-2 [&_:is(h1,h2,h3)]:font-semibold [&_:is(h1,h2,h3)]:tracking-[-0.01em]',
+  '[&_h1]:text-base [&_h2]:text-[15px] [&_h3]:text-[15px]',
+  '[&_strong]:text-foreground [&_strong]:font-semibold',
+  '[&_ul]:mb-3 [&_ul]:list-disc [&_ul]:pl-5',
+  '[&_ol]:mb-3 [&_ol]:list-decimal [&_ol]:pl-5',
   '[&_li>p]:mb-0',
-  '[&_blockquote]:border-border [&_blockquote]:text-muted-foreground [&_blockquote]:mb-2 [&_blockquote]:border-l-2 [&_blockquote]:pl-3',
+  '[&_blockquote]:border-border [&_blockquote]:text-muted-foreground [&_blockquote]:mb-3 [&_blockquote]:border-l-2 [&_blockquote]:pl-3',
   '[&_code]:bg-muted [&_code]:rounded [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[0.9em]',
-  '[&_pre]:thin-scrollbar [&_pre]:bg-muted [&_pre]:mb-2 [&_pre]:overflow-x-auto [&_pre]:rounded [&_pre]:p-2 [&_pre_code]:bg-transparent [&_pre_code]:p-0',
-  '[&_a]:text-focus [&_a]:underline [&_a]:underline-offset-[3px]',
-  '[&_hr]:border-border [&_hr]:my-3',
-  '[&_table]:mb-2 [&_td]:border-border [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_th]:border-border [&_th]:border [&_th]:px-2 [&_th]:py-1'
+  // A command or a snippet: set apart on the page's own tone, as a terminal is.
+  '[&_pre]:thin-scrollbar [&_pre]:bg-background [&_pre]:text-foreground/85 [&_pre]:mb-3 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:border [&_pre]:px-3 [&_pre]:py-2.5 [&_pre]:font-mono [&_pre]:text-[11.5px] [&_pre]:leading-[1.6] [&_pre]:tracking-[0.01em] [&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-[1em]',
+  '[&_a]:text-focus [&_a]:font-mono [&_a]:text-[0.92em] [&_a]:underline [&_a]:decoration-current/40 [&_a]:underline-offset-[3px]',
+  '[&_hr]:border-border/60 [&_hr]:my-4',
+  '[&_table]:mb-3 [&_td]:border-border [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_th]:border-border [&_th]:border [&_th]:px-2 [&_th]:py-1'
 )
 
 interface ToolProps {

@@ -1,7 +1,7 @@
 import type { VaultFolder, VaultItem } from '@montara-pass/shared/types/vault'
 
-import { ITEM_TYPE_LABEL, ItemTypeOptions } from '@montara-pass/shared/constants/vault'
-import { cardEnding, matchesSearch } from '@montara-pass/shared/crypto/vault'
+import { ItemTypeOptions } from '@montara-pass/shared/constants/vault'
+import { matchesSearch } from '@montara-pass/shared/crypto/vault'
 import { formatDate } from '@montara-pass/shared/date'
 import {
   IconBook,
@@ -30,7 +30,7 @@ import { cn } from '@/lib/utils'
 
 import { AddItemForm } from './form'
 import ItemDetail from './item-detail'
-import ItemTile from './item-tile'
+import ItemTile, { itemSubtitle } from './item-tile'
 
 /** Select value standing for "no filter": a select item cannot be empty. */
 const ALL = 'all'
@@ -337,15 +337,6 @@ interface ItemRowProps {
   folders: VaultFolder[]
   selected: boolean
   onSelect: () => void
-}
-
-/** A row's second line: the username, email or card ending, else the item's type. */
-function itemSubtitle(item: VaultItem) {
-  if (item.type === 'login') return item.secret?.username || 'No username'
-  if (!item.secret) return ''
-  if (item.type === 'contact' && item.secret.contact?.email) return item.secret.contact.email
-  if (item.type === 'card') return cardEnding(item.secret.card?.number) ?? ITEM_TYPE_LABEL.card
-  return ITEM_TYPE_LABEL[item.type]
 }
 
 /** Here the whole row is the control. */

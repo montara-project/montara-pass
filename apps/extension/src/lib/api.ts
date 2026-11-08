@@ -390,6 +390,16 @@ export async function updateItem(id: string, body: ItemUpdateRequest): Promise<M
   return res.data
 }
 
+/** The devices signed in to the account, the most recently active first. */
+export async function listSessions(): Promise<Models.Device[]> {
+  return (await request<Envelope<Models.Device[]>>('/api/v1/sessions')).data
+}
+
+/** Signs one of the other devices out. The current one signs out the usual way. */
+export async function revokeSession(id: string): Promise<void> {
+  await request(`/api/v1/sessions/${id}`, { method: 'DELETE' })
+}
+
 /** Moves an item the caller owns to the trash; the web app restores it. */
 export async function trashItem(id: string): Promise<void> {
   await request(`/api/v1/items/${id}`, { method: 'DELETE' })
