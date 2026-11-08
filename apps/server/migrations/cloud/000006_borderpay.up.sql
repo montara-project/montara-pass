@@ -11,10 +11,13 @@ ALTER TABLE plans
 
 -- The IDR prices, mirroring the USD ones: 25rb a month, 250rb a year (two
 -- months free, which the pages read off the monthly plan), 5jt once. The
--- names match the store's so the pages read the tiers alike.
+-- names match the store's so the pages read the tiers alike. A rollback keeps
+-- the plans that have orders, off sale and without a provider column, so a
+-- re-run hands them back to BorderPay and puts them on sale again; their
+-- prices and orders are left as they are.
 INSERT INTO plans (code, name, description, billing, billing_interval, amount, currency, active, provider)
 VALUES
   ('pro-monthly-idr',  'Montara Pass Pro Monthly',   'Paid through BorderPay (QRIS).', 'recurring', 'month', 25000,   'IDR', true, 'borderpay'),
   ('pro-yearly-idr',   'Montara Pass Pro Yearly',    'Paid through BorderPay (QRIS).', 'recurring', 'year',  250000,  'IDR', true, 'borderpay'),
   ('pro-lifetime-idr', 'Montara Pass Pro Lifetime',  'Paid through BorderPay (QRIS).', 'one_time',  NULL,    5000000, 'IDR', true, 'borderpay')
-ON CONFLICT (code) DO NOTHING;
+ON CONFLICT (code) DO UPDATE SET provider = EXCLUDED.provider, active = EXCLUDED.active;
