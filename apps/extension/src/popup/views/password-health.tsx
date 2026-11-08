@@ -93,7 +93,8 @@ export default function PasswordHealth({
     <div className="stack detail-body tool-body gen-page">
       <header className="tool-page-head">
         <div className="list-title">
-          <h1 className="eyebrow">Tools · Password health</h1>
+          <p className="eyebrow">Tools</p>
+          <h1>Password health</h1>
           <p className="muted">Checked in this browser. No password leaves it.</p>
         </div>
         {items !== null && (

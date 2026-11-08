@@ -132,11 +132,11 @@ export default function PasswordGenerator({ onNotice }: PasswordGeneratorProps) 
 
             <div className="gen-foot">
               <button className="secondary" onClick={regenerate}>
-                <RefreshIcon width={15} height={15} />
+                <RefreshIcon width={16} height={16} />
                 Regenerate
               </button>
               <button onClick={() => void copy()}>
-                <CopyIcon width={15} height={15} />
+                <CopyIcon width={16} height={16} />
                 Copy
               </button>
               <span className="spacer" />

@@ -1463,6 +1463,15 @@ button.small svg {
   padding: 14px 16px;
 }
 
+/* Where the list ends while the server has more: in view, the next page is asked for. */
+.list-more {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
 /* The rows' scroller keeps its scrollbar 4px off the line beside it, where a
    thumb of the same colour would read as a second line. The gutter is kept
    when nothing scrolls, so the rows end in the same place either way. */
@@ -1635,7 +1644,7 @@ button.small svg {
 
 /* The generator, as the web app has it: a page head with a line under it,
    then the password and its length beside what it is made of. */
-.gen-page {
+.detail-body.gen-page {
   gap: 0;
   padding: 0;
   container-type: inline-size;
@@ -1654,6 +1663,14 @@ button.small svg {
   font-size: 22px;
 }
 
+/* Too narrow for the stats beside the title: they go under it. */
+@container (max-width: 620px) {
+  .tool-page-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
 .gen-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 420px;
@@ -1667,6 +1684,25 @@ button.small svg {
   flex-direction: column;
   gap: 18px;
   min-width: 0;
+}
+
+/* A tool's cards keep its grid's own gap, not the tighter one of a form. */
+.gen-page .field-group + .field-group {
+  margin-top: 0;
+}
+
+/* Card heads as the web app has them: the count is flush with the card's
+   padding, and the character set's head stands taller. */
+.gen-grid .field-group-head {
+  padding: 9px 16px;
+}
+
+.gen-grid .field-group-head > span {
+  padding-right: 0;
+}
+
+.gen-grid > .field-group > .field-group-head {
+  padding-block: 12px;
 }
 
 .gen-output {
@@ -1683,8 +1719,9 @@ button.small svg {
   user-select: all;
 }
 
-/* The strength in its own color, for the word and the bars it fills. */
-.gen-strength {
+/* The strength in its own color, for the word and the bars it fills.
+   (With .strength-label, whose weight is the meter's elsewhere.) */
+.gen-strength.strength-label {
   display: flex;
   flex-direction: column;
   gap: 9px;
@@ -1728,12 +1765,10 @@ button.small svg {
 }
 
 .gen-foot button {
-  height: 34px;
-  padding: 0 13px;
-  gap: 7px;
-  border-radius: 8px;
+  height: 36px;
+  padding: 0 14px;
+  gap: 6px;
   font-size: 13px;
-  font-weight: 500;
 }
 
 .gen-foot button.secondary {
@@ -1805,13 +1840,13 @@ button.small svg {
   letter-spacing: 0.04em;
 }
 
-.gen-kinds .gen-ambiguous {
+.gen-kinds .toggle.gen-ambiguous {
   color: var(--muted);
   font-weight: 400;
 }
 
 /* Each character is a box of its own, so it can be moved. */
-.generated output span span {
+.gen-output span span {
   display: inline-block;
 }
 
@@ -2943,7 +2978,7 @@ textarea,
 
 /* In a tab, the form's heading stands a little apart from its fields, and
    the way out of a long form stays in reach at the bottom of the pane. */
-.detail-col .detail-body > header:not(.detail-head) {
+.detail-col .detail-body > header:not(.detail-head, .tool-page-head) {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -3416,6 +3451,14 @@ textarea,
   border-top: 1px solid var(--border);
 }
 
+.health-group > .field-group-head {
+  padding: 9px 12px;
+}
+
+.health-group > .field-group-head > span {
+  padding-right: 0;
+}
+
 .health-group-name {
   flex: 1;
   color: color-mix(in srgb, var(--fg) 80%, transparent);
@@ -3578,8 +3621,7 @@ textarea,
   text-transform: uppercase;
 }
 
-.sec-rows,
-.sec-log-list {
+.sec-rows {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -3592,8 +3634,7 @@ textarea,
   padding: 12px 16px;
 }
 
-.sec-rows li + li,
-.sec-log-list li + li {
+.sec-rows li + li {
   border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
 }
 
@@ -3609,41 +3650,46 @@ textarea,
   height: 16px;
 }
 
-.sec-rows .item-name,
-.sec-log .item-name {
+.sec-rows .item-name {
   font-size: 13px;
 }
 
-.sec-log {
-  container-type: inline-size;
-}
-
-.sec-log-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.8fr) minmax(0, 1.6fr) minmax(0, 0.9fr);
+/* Prev, the page, Next: as quiet as the count beside them. */
+.sec-pager {
+  display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 10px 16px;
-  font-size: 13px;
+  gap: 8px;
 }
 
-.sec-log-head {
-  padding-block: 10px;
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+.sec-pager button {
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 6px;
+  background: none;
+  color: var(--fg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-.sec-log-row .mono {
-  font-size: 12px;
+.sec-pager button:hover:not(:disabled) {
+  background: var(--hover);
 }
 
-.sec-when {
-  white-space: nowrap;
+.sec-page {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
-}
-
-/* Wide, what happened has a column of its own. */
-.sec-narrow {
-  display: none;
 }
 
 .sec-log-foot {
@@ -3653,20 +3699,6 @@ textarea,
   gap: 8px;
   padding: 8px 16px;
   border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
-}
-
-@container (max-width: 640px) {
-  .sec-log-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .sec-log-row .col {
-    display: none;
-  }
-
-  .sec-narrow {
-    display: block;
-  }
 }
 
 /* Manage sharing: who can open each shared item, as initials, and your role in it. */

@@ -19,12 +19,14 @@ export default function ServerTime({ className }: { className?: string }) {
   }, [])
 
   return (
-    <div className={cn('hidden items-center gap-3 sm:flex', className)}>
-      <span className="bg-good/15 text-good inline-flex h-6 items-center gap-2 rounded-md px-2.5 font-mono text-[10.5px] font-medium tracking-[0.08em]">
+    // The two marks stand as tall as each other. The border names its color:
+    // the extension has no preflight, so a bare `border` would be currentColor.
+    <div className={cn('hidden items-center gap-2 sm:flex', className)}>
+      <span className="bg-good/15 text-good inline-flex h-7 items-center gap-2 rounded-md px-2.5 font-mono text-[10.5px] font-medium tracking-[0.08em]">
         <span aria-hidden className="size-1.5 rounded-full bg-current" />
         LIVE
       </span>
-      <span className="bg-background inline-flex h-8 items-center gap-2.5 rounded-md border px-3">
+      <span className="bg-background border-border inline-flex h-7 items-center gap-2 rounded-md border border-solid px-2.5">
         <IconClock aria-hidden className="text-muted-foreground size-3.5" />
         <time
           dateTime={now.toISOString()}

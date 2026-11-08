@@ -1,10 +1,12 @@
 import type { Models } from '@montara-pass/shared/api/models'
 import type { VaultItem } from '@montara-pass/shared/types/vault'
 
-import { describeActivity, deviceName, ipKind } from '@montara-pass/shared/activity'
+import { deviceName } from '@montara-pass/shared/activity'
 import { formatDate, formatDateTime } from '@montara-pass/shared/date'
 import { errorMessage } from '@montara-pass/shared/string'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+
+import AuditTable from '@/components/block/security/audit-table'
 
 import {
   getProfile,
@@ -24,6 +26,44 @@ interface SecurityProps {
   /** The session ended underneath the page. */
   onSignedOut: () => void
   onNotice: (notice: string) => void
+}
+
+/** Devices to a page. The server sends them all; a page is a slice of them. */
+const PAGE_SIZE = 5
+
+/**
+ * A card's last line: which rows are shown out of how many, and the way to
+ * the page before and after. `page` counts from 0.
+ */
+function Pager({
+  page,
+  shown,
+  total,
+  onTurn,
+}: {
+  page: number
+  shown: number
+  total: number
+  onTurn: (page: number) => void
+}) {
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const from = page * PAGE_SIZE
+  return (
+    <footer className="sec-log-foot">
+      <span className="eyebrow">
+        {total === 0 ? '0 of 0' : `${from + 1}–${Math.min(from + shown, total)} of ${total}`}
+      </span>
+      <span className="sec-pager">
+        <button disabled={page <= 0} onClick={() => onTurn(page - 1)}>
+          Prev
+        </button>
+        <span className="sec-page">{page + 1}</span>
+        <button disabled={page >= pages - 1} onClick={() => onTurn(page + 1)}>
+          Next
+        </button>
+      </span>
+    </footer>
+  )
 }
 
 /** A part of the page: what it is, its one action, and its card. */
@@ -67,6 +107,7 @@ export default function Security({ items, appUrl, onSignedOut, onNotice }: Secur
   const [total, setTotal] = useState(0)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [page, setPage] = useState(0)
 
   const failed = useCallback(
     (err: unknown, what: string) => {
@@ -123,6 +164,11 @@ export default function Security({ items, appUrl, onSignedOut, onNotice }: Secur
     }
   }
 
+  // A sign-out can empty the last page: then the one before it shows.
+  const deviceCount = sessions?.length ?? 0
+  const devicePage = Math.min(page, Math.max(0, Math.ceil(deviceCount / PAGE_SIZE) - 1))
+  const shownSessions = (sessions ?? []).slice(devicePage * PAGE_SIZE, (devicePage + 1) * PAGE_SIZE)
+
   const totp = profile?.totp_enabled
   const webApp = (label: string) =>
     appUrl && (
@@ -141,7 +187,7 @@ export default function Security({ items, appUrl, onSignedOut, onNotice }: Secur
     <div className="stack detail-body tool-body gen-page">
       <header className="tool-page-head">
         <div className="list-title">
-          <p className="eyebrow">Security · Account</p>
+          <p className="eyebrow">Account</p>
           <h1>Security</h1>
           <p className="muted">
             How this account signs in, where it is signed in, and what happened.
@@ -218,36 +264,44 @@ export default function Security({ items, appUrl, onSignedOut, onNotice }: Secur
           {sessions === null ? (
             <p className="sec-status muted">Loading…</p>
           ) : (
-            <ul className="sec-rows">
-              {sessions.map((device) => (
-                <li key={device.id}>
-                  <span className="tile">
-                    <GlobeIcon />
-                  </span>
-                  <span className="item-text">
-                    <span className="item-name">
-                      {deviceName(device.user_agent) || 'Unknown device'}
+            <>
+              <ul className="sec-rows">
+                {shownSessions.map((device) => (
+                  <li key={device.id}>
+                    <span className="tile">
+                      <GlobeIcon />
                     </span>
-                    <span className="eyebrow">
-                      {[
-                        device.ip,
-                        device.current ? 'Active now' : formatDateTime(device.updated_at),
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
+                    <span className="item-text">
+                      <span className="item-name">
+                        {deviceName(device.user_agent) || 'Unknown device'}
+                      </span>
+                      <span className="eyebrow">
+                        {[
+                          device.ip,
+                          device.current ? 'Active now' : formatDateTime(device.updated_at),
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </span>
                     </span>
-                  </span>
-                  {/* This device signs out the usual way, from the account menu. */}
-                  {device.current ? (
-                    <span className="sec-this">This device</span>
-                  ) : (
-                    <button className="secondary small" onClick={() => void revoke(device)}>
-                      Revoke
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
+                    {/* This device signs out the usual way, from the account menu. */}
+                    {device.current ? (
+                      <span className="sec-this">This device</span>
+                    ) : (
+                      <button className="secondary small" onClick={() => void revoke(device)}>
+                        Revoke
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              <Pager
+                page={devicePage}
+                shown={shownSessions.length}
+                total={deviceCount}
+                onTurn={setPage}
+              />
+            </>
           )}
         </Section>
 
@@ -255,69 +309,30 @@ export default function Security({ items, appUrl, onSignedOut, onNotice }: Secur
           title="Audit log"
           description="Sign-ins and changes to the items you have access to, kept 90 days."
         >
-          <div className="sec-log">
-            <div className="sec-log-row sec-log-head eyebrow" aria-hidden="true">
-              <span>Device</span>
-              <span className="col">IP address</span>
-              <span className="col">Activity</span>
-              <span>When</span>
-            </div>
-            {rows === null ? (
-              <p className="sec-status muted">Loading…</p>
-            ) : rows.length === 0 ? (
-              <p className="sec-status muted">
-                No activity yet. Signing in and changing items shows up here.
-              </p>
-            ) : (
-              <ul className="sec-log-list">
-                {rows.map((row) => {
-                  const what = describeActivity(
-                    row,
-                    profile?.user.id ?? '',
-                    row.item_id ? names.get(row.item_id) : undefined
-                  )
-                  return (
-                    <li key={row.id} className="sec-log-row">
-                      <span className="item-text">
-                        <span className="item-name">
-                          {row.action === 'sign_in'
-                            ? deviceName(row.user_agent) || 'Unknown device'
-                            : '—'}
-                        </span>
-                        <span className="muted sec-narrow">{what}</span>
-                      </span>
-                      <span className="col item-text">
-                        {row.ip ? (
-                          <>
-                            <span className="mono">{row.ip}</span>
-                            <span className="eyebrow">{ipKind(row.ip)}</span>
-                          </>
-                        ) : (
-                          <span className="muted">—</span>
-                        )}
-                      </span>
-                      <span className="col">{what}</span>
-                      <span className="mono sec-when">{formatDateTime(row.created_at)}</span>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-            <footer className="sec-log-foot">
-              <span className="eyebrow">
-                {rows?.length ?? 0} of {total}
-              </span>
-              {rows && fetched < total && (
-                <button
-                  className="secondary small"
-                  disabled={busy}
-                  onClick={() => void load(fetched)}
-                >
-                  {busy ? 'Loading…' : 'Show more'}
-                </button>
-              )}
-            </footer>
-          </div>
+          <AuditTable
+            rows={rows ?? []}
+            total={total}
+            pageSize={Math.max(rows?.length ?? 0, 3)}
+            isLoading={rows === null}
+            meId={profile?.user.id ?? ''}
+            names={names}
+            footer={
+              <footer className="sec-log-foot">
+                <span className="eyebrow">
+                  {rows?.length ?? 0} of {total}
+                </span>
+                {rows && fetched < total && (
+                  <button
+                    className="secondary small"
+                    disabled={busy}
+                    onClick={() => void load(fetched)}
+                  >
+                    {busy ? 'Loading…' : 'Show more'}
+                  </button>
+                )}
+              </footer>
+            }
+          />
         </Section>
       </div>
     </div>

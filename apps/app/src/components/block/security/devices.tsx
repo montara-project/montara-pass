@@ -14,7 +14,10 @@ import { toastApiError } from '@/lib/api/api-error'
 import { queries } from '@/lib/api/queries'
 import { cn } from '@/lib/utils'
 
-import { MONO_NOTE, SecuritySection } from './section'
+import { MONO_NOTE, Pager, SecuritySection } from './section'
+
+/** Devices to a page. The server sends them all; a page is a slice of them. */
+const PAGE_SIZE = 5
 
 /**
  * The devices signed in to the account, the most recently active first, and
@@ -27,6 +30,7 @@ export default function Devices() {
   const revokeOthers = useMutation(queries.sessions.revokeOthers())
   // The device to sign out, or every other one, while it is being confirmed.
   const [asking, setAsking] = useState<Models.Device | 'others' | null>(null)
+  const [page, setPage] = useState(0)
 
   useEffect(() => {
     if (isError) toastApiError(error)
@@ -34,6 +38,9 @@ export default function Devices() {
 
   const devices = data ?? []
   const others = devices.filter((d) => !d.current).length
+  // A sign-out can empty the last page: then the one before it shows.
+  const current = Math.min(page, Math.max(0, Math.ceil(devices.length / PAGE_SIZE) - 1))
+  const shown = devices.slice(current * PAGE_SIZE, (current + 1) * PAGE_SIZE)
   const busy = revoke.isPending || revokeOthers.isPending
 
   const confirm = async () => {
@@ -64,7 +71,7 @@ export default function Devices() {
             <Skeleton className="h-4 w-48" />
           </li>
         ) : (
-          devices.map((device) => (
+          shown.map((device) => (
             <li key={device.id} className="flex items-center gap-3 px-4 py-3">
               <span className="bg-background inline-flex size-8 shrink-0 items-center justify-center rounded-md border">
                 <IconWorld className="size-4" aria-hidden />
@@ -102,6 +109,15 @@ export default function Devices() {
             Sign out of every other device
           </Button>
         </div>
+      )}
+      {!isLoading && (
+        <Pager
+          page={current}
+          pageSize={PAGE_SIZE}
+          shown={shown.length}
+          total={devices.length}
+          onTurn={setPage}
+        />
       )}
 
       <SimpleAlertDialog

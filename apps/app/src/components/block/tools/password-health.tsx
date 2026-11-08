@@ -141,7 +141,8 @@ export default function PasswordHealth() {
     <div className="mx-auto flex max-w-[1200px] flex-col">
       <header className="border-border/60 flex flex-wrap items-center gap-x-4 gap-y-3 border-b px-5 pt-[22px] pb-[18px] sm:px-8">
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <h1 className={MONO_NOTE}>Tools · Password health</h1>
+          <p className={MONO_NOTE}>Tools</p>
+          <h1 className="text-[22px] font-semibold tracking-[-0.01em]">Password health</h1>
           <p className="text-muted-foreground text-[13px]">
             Checked in this browser. No password leaves it.
           </p>
