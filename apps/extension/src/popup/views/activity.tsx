@@ -153,8 +153,11 @@ export default function Security({ items, appUrl, onSignedOut, onNotice }: Secur
 
   const revoke = async (device: Models.Device) => {
     const name = deviceName(device.user_agent) || 'this device'
-    // Signed out at once; it takes the password to sign in again.
-    if (!confirm(`Sign out of ${name}? It needs your password to sign in again.`)) return
+    // Signed out at once; the password or a passkey signs it in again.
+    const question =
+      `Sign out of ${name}? It can sign in again with your password or one of your passkeys: ` +
+      `if someone else may have either, change your password and remove the passkeys you don't recognize.`
+    if (!confirm(question)) return
     try {
       await revokeSession(device.id)
       setSessions((prev) => prev?.filter((d) => d.id !== device.id) ?? null)

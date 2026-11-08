@@ -14,7 +14,7 @@ import { getQueryClient } from '@/lib/providers/react-query'
 import { throwApiError } from '../api/api-error'
 import { queries } from '../api/queries'
 import { services } from '../api/services'
-import { useVaultStore } from '../stores/vault'
+import { startUnlock } from '../stores/vault'
 import { storeSignIn } from './email-auth'
 
 /**
@@ -39,10 +39,11 @@ export async function signInWithPasskey(): Promise<{ unlocked: boolean }> {
 
   const sealed = res.passkey.encrypted_vault_key
   if (!prf || !sealed) return { unlocked: false }
+  const finish = startUnlock()
   try {
     const keys = await getQueryClient().fetchQuery(queries.keys.get())
     if (!keys) return { unlocked: false }
-    useVaultStore.getState().unlock(await unlockVaultWithPasskey(prf, sealed, keys))
+    finish(await unlockVaultWithPasskey(prf, sealed, keys))
     return { unlocked: true }
   } catch {
     // Signed in all the same: the master password still opens the vault.

@@ -133,16 +133,22 @@ export async function createPasskey(options: PasskeyOptions): Promise<PasskeyRes
 
   let prf = prfOutput(credential)
   if (!prf && credential.getClientExtensionResults().prf?.enabled) {
-    const again = (await navigator.credentials.get({
-      publicKey: {
-        challenge: randomBytes(32),
-        rpId: (pk.rp as Json).id as string,
-        allowCredentials: [{ type: 'public-key', id: credential.rawId }],
-        userVerification: 'required',
-        extensions: PRF_EXTENSION,
-      },
-    })) as PublicKeyCredential | null
-    prf = again ? prfOutput(again) : undefined
+    // The passkey exists on the authenticator now: a second touch that is
+    // dismissed or fails still registers it, only without unlocking.
+    try {
+      const again = (await navigator.credentials.get({
+        publicKey: {
+          challenge: randomBytes(32),
+          rpId: (pk.rp as Json).id as string,
+          allowCredentials: [{ type: 'public-key', id: credential.rawId }],
+          userVerification: 'required',
+          extensions: PRF_EXTENSION,
+        },
+      })) as PublicKeyCredential | null
+      prf = again ? prfOutput(again) : undefined
+    } catch {
+      prf = undefined
+    }
   }
   return { credential: toJSON(credential), credentialId: credential.id, prf }
 }

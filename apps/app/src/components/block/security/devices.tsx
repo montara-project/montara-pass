@@ -127,7 +127,7 @@ export default function Devices() {
             ? 'Sign out of every other device?'
             : `Sign out of ${asking ? name(asking) : 'this device'}?`
         }
-        description="It is signed out at once and needs your password to sign in again. If you think someone else knows your password, change it too."
+        description="It is signed out at once. It can sign in again with your password or one of your passkeys: if someone else may have either, change your password and remove the passkeys you don't recognize."
         open={asking !== null}
         onOpenChange={(open) => !open && setAsking(null)}
         onConfirm={() => void confirm()}
