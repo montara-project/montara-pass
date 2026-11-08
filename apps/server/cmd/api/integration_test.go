@@ -332,6 +332,7 @@ func TestIntegration(t *testing.T) {
 	passkeyFlow(t, call, userToken, userPass, user.ID)
 	vaultFlow(t, call, superToken, superPass, userToken, userEmail, user.ID)
 	billingFlow(t, call, db, store, superToken, userToken, user.ID)
+	ipBlockAccess(t, call, superToken, userToken)
 
 	// A new account is saved as a Lemon Squeezy customer in the background;
 	// the seeded super user is not.
@@ -1615,4 +1616,26 @@ func shareGate(
 	clearPlans()
 	want(http.StatusCreated, http.MethodPost, itemPath+"/members", userToken, share)
 	want(http.StatusOK, http.MethodDelete, memberPath, userToken, nil)
+}
+
+// ipBlockAccess: the IP blocks are the super user's alone. Anyone else is
+// refused reading them, blocking an address and lifting a block.
+func ipBlockAccess(
+	t *testing.T,
+	call func(method, path, token string, body any, headers ...string) (int, map[string]any),
+	superToken, userToken string,
+) {
+	t.Helper()
+	for _, r := range []struct{ method, path string }{
+		{http.MethodGet, "/api/v1/ip-blocks"},
+		{http.MethodPost, "/api/v1/ip-blocks"},
+		{http.MethodDelete, "/api/v1/ip-blocks/00000000-0000-0000-0000-000000000000"},
+	} {
+		if status, out := call(r.method, r.path, userToken, map[string]any{"ip": "203.0.113.7", "duration": "1h"}); status != http.StatusForbidden {
+			t.Fatalf("user %s %s: %d %v, want 403", r.method, r.path, status, out)
+		}
+	}
+	if status, out := call(http.MethodGet, "/api/v1/ip-blocks", superToken, nil); status != http.StatusOK {
+		t.Fatalf("super user lists IP blocks: %d %v", status, out)
+	}
 }

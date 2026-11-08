@@ -7,11 +7,12 @@ import { queries } from '@/lib/api/queries'
 import { HOME_PATH } from '@/lib/constants/auth'
 
 export const Route = createFileRoute('/(app)/settings/ip-blocks/')({
-  // The server refuses a non-super user anyway; this keeps them off a page
-  // they cannot use before it renders.
+  // The server refuses a non-super user anyway; this sends anyone else to the
+  // vault before the page renders. A role that cannot be read counts as not
+  // a super user.
   beforeLoad: async ({ context }) => {
-    const me = await context.queryClient.fetchQuery(queries.security.role())
-    if (me.role !== 'super_user') {
+    const me = await context.queryClient.fetchQuery(queries.security.role()).catch(() => null)
+    if (me?.role !== 'super_user') {
       throw redirect({ to: HOME_PATH, replace: true })
     }
   },
