@@ -53,6 +53,8 @@ type ItemListParams struct {
 	Type     string
 	// Trashed lists the user's own trash instead of the live items.
 	Trashed bool
+	// Favorite keeps only the items the user starred.
+	Favorite bool
 }
 
 func itemFilters(p ItemListParams) *whereBuilder {
@@ -67,6 +69,9 @@ func itemFilters(p ItemListParams) *whereBuilder {
 	}
 	if p.Type != "" {
 		w.add("i.type = $%d", p.Type)
+	}
+	if p.Favorite {
+		w.add("m.favorite = $%d", true)
 	}
 	return w
 }

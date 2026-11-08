@@ -64,7 +64,7 @@ func (h *itemHandler) List(c fiber.Ctx) error {
 	}
 	q.Clamp()
 
-	params := repositories.ItemListParams{UserID: uid, Offset: q.Offset, Limit: q.Limit, Type: q.Type, Trashed: q.Trashed}
+	params := repositories.ItemListParams{UserID: uid, Offset: q.Offset, Limit: q.Limit, Type: q.Type, Trashed: q.Trashed, Favorite: q.Favorite}
 	if q.FolderID != "" {
 		// Validated as a UUID above.
 		folderID := uuid.MustParse(q.FolderID)

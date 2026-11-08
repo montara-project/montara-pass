@@ -169,4 +169,6 @@ export type ItemListParams = {
   folder_id?: string
   type?: string
   trashed?: boolean
+  /** Only the items the user starred. */
+  favorite?: boolean
 }
