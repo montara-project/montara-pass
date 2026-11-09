@@ -11,6 +11,49 @@ headings and no HTML, so a `##` line would show literally. It holds 3000
 characters. AMO shows what is pasted there on the add-on's Version history
 page, and Firefox shows it in the Release Notes tab of `about:addons`.
 
+## 2.11.0 (2026-11-08)
+
+**New**
+
+- **Passkeys for your account.** Sign in to the popup with a passkey, and
+  unlock the vault with one set up to unlock it. Passkeys are added in the web
+  app, under **Security**. On Montara Pass itself the add-on no longer offers
+  to keep a passkey, so the account's passkey stays on your device.
+- **Save cards and contacts.** After you submit a payment or address form,
+  the add-on offers to save it, as it does a login. A card keeps its number,
+  holder and expiry, never its security code, and the prompt shows only the
+  last four digits.
+- **Security**, in the full tab: whether two-step verification is on, your
+  passkeys, the devices signed in to your account, each of which you can sign
+  out, and a log of sign-ins and changes to your items.
+- **Manage sharing**, in the full tab: every shared item, who can open it,
+  and whether they can only read it or also change it.
+- **Pay in rupiah.** In Indonesia, **Billing** offers the IDR plans, paid by
+  QRIS through BorderPay; elsewhere, the USD plans through Lemon Squeezy.
+- **Favorites** has its own view in the sidebar.
+
+**Improved**
+
+- A new look for the full tab: a sidebar with your vault's views and how many
+  items each holds, then **Password generator**, **Password health** and
+  **Security**; a header with the time in UTC; and the vault as a table.
+- The vault list in the full tab loads 25 items at a time as you scroll.
+  Search still looks through every item.
+- Self-hosting: a server on this computer (`localhost`, `127.0.0.1`) may be
+  reached over plain http, to try one out. Every other server still needs
+  https.
+
+**Fixed**
+
+- The buttons of the passkey prompt no longer run past the edge of its frame.
+- Signing a device out says what can sign it back in: your password or one
+  of your passkeys.
+
+**Also**
+
+- The permissions the add-on asks for are unchanged, so updating does not ask
+  again.
+
 ## 2.9.0 (2026-10-26)
 
 **Improved**
