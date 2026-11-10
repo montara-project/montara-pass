@@ -22,19 +22,10 @@ import { requestPasswordReset } from '@/lib/auth/email-auth'
 import { cn } from '@/lib/utils'
 
 import ChangeMasterPasswordForm from './change-master-password-form'
+import TimeZoneSelect from './time-zone-select'
 
 /** "Jan 2026": when the account was made, to the month. */
 const SINCE = new Intl.DateTimeFormat(undefined, { month: 'short', year: 'numeric' })
-
-/** This browser's time zone and its offset now, as "Asia/Jakarta · UTC+7". */
-function browserTimeZone() {
-  const zone = Intl.DateTimeFormat().resolvedOptions().timeZone
-  const offset = new Intl.DateTimeFormat('en-US', { timeZone: zone, timeZoneName: 'shortOffset' })
-    .formatToParts(new Date())
-    .find((part) => part.type === 'timeZoneName')
-    ?.value.replace('GMT', 'UTC')
-  return offset ? `${zone} · ${offset === 'UTC' ? 'UTC+0' : offset}` : zone
-}
 
 /**
  * Settings' Profile tab: who is signed in, the account password that signs
@@ -50,7 +41,7 @@ export default function ProfileBlock() {
   const details: { label: string; icon: typeof IconUser; value: React.ReactNode }[] = [
     { label: 'Full name', icon: IconUser, value: user?.name || '—' },
     { label: 'Email address', icon: IconMail, value: user?.email ?? '—' },
-    { label: 'Timezone', icon: IconWorld, value: browserTimeZone() },
+    { label: 'Timezone', icon: IconWorld, value: <TimeZoneSelect /> },
     {
       label: 'Email status',
       icon: IconCircleCheck,
@@ -134,10 +125,18 @@ export default function ProfileBlock() {
                   {label}
                 </dt>
                 <dd
-                  className="m-0 min-w-0 truncate text-right text-[13px] font-medium"
+                  // Text is cut short with the full value on hover; a control keeps its own box.
+                  className={cn(
+                    'm-0 min-w-0 text-right text-[13px] font-medium',
+                    typeof value === 'string' && 'truncate'
+                  )}
                   title={typeof value === 'string' ? value : undefined}
                 >
-                  {isLoading ? <Skeleton className="h-4 w-32" /> : value}
+                  {isLoading && typeof value === 'string' ? (
+                    <Skeleton className="h-4 w-32" />
+                  ) : (
+                    value
+                  )}
                 </dd>
               </div>
             ))}
@@ -145,7 +144,7 @@ export default function ProfileBlock() {
 
           <p className="text-subtle-foreground border-border/60 flex items-center gap-1.5 border-t px-[18px] py-3 text-xs">
             <IconInfoCircle className="size-3 shrink-0" aria-hidden />
-            Timezone follows this browser. Times in the activity log use it.
+            The timezone is kept in this browser; the clock in the header shows it.
           </p>
         </div>
       </SettingsSection>

@@ -25,7 +25,7 @@
 @source '../../../app/src/components/layout/sidebar/nav-item.tsx';
 @source '../../../app/src/components/layout/sidebar/nav-secondary.tsx';
 @source '../../../app/src/components/layout/sidebar/topbar.tsx';
-@source '../../../app/src/components/layout/sidebar/utc-clock.tsx';
+@source '../../../app/src/components/layout/sidebar/header-clock.tsx';
 @source '../../../app/src/components/layout/sidebar/user-menu.tsx';
 @source '../../../app/src/components/ui/sidebar.tsx';
 @source '../../../app/src/components/ui/sheet.tsx';

@@ -2,7 +2,6 @@ import { COMMUNITY } from '@montara-pass/shared/constants/edition'
 import {
   IconCreditCard,
   IconFileText,
-  IconFolders,
   IconKey,
   IconLayoutGrid,
   IconLock,
@@ -24,10 +23,10 @@ import type { NavLinkRenderer } from '@/components/layout/sidebar/nav-item'
 import type { UserMenuAction } from '@/components/layout/sidebar/user-menu'
 
 import AppSidebar from '@/components/layout/sidebar/app-sidebar'
+import HeaderClock from '@/components/layout/sidebar/header-clock'
 import { LINKS_OUT } from '@/components/layout/sidebar/nav-secondary'
 import Topbar from '@/components/layout/sidebar/topbar'
 import UserMenu from '@/components/layout/sidebar/user-menu'
-import UtcClock from '@/components/layout/sidebar/utc-clock'
 import { SIDEBAR_COOKIE_NAME, SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { env } from '@/config/env'
 import { useSignOut } from '@/hooks/use-sign-out'
@@ -76,9 +75,6 @@ const MENU = [
   ...(COMMUNITY ? [] : [{ title: 'Billing', url: '/billing', icon: IconCreditCard }]),
 ] as const
 
-/** Reached from the vault's footer, so in neither the sidebar nor the menu. */
-const FOLDERS = { title: 'Manage folders', url: '/folders', icon: IconFolders } as const
-
 /** Under Settings in System. Sharing is the Cloud Edition's only. */
 const SYSTEM = COMMUNITY ? [] : [{ title: 'Sharing', url: '/sharing', icon: IconUsers }]
 
@@ -92,7 +88,6 @@ const CRUMBS = [
   { title: 'Profile', url: '/profile', group: 'Settings' },
   { title: 'Security', url: '/security', group: 'Settings' },
   ...MENU.map((item) => ({ ...item, group: 'Account' })),
-  { ...FOLDERS, group: 'Vault' },
 ]
 
 /** The router's Link, so a click moves within the page and the vault's filter rides along. */
@@ -143,7 +138,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           Skip to content
         </a>
         <Topbar group={crumb?.group} title={crumb?.title ?? 'Vault'}>
-          <UtcClock />
+          <HeaderClock />
           <BarAccount />
         </Topbar>
         {/* main.tsx: scrollToTopSelectors resets it on navigation. */}

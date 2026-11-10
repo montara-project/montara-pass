@@ -247,9 +247,10 @@ export default function Sharing() {
                 {owned.map((item) => (
                   <CommandItem
                     key={item.id}
-                    // Matched on the name and the line under it, chosen by id.
+                    // Matched on the name and the full username (not the masked line
+                    // under the name), chosen by id.
                     value={item.id}
-                    keywords={[item.secret!.name, itemSubtitle(item)]}
+                    keywords={[item.secret!.name, item.secret!.username ?? itemSubtitle(item)]}
                     onSelect={() => {
                       setPicked(item.id)
                       setChoosing(false)

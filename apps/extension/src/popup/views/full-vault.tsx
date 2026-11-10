@@ -267,8 +267,9 @@ export default function FullVault({
     null
   // On a narrow window the pane covers the list, so it needs to know when it is in use.
   const paneOpen = pane.mode !== 'view' || selected !== null
-  // Folders are kept in the web app; there is no editor for them here.
-  const foldersUrl = appUrl && `${appUrl.replace(/\/$/, '')}/folders`
+  // Folders are kept in the web app, on its Settings page (General tab); there
+  // is no editor for them here.
+  const foldersUrl = appUrl && `${appUrl.replace(/\/$/, '')}/settings`
 
   // The tool in place of the list and the item.
   const renderTool = () => {

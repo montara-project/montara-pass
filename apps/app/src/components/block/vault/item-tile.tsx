@@ -2,6 +2,7 @@ import type { VaultItem } from '@montara-pass/shared/types/vault'
 
 import { ITEM_TYPE_LABEL } from '@montara-pass/shared/constants/vault'
 import { cardEnding, itemIcon } from '@montara-pass/shared/crypto/vault'
+import { maskUsername } from '@montara-pass/shared/username'
 import { IconCreditCard, IconKey, IconNote, IconUser } from '@tabler/icons-react'
 
 import { cn } from '@/lib/utils'
@@ -36,9 +37,15 @@ export default function ItemTile({ item, large }: { item: VaultItem; large?: boo
   )
 }
 
-/** A row's second line: the username, email or card ending, else the item's type. */
+/**
+ * A row's second line: the username (masked, so a glance over the shoulder
+ * does not take it, as the extension's lists do), an email or a card ending,
+ * else the item's type. The item's detail shows the username in full.
+ */
 export function itemSubtitle(item: VaultItem) {
-  if (item.type === 'login') return item.secret?.username || 'No username'
+  if (item.type === 'login') {
+    return item.secret?.username ? maskUsername(item.secret.username) : 'No username'
+  }
   if (!item.secret) return ''
   if (item.type === 'contact' && item.secret.contact?.email) return item.secret.contact.email
   if (item.type === 'card') return cardEnding(item.secret.card?.number) ?? ITEM_TYPE_LABEL.card

@@ -284,7 +284,7 @@ export default function Vault() {
                 {!isLoading && `${items.length} of ${total} items`}
               </span>
               <Button asChild variant="outline" size="xs" className="h-[26px] gap-1 px-2.5 text-xs">
-                <Link to="/folders">
+                <Link to="/settings">
                   Manage folders
                   <IconChevronRight className="text-muted-foreground size-3" />
                 </Link>
@@ -319,7 +319,7 @@ export default function Vault() {
                   New item
                 </Button>
                 <Button asChild variant="secondary" size="sm">
-                  <Link to="/folders">
+                  <Link to="/settings">
                     <IconBook />
                     Browse folders
                   </Link>
