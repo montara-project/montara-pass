@@ -3,6 +3,18 @@
 All notable changes to this project are documented in this file. Versions follow the git tags (`v*`); Docker images are published to ghcr.io with the same version.
 
 
+## [2.12.2](https://github.com/montara-project/montara-pass/compare/v2.12.1...v2.12.2) (2026-11-10)
+
+### Features
+
+* **app:** show the date and a chosen timezone in the header clock ([89743ce](https://github.com/montara-project/montara-pass/commit/89743cee207697ad503c47d7988451b516d4e0ef))
+
+### Bug Fixes
+
+* **app:** mask usernames in item lists ([aa00d98](https://github.com/montara-project/montara-pass/commit/aa00d98803a12d92608f9c6aa5132cdc81c6105d))
+* remove deepmerge overrides ([8f55d6f](https://github.com/montara-project/montara-pass/commit/8f55d6f507ac42724fef970cc4fbc5e42f706d99))
+* update design ([8c492f7](https://github.com/montara-project/montara-pass/commit/8c492f7ec40810a6045f24e618e7b073420e21bc))
+
 ## [2.12.1](https://github.com/montara-project/montara-pass/compare/v2.12.0...v2.12.1) (2026-11-10)
 
 ## [2.12.0](https://github.com/montara-project/montara-pass/compare/v2.11.0...v2.12.0) (2026-11-10)
