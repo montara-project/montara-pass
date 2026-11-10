@@ -1,10 +1,23 @@
 /* Tailwind for the full tab's sidebar and top bar, and the Security page's
    audit log: the web app's own components, shared through the `@` alias. No
-   preflight and no layers: the rest of the popup is styles.css, and a reset
-   would undo it. Only the files below are read for classes, so none of the
+   preflight: the rest of the popup is styles.css, and a reset would undo it. Only the files below are read for classes, so none of the
    popup's own class names turn into a utility by accident. */
+/* base sits under utilities, so a border colour class still wins over it. */
+@layer theme, base, utilities;
 @import 'tailwindcss/theme.css';
 @import 'tailwindcss/utilities.css' source(none);
+
+/* The one part of preflight the shared components need: a bare `border`
+   (the clock's box, the sidebar's edge by the collapse toggle) takes the
+   divider colour, not currentColor. Layered, so the popup's own unlayered
+   rules and every border-* utility still win. */
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border);
+  }
+}
 
 @source './vault-sidebar.tsx';
 @source '../../../app/src/components/layout/sidebar/app-sidebar.tsx';

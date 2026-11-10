@@ -6,6 +6,7 @@ import type { SidebarLink } from '@/components/layout/sidebar/app-sidebar'
 import type { UserMenuAction } from '@/components/layout/sidebar/user-menu'
 
 import AppSidebar from '@/components/layout/sidebar/app-sidebar'
+import { LINKS_OUT } from '@/components/layout/sidebar/nav-secondary'
 import Topbar from '@/components/layout/sidebar/topbar'
 import UserMenu from '@/components/layout/sidebar/user-menu'
 import UtcClock from '@/components/layout/sidebar/utc-clock'
@@ -21,6 +22,7 @@ import {
   ShareIcon,
   ShieldIcon,
   ShieldOutlineIcon,
+  UserIcon,
 } from './icons'
 import { UpdateButton } from './update-button'
 
@@ -36,20 +38,14 @@ const TOOLS: { value: Tool; label: string; icon: Icon }[] = [
   { value: 'health', label: 'Password health', icon: ShieldOutlineIcon },
 ]
 
-/** The account's record of sign-ins and changes. */
-const SECURITY = {
-  value: 'activity' as Tool,
-  label: 'Security',
-  icon: ShieldIcon,
-}
-
-/** In the account menu. Sharing and billing are the Cloud Edition's only. */
-const MENU_TOOLS: { value: Tool; label: string; icon: Icon }[] = COMMUNITY
-  ? []
-  : [
-      { value: 'sharing', label: 'Manage sharing', icon: ShareIcon },
-      { value: 'billing', label: 'Billing', icon: CreditCardIcon },
-    ]
+/**
+ * Under System, as in the web app: how the account signs in, and (Cloud
+ * Edition only) what is shared. The extension's own Settings leads them.
+ */
+const SYSTEM_TOOLS: { value: Tool; label: string; icon: Icon }[] = [
+  { value: 'activity', label: 'Security', icon: ShieldIcon },
+  ...(COMMUNITY ? [] : [{ value: 'sharing' as Tool, label: 'Sharing', icon: ShareIcon }]),
+]
 
 interface VaultSidebarProps<F extends string> {
   filters: { value: F; label: string; icon: Icon; count: number }[]
@@ -101,17 +97,18 @@ export function VaultSidebar<F extends string>({
       active: tool === value,
       onSelect: () => onTool(value),
     })),
-    {
-      title: SECURITY.label,
-      icon: SECURITY.icon,
+    { title: 'Settings', icon: SettingsIcon, group: 'System', onSelect: onSettings },
+    ...SYSTEM_TOOLS.map(({ value, label, icon }) => ({
+      title: label,
+      icon,
       group: 'System',
-      active: tool === SECURITY.value,
-      onSelect: () => onTool(SECURITY.value),
-    },
+      active: tool === value,
+      onSelect: () => onTool(value),
+    })),
     ...(appUrl
       ? [
           {
-            // Folders, the trash and who else has an item live in the web app.
+            // Last in System: folders, the trash and the profile live in the web app.
             title: 'Open web app',
             url: appUrl,
             icon: ExternalLinkIcon,
@@ -129,13 +126,22 @@ export function VaultSidebar<F extends string>({
       ? (current?.title ?? 'Vault')
       : (filters.find((f) => f.value === filter)?.label ?? 'Vault')
 
+  // As the web app's: Profile, Billing (Cloud only), Lock vault, then Sign out under a rule.
   const actions: UserMenuAction[] = [
-    { label: 'Settings', icon: SettingsIcon, onSelect: onSettings },
-    ...MENU_TOOLS.map(({ value, label, icon }) => ({
-      label,
-      icon,
-      onSelect: () => onTool(value),
-    })),
+    ...(appUrl
+      ? [
+          {
+            // The profile is a page of the web app: it opens there, in a new tab.
+            label: 'Profile',
+            icon: UserIcon,
+            onSelect: () =>
+              void window.open(`${appUrl.replace(/\/$/, '')}/profile`, '_blank', 'noopener'),
+          },
+        ]
+      : []),
+    ...(COMMUNITY
+      ? []
+      : [{ label: 'Billing', icon: CreditCardIcon, onSelect: () => onTool('billing') }]),
     { label: 'Lock vault', icon: LockIcon, onSelect: onLock },
     { label: 'Sign out', icon: LogOutIcon, onSelect: onSignOut, destructive: true },
   ]
@@ -152,6 +158,7 @@ export function VaultSidebar<F extends string>({
         brand={{ name: NAME, logo: '/icons/128.png' }}
         groups={['Vault', 'Tools', 'System']}
         items={items}
+        secondary={LINKS_OUT}
       />
       <SidebarInset className="bg-panel min-h-0 overflow-hidden">
         <Topbar group={group} title={title}>

@@ -448,15 +448,18 @@ Calm and certain: one is filled, the rest stand back.
   and a bottom bar divided from the sheet by a hairline.
 - **Full tab sidebar:** the web app's: the mark and the name at its head,
   then Vault (the filters, with a tabular count at the far end), Tools
-  (Password generator, Password health) and System (Security, Open web app).
-  Group names take the subtle colour, a step quieter than the rows. Rows are
+  (Password generator, Password health) and System (Settings, Security,
+  Sharing in the Cloud Edition, then Open web app last). The links out
+  (Documentation, GitHub, Feedback) pin at its foot, as in the web app. Group
+  names and the links out take the subtle colour, a step quieter than the rows. Rows are
   32px at 13px text, muted at rest, body colour under the pointer, a 12%
   primary wash when current.
 - **Full tab top bar:** 56px on the sidebar's tone (the background) with the sheet's top rule: the
   trigger, the group and the page in a breadcrumb, then the clock, the update
-  button, a Lock vault icon button and the account's avatar. Its menu holds
-  Settings, the Cloud Edition's sharing and billing and Lock vault, then a
-  rule and Sign out in the danger colour.
+  button, a Lock vault icon button and the account's avatar. Its menu matches
+  the web app's: Profile (opens the web app's page in a new tab), Billing in
+  the Cloud Edition and Lock vault, then a rule and Sign out in the danger
+  colour.
 - **Menu:** card tone, 12px radius, 6px padding, the floating shadow; 36px
   items with an 18px muted icon; a destructive item is danger-coloured with a
   14% danger wash on hover. A row's menu grows from its button over 140ms

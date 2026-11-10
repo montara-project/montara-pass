@@ -1,7 +1,5 @@
 import { COMMUNITY } from '@montara-pass/shared/constants/edition'
 import {
-  IconBook,
-  IconBrandGithub,
   IconCreditCard,
   IconFileText,
   IconFolders,
@@ -9,7 +7,6 @@ import {
   IconLayoutGrid,
   IconLock,
   IconLogout,
-  IconMessageReport,
   IconPassword,
   IconSettings,
   IconShield,
@@ -24,10 +21,10 @@ import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 
 import type { SidebarLink } from '@/components/layout/sidebar/app-sidebar'
 import type { NavLinkRenderer } from '@/components/layout/sidebar/nav-item'
-import type { NavSecondaryLink } from '@/components/layout/sidebar/nav-secondary'
 import type { UserMenuAction } from '@/components/layout/sidebar/user-menu'
 
 import AppSidebar from '@/components/layout/sidebar/app-sidebar'
+import { LINKS_OUT } from '@/components/layout/sidebar/nav-secondary'
 import Topbar from '@/components/layout/sidebar/topbar'
 import UserMenu from '@/components/layout/sidebar/user-menu'
 import UtcClock from '@/components/layout/sidebar/utc-clock'
@@ -85,20 +82,6 @@ const FOLDERS = { title: 'Manage folders', url: '/folders', icon: IconFolders } 
 /** Under Settings in System. Sharing is the Cloud Edition's only. */
 const SYSTEM = COMMUNITY ? [] : [{ title: 'Sharing', url: '/sharing', icon: IconUsers }]
 
-const SECONDARY: NavSecondaryLink[] = [
-  { title: 'Documentation', url: 'https://docs.montarapass.com', icon: IconBook },
-  {
-    title: 'GitHub',
-    url: 'https://github.com/montara-project/montara-pass',
-    icon: IconBrandGithub,
-  },
-  {
-    title: 'Feedback',
-    url: 'https://github.com/montara-project/montara-pass/issues',
-    icon: IconMessageReport,
-  },
-]
-
 /** The pages the header can name, by the route that shows them. */
 const CRUMBS = [
   { ...TRASH, group: 'Vault' },
@@ -149,7 +132,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         items={items}
         link={routerLink}
         home={HOME_PATH}
-        secondary={SECONDARY}
+        secondary={LINKS_OUT}
       />
       <SidebarInset className="bg-panel h-svh min-w-0 overflow-hidden">
         {/* The sidebar holds a dozen links; a keyboard can go straight to the page. */}

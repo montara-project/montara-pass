@@ -1,3 +1,5 @@
+import { IconBook, IconBrandGithub, IconMessageReport } from '@tabler/icons-react'
+
 import {
   SidebarGroup,
   SidebarMenu,
@@ -12,6 +14,21 @@ export interface NavSecondaryLink {
   url: string
   icon: IconType
 }
+
+/** The links out at the sidebar's foot, the same in the web app and the extension. */
+export const LINKS_OUT: NavSecondaryLink[] = [
+  { title: 'Documentation', url: 'https://docs.montarapass.com', icon: IconBook },
+  {
+    title: 'GitHub',
+    url: 'https://github.com/montara-project/montara-pass',
+    icon: IconBrandGithub,
+  },
+  {
+    title: 'Feedback',
+    url: 'https://github.com/montara-project/montara-pass/issues',
+    icon: IconMessageReport,
+  },
+]
 
 interface NavSecondaryProps {
   links: readonly NavSecondaryLink[]
