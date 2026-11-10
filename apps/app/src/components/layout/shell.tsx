@@ -2,7 +2,6 @@ import { COMMUNITY } from '@montara-pass/shared/constants/edition'
 import {
   IconCreditCard,
   IconFileText,
-  IconFolders,
   IconKey,
   IconLayoutGrid,
   IconLock,
@@ -76,9 +75,6 @@ const MENU = [
   ...(COMMUNITY ? [] : [{ title: 'Billing', url: '/billing', icon: IconCreditCard }]),
 ] as const
 
-/** Reached from the vault's footer, so in neither the sidebar nor the menu. */
-const FOLDERS = { title: 'Manage folders', url: '/folders', icon: IconFolders } as const
-
 /** Under Settings in System. Sharing is the Cloud Edition's only. */
 const SYSTEM = COMMUNITY ? [] : [{ title: 'Sharing', url: '/sharing', icon: IconUsers }]
 
@@ -92,7 +88,6 @@ const CRUMBS = [
   { title: 'Profile', url: '/profile', group: 'Settings' },
   { title: 'Security', url: '/security', group: 'Settings' },
   ...MENU.map((item) => ({ ...item, group: 'Account' })),
-  { ...FOLDERS, group: 'Vault' },
 ]
 
 /** The router's Link, so a click moves within the page and the vault's filter rides along. */
