@@ -23,10 +23,10 @@ import type { NavLinkRenderer } from '@/components/layout/sidebar/nav-item'
 import type { UserMenuAction } from '@/components/layout/sidebar/user-menu'
 
 import AppSidebar from '@/components/layout/sidebar/app-sidebar'
+import HeaderClock from '@/components/layout/sidebar/header-clock'
 import { LINKS_OUT } from '@/components/layout/sidebar/nav-secondary'
 import Topbar from '@/components/layout/sidebar/topbar'
 import UserMenu from '@/components/layout/sidebar/user-menu'
-import UtcClock from '@/components/layout/sidebar/utc-clock'
 import { SIDEBAR_COOKIE_NAME, SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { env } from '@/config/env'
 import { useSignOut } from '@/hooks/use-sign-out'
@@ -138,7 +138,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           Skip to content
         </a>
         <Topbar group={crumb?.group} title={crumb?.title ?? 'Vault'}>
-          <UtcClock />
+          <HeaderClock />
           <BarAccount />
         </Topbar>
         {/* main.tsx: scrollToTopSelectors resets it on navigation. */}

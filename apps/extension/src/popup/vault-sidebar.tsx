@@ -6,10 +6,10 @@ import type { SidebarLink } from '@/components/layout/sidebar/app-sidebar'
 import type { UserMenuAction } from '@/components/layout/sidebar/user-menu'
 
 import AppSidebar from '@/components/layout/sidebar/app-sidebar'
+import HeaderClock from '@/components/layout/sidebar/header-clock'
 import { LINKS_OUT } from '@/components/layout/sidebar/nav-secondary'
 import Topbar from '@/components/layout/sidebar/topbar'
 import UserMenu from '@/components/layout/sidebar/user-menu'
-import UtcClock from '@/components/layout/sidebar/utc-clock'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 
 import {
@@ -144,7 +144,7 @@ export function VaultSidebar<F extends string>({
       />
       <SidebarInset className="bg-panel min-h-0 overflow-hidden">
         <Topbar group={group} title={title}>
-          <UtcClock />
+          <HeaderClock />
           <UpdateButton />
           <UserMenu name={user?.name} email={user?.email} actions={actions} onLock={onLock} />
         </Topbar>
