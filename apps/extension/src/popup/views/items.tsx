@@ -4,6 +4,7 @@ import type { VaultItem } from '@montara-pass/shared/types/vault'
 import { COMMUNITY } from '@montara-pass/shared/constants/edition'
 import { initials } from '@montara-pass/shared/string'
 import { linkOf } from '@montara-pass/shared/url'
+import { maskUsername } from '@montara-pass/shared/username'
 import {
   useEffect,
   useMemo,
@@ -18,7 +19,6 @@ import { fillLogin } from '../../lib/autofill'
 import { hostOf } from '../../lib/origin'
 import { fillsSite } from '../../lib/site'
 import { lastUsedLabel } from '../../lib/usage'
-import { maskUsername } from '../../lib/username'
 import {
   ArrowLeftIcon,
   CardIcon,

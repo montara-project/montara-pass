@@ -189,7 +189,7 @@ export default function Vault() {
 
   return (
     <div className="@container/vault h-full">
-      <div className="grid h-full grid-cols-[minmax(300px,1fr)_minmax(360px,600px)] @max-[760px]/vault:grid-cols-1">
+      <div className="grid h-full grid-cols-[minmax(300px,1fr)_minmax(360px,600px)] grid-rows-[minmax(0,1fr)] @max-[760px]/vault:grid-cols-1">
         <section
           aria-label="Items"
           className={cn(

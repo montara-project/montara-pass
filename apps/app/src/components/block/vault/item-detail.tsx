@@ -11,6 +11,7 @@ import { cardEnding } from '@montara-pass/shared/crypto/vault'
 import { passwordStrength } from '@montara-pass/shared/password'
 import { sharingLabel } from '@montara-pass/shared/sharing'
 import { linkOf } from '@montara-pass/shared/url'
+import { maskUsername } from '@montara-pass/shared/username'
 import {
   IconArrowLeft,
   IconArrowUpRight,
@@ -208,6 +209,8 @@ interface ItemDetailProps {
 export default function ItemDetail({ item, folders, onClose }: ItemDetailProps) {
   // Hidden again for every item: this component is remounted per item.
   const [revealed, setRevealed] = useState(false)
+  // The username shows masked, like the list's, until it is asked for.
+  const [showUsername, setShowUsername] = useState(false)
   const [openEdit, setOpenEdit] = useState(false)
   const [openShare, setOpenShare] = useState(false)
   const [openDelete, setOpenDelete] = useState(false)
@@ -423,15 +426,30 @@ export default function ItemDetail({ item, folders, onClose }: ItemDetailProps) 
               <Field
                 label="Username"
                 actions={
-                  <IconAction
-                    label="Copy username"
-                    onClick={() => void copy(secret.username, 'username')}
-                  >
-                    <IconCopy />
-                  </IconAction>
+                  <>
+                    {secret.username && (
+                      <IconAction
+                        label={showUsername ? 'Hide username' : 'Show username'}
+                        pressed={showUsername}
+                        onClick={() => setShowUsername((value) => !value)}
+                      >
+                        {showUsername ? <IconEyeOff /> : <IconEye />}
+                      </IconAction>
+                    )}
+                    <IconAction
+                      label="Copy username"
+                      onClick={() => void copy(secret.username, 'username')}
+                    >
+                      <IconCopy />
+                    </IconAction>
+                  </>
                 }
               >
-                {secret.username || none}
+                {secret.username
+                  ? showUsername
+                    ? secret.username
+                    : maskUsername(secret.username)
+                  : none}
               </Field>
 
               <Field

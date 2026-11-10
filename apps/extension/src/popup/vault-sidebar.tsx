@@ -1,44 +1,15 @@
 import './sidebar.css'
 
-import type { ReactNode } from 'react'
-
 import { COMMUNITY } from '@montara-pass/shared/constants/edition'
-import { initials } from '@montara-pass/shared/string'
 
-import ServerTime from '@/components/layout/server-time'
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuBadge,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarRail,
-  SidebarSeparator,
-  SidebarTrigger,
-  useSidebar,
-} from '@/components/ui/sidebar'
+import type { SidebarLink } from '@/components/layout/sidebar/app-sidebar'
+import type { UserMenuAction } from '@/components/layout/sidebar/user-menu'
+
+import AppSidebar from '@/components/layout/sidebar/app-sidebar'
+import Topbar from '@/components/layout/sidebar/topbar'
+import UserMenu from '@/components/layout/sidebar/user-menu'
+import UtcClock from '@/components/layout/sidebar/utc-clock'
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 
 import {
   CreditCardIcon,
@@ -50,34 +21,41 @@ import {
   ShareIcon,
   ShieldIcon,
   ShieldOutlineIcon,
-  SortIcon,
 } from './icons'
 import { UpdateButton } from './update-button'
 
-type Icon = typeof KeyIcon
+type Icon = SidebarLink['icon']
+
+/** Both editions ship their own name; the mark is the same. */
+const NAME = COMMUNITY ? 'Montara Pass CE' : 'Montara Pass'
 export type Tool = 'generator' | 'health' | 'activity' | 'billing' | 'sharing'
 
-// group is what the breadcrumb names above the page. Security is the
-// account's record of sign-ins and item changes.
-const TOOLS: { value: Tool; label: string; group: string; icon: Icon }[] = [
-  { value: 'generator', label: 'Password generator', group: 'Tools', icon: KeyIcon },
-  { value: 'health', label: 'Password health', group: 'Tools', icon: ShieldOutlineIcon },
-  { value: 'activity', label: 'Security', group: 'Account', icon: ShieldIcon },
+/** The tools, pinned under the vault's views. */
+const TOOLS: { value: Tool; label: string; icon: Icon }[] = [
+  { value: 'generator', label: 'Password generator', icon: KeyIcon },
+  { value: 'health', label: 'Password health', icon: ShieldOutlineIcon },
 ]
 
-// In the account menu. Sharing and billing are the Cloud Edition's only: the
-// Community Edition has one user and takes no payments.
-const MENU_TOOLS: { value: Tool; label: string; group: string; icon: Icon }[] = COMMUNITY
+/** The account's record of sign-ins and changes. */
+const SECURITY = {
+  value: 'activity' as Tool,
+  label: 'Security',
+  icon: ShieldIcon,
+}
+
+/** In the account menu. Sharing and billing are the Cloud Edition's only. */
+const MENU_TOOLS: { value: Tool; label: string; icon: Icon }[] = COMMUNITY
   ? []
   : [
-      { value: 'sharing', label: 'Manage sharing', group: 'Vault', icon: ShareIcon },
-      { value: 'billing', label: 'Billing', group: 'Account', icon: CreditCardIcon },
+      { value: 'sharing', label: 'Manage sharing', icon: ShareIcon },
+      { value: 'billing', label: 'Billing', icon: CreditCardIcon },
     ]
 
 interface VaultSidebarProps<F extends string> {
   filters: { value: F; label: string; icon: Icon; count: number }[]
   filter: F
   tool: Tool | null
+  /** Where the web app is, for the pages the extension leaves to it. */
   appUrl: string
   user?: { name: string; email: string } | null
   onFilter: (filter: F) => void
@@ -86,13 +64,13 @@ interface VaultSidebarProps<F extends string> {
   onLock: () => void
   onSignOut: () => void
   /** The list and the item beside it. */
-  children: ReactNode
+  children: React.ReactNode
 }
 
 /**
- * The full tab's frame: the web app's inset sidebar (shadcn's sidebar-08)
- * with the filters, the tools and the account, and the vault on a sheet
- * beside it. Every Tailwind class of the extension lives in this file.
+ * The full tab's frame: the web app's own sidebar and top bar, the filters and
+ * the tools down its length, and the vault on the sheet beside it. Every
+ * Tailwind class of the extension lives in the files the stylesheet names.
  */
 export function VaultSidebar<F extends string>({
   filters,
@@ -107,216 +85,85 @@ export function VaultSidebar<F extends string>({
   onSignOut,
   children,
 }: VaultSidebarProps<F>) {
-  const active = [...TOOLS, ...MENU_TOOLS].find((t) => t.value === tool)
-  const current = active
-    ? { group: active.group, title: active.label }
-    : { group: 'Vault', title: filters.find((f) => f.value === filter)?.label }
+  const items: SidebarLink[] = [
+    ...filters.map(({ value, label, icon, count }) => ({
+      title: label,
+      icon,
+      group: 'Vault',
+      badge: count,
+      active: tool === null && filter === value,
+      onSelect: () => onFilter(value),
+    })),
+    ...TOOLS.map(({ value, label, icon }) => ({
+      title: label,
+      icon,
+      group: 'Tools',
+      active: tool === value,
+      onSelect: () => onTool(value),
+    })),
+    {
+      title: SECURITY.label,
+      icon: SECURITY.icon,
+      group: 'System',
+      active: tool === SECURITY.value,
+      onSelect: () => onTool(SECURITY.value),
+    },
+    ...(appUrl
+      ? [
+          {
+            // Folders, the trash and who else has an item live in the web app.
+            title: 'Open web app',
+            url: appUrl,
+            icon: ExternalLinkIcon,
+            group: 'System',
+          },
+        ]
+      : []),
+  ]
+
+  // Where the page sits: the tool's own group, or the vault's for a filter.
+  const current = items.find((item) => item.active)
+  const group = tool !== null ? (current?.group ?? 'Tools') : 'Vault'
+  const title =
+    tool !== null
+      ? (current?.title ?? 'Vault')
+      : (filters.find((f) => f.value === filter)?.label ?? 'Vault')
+
+  const actions: UserMenuAction[] = [
+    { label: 'Settings', icon: SettingsIcon, onSelect: onSettings },
+    ...MENU_TOOLS.map(({ value, label, icon }) => ({
+      label,
+      icon,
+      onSelect: () => onTool(value),
+    })),
+    { label: 'Lock vault', icon: LockIcon, onSelect: onLock },
+    { label: 'Sign out', icon: LogOutIcon, onSelect: onSignOut, destructive: true },
+  ]
 
   return (
     // The sidebar remembers itself in this cookie.
     <SidebarProvider
       defaultOpen={!document.cookie.includes('sidebar_state=false')}
       className="h-full min-h-0"
+      // The rail holds names at the frame's step: it grows with the display.
+      style={{ '--sidebar-width': 'calc(15rem * var(--type-step))' } as React.CSSProperties}
     >
-      <Sidebar variant="inset" collapsible="icon">
-        {/* As tall as the page's header, with its line along the bottom: the
-            two lines meet as one, open or folded. */}
-        <SidebarHeader className="relative h-14 shrink-0 justify-center gap-0 py-0">
-          <SidebarMenu>
-            <SidebarMenuItem>
-              {/* The name, not a control: there is nowhere else in the extension to go. */}
-              <SidebarMenuButton size="lg" asChild className="pointer-events-none">
-                <div>
-                  <img src="/icons/128.png" alt="" className="size-8 rounded-lg" />
-                  <div className="grid flex-1 text-left leading-tight">
-                    <span className="text-foreground truncate text-[15px] font-semibold tracking-[-0.01em]">
-                      Montara Pass
-                    </span>
-                    <span className="truncate text-xs font-normal">Your vault</span>
-                  </div>
-                </div>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-          <SidebarSeparator className="absolute inset-x-0 bottom-0 mx-0 w-auto" />
-        </SidebarHeader>
-
-        <SidebarContent className="pt-2">
-          <SidebarGroup>
-            <SidebarGroupLabel>Vault</SidebarGroupLabel>
-            <SidebarMenu>
-              {filters.map(({ value, label, icon: Icon, count }) => (
-                <SidebarMenuItem key={value}>
-                  <Item
-                    label={label}
-                    active={!tool && filter === value}
-                    onClick={() => onFilter(value)}
-                  >
-                    <Icon />
-                  </Item>
-                  <SidebarMenuBadge className="tabular-nums">{count}</SidebarMenuBadge>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroup>
-
-          <SidebarGroup className="mt-auto">
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {TOOLS.map(({ value, label, icon: Icon }) => (
-                  <SidebarMenuItem key={value}>
-                    <Item label={label} active={tool === value} onClick={() => onTool(value)}>
-                      <Icon />
-                    </Item>
-                  </SidebarMenuItem>
-                ))}
-                {appUrl && (
-                  <SidebarMenuItem>
-                    {/* Folders, the trash and who else has an item live in the web app. */}
-                    <SidebarMenuButton asChild tooltip="Open web app">
-                      <a href={appUrl} target="_blank" rel="noreferrer">
-                        <ExternalLinkIcon />
-                        <span>Open web app</span>
-                      </a>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
-
-        <SidebarFooter className="gap-1">
-          <SidebarSeparator className="mx-0.5 bg-sidebar-border/50" />
-          <Account
-            user={user}
-            onTool={onTool}
-            onSettings={onSettings}
-            onLock={onLock}
-            onSignOut={onSignOut}
-          />
-        </SidebarFooter>
-        <SidebarRail />
-      </Sidebar>
-
+      <AppSidebar
+        brand={{ name: NAME, logo: '/icons/128.png' }}
+        groups={['Vault', 'Tools', 'System']}
+        items={items}
+      />
       <SidebarInset className="bg-panel min-h-0 overflow-hidden">
-        <header className="bg-panel border-border sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b px-3 sm:px-6 md:rounded-t-sheet">
-          <SidebarTrigger className="-ml-2" />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">{current.group}</BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem>
-                <BreadcrumbPage>{current.title}</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-          <ServerTime className="ml-auto" />
+        <Topbar group={group} title={title}>
+          <UtcClock />
           <UpdateButton />
-        </header>
+          <UserMenu name={user?.name} email={user?.email} actions={actions} onLock={onLock} />
+        </Topbar>
         {/* Passes the inset's height on: the list scrolls inside it, not past it.
             No padding of its own: the columns pad themselves, so the line
             between them runs up to the header's. */}
         <div className="flex min-h-0 flex-1 flex-col">{children}</div>
       </SidebarInset>
     </SidebarProvider>
-  )
-}
-
-/** A choice in the sidebar. Over the page on a narrow screen, it steps aside once made. */
-function Item({
-  label,
-  active,
-  onClick,
-  children,
-}: {
-  label: string
-  active: boolean
-  onClick: () => void
-  children: ReactNode
-}) {
-  const { isMobile, setOpenMobile } = useSidebar()
-
-  return (
-    <SidebarMenuButton
-      tooltip={label}
-      isActive={active}
-      aria-current={active ? 'true' : undefined}
-      onClick={() => {
-        onClick()
-        if (isMobile) setOpenMobile(false)
-      }}
-    >
-      {children}
-      <span>{label}</span>
-    </SidebarMenuButton>
-  )
-}
-
-/** The foot of the sidebar: who is signed in, and the ways out. */
-function Account({
-  user,
-  onTool,
-  onSettings,
-  onLock,
-  onSignOut,
-}: Pick<VaultSidebarProps<string>, 'user' | 'onTool' | 'onSettings' | 'onLock' | 'onSignOut'>) {
-  const { isMobile } = useSidebar()
-
-  return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              aria-label="Account"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
-              <span
-                aria-hidden="true"
-                className="bg-avatar text-avatar-foreground inline-flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-              >
-                {user ? initials(user.name || user.email) : ''}
-              </span>
-              <div className="grid flex-1 text-left leading-tight">
-                <span className="text-foreground truncate text-sm font-semibold">
-                  {user?.name || 'Account'}
-                </span>
-                {user && <span className="truncate text-[13px] font-normal">{user.email}</span>}
-              </div>
-              <SortIcon className="ml-auto size-4" />
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            side={isMobile ? 'bottom' : 'right'}
-            align="end"
-            sideOffset={4}
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56"
-          >
-            <DropdownMenuItem onClick={onSettings}>
-              <SettingsIcon />
-              Settings
-            </DropdownMenuItem>
-            {MENU_TOOLS.map(({ value, label, icon: Icon }) => (
-              <DropdownMenuItem key={value} onClick={() => onTool(value)}>
-                <Icon />
-                {label}
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onLock}>
-              <LockIcon />
-              Lock vault
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onSignOut}>
-              <LogOutIcon />
-              Sign out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarMenuItem>
-    </SidebarMenu>
   )
 }

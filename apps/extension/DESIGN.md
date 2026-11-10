@@ -16,6 +16,7 @@ colors:
   field-border: "#7483a8"
   fg: "#101d3a"
   muted: "#51607f"
+  subtle: "#616f8b"
   primary: "#145cff"
   primary-fg: "#ffffff"
   focus: "#145cff"
@@ -36,6 +37,7 @@ colors:
   field-border-dark: "#667aab"
   fg-dark: "#ffffff"
   muted-dark: "#a9b6d3"
+  subtle-dark: "#808ca5"
   focus-dark: "#42c8ff"
   avatar-dark: "#145cff"
   danger-dark: "#ff9a91"
@@ -242,6 +244,8 @@ use a raw colour, only the semantic tokens.
 - **Field edge** (`field-border`): the outline of anything typed into. Kept
   apart from the divider because it has to hold 3:1 against its surface.
 - **Muted** (`muted`): labels, secondary lines, resting icons.
+- **Subtle** (`subtle`): quieter than muted, for the sidebar's group names
+  and its links out. Still 4.5:1 on the background.
 
 ### Status
 
@@ -307,13 +311,17 @@ Three shapes share the stylesheet, switched by `data-view` on the root:
 - **Popup** (default): `body` is fixed at 400×600, the tallest a browser
   allows. A view is a column: top bar, the sheet that scrolls, a bottom bar
   that stays put. Side padding is 20px for forms and 12 to 16px around lists.
-- **Full tab** (`data-view="full"`): the web app's inset sidebar
-  (`popup/vault-sidebar.tsx`, the only Tailwind in the extension), and on the
-  sheet beside it a list that takes what is left (min 300px) and a detail
-  pane of 360 to 640px. Forms that are popup-sized (sign-in, unlock) sit in a
-  centred card 400px wide. At 860px and under the list and detail take turns;
-  under 768px the sidebar opens over the page. The list drops its extra
-  columns by container query at 520px.
+- **Full tab** (`data-view="full"`): the web app's chrome, the same files
+  (`app/src/components/layout/sidebar/`), which are the only Tailwind the
+  extension draws: a `15rem` sidebar on the page itself, folding to a 48px
+  rail of icons whose names show as tooltips, and the page on the sheet
+  beside it under a 56px bar with the trigger, the breadcrumb, the UTC clock,
+  the update button and the account's avatar. On the sheet, a list that takes
+  what is left (min 300px) and a detail pane of 360 to 640px. Forms that are
+  popup-sized (sign-in, unlock) sit in a centred card 400px wide. At 860px
+  and under the list and detail take turns; under 768px the sidebar opens
+  over the page. The list drops its extra columns by container query at
+  520px. `--type-step` steps the chrome with the display, 1.00 to 1.30.
 - **Inline menu** (`data-view="inline"`): no fixed size; the page frames it
   and it reports its own height, capped at 320px.
 
@@ -438,8 +446,17 @@ Calm and certain: one is filled, the rest stand back.
 
 - **Popup:** a top bar (search, tools, the avatar that opens the account menu)
   and a bottom bar divided from the sheet by a hairline.
-- **Full tab sidebar:** the web app's: 32px items, muted at rest, body colour
-  on hover, hover tone when current, a tabular count at the far end.
+- **Full tab sidebar:** the web app's: the mark and the name at its head,
+  then Vault (the filters, with a tabular count at the far end), Tools
+  (Password generator, Password health) and System (Security, Open web app).
+  Group names take the subtle colour, a step quieter than the rows. Rows are
+  32px at 13px text, muted at rest, body colour under the pointer, a 12%
+  primary wash when current.
+- **Full tab top bar:** 56px on the sidebar's tone (the background) with the sheet's top rule: the
+  trigger, the group and the page in a breadcrumb, then the clock, the update
+  button, a Lock vault icon button and the account's avatar. Its menu holds
+  Settings, the Cloud Edition's sharing and billing and Lock vault, then a
+  rule and Sign out in the danger colour.
 - **Menu:** card tone, 12px radius, 6px padding, the floating shadow; 36px
   items with an 18px muted icon; a destructive item is danger-coloured with a
   14% danger wash on hover. A row's menu grows from its button over 140ms

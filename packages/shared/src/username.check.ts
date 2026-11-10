@@ -1,5 +1,5 @@
 // The self-check of maskUsername: what a list shows of a username.
-// Run: node src/lib/username.check.ts
+// Run: node packages/shared/src/username.check.ts
 
 import assert from 'node:assert/strict'
 

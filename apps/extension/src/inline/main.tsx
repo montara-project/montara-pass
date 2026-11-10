@@ -15,6 +15,7 @@ import {
 } from '@montara-pass/shared/crypto/vault'
 import { generatePassword } from '@montara-pass/shared/password'
 import { errorMessage } from '@montara-pass/shared/string'
+import { maskUsername } from '@montara-pass/shared/username'
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 
@@ -49,7 +50,6 @@ import {
 import { fillsSite, matchesSite } from '../lib/site'
 import { getSettings, getTokens } from '../lib/storage'
 import { lastUsedLabel } from '../lib/usage'
-import { maskUsername } from '../lib/username'
 import { checked, submit, useAppForm } from '../popup/form'
 import { CloseIcon, ExpandIcon, KeyIcon, RefreshIcon } from '../popup/icons'
 import { ItemTile } from '../popup/item-tile'

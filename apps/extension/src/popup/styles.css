@@ -11,6 +11,8 @@
   --field-border: #7483a8;
   --fg: #101d3a;
   --muted: #51607f;
+  /* Quieter than muted, for group names and links out: still 4.5:1 on the page. */
+  --subtle: #616f8b;
   --field: #ffffff;
   --primary: #145cff;
   --primary-fg: #ffffff;
@@ -24,6 +26,32 @@
   --avatar: #101d3a;
   --avatar-fg: #ffffff;
   --shadow: 0 8px 24px rgb(16 29 58 / 0.16);
+
+  /* The full tab's frame: one multiplier for the display it is opened on, read
+     by the sidebar and the top bar the web app's components draw. The popup
+     is 400px wide and never steps. */
+  --type-step: 1;
+  --control-h: calc(32px * var(--type-step));
+  --control-h-sm: calc(26px * var(--type-step));
+  --topbar-h: calc(56px * var(--type-step));
+}
+
+@media (min-width: 1600px) {
+  :root {
+    --type-step: 1.07;
+  }
+}
+
+@media (min-width: 2100px) {
+  :root {
+    --type-step: 1.15;
+  }
+}
+
+@media (min-width: 3100px) {
+  :root {
+    --type-step: 1.3;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -35,6 +63,7 @@
     --field-border: #667aab;
     --fg: #ffffff;
     --muted: #a9b6d3;
+    --subtle: #808ca5;
     --field: #0b152c;
     --primary: #145cff;
     --primary-fg: #ffffff;
@@ -214,9 +243,11 @@ input::placeholder {
   outline-offset: 2px;
 }
 
-/* The shared sidebar's buttons are styled by sidebar.css, so they are left
-   out here (at no added specificity). */
-button:where(:not([data-sidebar])),
+/* The shared sidebar and top bar's buttons are styled by sidebar.css, so they
+   are left out here (at no added specificity). */
+button:where(
+  :not([data-sidebar], [data-slot='button'], [data-slot='topbar'] *, [data-slot='sidebar'] *)
+),
 a.button {
   height: 40px;
   padding: 0 16px;

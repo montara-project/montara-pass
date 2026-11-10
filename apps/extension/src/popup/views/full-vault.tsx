@@ -7,6 +7,7 @@ import { cardEnding, decryptItem } from '@montara-pass/shared/crypto/vault'
 import { passwordStrength } from '@montara-pass/shared/password'
 import { sharingLabel } from '@montara-pass/shared/sharing'
 import { linkOf } from '@montara-pass/shared/url'
+import { maskUsername } from '@montara-pass/shared/username'
 import { QueryClient, useInfiniteQuery } from '@tanstack/react-query'
 import {
   lazy,
@@ -28,7 +29,6 @@ import {
 } from '../../lib/api'
 import { getSettings } from '../../lib/storage'
 import { lastUsedAgo } from '../../lib/usage'
-import { maskUsername } from '../../lib/username'
 import {
   ArrowLeftIcon,
   ArrowUpRightIcon,
