@@ -20,6 +20,7 @@ import { Route as appGeneratorIndexRouteImport } from './routes/(app)/generator/
 import { Route as appHealthIndexRouteImport } from './routes/(app)/health/index'
 import { Route as appProfileIndexRouteImport } from './routes/(app)/profile/index'
 import { Route as appSecurityIndexRouteImport } from './routes/(app)/security/index'
+import { Route as appSettingsIndexRouteImport } from './routes/(app)/settings/index'
 import { Route as appSharingIndexRouteImport } from './routes/(app)/sharing/index'
 import { Route as appTrashIndexRouteImport } from './routes/(app)/trash/index'
 import { Route as appVaultIndexRouteImport } from './routes/(app)/vault/index'
@@ -82,6 +83,11 @@ const appSecurityIndexRoute = appSecurityIndexRouteImport.update({
   path: '/security/',
   getParentRoute: () => appRouteRoute,
 } as any)
+const appSettingsIndexRoute = appSettingsIndexRouteImport.update({
+  id: '/settings/',
+  path: '/settings/',
+  getParentRoute: () => appRouteRoute,
+} as any)
 const appSharingIndexRoute = appSharingIndexRouteImport.update({
   id: '/sharing/',
   path: '/sharing/',
@@ -134,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/health/': typeof appHealthIndexRoute
   '/profile/': typeof appProfileIndexRoute
   '/security/': typeof appSecurityIndexRoute
+  '/settings/': typeof appSettingsIndexRoute
   '/sharing/': typeof appSharingIndexRoute
   '/trash/': typeof appTrashIndexRoute
   '/vault/': typeof appVaultIndexRoute
@@ -153,6 +160,7 @@ export interface FileRoutesByTo {
   '/health': typeof appHealthIndexRoute
   '/profile': typeof appProfileIndexRoute
   '/security': typeof appSecurityIndexRoute
+  '/settings': typeof appSettingsIndexRoute
   '/sharing': typeof appSharingIndexRoute
   '/trash': typeof appTrashIndexRoute
   '/vault': typeof appVaultIndexRoute
@@ -175,6 +183,7 @@ export interface FileRoutesById {
   '/(app)/health/': typeof appHealthIndexRoute
   '/(app)/profile/': typeof appProfileIndexRoute
   '/(app)/security/': typeof appSecurityIndexRoute
+  '/(app)/settings/': typeof appSettingsIndexRoute
   '/(app)/sharing/': typeof appSharingIndexRoute
   '/(app)/trash/': typeof appTrashIndexRoute
   '/(app)/vault/': typeof appVaultIndexRoute
@@ -196,6 +205,7 @@ export interface FileRouteTypes {
     | '/health/'
     | '/profile/'
     | '/security/'
+    | '/settings/'
     | '/sharing/'
     | '/trash/'
     | '/vault/'
@@ -215,6 +225,7 @@ export interface FileRouteTypes {
     | '/health'
     | '/profile'
     | '/security'
+    | '/settings'
     | '/sharing'
     | '/trash'
     | '/vault'
@@ -236,6 +247,7 @@ export interface FileRouteTypes {
     | '/(app)/health/'
     | '/(app)/profile/'
     | '/(app)/security/'
+    | '/(app)/settings/'
     | '/(app)/sharing/'
     | '/(app)/trash/'
     | '/(app)/vault/'
@@ -332,6 +344,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appSecurityIndexRouteImport
       parentRoute: typeof appRouteRoute
     }
+    '/(app)/settings/': {
+      id: '/(app)/settings/'
+      path: '/settings'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof appSettingsIndexRouteImport
+      parentRoute: typeof appRouteRoute
+    }
     '/(app)/sharing/': {
       id: '/(app)/sharing/'
       path: '/sharing'
@@ -399,6 +418,7 @@ interface appRouteRouteChildren {
   appHealthIndexRoute: typeof appHealthIndexRoute
   appProfileIndexRoute: typeof appProfileIndexRoute
   appSecurityIndexRoute: typeof appSecurityIndexRoute
+  appSettingsIndexRoute: typeof appSettingsIndexRoute
   appSharingIndexRoute: typeof appSharingIndexRoute
   appTrashIndexRoute: typeof appTrashIndexRoute
   appVaultIndexRoute: typeof appVaultIndexRoute
@@ -413,6 +433,7 @@ const appRouteRouteChildren: appRouteRouteChildren = {
   appHealthIndexRoute: appHealthIndexRoute,
   appProfileIndexRoute: appProfileIndexRoute,
   appSecurityIndexRoute: appSecurityIndexRoute,
+  appSettingsIndexRoute: appSettingsIndexRoute,
   appSharingIndexRoute: appSharingIndexRoute,
   appTrashIndexRoute: appTrashIndexRoute,
   appVaultIndexRoute: appVaultIndexRoute,

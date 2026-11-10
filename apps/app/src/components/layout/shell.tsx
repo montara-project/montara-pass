@@ -67,8 +67,11 @@ const TOOLS: { title: string; url: string; icon: Icon }[] = [
   { title: 'Password health', url: '/health', icon: IconShield },
 ]
 
-/** The account's own page, how it signs in and what happened to it, under System. */
-const SETTINGS = { title: 'Settings', url: '/security', icon: IconSettings } as const
+/** Settings, under System: its General tab is its own page, the others are the account's. */
+const SETTINGS = { title: 'Settings', url: '/settings', icon: IconSettings } as const
+
+/** The pages Settings' tabs lead to: the sidebar keeps Settings lit on each. */
+const SETTINGS_TABS = [SETTINGS.url, '/profile', '/security']
 
 /** In the account menu, above Lock vault and Sign out. Billing is the Cloud Edition's only. */
 const MENU = [
@@ -81,9 +84,6 @@ const FOLDERS = { title: 'Manage folders', url: '/folders', icon: IconFolders } 
 
 /** Under Settings in System. Sharing is the Cloud Edition's only. */
 const SYSTEM = COMMUNITY ? [] : [{ title: 'Sharing', url: '/sharing', icon: IconUsers }]
-
-/** The super user's pages. Hidden from everyone else, and the route refuses them too. */
-const ADMIN = [{ title: 'IP blocks', url: '/settings/ip-blocks', icon: IconShield }] as const
 
 const SECONDARY: NavSecondaryLink[] = [
   { title: 'Documentation', url: 'https://docs.montarapass.com', icon: IconBook },
@@ -103,9 +103,11 @@ const SECONDARY: NavSecondaryLink[] = [
 const CRUMBS = [
   { ...TRASH, group: 'Vault' },
   ...TOOLS.map((tool) => ({ ...tool, group: 'Tools' })),
-  { ...SETTINGS, group: 'System' },
   ...SYSTEM.map((item) => ({ ...item, group: 'System' })),
-  ...ADMIN.map((item) => ({ ...item, group: 'System' })),
+  // Settings' tabs, each named under Settings; before the account menu's own Profile.
+  { title: 'General', url: SETTINGS.url, group: 'Settings' },
+  { title: 'Profile', url: '/profile', group: 'Settings' },
+  { title: 'Security', url: '/security', group: 'Settings' },
   ...MENU.map((item) => ({ ...item, group: 'Account' })),
   { ...FOLDERS, group: 'Vault' },
 ]
@@ -186,8 +188,8 @@ const GROUPS = ['Vault', 'Tools', 'System']
 
 /**
  * The sidebar's rows: the vault's views with their counts and what was thrown
- * away, the tools, and the account's settings with sharing and, for the super
- * user, the admin's pages. The one the page shows is lit.
+ * away, the tools, and the account's settings with sharing. The one the page
+ * shows is lit.
  */
 function useSidebarItems(): SidebarLink[] {
   const pathname = useLocation({ select: (location) => location.pathname })
@@ -196,8 +198,6 @@ function useSidebarItems(): SidebarLink[] {
     favorite?: boolean
   }
   const totals = useItemTotals([...VAULT_VIEWS.map((view) => view.search), { trashed: true }])
-  const { data: role } = useQuery(queries.security.role())
-  const system = role?.role === 'super_user' ? [...SYSTEM, ...ADMIN] : SYSTEM
   const onVault = pathname.startsWith('/vault')
 
   const views: SidebarLink[] = VAULT_VIEWS.map((view, index) => ({
@@ -226,8 +226,8 @@ function useSidebarItems(): SidebarLink[] {
       group: 'Tools',
       active: pathname.startsWith(tool.url),
     })),
-    { ...SETTINGS, group: 'System', active: pathname.startsWith(SETTINGS.url) },
-    ...system.map((item) => ({ ...item, group: 'System', active: pathname.startsWith(item.url) })),
+    { ...SETTINGS, group: 'System', active: SETTINGS_TABS.includes(pathname) },
+    ...SYSTEM.map((item) => ({ ...item, group: 'System', active: pathname.startsWith(item.url) })),
   ]
 }
 

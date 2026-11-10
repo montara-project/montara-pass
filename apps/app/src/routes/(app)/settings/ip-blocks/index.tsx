@@ -1,26 +1,8 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 
-import IpBlocks from '@/components/block/security/ip-blocks'
-import PageSkeleton from '@/components/layout/page-skeleton'
-import { searchText, validatePaginationSearch } from '@/hooks/use-pagination-query'
-import { queries } from '@/lib/api/queries'
-import { HOME_PATH } from '@/lib/constants/auth'
-
+// The IP blocks are a part of Settings' Security tab now; old links land there.
 export const Route = createFileRoute('/(app)/settings/ip-blocks/')({
-  // The server refuses a non-super user anyway; this sends anyone else to the
-  // vault before the page renders. A role that cannot be read counts as not
-  // a super user.
-  beforeLoad: async ({ context }) => {
-    const me = await context.queryClient.fetchQuery(queries.security.role()).catch(() => null)
-    if (me?.role !== 'super_user') {
-      throw redirect({ to: HOME_PATH, replace: true })
-    }
+  beforeLoad: () => {
+    throw redirect({ to: '/security', replace: true })
   },
-  // ?status= narrows the list; paging is shared with every table page.
-  validateSearch: (search: Record<string, unknown>) => ({
-    ...validatePaginationSearch(search),
-    status: searchText(search.status),
-  }),
-  component: IpBlocks,
-  pendingComponent: PageSkeleton,
 })

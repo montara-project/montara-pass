@@ -1,5 +1,6 @@
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { useFieldContext } from '@/hooks/form-context'
+import { cn } from '@/lib/utils'
 
 import { useFieldErrors } from './field-error'
 
@@ -10,7 +11,13 @@ type TextFieldProps = Omit<React.ComponentProps<'input'>, 'value' | 'onChange' |
 }
 
 /** A label over an input, with the field's error under it. */
-export default function TextField({ label, onChange, asterisk = false, ...props }: TextFieldProps) {
+export default function TextField({
+  label,
+  onChange,
+  asterisk = false,
+  className,
+  ...props
+}: TextFieldProps) {
   const field = useFieldContext<string | number>()
   const errors = useFieldErrors()
   const isInvalid = errors.length > 0
@@ -39,8 +46,12 @@ export default function TextField({ label, onChange, asterisk = false, ...props 
         aria-invalid={isInvalid || undefined}
         aria-required={asterisk || undefined}
         aria-describedby={isInvalid ? errorId : undefined}
-        className="field-box rounded-control bg-field placeholder:text-muted-foreground h-10 w-full min-w-0 px-3 disabled:cursor-not-allowed disabled:opacity-60"
         {...props}
+        // A caller's classes add to the field's own look, never replace it.
+        className={cn(
+          'field-box rounded-control bg-field placeholder:text-muted-foreground h-10 w-full min-w-0 px-3 disabled:cursor-not-allowed disabled:opacity-60',
+          className
+        )}
       />
       {isInvalid && <FieldError id={errorId} errors={errors} />}
     </Field>

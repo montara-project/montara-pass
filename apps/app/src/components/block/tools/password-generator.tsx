@@ -12,6 +12,7 @@ import { IconCopy, IconRefresh } from '@tabler/icons-react'
 import { useId, useState, type CSSProperties } from 'react'
 import { toast } from 'sonner'
 
+import { PAGE_CONTAINER } from '@/components/layout/page'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { copySecret } from '@/lib/clipboard'
@@ -79,8 +80,8 @@ export default function PasswordGenerator() {
   const chosen = KINDS.filter(({ kind }) => options[kind]).length
 
   return (
-    <div className="mx-auto flex max-w-[1200px] flex-col">
-      <header className="border-border/60 flex flex-wrap items-center gap-x-4 gap-y-2 border-b px-5 pt-[22px] pb-[18px] sm:px-8">
+    <div className={cn(PAGE_CONTAINER, 'flex flex-col')}>
+      <header className="border-border/60 flex flex-wrap items-center gap-x-4 gap-y-2 border-b pb-[18px]">
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <p className={MONO_NOTE}>Tools</p>
           <h1 className="text-[22px] font-semibold tracking-[-0.01em]">Password generator</h1>
@@ -92,7 +93,7 @@ export default function PasswordGenerator() {
       </header>
 
       {/* The password and its length on one side, what it is made of on the other. */}
-      <div className="grid items-start gap-[18px] px-5 pt-6 pb-7 sm:px-8 lg:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="grid items-start gap-[18px] pt-6 lg:grid-cols-[minmax(0,1fr)_420px]">
         <div className="flex flex-col gap-[18px]">
           <section aria-label="Password" className="rounded-card bg-panel overflow-hidden border">
             <h2 className={cn(CARD_HEAD, 'py-[9px] font-normal')}>

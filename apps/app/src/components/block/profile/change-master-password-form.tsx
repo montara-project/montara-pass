@@ -3,6 +3,7 @@ import {
   type ChangeMasterPasswordFormDto,
 } from '@montara-pass/shared/api/dtos/vault/schema'
 import { changeMasterPassword } from '@montara-pass/shared/crypto/vault'
+import { passwordStrength } from '@montara-pass/shared/password'
 import { IconAlertTriangle } from '@tabler/icons-react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -13,8 +14,9 @@ import { useAppForm } from '@/hooks/form'
 import { toastApiError } from '@/lib/api/api-error'
 import { parseDto } from '@/lib/api/dtos/parse'
 import { queries } from '@/lib/api/queries'
+import { cn } from '@/lib/utils'
 
-import { MONO_NOTE } from '../security/section'
+import { SettingsSection } from '../settings/list'
 
 /**
  * Change the master password. Only the vault key is re-wrapped: every item,
@@ -58,54 +60,62 @@ export default function ChangeMasterPasswordForm() {
   })
 
   return (
-    <section aria-labelledby="master-password" className="flex flex-col gap-2.5">
-      <h2 id="master-password" className={MONO_NOTE}>
-        Master password
-      </h2>
+    <SettingsSection
+      id="master-password"
+      title="Master password"
+      description="Opens your vault, and is never sent to the server. Your account password stays separate."
+    >
       <form
-        className="rounded-card bg-panel flex flex-col gap-4 border p-4"
+        className="rounded-card bg-panel flex flex-col gap-3 border p-4"
         noValidate
         onSubmit={(e) => {
           e.preventDefault()
           form.handleSubmit()
         }}
       >
-        <p className="text-muted-foreground text-[13px]">
-          Separate from your account password, never sent to the server. If you forget it, your
-          vault cannot be recovered.
+        <p className="text-muted-foreground text-xs">
+          If you forget it, your vault cannot be recovered. A passphrase of four unrelated words
+          beats a short scramble.
         </p>
 
-        <form.AppField
-          name="account_password"
-          children={(field) => (
-            <field.PasswordField
-              label="Account password"
-              autoComplete="current-password"
-              asterisk
-            />
-          )}
-        />
+        <div className="grid gap-3 md:grid-cols-2">
+          <form.AppField
+            name="account_password"
+            children={(field) => (
+              <field.PasswordField
+                label="Account password"
+                autoComplete="current-password"
+                asterisk
+              />
+            )}
+          />
+          <form.AppField
+            name="current_password"
+            children={(field) => (
+              <field.PasswordField label="Current master password" autoComplete="off" asterisk />
+            )}
+          />
+          <form.AppField
+            name="master_password"
+            children={(field) => (
+              <field.PasswordField label="New master password" autoComplete="off" asterisk />
+            )}
+          />
+          <form.AppField
+            name="confirm_password"
+            children={(field) => (
+              <field.PasswordField
+                label="Confirm new master password"
+                autoComplete="off"
+                asterisk
+              />
+            )}
+          />
+        </div>
 
-        <form.AppField
-          name="current_password"
-          children={(field) => (
-            <field.PasswordField label="Current master password" autoComplete="off" asterisk />
-          )}
-        />
-
-        <form.AppField
-          name="master_password"
-          children={(field) => (
-            <field.PasswordField label="New master password" autoComplete="off" asterisk />
-          )}
-        />
-
-        <form.AppField
-          name="confirm_password"
-          children={(field) => (
-            <field.PasswordField label="Confirm new master password" autoComplete="off" asterisk />
-          )}
-        />
+        <form.Subscribe selector={(state) => state.values.master_password}>
+          {(password) => <StrengthMeter password={password} />}
+        </form.Subscribe>
 
         {/* Only the vault key is wrapped again, so the items stay as they are. */}
         <p className="bg-warn/10 text-warn flex items-start gap-2 rounded-md px-3 py-2.5 text-xs">
@@ -129,6 +139,41 @@ export default function ChangeMasterPasswordForm() {
           </Button>
         </div>
       </form>
-    </section>
+    </SettingsSection>
+  )
+}
+
+/** How strong the new master password is: four bars, filled by strength, and its name. */
+const STRENGTH = {
+  weak: { label: 'Weak', bars: 1, text: 'text-danger', bar: 'bg-danger' },
+  fair: { label: 'Fair', bars: 3, text: 'text-warn', bar: 'bg-warn' },
+  strong: { label: 'Strong', bars: 4, text: 'text-good', bar: 'bg-good' },
+} as const
+
+function StrengthMeter({ password }: { password: string }) {
+  const strength = password ? STRENGTH[passwordStrength(password)] : null
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="flex flex-1 gap-2.5" aria-hidden>
+        {[1, 2, 3, 4].map((bar) => (
+          <span
+            key={bar}
+            className={cn(
+              'h-1 flex-1 rounded-[2px] transition-colors duration-[150ms] motion-reduce:transition-none',
+              strength && bar <= strength.bars ? strength.bar : 'bg-border'
+            )}
+          />
+        ))}
+      </span>
+      <span
+        className={cn(
+          'w-14 text-right font-mono text-[10px] font-medium tracking-[0.08em] uppercase',
+          strength?.text ?? 'text-subtle-foreground'
+        )}
+        aria-live="polite"
+      >
+        {strength ? strength.label : 'Strength'}
+      </span>
+    </div>
   )
 }

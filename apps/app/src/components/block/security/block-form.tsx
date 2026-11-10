@@ -3,16 +3,21 @@ import { toast } from 'sonner'
 import { z } from 'zod'
 
 import SimpleAlertScrollableDialogForm from '@/components/block/common/simple-alert-scrollable-dialog-form'
-import { useAppForm } from '@/hooks/form'
+import { checked, useAppForm } from '@/hooks/form'
 import { toastApiError } from '@/lib/api/api-error'
 import { queries } from '@/lib/api/queries'
 
 /** What the server accepts: an address, a why, and until when. The address's
  * shape is only a courtesy here; the server reads it with net.ParseIP. */
-const IP_PATTERN = /^(?:\d{1,3}(?:\.\d{1,3}){3}|[0-9A-Fa-f:.]{2,45})$/
+// IPv4: four parts of 0–255. IPv6: hex groups with at least one colon.
+const OCTET = '(?:25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)'
+const IP_PATTERN = new RegExp(
+  `^(?:${OCTET}(?:\\.${OCTET}){3}|(?=[0-9A-Fa-f:.]{2,45}$)[0-9A-Fa-f.]*:[0-9A-Fa-f:.]*)$`
+)
 
 const BlockIPSchema = z.object({
-  ip: z.string().min(1, 'Required').regex(IP_PATTERN, 'Must be a valid IP address'),
+  // One message whether it is empty or malformed; a pasted space is not part of it.
+  ip: z.string().trim().regex(IP_PATTERN, 'Enter an IP address, e.g. 203.0.113.7'),
   reason: z.string().max(500, 'At most 500 characters'),
   duration: z.enum(['1h', '24h', '7d', 'never']),
 })
@@ -41,14 +46,13 @@ export default function BlockIPForm({
 
   const form = useAppForm({
     defaultValues: { ip: '', reason: '', duration: '24h' } as BlockIPForm,
-    validators: {
-      onSubmit: BlockIPSchema,
-      onChange: BlockIPSchema,
-    },
+    // Checked on sending, then as the fields change: not while the address is first typed.
+    validationLogic: checked,
+    validators: { onDynamic: BlockIPSchema },
     onSubmit: async ({ value }) => {
       try {
         await block.mutateAsync(value)
-        toast.success('IP blocked')
+        toast.success(`${value.ip} blocked`)
         onOpenChange(false)
         form.reset()
       } catch (error) {
@@ -64,7 +68,11 @@ export default function BlockIPForm({
         form.handleSubmit()
       }}
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={(next) => {
+        // Closed without blocking: the next one starts empty.
+        if (!next) form.reset()
+        onOpenChange(next)
+      }}
       title="Block an IP"
       description="Every request from it is answered 429 until the block runs out — or until you unblock it."
       confirmText="Block IP"

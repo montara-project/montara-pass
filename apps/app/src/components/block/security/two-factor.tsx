@@ -7,6 +7,7 @@ import {
 } from '@montara-pass/shared/api/dtos/auth/schema'
 import { totpSecret } from '@montara-pass/shared/auth/totp'
 import { totpQrCode } from '@montara-pass/shared/auth/totp-qr'
+import { IconCircleCheck, IconShieldCheck } from '@tabler/icons-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -19,8 +20,9 @@ import { queries } from '@/lib/api/queries'
 import { PROFILE_QUERY_KEY } from '@/lib/api/queries/auth'
 import { services } from '@/lib/api/services'
 import { confirmTotp } from '@/lib/auth/email-auth'
+import { cn } from '@/lib/utils'
 
-import { SecuritySection, StatusChip } from './section'
+import { Chip, MethodCard } from './section'
 
 // Turning it on takes the password alone; the code field is not shown.
 const PasswordSchema = SignInSchema.pick({ password: true }).extend({ code: z.string() })
@@ -85,7 +87,7 @@ export default function TwoFactor() {
   const renderStep = () => {
     if (setup) {
       return (
-        <div className="border-border/60 border-t p-4">
+        <div className="border-border/60 border-b p-4">
           <form
             className="flex flex-col gap-4"
             noValidate
@@ -142,7 +144,7 @@ export default function TwoFactor() {
     }
     if (asking) {
       return (
-        <div className="border-border/60 border-t p-4">
+        <div className="border-border/60 border-b p-4">
           <form
             className="flex flex-col gap-4"
             noValidate
@@ -196,59 +198,46 @@ export default function TwoFactor() {
         </div>
       )
     }
-    return (
-      !enabled && (
-        // What turning it on takes, in order.
-        <ol className="border-border/60 m-0 grid list-none gap-2 border-t p-4 sm:grid-cols-3">
-          {[
-            'Scan the QR code with an authenticator app',
-            'Enter the 6-digit code to confirm',
-            'Store the 10 backup codes offline',
-          ].map((step, index) => (
-            <li
-              key={step}
-              className="bg-background rounded-md flex items-center gap-2.5 border px-3 py-2.5 text-xs"
-            >
-              <span className="text-muted-foreground font-mono text-[10px] tabular-nums">
-                0{index + 1}
-              </span>
-              {step}
-            </li>
-          ))}
-        </ol>
-      )
-    )
+    return null
   }
 
+  const open = setup !== null || asking
+
   return (
-    <SecuritySection
+    <MethodCard
       id="two-factor"
+      icon={IconShieldCheck}
+      on={enabled}
       title="Two-step verification (TOTP)"
-      description="A code from an authenticator app is asked for on every sign-in."
-      action={
-        !setup &&
-        !asking && (
-          <Button
-            size="sm"
-            variant={enabled ? 'outline' : 'primary'}
-            disabled={enabled === undefined}
-            onClick={() => setAsking(true)}
-          >
-            {enabled ? 'Turn off' : 'Turn on'}
-          </Button>
-        )
+      description="A six-digit code from an authenticator app, asked for after the password."
+      // Setting it up needs the room: the card takes the whole row while it is open.
+      className={cn(open && 'md:col-span-2')}
+      aside={
+        <>
+          <Chip on={enabled}>{enabled ? 'Enabled' : 'Off'}</Chip>
+          {!open && (
+            <Button
+              size="sm"
+              variant={enabled ? 'outline' : 'primary'}
+              className={cn('h-[30px]', enabled && 'bg-card')}
+              disabled={enabled === undefined}
+              onClick={() => setAsking(true)}
+            >
+              {enabled ? 'Turn off' : 'Turn on'}
+            </Button>
+          )}
+        </>
+      }
+      footnote={
+        <>
+          <IconCircleCheck className="size-3" aria-hidden />
+          {enabled
+            ? 'Authenticator app · signing in asks for a code'
+            : 'Not set up · password only'}
+        </>
       }
     >
-      <div className="flex items-center gap-3 px-4 py-3.5">
-        <StatusChip on={enabled}>{enabled ? 'On' : 'Off'}</StatusChip>
-        <p className="text-[13px]">
-          {enabled
-            ? 'On. Signing in asks for a code from your authenticator app.'
-            : 'Not enabled. Sign-in asks for the account password only.'}
-        </p>
-      </div>
-
       {renderStep()}
-    </SecuritySection>
+    </MethodCard>
   )
 }
