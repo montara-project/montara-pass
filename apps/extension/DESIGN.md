@@ -448,10 +448,14 @@ Calm and certain: one is filled, the rest stand back.
   and a bottom bar divided from the sheet by a hairline.
 - **Full tab sidebar:** the web app's: the mark and the name at its head,
   then Vault (the filters, with a tabular count at the far end), Tools
-  (Password generator, Password health) and System (Settings, Security,
-  Sharing in the Cloud Edition, then Open web app last). The links out
+  (Password generator, Password health) and System (Settings, then Open web
+  app: security, sharing, folders and the trash live in the web app). Tool
+  pages (generator, health, billing) sit in the web app's Settings frame:
+  at most 1200px wide, 22px from the top, 28px gutters (20px under 640px),
+  32px at the foot. The links out
   (Documentation, GitHub, Feedback) pin at its foot, as in the web app. Group
-  names and the links out take the subtle colour, a step quieter than the rows. Rows are
+  names are set as the mono note (10px, uppercase, 0.08em tracking); they and
+  the links out take the subtle colour, a step quieter than the rows. Rows are
   32px at 13px text, muted at rest, body colour under the pointer, a 12%
   primary wash when current.
 - **Full tab top bar:** 56px on the sidebar's tone (the background) with the sheet's top rule: the

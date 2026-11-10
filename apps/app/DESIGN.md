@@ -473,8 +473,9 @@ Calm and certain: one is filled, the rest stand back.
   Tools (Password generator, Password health) and System (Settings, the
   account's security page; Sharing in the Cloud Edition; IP blocks for the
   super user). Links out (Documentation, GitHub, Feedback) pin
-  at its foot. Group names and the links out take the subtle colour, a step
-  quieter than the rows. Rows are 32px
+  at its foot. Group names are set as the mono note (10px, uppercase, 0.08em
+  tracking, as "Client side · no storage"); they and the links out take the
+  subtle colour, a step quieter than the rows. Rows are 32px
   at 13px text, muted at rest, body colour under the pointer, and take a 12%
   primary wash when they are the page. A folded rail holds the icons alone,
   their names as tooltips.

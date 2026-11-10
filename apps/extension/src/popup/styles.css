@@ -1676,8 +1676,21 @@ button.small svg {
    then the password and its length beside what it is made of. */
 .detail-body.gen-page {
   gap: 0;
-  padding: 0;
+  /* The web app's Settings frame: one measure and one gutter on every tool
+     page, so moving between them keeps the content where it was. */
+  padding: 22px 28px 32px;
   container-type: inline-size;
+}
+
+/* The frame pads the tool from the top: the column adds nothing of its own. */
+.detail-col.tool-col {
+  padding-top: 0;
+}
+
+@media (max-width: 639px) {
+  .detail-body.gen-page {
+    padding-inline: 20px;
+  }
 }
 
 .tool-page-head {
@@ -1685,7 +1698,7 @@ button.small svg {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 16px;
-  padding: 22px 32px 18px;
+  padding-bottom: 18px;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
 }
 
@@ -1706,7 +1719,7 @@ button.small svg {
   grid-template-columns: minmax(0, 1fr) 420px;
   align-items: start;
   gap: 18px;
-  padding: 24px 32px 28px;
+  padding-top: 24px;
 }
 
 .gen-main {
@@ -2032,7 +2045,7 @@ input.range:active::-moz-range-thumb {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  padding: 24px 32px 32px;
+  padding-top: 24px;
 }
 
 .billing-section {
@@ -3085,12 +3098,6 @@ textarea,
   }
 }
 
-/* A row of the activity log: read, not pressed, so the row itself is padded. */
-
-.activity-row .item-name {
-  white-space: normal;
-}
-
 /* An item, read (the full tab): its head, then its fields in titled cards,
    then when it changed. Scoped here: the head and field rules above are
    shared with the tools and the share form. */
@@ -3411,7 +3418,7 @@ textarea,
 }
 
 .health-body {
-  padding: 20px 32px 28px;
+  padding-top: 20px;
 }
 
 .health-empty {
@@ -3574,213 +3581,4 @@ textarea,
   .health-section.wide {
     grid-column: auto;
   }
-}
-
-/* Security, as the web app has it: a section a line of what it is and its
-   action, then its card; the audit log as a table. */
-.sec-body {
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-  padding: 24px 32px 32px;
-}
-
-.sec-section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.sec-section > header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 16px;
-}
-
-.sec-section > header > div {
-  flex: 1;
-  min-width: 0;
-}
-
-.sec-section h2 {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.sec-section > header .muted {
-  font-size: 12px;
-}
-
-.sec-status {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  font-size: 13px;
-}
-
-.sec-chip {
-  display: inline-flex;
-  flex-shrink: 0;
-  align-items: center;
-  height: 20px;
-  padding: 0 8px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.sec-chip.on,
-.sec-this {
-  color: var(--good);
-}
-
-.sec-this {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.sec-rows {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.sec-rows li {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-}
-
-.sec-rows li + li {
-  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
-}
-
-.sec-rows .tile {
-  width: 32px;
-  height: 32px;
-  margin: 0;
-  border-radius: 8px;
-}
-
-.sec-rows .tile svg {
-  width: 16px;
-  height: 16px;
-}
-
-.sec-rows .item-name {
-  font-size: 13px;
-}
-
-/* Prev, the page, Next: as quiet as the count beside them. */
-.sec-pager {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.sec-pager button {
-  height: 28px;
-  padding: 0 8px;
-  border-radius: 6px;
-  background: none;
-  color: var(--fg);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.sec-pager button:hover:not(:disabled) {
-  background: var(--hover);
-}
-
-.sec-page {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-}
-
-.sec-log-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 16px;
-  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
-}
-
-/* Manage sharing: who can open each shared item, as initials, and your role in it. */
-.share-sub {
-  text-transform: none;
-}
-
-.share-people {
-  display: flex;
-  flex-shrink: 0;
-}
-
-.share-avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  margin-left: -6px;
-  border-radius: 50%;
-  background: var(--hover);
-  box-shadow: 0 0 0 2px var(--panel);
-  color: var(--fg);
-  font-size: 9px;
-  font-weight: 700;
-}
-
-.share-avatar:first-child {
-  margin-left: 0;
-}
-
-.share-avatar.owner {
-  background: var(--avatar);
-  color: var(--avatar-fg);
-}
-
-.share-role {
-  width: 60px;
-  flex-shrink: 0;
-  padding: 2px 6px;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--focus) 15%, transparent);
-  color: var(--focus);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-align: center;
-  text-transform: uppercase;
-}
-
-.share-role.owner {
-  background: color-mix(in srgb, var(--good) 15%, transparent);
-  color: var(--good);
 }

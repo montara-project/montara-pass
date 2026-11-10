@@ -90,8 +90,9 @@ export default function AppSidebar({
           if (links.length === 0) return null
           return (
             <SidebarGroup key={group} className="p-0">
+              {/* Named in the page's mono note (as "Client side · no storage"), in the quieter colour. */}
               {group !== '' && (
-                <SidebarGroupLabel className="text-subtle-foreground h-auto px-2.5 pb-1.5 text-label leading-normal">
+                <SidebarGroupLabel className="text-subtle-foreground h-auto px-2.5 pb-1.5 font-mono text-[10px] leading-normal font-normal tracking-[0.08em] uppercase">
                   {group}
                 </SidebarGroupLabel>
               )}

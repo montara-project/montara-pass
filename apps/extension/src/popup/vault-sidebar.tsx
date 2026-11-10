@@ -19,8 +19,6 @@ import {
   LockIcon,
   LogOutIcon,
   SettingsIcon,
-  ShareIcon,
-  ShieldIcon,
   ShieldOutlineIcon,
   UserIcon,
 } from './icons'
@@ -30,21 +28,12 @@ type Icon = SidebarLink['icon']
 
 /** Both editions ship their own name; the mark is the same. */
 const NAME = COMMUNITY ? 'Montara Pass CE' : 'Montara Pass'
-export type Tool = 'generator' | 'health' | 'activity' | 'billing' | 'sharing'
+export type Tool = 'generator' | 'health' | 'billing'
 
 /** The tools, pinned under the vault's views. */
 const TOOLS: { value: Tool; label: string; icon: Icon }[] = [
   { value: 'generator', label: 'Password generator', icon: KeyIcon },
   { value: 'health', label: 'Password health', icon: ShieldOutlineIcon },
-]
-
-/**
- * Under System, as in the web app: how the account signs in, and (Cloud
- * Edition only) what is shared. The extension's own Settings leads them.
- */
-const SYSTEM_TOOLS: { value: Tool; label: string; icon: Icon }[] = [
-  { value: 'activity', label: 'Security', icon: ShieldIcon },
-  ...(COMMUNITY ? [] : [{ value: 'sharing' as Tool, label: 'Sharing', icon: ShareIcon }]),
 ]
 
 interface VaultSidebarProps<F extends string> {
@@ -98,17 +87,10 @@ export function VaultSidebar<F extends string>({
       onSelect: () => onTool(value),
     })),
     { title: 'Settings', icon: SettingsIcon, group: 'System', onSelect: onSettings },
-    ...SYSTEM_TOOLS.map(({ value, label, icon }) => ({
-      title: label,
-      icon,
-      group: 'System',
-      active: tool === value,
-      onSelect: () => onTool(value),
-    })),
     ...(appUrl
       ? [
           {
-            // Last in System: folders, the trash and the profile live in the web app.
+            // Under Settings: the trash, folders, sharing and security live in the web app.
             title: 'Open web app',
             url: appUrl,
             icon: ExternalLinkIcon,

@@ -65,13 +65,11 @@ import {
   type Sort,
 } from '../use-vault-items'
 import { VaultSidebar, type Tool } from '../vault-sidebar'
-import Security from './activity'
 import Billing from './billing'
 import ItemForm from './item-form'
 import PasswordGenerator from './password-generator'
 import PasswordHealth from './password-health'
 import ShareItem from './share-item'
-import Sharing from './sharing'
 
 interface FullVaultProps {
   keys: VaultKeys
@@ -279,30 +277,6 @@ export default function FullVault({
     }
     if (tool === 'billing') {
       return <Billing onSignedOut={onSignedOut} />
-    }
-    if (tool === 'sharing') {
-      return (
-        <Sharing
-          items={items}
-          meEmail={user?.email}
-          onSignedOut={onSignedOut}
-          onManage={(id) => {
-            setTool(null)
-            setPane({ mode: 'share', id })
-          }}
-          onOpen={(id) => {
-            setTool(null)
-            setFilter('all')
-            setSearch('')
-            setPane({ mode: 'view', id })
-          }}
-        />
-      )
-    }
-    if (tool === 'activity') {
-      return (
-        <Security items={items} appUrl={appUrl} onSignedOut={onSignedOut} onNotice={setNotice} />
-      )
     }
     return (
       <PasswordHealth
