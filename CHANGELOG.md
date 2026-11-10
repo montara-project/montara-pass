@@ -3,6 +3,23 @@
 All notable changes to this project are documented in this file. Versions follow the git tags (`v*`); Docker images are published to ghcr.io with the same version.
 
 
+## [2.12.0](https://github.com/montara-project/montara-pass/compare/v2.11.0...v2.12.0) (2026-11-10)
+
+### Features
+
+* **app:** regroup sidebar, trim account menu and mask usernames ([6fe907d](https://github.com/montara-project/montara-pass/commit/6fe907decae4a6c364b4d4fa407bbf902d879a21))
+* **app:** settings page with general, profile and security tabs ([f400f91](https://github.com/montara-project/montara-pass/commit/f400f912cdb7657c2327bdbec90bbe641cf0754c))
+* **extension:** drop security and sharing, share the settings frame ([d8516f6](https://github.com/montara-project/montara-pass/commit/d8516f6db3ff45fc676cb71185aff05dd02075db))
+* **extension:** match the web app's sidebar, account menu and borders ([e704ce1](https://github.com/montara-project/montara-pass/commit/e704ce1250bc188606a5964f61588e21622b62cc))
+
+### Bug Fixes
+
+* **app:** put the billing page in the settings frame ([cbd2088](https://github.com/montara-project/montara-pass/commit/cbd2088de0b9b5a18bd054146893de80abc35c49))
+* **deps:** patch deepmerge against prototype poisoning ([d2529f2](https://github.com/montara-project/montara-pass/commit/d2529f2c88e4e37573f5b38ec088c494da4ce4de))
+* update cloudflare config ([fbe3aba](https://github.com/montara-project/montara-pass/commit/fbe3aba0d078be3fbe3cf4e5b56a0fce2d2ea5b8))
+* update design ([f91113f](https://github.com/montara-project/montara-pass/commit/f91113f709b3340e6190aefb3a0975ae39d9a6f9))
+* update release notes ([4e744d2](https://github.com/montara-project/montara-pass/commit/4e744d2b64489400e79b7474a54305ea607414d5))
+
 ## [2.11.0](https://github.com/montara-project/montara-pass/compare/v2.10.0...v2.11.0) (2026-11-08)
 
 ### Features
