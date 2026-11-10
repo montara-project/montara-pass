@@ -13,6 +13,7 @@ import SimpleAlertScrollableDialogForm from '@/components/block/common/simple-al
 import { MONO_NOTE } from '@/components/block/security/section'
 import ItemTile, { itemSubtitle } from '@/components/block/vault/item-tile'
 import { ShareItemForm } from '@/components/block/vault/share-form'
+import { PAGE_CONTAINER } from '@/components/layout/page'
 import { Button, ButtonArrow } from '@/components/ui/button'
 import {
   Command,
@@ -280,8 +281,8 @@ export default function Sharing() {
   }
 
   return (
-    <div className="mx-auto flex max-w-[1040px] flex-col">
-      <header className="border-border/60 flex flex-wrap items-center gap-x-4 gap-y-3 border-b px-5 pt-[22px] pb-[18px] sm:px-8">
+    <div className={cn(PAGE_CONTAINER, 'flex flex-col')}>
+      <header className="border-border/60 flex flex-wrap items-center gap-x-4 gap-y-3 border-b pb-[18px]">
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <p className={MONO_NOTE}>Vault · Sharing</p>
           <h1 className="text-[22px] font-semibold tracking-[-0.01em]">Manage sharing</h1>
@@ -295,7 +296,7 @@ export default function Sharing() {
         </Button>
       </header>
 
-      <div className="flex flex-col gap-4 px-5 pt-5 pb-8 sm:px-8">
+      <div className="flex flex-col gap-4 pt-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <dl className="m-0 flex flex-wrap gap-2">
             <Stat label="Shared items" value={isLoading ? '…' : items.length} />

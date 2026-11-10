@@ -2,8 +2,8 @@ import type { VaultItem } from '@montara-pass/shared/types/vault'
 
 import { ITEM_TYPE_LABEL } from '@montara-pass/shared/constants/vault'
 import { cardEnding, itemIcon } from '@montara-pass/shared/crypto/vault'
+import { maskUsername } from '@montara-pass/shared/username'
 
-import { maskUsername } from '../lib/username'
 import { CardIcon, KeyholeIcon, NoteIcon, UserIcon } from './icons'
 
 /** The line icon per item type; any other type gets the note. */

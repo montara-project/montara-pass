@@ -1,0 +1,54 @@
+diff --git a/dist/cjs.js b/dist/cjs.js
+index 7c36cbdd06cc22c92d590be3f87a08a91ca06b40..9e1eeab0dbbdf11813382fd14a12ad7867e300a9 100644
+--- a/dist/cjs.js
++++ b/dist/cjs.js
+@@ -80,11 +80,12 @@ function mergeObject(target, source, options) {
+ 	var destination = {};
+ 	if (options.isMergeableObject(target)) {
+ 		getKeys(target).forEach(function(key) {
++			if (key === '__proto__') { return } // GHSA-gcqx-w48m-w2h4
+ 			destination[key] = cloneUnlessOtherwiseSpecified(target[key], options);
+ 		});
+ 	}
+ 	getKeys(source).forEach(function(key) {
+-		if (propertyIsUnsafe(target, key)) {
++		if (key === '__proto__' || propertyIsUnsafe(target, key)) { // GHSA-gcqx-w48m-w2h4
+ 			return
+ 		}
+ 
+diff --git a/dist/umd.js b/dist/umd.js
+index 4071e7c56ec8e5273fe166f6e723ac460fab8b72..3851ae12fd4b851e7ac4520283a1b6f4989b2a6d 100644
+--- a/dist/umd.js
++++ b/dist/umd.js
+@@ -84,11 +84,12 @@
+ 		var destination = {};
+ 		if (options.isMergeableObject(target)) {
+ 			getKeys(target).forEach(function(key) {
++				if (key === '__proto__') { return } // GHSA-gcqx-w48m-w2h4
+ 				destination[key] = cloneUnlessOtherwiseSpecified(target[key], options);
+ 			});
+ 		}
+ 		getKeys(source).forEach(function(key) {
+-			if (propertyIsUnsafe(target, key)) {
++			if (key === '__proto__' || propertyIsUnsafe(target, key)) { // GHSA-gcqx-w48m-w2h4
+ 				return
+ 			}
+ 
+diff --git a/index.js b/index.js
+index 77968aed5d456cccc294f60912ef381fa1e52a7b..d6e5afbd1c4261a90d7c47f63b4b0eef57d5576b 100644
+--- a/index.js
++++ b/index.js
+@@ -55,11 +55,12 @@ function mergeObject(target, source, options) {
+ 	var destination = {}
+ 	if (options.isMergeableObject(target)) {
+ 		getKeys(target).forEach(function(key) {
++			if (key === '__proto__') { return } // GHSA-gcqx-w48m-w2h4
+ 			destination[key] = cloneUnlessOtherwiseSpecified(target[key], options)
+ 		})
+ 	}
+ 	getKeys(source).forEach(function(key) {
+-		if (propertyIsUnsafe(target, key)) {
++		if (key === '__proto__' || propertyIsUnsafe(target, key)) { // GHSA-gcqx-w48m-w2h4
+ 			return
+ 		}
+ 

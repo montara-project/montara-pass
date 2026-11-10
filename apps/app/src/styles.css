@@ -19,6 +19,8 @@
   --field-border: #7483a8;
   --fg: #101d3a;
   --muted: #51607f;
+  /* Quieter than muted, for group names and links out: still 4.5:1 on the page. */
+  --subtle: #616f8b;
   --primary: #145cff;
   --primary-fg: #ffffff;
   --focus: #145cff;
@@ -36,6 +38,33 @@
   --shadow-dialog: 0 4px 16px rgb(16 29 58 / 0.1);
   /* What is laid over the page while a dialog asks its question. */
   --veil: rgb(16 29 58 / 0.28);
+
+  /* One multiplier for the frame: a 4K panel at 100% draws a 56px bar and a
+     32px row smaller than a 1080p one does, so the chrome steps with the
+     display. The body's text does not step with it. */
+  --type-step: 1;
+  --control-h: calc(32px * var(--type-step));
+  --control-h-sm: calc(26px * var(--type-step));
+  --topbar-h: calc(56px * var(--type-step));
+}
+
+/* The steps of the frame's ramp, by the display the app is opened on. */
+@media (min-width: 1600px) {
+  :root {
+    --type-step: 1.07;
+  }
+}
+
+@media (min-width: 2100px) {
+  :root {
+    --type-step: 1.15;
+  }
+}
+
+@media (min-width: 3100px) {
+  :root {
+    --type-step: 1.3;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -49,6 +78,7 @@
     --field-border: #667aab;
     --fg: #ffffff;
     --muted: #a9b6d3;
+    --subtle: #808ca5;
     --focus: #42c8ff;
     --avatar: #145cff;
     --danger: #ff9a91;
@@ -64,6 +94,14 @@
 @theme inline {
   --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* The frame's two sizes, named by role so a colour beside one does not
+     delete it: `text-meta` for a link or a label, `text-label` for a group's
+     heading. Both step with the display, as the boxes around them do. */
+  --text-label: calc(11.5px * var(--type-step));
+  --text-label--line-height: calc(16px * var(--type-step));
+  --text-meta: calc(13px * var(--type-step));
+  --text-meta--line-height: calc(19px * var(--type-step));
 
   /* The three steps of depth, and what sits on them. */
   --color-background: var(--bg);
@@ -93,6 +131,7 @@
   --color-secondary-foreground: var(--fg);
   --color-muted: var(--card);
   --color-muted-foreground: var(--muted);
+  --color-subtle-foreground: var(--subtle);
   --color-accent: var(--hover);
   --color-accent-foreground: var(--fg);
   --color-skeleton: var(--hover);

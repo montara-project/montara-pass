@@ -20,6 +20,7 @@ import { IconCheck, IconCreditCard, IconQrcode } from '@tabler/icons-react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 
+import { PAGE_CONTAINER } from '@/components/layout/page'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toastApiError } from '@/lib/api/api-error'
@@ -249,8 +250,8 @@ export default function BillingBlock() {
   }
 
   return (
-    <div className="mx-auto flex max-w-[1040px] flex-col">
-      <header className="border-border/60 flex flex-col items-start gap-x-4 gap-y-3 border-b px-5 pt-[22px] pb-[18px] sm:flex-row sm:flex-wrap sm:items-center sm:px-8">
+    <div className={cn(PAGE_CONTAINER, 'flex flex-col')}>
+      <header className="border-border/60 flex flex-col items-start gap-x-4 gap-y-3 border-b pb-[18px] sm:flex-row sm:flex-wrap sm:items-center">
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <p className={label}>Account · Billing</p>
           <h1 className="text-[22px] font-semibold tracking-[-0.01em]">Billing</h1>
@@ -265,7 +266,7 @@ export default function BillingBlock() {
         </dl>
       </header>
 
-      <div className="flex flex-col gap-6 px-5 pt-6 pb-8 sm:px-8">
+      <div className="flex flex-col gap-6 pt-6">
         {returned && subscription?.status !== 'active' && (
           <p className="rounded-card bg-hover px-4 py-3 text-[13px]">
             Thanks. Your payment is being confirmed; this page updates once it has gone through.

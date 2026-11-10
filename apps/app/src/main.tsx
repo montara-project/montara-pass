@@ -16,6 +16,8 @@ const router = createRouter({
   // React Query owns the cache, so a preloaded route never counts as fresh.
   defaultPreloadStaleTime: 0,
   scrollRestoration: true,
+  // Pages scroll inside #app-main (layout/shell.tsx), not the window.
+  scrollToTopSelectors: ['#app-main'],
   // A page that is slow to arrive shows its skeleton, but not for a moment
   // too short to read: a flash of grey is worse than a short wait.
   defaultPendingMs: 200,

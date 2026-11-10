@@ -1,9 +1,9 @@
 import type { VaultItem } from '@montara-pass/shared/types/vault'
 
 import { passwordHealth } from '@montara-pass/shared/password'
+import { maskUsername } from '@montara-pass/shared/username'
 import { useMemo } from 'react'
 
-import { maskUsername } from '../../lib/username'
 import { GridIcon, RefreshIcon, ShieldIcon } from '../icons'
 import { ItemTile } from '../item-tile'
 

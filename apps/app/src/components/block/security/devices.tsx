@@ -1,23 +1,39 @@
 import type { Models } from '@montara-pass/shared/api/models'
 
 import { deviceName } from '@montara-pass/shared/activity'
-import { formatDateTime } from '@montara-pass/shared/date'
-import { IconWorld } from '@tabler/icons-react'
+import { IconDeviceDesktop, IconDeviceMobile } from '@tabler/icons-react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import SimpleAlertDialog from '@/components/block/common/simple-alert-dialog'
+import {
+  ListCard,
+  ListFooter,
+  ListRow,
+  ListRows,
+  ListSkeleton,
+  SettingsSection,
+  usePage,
+} from '@/components/block/settings/list'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
 import { toastApiError } from '@/lib/api/api-error'
 import { queries } from '@/lib/api/queries'
 import { cn } from '@/lib/utils'
 
-import { MONO_NOTE, Pager, SecuritySection } from './section'
+import { Chip, MONO_NOTE } from './section'
 
-/** Devices to a page. The server sends them all; a page is a slice of them. */
-const PAGE_SIZE = 5
+const AGO = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' })
+
+/** "Active 2 hours ago": when the session was last renewed, in words. */
+function activeAgo(updatedAt: string) {
+  const minutes = Math.round((Date.parse(updatedAt) - Date.now()) / 60_000)
+  if (minutes > -1) return 'Active now'
+  if (minutes > -60) return `Active ${AGO.format(minutes, 'minute')}`
+  const hours = Math.round(minutes / 60)
+  if (hours > -24) return `Active ${AGO.format(hours, 'hour')}`
+  return `Active ${AGO.format(Math.round(hours / 24), 'day')}`
+}
 
 /**
  * The devices signed in to the account, the most recently active first, and
@@ -30,7 +46,6 @@ export default function Devices() {
   const revokeOthers = useMutation(queries.sessions.revokeOthers())
   // The device to sign out, or every other one, while it is being confirmed.
   const [asking, setAsking] = useState<Models.Device | 'others' | null>(null)
-  const [page, setPage] = useState(0)
 
   useEffect(() => {
     if (isError) toastApiError(error)
@@ -38,9 +53,7 @@ export default function Devices() {
 
   const devices = data ?? []
   const others = devices.filter((d) => !d.current).length
-  // A sign-out can empty the last page: then the one before it shows.
-  const current = Math.min(page, Math.max(0, Math.ceil(devices.length / PAGE_SIZE) - 1))
-  const shown = devices.slice(current * PAGE_SIZE, (current + 1) * PAGE_SIZE)
+  const { rows, footer } = usePage(devices)
   const busy = revoke.isPending || revokeOthers.isPending
 
   const confirm = async () => {
@@ -61,65 +74,85 @@ export default function Devices() {
   }
 
   return (
-    <SecuritySection
+    <SettingsSection
       id="devices"
       title="Active sessions"
-      description="Every device signed in to this account, most recently active first."
+      description="Every device signed in to this account. Revoking one signs that device out at once."
+      aside={
+        !isLoading && (
+          <div className="flex items-center gap-3">
+            {others > 1 && (
+              <Button
+                variant="outline"
+                size="xs"
+                className="bg-card h-7 px-2.5 text-xs"
+                disabled={busy}
+                onClick={() => setAsking('others')}
+              >
+                Sign out of every other device
+              </Button>
+            )}
+            <span className={cn(MONO_NOTE, 'tabular-nums')}>{devices.length} active</span>
+          </div>
+        )
+      }
     >
-      <ul className="divide-border/60 m-0 flex list-none flex-col divide-y p-0">
+      <ListCard>
         {isLoading ? (
-          <li className="flex min-h-[56px] items-center px-4 py-3">
-            <Skeleton className="h-4 w-48" />
-          </li>
+          <ListSkeleton />
         ) : (
-          shown.map((device) => (
-            <li key={device.id} className="flex items-center gap-3 px-4 py-3">
-              <span className="bg-background inline-flex size-8 shrink-0 items-center justify-center rounded-md border">
-                <IconWorld className="size-4" aria-hidden />
-              </span>
-              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="truncate text-[13px] font-medium">{name(device)}</span>
-                <span className={cn(MONO_NOTE, 'truncate tabular-nums')}>
-                  {[device.ip, device.current ? 'Active now' : formatDateTime(device.updated_at)]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </span>
-              </div>
-              {/* This device signs out the usual way, from the account menu. */}
-              {device.current ? (
-                <span className="text-good font-mono text-[10px] font-medium tracking-[0.08em] uppercase">
-                  This device
-                </span>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="xs"
-                  disabled={busy}
-                  onClick={() => setAsking(device)}
-                >
-                  Revoke
-                </Button>
-              )}
-            </li>
-          ))
+          <>
+            <ListRows>
+              {rows.map((device) => {
+                const Icon = /mobile|iphone|android/i.test(device.user_agent ?? '')
+                  ? IconDeviceMobile
+                  : IconDeviceDesktop
+                return (
+                  <ListRow
+                    key={device.id}
+                    tile={
+                      <span
+                        className={cn(
+                          'bg-background inline-flex size-[30px] shrink-0 items-center justify-center rounded-md border',
+                          device.current ? 'text-good' : 'text-muted-foreground'
+                        )}
+                      >
+                        <Icon className="size-4" aria-hidden />
+                      </span>
+                    }
+                    name={name(device)}
+                    meta={[
+                      device.ip,
+                      device.current ? 'Current session' : activeAgo(device.updated_at),
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  >
+                    <span className="hidden sm:inline-flex">
+                      <Chip on={device.current}>
+                        {device.current ? 'This device' : 'Signed in'}
+                      </Chip>
+                    </span>
+                    {/* This device signs out the usual way, from the account menu. */}
+                    {!device.current && (
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        className="bg-card h-7 px-2.5 text-xs"
+                        disabled={busy}
+                        onClick={() => setAsking(device)}
+                      >
+                        Revoke
+                      </Button>
+                    )}
+                  </ListRow>
+                )
+              })}
+            </ListRows>
+            <ListFooter label="Sessions" {...footer} />
+          </>
         )}
-      </ul>
-      {others > 1 && (
-        <div className="border-border/60 border-t px-4 py-3">
-          <Button variant="outline" size="sm" disabled={busy} onClick={() => setAsking('others')}>
-            Sign out of every other device
-          </Button>
-        </div>
-      )}
-      {!isLoading && (
-        <Pager
-          page={current}
-          pageSize={PAGE_SIZE}
-          shown={shown.length}
-          total={devices.length}
-          onTurn={setPage}
-        />
-      )}
+      </ListCard>
 
       <SimpleAlertDialog
         title={
@@ -133,7 +166,7 @@ export default function Devices() {
         onConfirm={() => void confirm()}
         confirmText="Sign out"
       />
-    </SecuritySection>
+    </SettingsSection>
   )
 }
 

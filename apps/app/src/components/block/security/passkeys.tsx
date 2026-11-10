@@ -5,7 +5,7 @@ import { SignInSchema } from '@montara-pass/shared/api/dtos/auth/schema'
 import { UnlockFormSchema } from '@montara-pass/shared/api/dtos/vault/schema'
 import { passkeyCancelled, passkeysSupported } from '@montara-pass/shared/auth/passkey'
 import { formatDate } from '@montara-pass/shared/date'
-import { IconKey } from '@tabler/icons-react'
+import { IconFingerprint, IconKey } from '@tabler/icons-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -21,7 +21,7 @@ import { PASSKEY_QUERY_KEY } from '@/lib/api/queries/passkey'
 import { addPasskey } from '@/lib/auth/passkey-auth'
 import { cn } from '@/lib/utils'
 
-import { MONO_NOTE, SecuritySection, StatusChip } from './section'
+import { Chip, MethodCard, MONO_NOTE } from './section'
 
 const AddPasskeySchema = SignInSchema.pick({ password: true })
   .extend(UnlockFormSchema.shape)
@@ -91,16 +91,16 @@ export default function Passkeys() {
   const renderList = () => {
     if (isLoading) {
       return (
-        <div className="flex min-h-[52px] items-center px-4 py-3">
+        <div className="border-border/60 flex min-h-[52px] items-center border-b px-4 py-3">
           <Skeleton className="h-4 w-48" />
         </div>
       )
     }
     if (count > 0) {
       return (
-        <ul className="divide-border/60 m-0 flex list-none flex-col divide-y p-0">
+        <ul className="divide-border/60 border-border/60 m-0 flex list-none flex-col divide-y border-b p-0">
           {passkeys!.map((passkey) => (
-            <li key={passkey.id} className="flex items-center gap-3 px-4 py-3">
+            <li key={passkey.id} className="flex items-center gap-3 px-4 py-2.5">
               <span className="bg-background inline-flex size-8 shrink-0 items-center justify-center rounded-md border">
                 <IconKey className="size-4" aria-hidden />
               </span>
@@ -119,6 +119,7 @@ export default function Passkeys() {
               <Button
                 variant="outline"
                 size="xs"
+                className="bg-card h-7 px-2.5 text-xs"
                 disabled={remove.isPending}
                 onClick={() => setRemoving(passkey)}
               >
@@ -129,41 +130,51 @@ export default function Passkeys() {
         </ul>
       )
     }
+    // None yet: the chip in the head says so, unless this browser cannot add one.
     return (
-      <div className="flex items-center gap-3 px-4 py-3.5">
-        <StatusChip>None</StatusChip>
-        <p className="text-[13px]">
-          {passkeysSupported()
-            ? 'No passkey registered on this account yet.'
-            : 'This browser cannot use passkeys.'}
+      !passkeysSupported() && (
+        <p className="border-border/60 text-muted-foreground border-b px-4 py-3 text-[13px]">
+          This browser cannot use passkeys.
         </p>
-      </div>
+      )
     )
   }
 
   return (
-    <SecuritySection
+    <MethodCard
       id="passkeys"
+      icon={IconFingerprint}
+      on={count > 0}
       title="Passkeys"
-      description="A fingerprint, face or security key replaces both the password and the code."
-      action={
-        passkeysSupported() &&
-        !adding && (
-          <Button
-            size="sm"
-            variant={count ? 'outline' : 'primary'}
-            disabled={!userKeys}
-            onClick={() => setAdding(true)}
-          >
-            Add a passkey
-          </Button>
-        )
+      description="A fingerprint, face or security key signs you in without a password."
+      className={cn(adding && 'md:col-span-2')}
+      aside={
+        <>
+          <Chip on={count > 0}>{count ? `${count} ${count === 1 ? 'key' : 'keys'}` : 'None'}</Chip>
+          {passkeysSupported() && !adding && (
+            <Button
+              size="sm"
+              variant={count ? 'outline' : 'primary'}
+              className={cn('h-[30px]', count > 0 && 'bg-card')}
+              disabled={!userKeys}
+              onClick={() => setAdding(true)}
+            >
+              Add a passkey
+            </Button>
+          )}
+        </>
+      }
+      footnote={
+        <>
+          <IconKey className="size-3" aria-hidden />
+          Unlocks the vault too where the authenticator allows it
+        </>
       }
     >
       {renderList()}
 
       {adding && (
-        <div className="border-border/60 border-t p-4">
+        <div className="border-border/60 border-b p-4">
           <form
             className="flex flex-col gap-4"
             noValidate
@@ -215,11 +226,6 @@ export default function Passkeys() {
         </div>
       )}
 
-      <p className={cn(MONO_NOTE, 'border-border/60 flex items-center gap-2 border-t px-4 py-2.5')}>
-        <IconKey className="size-3.5" aria-hidden />
-        Unlocks the vault too where the authenticator allows it
-      </p>
-
       <SimpleAlertDialog
         title={`Remove ${removing?.name ?? 'this passkey'}?`}
         description="It no longer signs you in or unlocks your vault. Delete it from the authenticator too."
@@ -228,6 +234,6 @@ export default function Passkeys() {
         onConfirm={() => void confirmRemove()}
         confirmText="Remove"
       />
-    </SecuritySection>
+    </MethodCard>
   )
 }

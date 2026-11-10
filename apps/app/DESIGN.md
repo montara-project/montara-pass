@@ -16,6 +16,7 @@ colors:
   field-border: "#7483a8"
   fg: "#101d3a"
   muted: "#51607f"
+  subtle: "#616f8b"
   primary: "#145cff"
   primary-fg: "#ffffff"
   focus: "#145cff"
@@ -36,6 +37,7 @@ colors:
   field-border-dark: "#667aab"
   fg-dark: "#ffffff"
   muted-dark: "#a9b6d3"
+  subtle-dark: "#808ca5"
   focus-dark: "#42c8ff"
   avatar-dark: "#145cff"
   danger-dark: "#ff9a91"
@@ -246,6 +248,8 @@ use a raw colour, only the semantic tokens.
 - **Field edge** (`field-border`): the outline of anything typed into. Kept
   apart from the divider because it has to hold 3:1 against its surface.
 - **Muted** (`muted`): labels, secondary lines, resting icons.
+- **Subtle** (`subtle`): quieter than muted, for the sidebar's group names
+  and its links out. Still 4.5:1 on the background.
 
 ### Status
 
@@ -312,11 +316,18 @@ Two shapes:
   card 400px wide in the middle of the page, on the sheet tone with a 16px
   radius. The vault gate stands outside the shell: locked, there is nowhere in
   it to go.
-- **The shell** (`components/layout/shell.tsx`): shadcn's inset sidebar
-  (sidebar-08, `components/ui/sidebar.tsx`) on the page itself, and the
-  content on a rounded sheet beside it under a header with the sidebar's
-  trigger and a breadcrumb. The sidebar folds to a rail of icons, and the
-  choice is remembered in a cookie. Under 768px it opens over the page.
+- **The shell** (`components/layout/shell.tsx`): the admin's own chrome
+  (`components/layout/sidebar/`), shared with the extension's full tab: a
+  `15rem` sidebar on the page itself, folding to a 48px rail of icons whose
+  names show as tooltips, and the page on the sheet beside it under a 56px
+  bar that holds the trigger, the breadcrumb and the UTC clock. Its top bar
+  ends with the account's avatar, which opens the menu of the pages the
+  sidebar leaves out and the two ways out. The head of the sidebar is as tall
+  as that bar and shares its rule. The fold is remembered in the
+  `sidebar_state` cookie; under 768px the sidebar opens over the page.
+  `--type-step` grows the bar, the rows and the ramp with the display: 1.00
+  at HD, 1.07 at Full HD, 1.15 at 2K and 1.30 at 4K, so a 4K panel draws the
+  same physical control.
 
 Inside the sheet a page is one of three:
 
@@ -456,14 +467,29 @@ Calm and certain: one is filled, the rest stand back.
 
 ### Navigation
 
-- **Sidebar:** 32px items, muted at rest, body colour on hover; the current
-  one takes the hover tone. Three groups: Vault (Vault, Folders, Trash), the
-  tools pinned to the foot above the account (Password generator, Password
-  health), and Billing in the Cloud Edition only, beside them. The account
-  sits below and opens a menu beside it (Account, Lock vault, Sign out).
+- **Sidebar:** a `15rem` column on the page, the mark and the app's name at
+  its head, then three groups: Vault (All items, Logins, Secure notes, Cards,
+  Contacts, Favorites, Trash, each with a tabular count at the far end),
+  Tools (Password generator, Password health) and System (Settings, the
+  account's security page; Sharing in the Cloud Edition; IP blocks for the
+  super user). Links out (Documentation, GitHub, Feedback) pin
+  at its foot. Group names are set as the mono note (10px, uppercase, 0.08em
+  tracking, as "Client side · no storage"); they and the links out take the
+  subtle colour, a step quieter than the rows. Rows are 32px
+  at 13px text, muted at rest, body colour under the pointer, and take a 12%
+  primary wash when they are the page. A folded rail holds the icons alone,
+  their names as tooltips.
+- **Top bar:** 56px, on the sidebar's tone (the background), the sheet's top rule along its
+  bottom. The sidebar's trigger, then the group and the page in a breadcrumb
+  (the group drops under 768px), then the UTC clock, a Lock vault icon
+  button and the account's avatar at the far end. A vault filter names itself there, so `/vault?type=login`
+  reads Logins.
 - **Menu:** card tone, 12px radius, 6px padding, the floating shadow; 36px
   items with an 18px muted icon; a destructive item is danger-coloured with a
-  14% danger wash on hover. A row's menu grows from its button over 140ms
+  14% danger wash on hover. The account's menu leads with the name and the
+  email, rules, then Profile, Billing (Cloud Edition only) and Lock vault,
+  rules again, then Sign out in the danger colour. Manage folders is reached
+  from the vault's footer. A row's menu grows from its button over 140ms
   (`cubic-bezier(0.16, 1, 0.3, 1)`, from 96% scale).
 - **Back:** an icon button with an arrow at the top left of a sub-view.
 

@@ -1,4 +1,7 @@
 import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
+
+import { PAGE_CONTAINER } from './page'
 
 /** Rows that stand in for a list or a table while it is fetched. */
 export function RowsSkeleton({ rows = 6 }: { rows?: number }) {
@@ -21,7 +24,7 @@ export function RowsSkeleton({ rows = 6 }: { rows?: number }) {
  */
 export default function PageSkeleton() {
   return (
-    <div className="flex flex-col gap-5 p-5 sm:px-8 sm:pb-8" role="status" aria-label="Loading">
+    <div className={cn(PAGE_CONTAINER, 'flex flex-col gap-5')} role="status" aria-label="Loading">
       <div className="flex items-center justify-between gap-4">
         <div className="flex flex-1 flex-col gap-2">
           <Skeleton className="h-6 w-40 max-w-full" />

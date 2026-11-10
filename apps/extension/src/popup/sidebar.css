@@ -1,13 +1,32 @@
-/* Tailwind for the full tab's sidebar and the Security page's audit log
-   only: the web app's own components, shared through the `@` alias. No
-   preflight and no layers: the rest of the popup is styles.css, and a reset
-   would undo it. Only the files below are
+/* Tailwind for the full tab's sidebar and top bar: the web app's own
+   components, shared through the `@` alias. No preflight: the rest of the
+   popup is styles.css, and a reset would undo it. Only the files below are
    read for classes, so none of the popup's own class names turn into a
    utility by accident. */
+/* base sits under utilities, so a border colour class still wins over it. */
+@layer theme, base, utilities;
 @import 'tailwindcss/theme.css';
 @import 'tailwindcss/utilities.css' source(none);
 
+/* The one part of preflight the shared components need: a bare `border`
+   (the clock's box, the sidebar's edge by the collapse toggle) takes the
+   divider colour, not currentColor. Layered, so the popup's own unlayered
+   rules and every border-* utility still win. */
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--border);
+  }
+}
+
 @source './vault-sidebar.tsx';
+@source '../../../app/src/components/layout/sidebar/app-sidebar.tsx';
+@source '../../../app/src/components/layout/sidebar/nav-item.tsx';
+@source '../../../app/src/components/layout/sidebar/nav-secondary.tsx';
+@source '../../../app/src/components/layout/sidebar/topbar.tsx';
+@source '../../../app/src/components/layout/sidebar/utc-clock.tsx';
+@source '../../../app/src/components/layout/sidebar/user-menu.tsx';
 @source '../../../app/src/components/ui/sidebar.tsx';
 @source '../../../app/src/components/ui/sheet.tsx';
 @source '../../../app/src/components/ui/tooltip.tsx';
@@ -15,34 +34,40 @@
 @source '../../../app/src/components/ui/separator.tsx';
 @source '../../../app/src/components/ui/breadcrumb.tsx';
 @source '../../../app/src/components/ui/dropdown-menu.tsx';
-@source '../../../app/src/components/layout/server-time.tsx';
-@source '../../../app/src/components/block/common/react-table.tsx';
-@source '../../../app/src/components/block/security/audit-table.tsx';
-@source '../../../app/src/components/block/security/section.tsx';
-@source '../../../app/src/components/ui/data-grid.tsx';
-@source '../../../app/src/components/ui/data-grid-table.tsx';
-@source '../../../app/src/components/ui/scroll-area.tsx';
 @source '../../../app/src/components/ui/skeleton.tsx';
 
 /* The roles of styles.css under the names the shared components use. */
 @theme inline {
+  /* The popup's own mono stack, as the web app has it. */
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
   --color-background: var(--bg);
   --color-panel: var(--panel);
   --color-foreground: var(--fg);
   --color-border: var(--border);
   --color-muted: var(--card);
   --color-muted-foreground: var(--muted);
+  --color-subtle-foreground: var(--subtle);
   --color-accent: var(--hover);
   --color-accent-foreground: var(--fg);
   --color-hover: var(--hover);
   --color-card: var(--card);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-fg);
   --color-good: var(--good);
+  --color-danger: var(--danger);
   --color-skeleton: var(--hover);
   --color-popover: var(--card);
   --color-popover-foreground: var(--fg);
   --color-ring: var(--focus);
   --color-avatar: var(--avatar);
   --color-avatar-foreground: var(--avatar-fg);
+
+  /* The frame's two sizes, named by role so a colour beside one does not
+     delete it: text-meta for a link or a label, text-label for a group's. */
+  --text-label: calc(11.5px * var(--type-step));
+  --text-label--line-height: calc(16px * var(--type-step));
+  --text-meta: calc(13px * var(--type-step));
+  --text-meta--line-height: calc(19px * var(--type-step));
 
   --color-sidebar: var(--bg);
   --color-sidebar-foreground: var(--muted);

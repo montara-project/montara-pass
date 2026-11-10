@@ -1,18 +1,15 @@
 import { COMMUNITY } from '@montara-pass/shared/constants/edition'
-import { initials } from '@montara-pass/shared/string'
 import {
   IconCreditCard,
   IconFileText,
   IconFolders,
-  IconForbid,
   IconKey,
   IconLayoutGrid,
   IconLock,
   IconLogout,
   IconPassword,
-  IconSelector,
+  IconSettings,
   IconShield,
-  IconShieldCheck,
   IconStar,
   IconTrash,
   IconUser,
@@ -22,40 +19,16 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 
-import ServerTime from '@/components/layout/server-time'
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarInset,
-  SidebarMenu,
-  SidebarMenuBadge,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarRail,
-  SidebarSeparator,
-  SidebarTrigger,
-  useSidebar,
-} from '@/components/ui/sidebar'
+import type { SidebarLink } from '@/components/layout/sidebar/app-sidebar'
+import type { NavLinkRenderer } from '@/components/layout/sidebar/nav-item'
+import type { UserMenuAction } from '@/components/layout/sidebar/user-menu'
+
+import AppSidebar from '@/components/layout/sidebar/app-sidebar'
+import { LINKS_OUT } from '@/components/layout/sidebar/nav-secondary'
+import Topbar from '@/components/layout/sidebar/topbar'
+import UserMenu from '@/components/layout/sidebar/user-menu'
+import UtcClock from '@/components/layout/sidebar/utc-clock'
+import { SIDEBAR_COOKIE_NAME, SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { env } from '@/config/env'
 import { useSignOut } from '@/hooks/use-sign-out'
 import { useItemTotals } from '@/hooks/use-vault'
@@ -63,12 +36,17 @@ import { queries } from '@/lib/api/queries'
 import { HOME_PATH } from '@/lib/constants/auth'
 import { useVaultStore } from '@/lib/stores/vault'
 
-/** The vault's views, each a filter of the vault page, with how many items it holds. */
-const VAULT_VIEWS: {
+type Icon = SidebarLink['icon']
+
+/** A filter of the vault page: the same route, a narrower list. */
+interface VaultView {
   title: string
-  icon: React.ElementType
+  icon: Icon
   search: { type?: string; favorite?: boolean }
-}[] = [
+}
+
+/** The vault's views, in the order the sidebar lists them. */
+const VAULT_VIEWS: VaultView[] = [
   { title: 'All items', icon: IconLayoutGrid, search: {} },
   { title: 'Logins', icon: IconKey, search: { type: 'login' } },
   { title: 'Secure notes', icon: IconFileText, search: { type: 'secure_note' } },
@@ -77,281 +55,191 @@ const VAULT_VIEWS: {
   { title: 'Favorites', icon: IconStar, search: { favorite: true } },
 ]
 
-/** Shown at the foot of the sidebar, above the account. */
-const TOOLS = [
-  { title: 'Password generator', url: '/generator', icon: IconPassword, group: 'Tools' },
-  { title: 'Password health', url: '/health', icon: IconShield, group: 'Tools' },
-  // How the account signs in, where it is signed in, and what happened.
-  { title: 'Security', url: '/security', icon: IconShieldCheck, group: 'Account' },
-] as const
+/** Under the vault's views: what was thrown away, until it is emptied. */
+const TRASH = { title: 'Trash', url: '/trash', icon: IconTrash } as const
 
-/** In the account menu: the vault's other pages and the account's own. */
-const MENU = [
-  { title: 'Profile', url: '/profile', icon: IconUserCircle, group: 'Account' },
-  { title: 'Manage folders', url: '/folders', icon: IconFolders, group: 'Vault' },
-  // Sharing is the Cloud Edition's: the Community server has one user.
-  ...(COMMUNITY
-    ? []
-    : [{ title: 'Manage sharing', url: '/sharing', icon: IconUsers, group: 'Vault' } as const]),
-  // Billing is the Cloud Edition's: the Community server takes no payments.
-  ...(COMMUNITY
-    ? []
-    : [{ title: 'Billing', url: '/billing', icon: IconCreditCard, group: 'Account' } as const]),
-] as const
-
-/** The super user's pages. Hidden from everyone else, and the route refuses them too. */
-const ADMIN = [
-  { title: 'IP blocks', url: '/settings/ip-blocks', icon: IconForbid, group: 'Admin' },
-] as const
-
-/** Only routes that actually exist are listed, and each names its breadcrumb group. */
-/** Under the vault's views in the sidebar: what was thrown away, until it is emptied. */
-const TRASH = { title: 'Trash', url: '/trash', icon: IconTrash, group: 'Vault' } as const
-
-const CRUMBS = [
-  { title: 'Vault', url: '/vault', group: 'Vault' },
-  TRASH,
-  ...TOOLS,
-  ...MENU,
-  ...ADMIN,
+/** The tools, in a group of their own under the vault. */
+const TOOLS: { title: string; url: string; icon: Icon }[] = [
+  { title: 'Password generator', url: '/generator', icon: IconPassword },
+  { title: 'Password health', url: '/health', icon: IconShield },
 ]
 
+/** Settings, under System: its General tab is its own page, the others are the account's. */
+const SETTINGS = { title: 'Settings', url: '/settings', icon: IconSettings } as const
+
+/** The pages Settings' tabs lead to: the sidebar keeps Settings lit on each. */
+const SETTINGS_TABS = [SETTINGS.url, '/profile', '/security']
+
+/** In the account menu, above Lock vault and Sign out. Billing is the Cloud Edition's only. */
+const MENU = [
+  { title: 'Profile', url: '/profile', icon: IconUserCircle },
+  ...(COMMUNITY ? [] : [{ title: 'Billing', url: '/billing', icon: IconCreditCard }]),
+] as const
+
+/** Reached from the vault's footer, so in neither the sidebar nor the menu. */
+const FOLDERS = { title: 'Manage folders', url: '/folders', icon: IconFolders } as const
+
+/** Under Settings in System. Sharing is the Cloud Edition's only. */
+const SYSTEM = COMMUNITY ? [] : [{ title: 'Sharing', url: '/sharing', icon: IconUsers }]
+
+/** The pages the header can name, by the route that shows them. */
+const CRUMBS = [
+  { ...TRASH, group: 'Vault' },
+  ...TOOLS.map((tool) => ({ ...tool, group: 'Tools' })),
+  ...SYSTEM.map((item) => ({ ...item, group: 'System' })),
+  // Settings' tabs, each named under Settings; before the account menu's own Profile.
+  { title: 'General', url: SETTINGS.url, group: 'Settings' },
+  { title: 'Profile', url: '/profile', group: 'Settings' },
+  { title: 'Security', url: '/security', group: 'Settings' },
+  ...MENU.map((item) => ({ ...item, group: 'Account' })),
+  { ...FOLDERS, group: 'Vault' },
+]
+
+/** The router's Link, so a click moves within the page and the vault's filter rides along. */
+const routerLink: NavLinkRenderer = ({ href, search, onClick, children }) => (
+  <Link to={href} search={search} onClick={onClick}>
+    {children}
+  </Link>
+)
+
+/** The sidebar writes its state to a cookie; reading it back keeps a folded rail folded. */
+const startsOpen = () => !document.cookie.split('; ').includes(`${SIDEBAR_COOKIE_NAME}=false`)
+
 /**
- * The frame of every page after the vault is unlocked: an inset sidebar
- * (shadcn's sidebar-08) that folds to its icons, and the page on a sheet
- * beside it. In a narrow window the sidebar opens over the page instead.
+ * The frame of every page after the vault is unlocked: the admin's sidebar on
+ * the page itself, and the page on a sheet beside it under a bar that names
+ * where it is. In a narrow window the sidebar opens over the page instead.
  */
 export default function Shell({ children }: { children: React.ReactNode }) {
-  // The page, not its filters: choosing an item or a folder is not a move.
   const pathname = useLocation({ select: (location) => location.pathname })
-  const current = CRUMBS.find((crumb) => pathname.startsWith(crumb.url))
+  const items = useSidebarItems()
+  // The bar names the lit row: a filter of the vault counts as a page of its own.
+  const current = items.find((item) => item.active)
+  const crumb = pathname.startsWith('/vault')
+    ? { title: current?.title ?? 'All items', group: 'Vault' }
+    : CRUMBS.find((crumb) => pathname.startsWith(crumb.url))
 
   return (
-    // The sidebar remembers itself in this cookie.
     <SidebarProvider
-      defaultOpen={!document.cookie.includes('sidebar_state=false')}
-      className="h-svh"
+      defaultOpen={startsOpen()}
+      className="h-svh min-h-0"
+      // The rail holds names at the frame's step: it grows with the display.
+      style={{ '--sidebar-width': 'calc(15rem * var(--type-step))' } as React.CSSProperties}
     >
-      <Sidebar variant="inset" collapsible="icon">
-        {/* As tall as the page's header, with its line along the bottom: the
-            two lines meet as one, open or folded. */}
-        <SidebarHeader className="relative h-14 shrink-0 justify-center gap-0 py-0">
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton size="lg" asChild>
-                <Link to={HOME_PATH}>
-                  <img src="/static/logo-128.png" alt="" className="size-8 rounded-lg" />
-                  <div className="grid flex-1 gap-0.5 text-left leading-tight">
-                    <span className="text-foreground truncate text-[15px] font-semibold tracking-[-0.01em]">
-                      {env.VITE_APP_NAME}
-                    </span>
-                    <span className="truncate text-xs font-normal">
-                      {COMMUNITY ? 'Community Edition' : 'Your vault'}
-                    </span>
-                  </div>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-          <SidebarSeparator className="absolute inset-x-0 bottom-0 mx-0 w-auto" />
-        </SidebarHeader>
-
-        <SidebarContent className="pt-2">
-          <SidebarGroup>
-            <SidebarGroupLabel>Vault</SidebarGroupLabel>
-            <VaultViews pathname={pathname} />
-          </SidebarGroup>
-          <SidebarGroup className="mt-auto">
-            <SidebarGroupContent>
-              <NavList items={TOOLS} pathname={pathname} />
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
-
-        <SidebarFooter className="gap-1">
-          <SidebarSeparator className="mx-0.5 bg-sidebar-border/50" />
-          <Account />
-        </SidebarFooter>
-        <SidebarRail />
-      </Sidebar>
-
-      <SidebarInset className="bg-panel min-h-0 overflow-hidden">
-        <header className="bg-panel border-border sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b px-3 sm:px-6 md:rounded-t-sheet">
-          <SidebarTrigger className="-ml-2" />
-          {current && (
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">{current.group}</BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>{current.title}</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          )}
-          <ServerTime className="ml-auto" />
-        </header>
-        {/* A new scroller for each page, so each one arrives at its top. It is
-            what moves as the page arrives, and the inset clips it: the content
-            never overflows, so no scrollbar flashes. */}
-        <div key={pathname} className="page-in min-h-0 flex-1 overflow-y-auto">
-          {children}
+      <AppSidebar
+        brand={{ name: env.VITE_APP_NAME, logo: '/static/logo-128.png' }}
+        groups={GROUPS}
+        items={items}
+        link={routerLink}
+        home={HOME_PATH}
+        secondary={LINKS_OUT}
+      />
+      <SidebarInset className="bg-panel h-svh min-w-0 overflow-hidden">
+        {/* The sidebar holds a dozen links; a keyboard can go straight to the page. */}
+        <a
+          href="#app-main"
+          className="bg-card text-foreground rounded-control sr-only text-meta font-medium focus-visible:not-sr-only focus-visible:fixed focus-visible:top-3 focus-visible:left-3 focus-visible:z-30 focus-visible:border focus-visible:px-3 focus-visible:py-2"
+        >
+          Skip to content
+        </a>
+        <Topbar group={crumb?.group} title={crumb?.title ?? 'Vault'}>
+          <UtcClock />
+          <BarAccount />
+        </Topbar>
+        {/* main.tsx: scrollToTopSelectors resets it on navigation. */}
+        <div
+          id="app-main"
+          data-scroll-restoration-id="app-main"
+          // Focusable so the skip link lands the caret here, not on the next link.
+          tabIndex={-1}
+          className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable] focus:outline-none"
+        >
+          {/* A new element for each page, so each one arrives. As tall as the
+              frame, so a page like the vault can hold its list to the screen;
+              a longer page runs past it and the frame scrolls. */}
+          <div key={pathname} className="page-in h-full">
+            {children}
+          </div>
         </div>
       </SidebarInset>
     </SidebarProvider>
   )
 }
 
-/** The vault's views, each with its count; the one the vault page shows is lit. */
-function VaultViews({ pathname }: { pathname: string }) {
-  const { isMobile, setOpenMobile } = useSidebar()
+/** The admin's groups, in order. */
+const GROUPS = ['Vault', 'Tools', 'System']
+
+/**
+ * The sidebar's rows: the vault's views with their counts and what was thrown
+ * away, the tools, and the account's settings with sharing. The one the page
+ * shows is lit.
+ */
+function useSidebarItems(): SidebarLink[] {
+  const pathname = useLocation({ select: (location) => location.pathname })
   const search = useLocation({ select: (location) => location.search }) as {
     type?: string
     favorite?: boolean
   }
-  // The views' counts, then the trash's: the same server totals, nothing decrypted.
   const totals = useItemTotals([...VAULT_VIEWS.map((view) => view.search), { trashed: true }])
-  const trashed = totals[VAULT_VIEWS.length]
   const onVault = pathname.startsWith('/vault')
-  const onTrash = pathname.startsWith(TRASH.url)
 
-  return (
-    <SidebarMenu>
-      {VAULT_VIEWS.map(({ title, icon: Icon, search: view }, index) => {
-        const active =
-          onVault &&
-          search.type === view.type &&
-          Boolean(search.favorite) === Boolean(view.favorite)
-        return (
-          <SidebarMenuItem key={title}>
-            <SidebarMenuButton asChild tooltip={title} isActive={active}>
-              <Link
-                to="/vault"
-                search={view}
-                aria-current={active ? 'page' : undefined}
-                onClick={() => isMobile && setOpenMobile(false)}
-              >
-                <Icon />
-                <span>{title}</span>
-              </Link>
-            </SidebarMenuButton>
-            {totals[index] !== undefined && <SidebarMenuBadge>{totals[index]}</SidebarMenuBadge>}
-          </SidebarMenuItem>
-        )
-      })}
-      <SidebarMenuItem>
-        <SidebarMenuButton asChild tooltip={TRASH.title} isActive={onTrash}>
-          <Link
-            to={TRASH.url}
-            aria-current={onTrash ? 'page' : undefined}
-            onClick={() => isMobile && setOpenMobile(false)}
-          >
-            <TRASH.icon />
-            <span>{TRASH.title}</span>
-          </Link>
-        </SidebarMenuButton>
-        {trashed !== undefined && <SidebarMenuBadge>{trashed}</SidebarMenuBadge>}
-      </SidebarMenuItem>
-    </SidebarMenu>
-  )
+  const views: SidebarLink[] = VAULT_VIEWS.map((view, index) => ({
+    title: view.title,
+    url: '/vault',
+    search: view.search,
+    icon: view.icon,
+    group: 'Vault',
+    badge: totals[index],
+    active:
+      onVault &&
+      search.type === view.search.type &&
+      Boolean(search.favorite) === Boolean(view.search.favorite),
+  }))
+
+  return [
+    ...views,
+    {
+      ...TRASH,
+      group: 'Vault',
+      badge: totals[VAULT_VIEWS.length],
+      active: pathname.startsWith(TRASH.url),
+    },
+    ...TOOLS.map((tool) => ({
+      ...tool,
+      group: 'Tools',
+      active: pathname.startsWith(tool.url),
+    })),
+    { ...SETTINGS, group: 'System', active: SETTINGS_TABS.includes(pathname) },
+    ...SYSTEM.map((item) => ({ ...item, group: 'System', active: pathname.startsWith(item.url) })),
+  ]
 }
 
-type NavItem = { title: string; url: string; icon: React.ElementType; group: string }
-
-function NavList({ items, pathname }: { items: readonly NavItem[]; pathname: string }) {
-  const { isMobile, setOpenMobile } = useSidebar()
-
-  return (
-    <SidebarMenu>
-      {items.map(({ title, url, icon: Icon }) => (
-        <SidebarMenuItem key={url}>
-          <SidebarMenuButton asChild tooltip={title} isActive={pathname.startsWith(url)}>
-            {/* Over the page in a narrow window, so it steps aside once a page is chosen. */}
-            <Link to={url} onClick={() => isMobile && setOpenMobile(false)}>
-              <Icon />
-              <span>{title}</span>
-            </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      ))}
-    </SidebarMenu>
-  )
-}
-
-/** The foot of the sidebar: who is signed in, the account's other pages, and the ways out. */
-function Account() {
+/**
+ * The bar's avatar: who is signed in, the account's pages the sidebar leaves
+ * out, and the two ways out of it, with Lock vault also as a button beside it.
+ */
+function BarAccount() {
   const navigate = useNavigate()
   const signOut = useSignOut()
   const lock = useVaultStore((state) => state.lock)
-  const { isMobile } = useSidebar()
-  const { data: profile, isError, refetch } = useQuery(queries.auth.profile())
-  const user = profile?.user
-  // The Admin pages are the super user's: hidden until the role says so.
-  const { data: role } = useQuery(queries.security.role())
-  const pages = role?.role === 'super_user' ? [...MENU, ...ADMIN] : MENU
+  const { data: profile } = useQuery(queries.auth.profile())
 
-  if (isError && !user) {
-    return (
-      <SidebarMenu>
-        <SidebarMenuItem>
-          <SidebarMenuButton className="text-danger" onClick={() => void refetch()}>
-            <span>Couldn't load your profile. Try again</span>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      </SidebarMenu>
-    )
-  }
+  const actions: UserMenuAction[] = [
+    ...MENU.map(({ title, url, icon }) => ({
+      label: title,
+      icon,
+      onSelect: () => void navigate({ to: url }),
+    })),
+    { label: 'Lock vault', icon: IconLock, onSelect: lock },
+    { label: 'Sign out', icon: IconLogout, onSelect: () => void signOut(), destructive: true },
+  ]
 
   return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              aria-label="Account"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
-              <span
-                aria-hidden="true"
-                className="bg-avatar text-avatar-foreground inline-flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-              >
-                {user ? initials(user.name || user.email) : ''}
-              </span>
-              <div className="grid flex-1 text-left leading-tight">
-                <span className="text-foreground truncate text-sm font-semibold">
-                  {user?.name || 'Account'}
-                </span>
-                {user && <span className="truncate text-[13px] font-normal">{user.email}</span>}
-              </div>
-              <IconSelector className="ml-auto size-4" />
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            side={isMobile ? 'bottom' : 'right'}
-            align="end"
-            sideOffset={4}
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56"
-          >
-            {pages.map(({ title, url, icon: Icon }) => (
-              <DropdownMenuItem key={url} onClick={() => void navigate({ to: url })}>
-                <Icon />
-                {title}
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={lock}>
-              <IconLock />
-              Lock vault
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => void signOut()}>
-              <IconLogout />
-              Sign out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarMenuItem>
-    </SidebarMenu>
+    <UserMenu
+      name={profile?.user.name}
+      email={profile?.user.email}
+      actions={actions}
+      onLock={lock}
+    />
   )
 }

@@ -2,79 +2,60 @@ import type { Models } from '@montara-pass/shared/api/models'
 
 import { ipKind } from '@montara-pass/shared/activity'
 import { formatDateTime } from '@montara-pass/shared/date'
-import { IconForbid, IconShieldCheck } from '@tabler/icons-react'
+import { IconForbid, IconSearch, IconShieldCheck } from '@tabler/icons-react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useNavigate, useSearch } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import type { IPBlockListParams } from '@/lib/api/services/security'
 
+import EmptyState from '@/components/block/common/empty-state'
 import SimpleAlertDialog from '@/components/block/common/simple-alert-dialog'
 import BlockIPForm from '@/components/block/security/block-form'
+import { ListFooter, ListSkeleton, SettingsSection } from '@/components/block/settings/list'
 import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Skeleton } from '@/components/ui/skeleton'
-import { usePaginationQuery } from '@/hooks/use-pagination-query'
+import { Input } from '@/components/ui/input'
 import { toastApiError } from '@/lib/api/api-error'
 import { queries } from '@/lib/api/queries'
 import { cn } from '@/lib/utils'
 
 import { MONO_NOTE } from './section'
 
-/** The statuses the list may be narrowed to; "all" is no status at all. */
-const STATUSES = [
-  { value: 'all', label: 'All' },
-  { value: 'active', label: 'Active' },
-  { value: 'expired', label: 'Expired' },
-  { value: 'lifted', label: 'Lifted' },
-] as const
-
+/** Address, reason, status, when, and the action; the middle ones go when narrow. */
 const COLUMNS =
-  'grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,1.3fr)_minmax(0,1fr)_88px] gap-3'
+  'grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.6fr)_96px_minmax(0,1fr)_88px] gap-3 @max-[720px]/blocks:grid-cols-[minmax(0,1fr)_96px_88px]'
+const WIDE_ONLY = '@max-[720px]/blocks:hidden'
+
+interface IpBlockCardProps {
+  /** Matches the address or the reason, on the server. */
+  search?: string
+  page: number
+  size: number
+  onPage: (page: number) => void
+  onSize: (size: number) => void
+  /** A line above the headings: the search and the way to block one. */
+  toolbar?: React.ReactNode
+}
 
 /**
- * The API's blocked IPs: what the auto-block did after repeated failures, and
- * what a super user blocked by hand. Blocking is enforced on the server; this
- * page is the record, and the hand that lifts a block early.
+ * The API's blocked IPs, as a card: what the auto-block did after repeated
+ * failures, and what a super user blocked by hand. Blocking is enforced on
+ * the server; this is the record, and the hand that lifts a block early.
  */
-export default function IpBlocks() {
-  const { status } = useSearch({ from: '/(app)/settings/ip-blocks/' })
-  const navigate = useNavigate()
-  const { offset, limit, pageIndex } = usePaginationQuery()
-  const [openBlock, setOpenBlock] = useState(false)
+function IpBlockCard({ search, page, size, onPage, onSize, toolbar }: IpBlockCardProps) {
   const [lifting, setLifting] = useState<Models.IPBlock | null>(null)
   const unblock = useMutation(queries.security.unblock())
-
-  // Only a status the server knows leaves the search; anything else reads all.
-  const statusFilter =
-    status === 'active' || status === 'lifted' || status === 'expired' ? status : undefined
   const params = useMemo<IPBlockListParams>(
-    () => ({ offset, limit, status: statusFilter }),
-    [offset, limit, statusFilter]
+    () => ({ offset: page * size, limit: size, search: search || undefined }),
+    [page, size, search]
   )
-
   const { data, isLoading, isError, error } = useQuery(queries.security.list(params))
   const total = data?.metadata?.total ?? 0
   const blocks = data?.data ?? []
-  const pages = Math.max(1, Math.ceil(total / limit))
 
   useEffect(() => {
     if (isError) toastApiError(error)
   }, [isError, error])
-
-  const search = (next: Record<string, unknown>) =>
-    void navigate({
-      to: '.',
-      search: (prev: Record<string, unknown>) => ({ ...prev, ...next }),
-      replace: true,
-    })
 
   const lift = async () => {
     const target = lifting
@@ -88,100 +69,93 @@ export default function IpBlocks() {
     }
   }
 
-  // The list's place: loading, the error, nothing blocked, or the blocks.
-  // Failed with nothing from before to show.
-  const unreadable = isError && blocks.length === 0
-  const renderList = () => {
-    if (isLoading) {
-      return <Skeleton className="rounded-card h-40" aria-hidden="true" />
-    }
-    if (unreadable) {
+  // Loading, the error, nothing blocked, or the blocks and the way through them.
+  const renderBody = () => {
+    if (isLoading) return <ListSkeleton />
+    if (isError && blocks.length === 0) {
       return (
-        <p role="alert" className="text-danger text-[13px]">
+        <p role="alert" className="text-danger px-4 py-6 text-[13px]">
           The IP blocks could not be read. Reload the page to try again.
         </p>
       )
     }
     if (blocks.length === 0) {
       return (
-        <div className="rounded-card bg-panel fade-in flex flex-col items-center gap-3 border px-6 py-11 text-center">
-          <span className="bg-background text-good inline-flex size-11 items-center justify-center rounded-xl border">
-            <IconShieldCheck className="size-5" aria-hidden />
-          </span>
-          <p className="text-[15px] font-semibold">
-            {statusFilter ? `No ${statusFilter} block` : 'No IP is blocked'}
-          </p>
-          <p className="text-muted-foreground max-w-[48ch] text-[13px] text-balance">
-            An IP that fails too many requests is blocked on its own and shows up here; you can also
-            block one by hand.
-          </p>
-          <Button size="sm" className="mt-1" onClick={() => setOpenBlock(true)}>
-            <IconForbid />
-            Block IP
-          </Button>
-        </div>
+        <EmptyState
+          framed={false}
+          icon={IconShieldCheck}
+          title={search ? 'No block matches' : 'No IP is blocked'}
+          description={
+            search
+              ? 'Try another address or word from the reason.'
+              : 'An IP that fails too many requests is blocked on its own and shows up here; you can also block one by hand.'
+          }
+        />
       )
     }
     return (
-      // The middle columns go when the page is too narrow to hold them.
-      <div className="rounded-card bg-panel fade-in @container/blocks overflow-hidden border">
-        <div
-          className={cn(
-            COLUMNS,
-            MONO_NOTE,
-            'border-border/60 border-b px-4 py-2.5 @max-[720px]/blocks:grid-cols-[minmax(0,1fr)_auto_88px]'
-          )}
-        >
-          <span>IP</span>
-          <span className="@max-[720px]/blocks:hidden">Source</span>
-          <span className="@max-[720px]/blocks:hidden">Reason</span>
+      <>
+        <div className={cn(COLUMNS, MONO_NOTE, 'border-border border-b px-4 py-2.5')}>
+          <span>Address</span>
+          <span className={WIDE_ONLY}>Reason</span>
           <span>Status</span>
-          <span className="@max-[720px]/blocks:hidden">Blocked</span>
-          <span className="@max-[720px]/blocks:hidden">Until</span>
-          <span>Action</span>
+          <span className={WIDE_ONLY}>Blocked</span>
+          <span className="text-right">Action</span>
         </div>
         <ul className="divide-border/60 m-0 list-none divide-y p-0">
           {blocks.map((block) => (
-            <li
-              key={block.id}
-              className={cn(
-                COLUMNS,
-                'items-center px-4 py-3 text-[13px] @max-[720px]/blocks:grid-cols-[minmax(0,1fr)_auto_88px]'
-              )}
-            >
-              <span className="flex min-w-0 flex-col">
-                <span className="truncate font-mono text-[13px] font-medium">{block.ip}</span>
-                <span className={cn(MONO_NOTE, 'normal-case')}>{ipKind(block.ip)}</span>
+            <li key={block.id} className={cn(COLUMNS, 'items-center px-4 py-2 text-[13px]')}>
+              <span className="flex min-w-0 items-center gap-2.5">
+                <span
+                  className={cn(
+                    'bg-background inline-flex size-[30px] shrink-0 items-center justify-center rounded-md border',
+                    block.status === 'active' ? 'text-warn' : 'text-muted-foreground'
+                  )}
+                >
+                  <IconForbid className="size-4" aria-hidden />
+                </span>
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate font-mono text-[13px] font-medium">{block.ip}</span>
+                  <span className="text-muted-foreground font-mono text-[11px]">
+                    {ipKind(block.ip)}
+                  </span>
+                </span>
               </span>
-              <span className="@max-[720px]/blocks:hidden">{block.source}</span>
-              <span className="text-muted-foreground truncate @max-[720px]/blocks:hidden">
-                {block.reason ?? '—'}
+              <span className={cn('flex min-w-0 flex-col', WIDE_ONLY)}>
+                <span className="truncate" title={block.reason ?? undefined}>
+                  {block.reason ?? '—'}
+                </span>
+                <span className="text-muted-foreground font-mono text-[11px]">
+                  {block.source === 'auto' ? 'Blocked automatically' : 'Blocked by hand'}
+                </span>
               </span>
               <span>
                 <span
                   className={cn(
-                    'inline-flex rounded-sm px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-[0.08em] uppercase',
+                    'inline-flex h-5 items-center rounded-[5px] px-[7px] font-mono text-[10px] font-medium tracking-[0.06em] uppercase',
                     block.status === 'active'
                       ? 'bg-warn/15 text-warn'
-                      : 'text-muted-foreground border'
+                      : 'bg-card text-muted-foreground'
                   )}
                 >
                   {block.status === 'active' ? 'Blocked' : block.status}
                 </span>
               </span>
-              <span className="font-mono text-xs tabular-nums @max-[720px]/blocks:hidden">
-                {formatDateTime(block.created_at)}
+              <span className={cn('flex min-w-0 flex-col', WIDE_ONLY)}>
+                <span className="font-mono text-xs tabular-nums">
+                  {formatDateTime(block.created_at)}
+                </span>
+                <span className="text-muted-foreground font-mono text-[11px] tabular-nums">
+                  {block.blocked_until ? `Until ${formatDateTime(block.blocked_until)}` : 'No end'}
+                </span>
               </span>
-              <span className="font-mono text-xs tabular-nums @max-[720px]/blocks:hidden">
-                {block.blocked_until ? formatDateTime(block.blocked_until) : 'forever'}
-              </span>
-              <span>
+              <span className="flex justify-end">
                 {/* Only a live block has anything to lift. */}
                 {block.status === 'active' && (
                   <Button
                     variant="outline"
                     size="xs"
-                    className="w-full"
+                    className="bg-card h-[26px] px-2.5 text-xs"
                     disabled={unblock.isPending}
                     onClick={() => setLifting(block)}
                   >
@@ -192,74 +166,23 @@ export default function IpBlocks() {
             </li>
           ))}
         </ul>
-        <footer className="border-border/60 flex items-center gap-2 border-t px-4 py-2.5">
-          <span className={cn(MONO_NOTE, 'flex-1 tabular-nums')}>
-            {offset + 1}–{Math.min(offset + blocks.length, total)} of {total}
-          </span>
-          <Button
-            variant="ghost"
-            size="xs"
-            className="h-7 px-2 font-mono text-[10px] tracking-[0.08em] uppercase"
-            disabled={pageIndex <= 0}
-            onClick={() => search({ page: pageIndex - 1 || undefined })}
-          >
-            Prev
-          </Button>
-          <span className="bg-background inline-flex size-6 items-center justify-center rounded-sm border font-mono text-[11px] tabular-nums">
-            {pageIndex + 1}
-          </span>
-          <Button
-            variant="ghost"
-            size="xs"
-            className="h-7 px-2 font-mono text-[10px] tracking-[0.08em] uppercase"
-            disabled={pageIndex >= pages - 1}
-            onClick={() => search({ page: pageIndex + 1 })}
-          >
-            Next
-          </Button>
-        </footer>
-      </div>
+        <ListFooter
+          label="IP blocks"
+          page={page}
+          pages={Math.max(1, Math.ceil(total / size))}
+          size={size}
+          total={total}
+          onPage={onPage}
+          onSize={onSize}
+        />
+      </>
     )
   }
 
   return (
-    <div className="mx-auto flex max-w-[1040px] flex-col">
-      <header className="border-border/60 flex flex-wrap items-center gap-x-4 gap-y-3 border-b px-5 pt-[22px] pb-[18px] sm:px-8">
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <p className={MONO_NOTE}>Admin · IP blocks</p>
-          <h1 className="text-[22px] font-semibold tracking-[-0.01em]">IP blocks</h1>
-          <p className="text-muted-foreground text-[13px]">
-            Client IPs shut out of the API: blocked by hand here, or automatically after repeated
-            failed requests.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Select
-            value={statusFilter ?? 'all'}
-            // Another filter starts again from its first page.
-            onValueChange={(value) =>
-              search({ status: value === 'all' ? undefined : value, page: undefined })
-            }
-          >
-            <SelectTrigger className="h-8 w-28" aria-label="Filter by status">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUSES.map((s) => (
-                <SelectItem key={s.value} value={s.value}>
-                  {s.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button size="sm" onClick={() => setOpenBlock(true)}>
-            <IconForbid />
-            Block IP
-          </Button>
-        </div>
-      </header>
-
-      <div className="px-5 pt-5 pb-8 sm:px-8">{renderList()}</div>
+    <div className="rounded-card bg-panel fade-in @container/blocks overflow-hidden border">
+      {toolbar}
+      {renderBody()}
 
       <SimpleAlertDialog
         title={`Let ${lifting?.ip ?? 'this IP'} through?`}
@@ -270,8 +193,71 @@ export default function IpBlocks() {
         confirmText="Unblock"
         variant="destructive"
       />
-
-      <BlockIPForm open={openBlock} onOpenChange={setOpenBlock} />
     </div>
+  )
+}
+
+/**
+ * The IP blocks, a part of Settings' Security tab for the super user only (the
+ * server refuses anyone else too): a search over the address and the reason,
+ * and the way to block one. Its place in the list is its own, so the audit
+ * log's page in the URL is left alone.
+ */
+export function IpBlockSection() {
+  const [query, setQuery] = useState('')
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(0)
+  const [size, setSize] = useState(10)
+  const [openBlock, setOpenBlock] = useState(false)
+
+  // Asked of the server once typing pauses, from the first page.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(query.trim())
+      setPage(0)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [query])
+
+  return (
+    <SettingsSection
+      id="ip-blocks"
+      title="IP block"
+      description="Addresses refused at sign-in. Blocking one does not revoke a session already signed in."
+    >
+      <IpBlockCard
+        search={search}
+        page={page}
+        size={size}
+        onPage={setPage}
+        onSize={(next) => {
+          setSize(next)
+          setPage(0)
+        }}
+        toolbar={
+          <div className="border-border flex flex-wrap items-center justify-between gap-2 border-b px-4 py-1.5">
+            <div className="relative w-full max-w-[260px] min-w-40 flex-1">
+              <IconSearch
+                className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2"
+                aria-hidden
+              />
+              <Input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search address or reason"
+                aria-label="Search IP blocks by address or reason"
+                className="bg-background border-border h-8 pl-8 text-[13px]"
+              />
+            </div>
+            <Button size="xs" onClick={() => setOpenBlock(true)}>
+              <IconForbid />
+              Block an address
+            </Button>
+          </div>
+        }
+      />
+      <BlockIPForm open={openBlock} onOpenChange={setOpenBlock} />
+    </SettingsSection>
   )
 }
