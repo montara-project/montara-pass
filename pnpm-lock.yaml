@@ -17,6 +17,9 @@ overrides:
   glob@>=13.0.0 <14.0.2: 14.0.3
   minimatch@>=10.0.0 <11.0.1: 11.0.4
 
+patchedDependencies:
+  deepmerge@4.3.1: 35f720bc751c585759e4c03b87e9b76934f40a71029c5a20a3e914b277e0b9a0
+
 importers:
 
   .:
@@ -10452,7 +10455,7 @@ snapshots:
       '@expo/json-file': 11.2.1
       '@expo/platforms': 58.0.1
       '@expo/require-utils': 58.0.4(typescript@6.0.3)
-      deepmerge: 4.3.1
+      deepmerge: 4.3.1(patch_hash=35f720bc751c585759e4c03b87e9b76934f40a71029c5a20a3e914b277e0b9a0)
       getenv: 2.0.0
       glob: 14.0.3
       resolve-workspace-root: 2.0.1
@@ -13734,7 +13737,7 @@ snapshots:
       columnify: 1.6.0
       common-tags: 1.8.2
       css-tree: 3.2.1
-      deepmerge: 4.3.1
+      deepmerge: 4.3.1(patch_hash=35f720bc751c585759e4c03b87e9b76934f40a71029c5a20a3e914b277e0b9a0)
       eslint: 9.39.4(jiti@2.7.0)
       eslint-plugin-no-unsanitized: 4.1.5(eslint@9.39.4(jiti@2.7.0))
       eslint-visitor-keys: 5.0.1
@@ -14520,7 +14523,7 @@ snapshots:
 
   deep-is@0.1.4: {}
 
-  deepmerge@4.3.1: {}
+  deepmerge@4.3.1(patch_hash=35f720bc751c585759e4c03b87e9b76934f40a71029c5a20a3e914b277e0b9a0): {}
 
   default-browser-id@5.0.1: {}
 

@@ -55,3 +55,16 @@ overrides:
   # minimatch 11, which drops nothing glob or Expo use.
   'glob@>=13.0.0 <14.0.2': 14.0.3
   'minimatch@>=10.0.0 <11.0.1': 11.0.4
+
+# GHSA-gcqx-w48m-w2h4: deepmerge (via @expo/cli) lets an own __proto__ key
+# from the target set the merged object's prototype. The advisory's fix,
+# 4.3.2, was never published (latest is 4.3.1), so 4.3.1 is patched to skip
+# that key instead.
+patchedDependencies:
+  deepmerge@4.3.1: patches/deepmerge@4.3.1.patch
+
+# pnpm audit reads versions, not patches: deepmerge 4.3.1 is patched above.
+# Drop this once a fixed deepmerge is published and the override replaces it.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-gcqx-w48m-w2h4
