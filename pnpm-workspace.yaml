@@ -8,25 +8,6 @@ allowBuilds:
 
 minimumReleaseAgeExclude:
   - cf@1.0.0-beta.14
-  - '@expo/cli@58.1.15'
-  - '@expo/config@58.0.8'
-  - '@expo/local-build-cache-provider@58.0.8'
-  - '@expo/metro-config@58.0.17'
-  - '@expo/prebuild-config@58.0.16'
-  - '@expo/router-server@58.0.17'
-  - '@expo/ui@58.0.23'
-  - babel-preset-expo@58.0.20
-  - expo-file-system@58.0.11
-  - expo-font@58.0.10
-  - expo-glass-effect@58.0.5
-  - expo-image@58.0.17
-  - expo-modules-autolinking@58.0.15
-  - expo-modules-cli@0.3.2
-  - expo-modules-core@58.0.26
-  - expo-modules-jsi@58.0.19
-  - expo-router@58.0.26
-  - expo-server@58.0.6
-  - expo@58.0.19
 
 overrides:
   # GHSA-px8p-9vwx-vf98: satori (via vinext's @vercel/og) asks for 0.7.3.
@@ -38,25 +19,21 @@ overrides:
   'next@>=16.0.0 <16.4.1': 16.4.3
   # DOMPurify SAFE_FOR_TEMPLATES / IN_PLACE bypasses, via @milkdown.
   'dompurify@<3.4.17': 3.4.17
-  # Zod oversized-collection DoS (GHSA-mrhx-c7xc-m3w5), fixed only in v4.
-  # @expo/cli asks for v3 but only uses v4-compatible schema APIs.
+  # Zod oversized-collection DoS (GHSA-mrhx-c7xc-m3w5), fixed only in v4.6.6:
+  # @cloudflare/config (via apps/web's vite plugin) pins 4.6.5.
   'zod@<4.6.6': 4.6.7
   # undici DoS / SRI bypass, via vinext.
   'undici@>=7.0.0 <7.30.1': 7.30.1
-  # fast-uri scheme/host confusion, via Expo's webpack toolchain.
-  'fast-uri@>=3.0.0 <3.1.9': 3.1.9
   # GHSA-9wx9-5pv9-3349, GHSA-f86p-h4j2-7qgj: seroval script injection, via
   # TanStack Router's router-core (app and docs).
   'seroval@>=1.5.5 <1.6.11': 1.6.12
-  # GHSA-86w9-cpqp-85rv: node-forge RSA signature check, via Expo and web-ext.
+  # GHSA-86w9-cpqp-85rv: node-forge RSA signature check, via web-ext.
   'node-forge@<1.4.1': 1.4.2
-  # GHSA-3g3m-2fjr-6pw4: glob AbortSignal bypass, and minimatch globparts
-  # DoS, via @expo/cli. glob 14 keeps 13's API and engines; it only moves to
-  # minimatch 11, which drops nothing glob or Expo use.
-  'glob@>=13.0.0 <14.0.2': 14.0.3
+  # minimatch globparts DoS (fixed in 11.0.1), via eslint 10's config-array,
+  # which asks for ^10.2.4 and runs on 11 unchanged.
   'minimatch@>=10.0.0 <11.0.1': 11.0.4
 
-# GHSA-gcqx-w48m-w2h4: deepmerge (via @expo/cli) lets an own __proto__ key
+# GHSA-gcqx-w48m-w2h4: deepmerge (via web-ext's addons-linter) lets an own __proto__ key
 # from the target set the merged object's prototype. The advisory's fix,
 # 4.3.2, was never published (latest is 4.3.1), so 4.3.1 is patched to skip
 # that key instead.

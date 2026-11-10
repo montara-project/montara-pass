@@ -212,6 +212,7 @@ masih terbuka.
   - (terbuka) `deepmerge` 4.3.1 (low, GHSA-gcqx-w48m-w2h4: prototype pollution) lewat
     `@expo/config` di `apps/mobile`. Advisory menyebut ≥4.3.2, tapi rilis terbaru di npm masih
     4.3.1, jadi belum bisa di-override. Jalurnya tooling Expo, bukan runtime app.
+    2026-11-10: diperbaiki dengan patch lokal (lihat DEP-4); `apps/mobile` sudah dihapus.
   - Verifikasi: audit tinggal 1 low; typecheck dan build app, ekstensi dan docs lolos; preview
     docs (SSR, hidrasi, navigasi, pencarian) dan routing app dicek di browser.
 
@@ -513,7 +514,7 @@ Yang benar diperbaiki (belum di-commit); sisanya dilewati dengan alasan. Integra
 | DEP-1 | `github.com/klauspost/compress` v1.20.1 | GO-2026-6865: panic pada frame dua blok. Terjangkau dari kode kita lewat `redis.NewScript` di `middlewares/store.go` | Diperbaiki | Naik ke v1.20.2 |
 | DEP-2 | `golang.org/x/net` v0.60.0 | GO-2026-6866 dan GO-2026-6860; tidak dipanggil kode kita | Diperbaiki | Naik ke v0.62.0 (ikut: `x/sync`, `x/sys`, `x/text`) |
 | DEP-3 | `golang.org/x/crypto` v0.57.0 | GO-2026-5932: paket `openpgp` tidak dirawat. Tidak di-import | Diterima | Naik ke v0.58.0 (rilis terbaru). Perbaikannya, menghapus paket itu, baru ada di commit yang belum dirilis; ikut naik di rilis x/crypto berikutnya |
-| DEP-4 | `deepmerge` 4.3.1 | GHSA-gcqx-w48m-w2h4 (low): prototype poisoning di `mergeObject()`, lewat `apps/mobile` > `expo` > `@expo/cli` > `@expo/config` | Diterima | Belum ada versi yang diperbaiki (4.3.1 adalah rilis terakhir). Hanya berjalan di CLI Expo saat build, menggabungkan config milik developer, bukan input pengguna |
+| DEP-4 | `deepmerge` 4.3.1 | GHSA-gcqx-w48m-w2h4 (low): prototype poisoning di `mergeObject()`. Dulu lewat `apps/mobile` > `@expo/cli`; sejak `apps/mobile` dihapus (2026-11-10) tinggal lewat `web-ext` > `addons-linter` (build ekstensi, dev) | Diperbaiki | 2026-11-10: 4.3.2 tidak pernah terbit, jadi 4.3.1 di-patch (`patches/deepmerge@4.3.1.patch`) agar key `__proto__` dilewati di kedua sisi merge; advisory di-ignore di `pnpm-workspace.yaml` karena audit membaca versi, bukan patch |
 
 Setelah perbaikan: `govulncheck` melaporkan 0 kerentanan yang terjangkau kode kita; `go build`,
 `go vet`, `go test ./...` dan integration test (`montara_pass_test`) lolos.
