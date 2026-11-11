@@ -11,6 +11,47 @@ headings and no HTML, so a `##` line would show literally. It holds 3000
 characters. AMO shows what is pasted there on the add-on's Version history
 page, and Firefox shows it in the Release Notes tab of `about:addons`.
 
+## 2.12.2 (2026-11-10)
+
+**Improved**
+
+- **The full tab wears the web app's frame.** Its sidebar is now the web
+  app's own: 15rem wide on the page, folding to a rail of icons whose names
+  show as tooltips, with the filters and how many items each holds, then
+  **Password generator** and **Password health** under **Tools**, then
+  **Settings** and **Open web app** under **System**, and **Documentation**,
+  **GitHub** and **Feedback** at its foot. The bar across the top is 56px, on
+  the sidebar's tone: the trigger, where the page sits, the clock, the update
+  button, a lock button and your avatar.
+- **The account menu is the web app's too**: **Profile**, which opens your
+  profile in the web app, **Billing** in the Cloud Edition, **Lock vault**,
+  then **Sign out** under a rule of its own, in the danger colour.
+- **The clock shows the date** beside the time, with the zone it keeps:
+  `UTC`. The add-on has no profile page, so the zone stays UTC here; the web
+  app's profile chooses one for its own clock.
+- **The tools sit in the web app's frame**: at most 1200px wide, 22px from the
+  top, 28px gutters (20px under 640px) and 32px at the foot, so the generator,
+  the health report and billing hold still as you move between them.
+- On a wide display the frame steps up with it: 7% at 1600px, 15% at 2100px,
+  30% at 3100px and above.
+
+**Changed**
+
+- **Security and Sharing left the full tab.** The sign-ins, passkeys, devices
+  and activity log, and every shared item, are in the web app, which **Open
+  web app** reaches. **Manage folders** and **Browse folders** now open its
+  **Settings**, where the folders live.
+
+**Fixed**
+
+- The hairlines on the clock and along the sidebar's edge take the divider
+  colour. They were drawn white.
+
+**Also**
+
+- The permissions the add-on asks for are unchanged, so updating does not ask
+  again.
+
 ## 2.11.0 (2026-11-08)
 
 **New**
