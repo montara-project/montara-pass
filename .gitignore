@@ -10,6 +10,7 @@ dist/
 graft/
 .omc
 .delta/
+.zcode/
 
 # Impeccable session artifacts; see apps/web/.gitignore for the same rule.
 .impeccable/questions/

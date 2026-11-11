@@ -1,0 +1,1232 @@
+[
+  {
+    "verdict": "confirmed",
+    "fingerprint": "SEC-CLIENT-01-master-password-cleartext-capture-self-hosted",
+    "title": "Master Password Cleartext Capture and Persistence on Self-Hosted Vault Instances",
+    "description": "content.ts listens to all form submit and click events, capturing submitted credentials via toBackground({ type: 'save:capture' }). In background.ts, ownSite() checks whether the submitting page origin matches settings.apiUrl or settings.appUrl, falling back to VITE_DEFAULT_APP_URL. On self-hosted deployments where the user has not configured appUrl in the extension, ownSite() returns false. Consequently, when a user enters their master password on the web vault (vault-gate.tsx), background.ts captures the master password in cleartext, writes it into storage.session under pending:${tabId}, and prompts to save it as a vault item.",
+    "root_cause": "Extension relies solely on static or user-configured URL match rather than DOM application signatures to prevent credential capture on Montara Pass vault pages.",
+    "intended_behavior": "The content script and background script must never capture, store, or offer to save passwords entered into Montara Pass master password fields.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "apps/extension/src/entrypoints/content.ts",
+        "line": 443,
+        "scope": "capture",
+        "description": "content.ts captures password input values from the vault creation/unlock form on submit."
+      },
+      {
+        "kind": "propagation",
+        "file": "apps/extension/src/entrypoints/background.ts",
+        "line": 205,
+        "scope": "ownSite",
+        "description": "ownSite() evaluates to false on self-hosted instances not matching VITE_DEFAULT_APP_URL."
+      },
+      {
+        "kind": "sink",
+        "file": "apps/extension/src/entrypoints/background.ts",
+        "line": 230,
+        "scope": "hold",
+        "description": "Master password is stored in cleartext in chrome.storage.session and inline.html#save prompt is opened."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "apps/extension/src/entrypoints/background.ts",
+        "line": 227,
+        "description": "if (ownSite(stored)) return; ownSite relies on stored[SETTINGS_KEY]?.appUrl or VITE_DEFAULT_APP_URL."
+      },
+      {
+        "file": "apps/extension/src/entrypoints/content.ts",
+        "line": 472,
+        "description": "toBackground sends captured password in cleartext."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "system_configuration",
+        "description": "Montara Pass web app running on self-hosted origin without explicit extension settings configuration."
+      },
+      {
+        "kind": "user_interaction",
+        "description": "User submits master password in web vault."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "A user accesses a self-hosted Montara Pass instance (e.g. https://vault.local). The extension intercepts the master password.",
+      "payloads": ["User inputs master password into vault-gate.tsx form and submits."],
+      "instructions": [
+        "Open Montara Pass web vault on self-hosted origin.",
+        "Enter master password in vault creation or unlock form and submit.",
+        "Inspect chrome.storage.session for pending:${tabId} and observe the save prompt."
+      ],
+      "observed_result": "Master encryption password is saved in session storage and offered to be stored into vault items."
+    },
+    "remediation": {
+      "strategy": "Tag Montara Pass web vault with a dedicated DOM marker or meta tag and verify it in content.ts to suppress capture.",
+      "code_changes": [
+        {
+          "file_name": "apps/extension/src/entrypoints/content.ts",
+          "fixed_code": "if (document.querySelector('meta[name=\"montara-pass-app\"]') || document.documentElement.hasAttribute('data-montara-app')) return;"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "medium",
+        "reason": "Occurs whenever self-hosted vaults are used with extension default settings."
+      },
+      "impact": {
+        "score": "high",
+        "reason": "Violates core zero-knowledge guarantee by capturing and potentially storing the master password."
+      },
+      "overall_severity": "high"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Verified against ownSite origin matching and content.ts submit interceptors."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "SEC-CLIENT-02-extension-postmessage-auth-oracle",
+    "title": "Extension Presence and Authentication State Oracle via Global window.postMessage",
+    "description": "content.ts broadcasts window.postMessage({ montaraPass: 'passkey:ready' }, ORIGIN) on every page load. Any web script can listen for this message to detect extension presence. Additionally, web scripts can post { montaraPass: 'passkey:ask', kind: 'available' }, which queries background.ts and replies with { available: true/false }, revealing whether the user is logged into the extension.",
+    "root_cause": "Unrestricted window.postMessage broadcast on page load and handling of passkey:ask without origin checks.",
+    "intended_behavior": "Extension should not broadcast its presence globally to all web origins and should not reveal authentication status without explicit user permission.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "apps/extension/src/entrypoints/content.ts",
+        "line": 730,
+        "scope": "main",
+        "description": "window.postMessage broadcast on every page load."
+      },
+      {
+        "kind": "propagation",
+        "file": "apps/extension/src/entrypoints/content.ts",
+        "line": 386,
+        "scope": "onPageMessage",
+        "description": "Handles passkey:ask query from untrusted page scripts."
+      },
+      {
+        "kind": "sink",
+        "file": "apps/extension/src/entrypoints/content.ts",
+        "line": 401,
+        "scope": "onPageMessage",
+        "description": "Replies with extension authentication availability status to window."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "apps/extension/src/entrypoints/content.ts",
+        "line": 730,
+        "description": "window.postMessage({ montaraPass: 'passkey:ready' }, ORIGIN)"
+      },
+      {
+        "file": "apps/extension/src/entrypoints/content.ts",
+        "line": 401,
+        "description": "window.postMessage({ montaraPass: 'passkey:answer', id: request.id, available }, ORIGIN)"
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "environmental_dependency",
+        "description": "User has Montara Pass browser extension installed and visits any web page."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "A web tracker or malicious site listens for extension readiness or probes auth state.",
+      "payloads": [
+        "window.addEventListener('message', e => { if (e.data?.montaraPass === 'passkey:ready') alert('Extension detected!'); }); window.postMessage({ montaraPass: 'passkey:ask', kind: 'available', id: 1 }, '*');"
+      ],
+      "instructions": [
+        "Load malicious script on any web origin.",
+        "Observe postMessage receipt containing montaraPass: 'passkey:ready'.",
+        "Observe response containing available: true when user is logged in."
+      ],
+      "observed_result": "Third-party page accurately detects extension presence and logged-in authentication state."
+    },
+    "remediation": {
+      "strategy": "Remove global postMessage broadcast and restrict passkey readiness signaling to credential creation events.",
+      "code_changes": [
+        {
+          "file_name": "apps/extension/src/entrypoints/content.ts",
+          "fixed_code": "// Remove window.postMessage({ montaraPass: 'passkey:ready' }, ORIGIN) and restrict response to trusted contexts."
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "high",
+        "reason": "Passively detectable by any website or embedded third-party script."
+      },
+      "impact": {
+        "score": "low",
+        "reason": "Information disclosure / user fingerprinting and login state oracle."
+      },
+      "overall_severity": "low"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Directly observable in content script event listeners."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "SEC-CLIENT-03-firefox-storage-proxy-boundary-bypass",
+    "title": "Firefox Extension Framed Storage Proxy Circumvents Browser Sandbox Isolation",
+    "description": "Firefox restricts framed extension pages from accessing chrome.storage.session. To circumvent this, background.ts exposes frame:call which executes chrome.storage.session.get(args[0]) for any request from inline.html without key restrictions or greeting token validation.",
+    "root_cause": "frame:call RPC handler in background.ts blindly proxies session.get, session.set, and session.remove without key allowlists or frame token verification.",
+    "intended_behavior": "Privileged background proxy RPC must enforce strict key allowlists and authenticate the framed caller.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "apps/extension/src/inline/firefox.ts",
+        "line": 18,
+        "scope": "call",
+        "description": "Framed extension page calls background frame:call RPC."
+      },
+      {
+        "kind": "propagation",
+        "file": "apps/extension/src/entrypoints/background.ts",
+        "line": 189,
+        "scope": "onMessage",
+        "description": "background.ts accepts frame:call from sender matching inline.html URL."
+      },
+      {
+        "kind": "sink",
+        "file": "apps/extension/src/entrypoints/background.ts",
+        "line": 91,
+        "scope": "frameCall",
+        "description": "Executes chrome.storage.session.get for arbitrary requested keys."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "apps/extension/src/entrypoints/background.ts",
+        "line": 91,
+        "description": "case 'session.get': return chrome.storage.session.get(args[0] as string | string[] | null)"
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "environmental_dependency",
+        "description": "Running extension in Firefox environment."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "A compromised component within inline.html requests all session storage keys via frame:call.",
+      "payloads": [
+        "chrome.runtime.sendMessage({ type: 'frame:call', api: 'session.get', args: [null] })"
+      ],
+      "instructions": [
+        "Invoke frame:call with api: 'session.get' and args: [null].",
+        "Observe background script dumping entire storage.session including decrypted vault keys."
+      ],
+      "observed_result": "Unrestricted access to all session storage keys bypassing Firefox frame isolation."
+    },
+    "remediation": {
+      "strategy": "Allowlist permitted keys in frameCall (e.g. disallow 'vault') and bind calls to the frame greeting token.",
+      "code_changes": [
+        {
+          "file_name": "apps/extension/src/entrypoints/background.ts",
+          "fixed_code": "case 'session.get': {\n  const allowed = ['pending'];\n  // Disallow access to 'vault' key from framed calls\n}"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "low",
+        "reason": "Requires an injection or compromise in the inline.html framed page."
+      },
+      "impact": {
+        "score": "medium",
+        "reason": "Subverts platform sandbox boundary and exposes master/vault keys."
+      },
+      "overall_severity": "medium"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Verified in background.ts frameCall implementation."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "SEC-CLIENT-04-shared-item-revocation-race-condition",
+    "title": "Asynchronous Key Rotation Race Condition on Shared Item Member Revocation",
+    "description": "handleRemove executes server-side member deletion before re-encrypting the item under a new item key. If key lookup or rotation fails, or if the user navigates away, the member is revoked on the server but the item key remains unrotated, breaking forward secrecy.",
+    "root_cause": "Order of operations: removing server access before rotating the encryption key.",
+    "intended_behavior": "Public keys must be looked up and new ciphertexts prepared before requesting member deletion, or combined into an atomic operation.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "apps/app/src/components/block/vault/share-form.tsx",
+        "line": 106,
+        "scope": "handleRemove",
+        "description": "removeMutation executes server deletion."
+      },
+      {
+        "kind": "sink",
+        "file": "apps/app/src/components/block/vault/share-form.tsx",
+        "line": 128,
+        "scope": "handleRemove",
+        "description": "rotateMutation executed subsequently; errors trigger warning toast while member remains deleted."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "apps/app/src/components/block/vault/share-form.tsx",
+        "line": 106,
+        "description": "await removeMutation.mutateAsync(member.user_id) precedes rotateMutation."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "user_interaction",
+        "description": "User removes a shared item member and network error or tab closure occurs during subsequent rotation."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "A revoked member retains the cached item key. Subsequent item updates fail to re-encrypt under a new key if rotation aborted.",
+      "payloads": ["Simulate network interruption immediately following removeMutation."],
+      "instructions": [
+        "Revoke member access in share-form.",
+        "Interrupt network connection before rotateMutation executes.",
+        "Inspect item ciphertexts on server."
+      ],
+      "observed_result": "Member is revoked from server database, but existing and future item updates remain encrypted under the old item key."
+    },
+    "remediation": {
+      "strategy": "Fetch public keys and prepare rotated ciphertext before executing member revocation.",
+      "code_changes": [
+        {
+          "file_name": "apps/app/src/components/block/vault/share-form.tsx",
+          "fixed_code": "// Fetch public keys and prepare rotation payload before calling removeMutation"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "low",
+        "reason": "Requires network failure or tab closure during the split-second between API calls."
+      },
+      "impact": {
+        "score": "low",
+        "reason": "Forward secrecy failure for revoked shared item members."
+      },
+      "overall_severity": "low"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Directly visible in share-form.tsx handleRemove sequential try/catch blocks."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "SEC-CLIENT-05-secure-cookie-deletion-omission",
+    "title": "Flawed Cookie Deletion in removeCookie Leaving Secure Cookies Persistent",
+    "description": "writeCookie appends ; Secure when protocol is https:, but removeCookie executes document.cookie = \"${name}=; Path=/; Max-Age=0; SameSite=Lax\" omitting ; Secure. Per RFC 6265bis, deleting a Secure cookie requires matching the Secure attribute.",
+    "root_cause": "Omission of Secure attribute in removeCookie.",
+    "intended_behavior": "removeCookie must include ; Secure when running on HTTPS.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "apps/app/src/lib/auth/token-storage.ts",
+        "line": 17,
+        "scope": "writeCookie",
+        "description": "Cookie written with ; Secure on HTTPS."
+      },
+      {
+        "kind": "sink",
+        "file": "apps/app/src/lib/auth/token-storage.ts",
+        "line": 31,
+        "scope": "removeCookie",
+        "description": "document.cookie written without ; Secure during cookie deletion."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "apps/app/src/lib/auth/token-storage.ts",
+        "line": 31,
+        "description": "document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax`"
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "environmental_dependency",
+        "description": "Application running over HTTPS in a strict RFC 6265bis compliant browser."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "User logs out on a shared machine; auth tokens persist in cookie jar.",
+      "payloads": ["User clicks logout in web app."],
+      "instructions": [
+        "Log in to web app over HTTPS.",
+        "Click log out to trigger clearAuthTokens().",
+        "Inspect browser cookie jar for persistent token cookies."
+      ],
+      "observed_result": "Authentication tokens may persist in cookie jar due to mismatched Secure flag on deletion."
+    },
+    "remediation": {
+      "strategy": "Append ; Secure in removeCookie when window.location.protocol === 'https:'.",
+      "code_changes": [
+        {
+          "file_name": "apps/app/src/lib/auth/token-storage.ts",
+          "fixed_code": "function removeCookie(name: string) {\n  if (!isBrowser) return\n  const secure = window.location.protocol === 'https:' ? '; Secure' : ''\n  document.cookie = `${name}=; Path=/; Max-Age=0; SameSite=Lax${secure}`\n}"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "low",
+        "reason": "Affects specific browsers strictly enforcing RFC 6265bis secure cookie deletion rules."
+      },
+      "impact": {
+        "score": "low",
+        "reason": "Token retention in local browser state after logout."
+      },
+      "overall_severity": "low"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Clear attribute mismatch between writeCookie and removeCookie."
+    }
+  },
+  {
+    "verdict": "rejected",
+    "fingerprint": "SEC-CLIENT-REJ-01-token-storage-in-non-httponly-cookies",
+    "title": "Auth and Refresh Token Storage in Non-HttpOnly Cookies",
+    "description": "Candidate claimed that storing access and refresh tokens in non-HttpOnly client cookies constitutes a Medium vulnerability due to XSS exposure.",
+    "claimed_root_cause": "Client-side setAuthTokens writes tokens into document.cookie without HttpOnly attribute.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "apps/app/src/lib/auth/token-storage.ts",
+        "line": 18,
+        "scope": "writeCookie",
+        "description": "document.cookie written by client JS."
+      },
+      {
+        "kind": "sink",
+        "file": "apps/app/src/lib/auth/token-storage.ts",
+        "line": 56,
+        "scope": "setAuthTokens",
+        "description": "Tokens stored in client cookies."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "apps/app/src/lib/auth/token-storage.ts",
+        "line": 18,
+        "description": "document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAgeSeconds}; SameSite=Lax${secure}`"
+      }
+    ],
+    "reason": "Per audit methodology (SKILL.md / CLIENT-SIDE.md:50), storage of tokens alone without an existing XSS vulnerability or lower-trust reader is not a vulnerability finding. Calling SPA client-side token persistence a vulnerability is an anti-pattern (checklist deviation / defense-in-depth). Reclassified as Hardening Note."
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "SEC-CRYPTO-01-unauthenticated-public-key-substitution",
+    "title": "Unauthenticated User Public Key Substitution Enables Interception of Newly Created Private Vault Items",
+    "description": "During vault setup, the client generates an RSA-3072 key pair, sealing the private key under vaultKey but transmitting the public key in plaintext. The server stores this in user_keys.public_key without signature or encryption. On vault unlock, materialFromVaultKey accepts keys.public_key directly without verifying it mathematically against the decrypted private key. When the user creates new items, encryptNewItem wraps the AES itemKey with keys.publicKey. A compromised database or server attacker can substitute user_keys.public_key with an attacker-controlled public key, causing all newly created private items to have their item keys wrapped for the attacker.",
+    "root_cause": "Public key transmission and storage are unauthenticated and unverified on client unlock, allowing public key substitution to intercept AES item keys generated during encryptNewItem.",
+    "intended_behavior": "The client should cryptographically bind the public key to the private key or seal it under the vaultKey, verifying that keys.publicKey corresponds to the decrypted private key before encrypting any vault items.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "packages/shared/src/crypto/vault.ts",
+        "line": 219,
+        "scope": "createUserKeys",
+        "description": "Public key is serialized to base64 and returned in plaintext UserKeysRequest without MAC or sealing."
+      },
+      {
+        "kind": "propagation",
+        "file": "apps/server/internal/handlers/key.go",
+        "line": 50,
+        "scope": "keyHandler.Create",
+        "description": "Server stores the unauthenticated public key into user_keys.public_key column."
+      },
+      {
+        "kind": "propagation",
+        "file": "packages/shared/src/crypto/vault.ts",
+        "line": 258,
+        "scope": "materialFromVaultKey",
+        "description": "Client assigns keys.public_key from server response directly without verification against privateKeyRaw."
+      },
+      {
+        "kind": "sink",
+        "file": "packages/shared/src/crypto/vault.ts",
+        "line": 392,
+        "scope": "encryptNewItem",
+        "description": "Random 32-byte itemKey is wrapped for keys.publicKey, encrypting it for the attacker."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "packages/shared/src/crypto/vault.ts",
+        "line": 258,
+        "description": "publicKey is populated directly from unauthenticated keys.public_key."
+      },
+      {
+        "file": "packages/shared/src/crypto/vault.ts",
+        "line": 392,
+        "description": "wrapForPublicKey(keys.publicKey, itemKey) wraps the secret's encryption key with the untrusted public key."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "system_configuration",
+        "description": "Attacker has compromised or possesses write access to the database or server API response for user_keys."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "A compromised server or database attacker updates user_keys.public_key to an attacker-controlled RSA public key.",
+      "payloads": [
+        "UPDATE user_keys SET public_key = '<ATTACKER_RSA_PUBLIC_KEY_BASE64>' WHERE user_id = '<VICTIM_USER_ID>';"
+      ],
+      "instructions": [
+        "Attacker substitutes victim user_keys.public_key with attacker's public key.",
+        "Victim logs in and unlocks vault using master password.",
+        "Victim creates a new login item in vault.",
+        "Attacker reads the newly created item's encrypted_item_key from items table and unwraps it with attacker's RSA private key."
+      ],
+      "observed_result": "Attacker successfully unwraps the AES itemKey and decrypts the victim's newly created private vault item ciphertext."
+    },
+    "remediation": {
+      "strategy": "Seal public_key together with private_key under vaultKey, and verify on unlock that publicKey matches privateKeyRaw.",
+      "code_changes": [
+        {
+          "file_name": "packages/shared/src/crypto/vault.ts",
+          "fixed_code": "// In materialFromVaultKey, verify publicKey matches privateKeyRaw before accepting it, or seal both keys under vaultKey."
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "low",
+        "reason": "Requires database compromise or server-side response manipulation."
+      },
+      "impact": {
+        "score": "high",
+        "reason": "Complete defeat of zero-knowledge confidentiality for all newly created items."
+      },
+      "overall_severity": "high"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Source inspection confirms public_key is unauthenticated and directly used to wrap item keys."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "SEC-CRYPTO-02-missing-aad-context-binding",
+    "title": "Lack of Additional Authenticated Data (AAD) in AES-GCM Ciphertexts Enabling Cross-Context Swapping and Type Confusion",
+    "description": "seal() and open() in symmetric.ts invoke AES-GCM without additionalData (AAD). Folder names and encrypted_private_key share keys.vaultKey without context separation, allowing encrypted_private_key bytes to be placed into a folder's encrypted_name to decrypt PKCS#8 bytes. Furthermore, item ciphertexts do not bind item.type, item.id, or item.owner_id. Modifying item.type in the database from secure_note to login causes the extension to treat sensitive notes as logins and offer to autofill them into web pages.",
+    "root_cause": "Omission of additionalData parameter in AES-GCM seal and open cryptographic primitives.",
+    "intended_behavior": "AES-GCM encryption must include domain-separating authenticated data binding item ID, item type, and version, as well as distinct contexts for folders and private keys.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "packages/shared/src/crypto/symmetric.ts",
+        "line": 20,
+        "scope": "seal",
+        "description": "crypto.subtle.encrypt called with AES-GCM iv only, omitting additionalData."
+      },
+      {
+        "kind": "propagation",
+        "file": "packages/shared/src/crypto/vault.ts",
+        "line": 376,
+        "scope": "sealSecret",
+        "description": "Secret payload encrypted without binding item type or item ID."
+      },
+      {
+        "kind": "sink",
+        "file": "apps/extension/src/inline/main.tsx",
+        "line": 213,
+        "scope": "Logins",
+        "description": "Extension filters items based on unauthenticated plaintext item.type."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "packages/shared/src/crypto/symmetric.ts",
+        "line": 20,
+        "description": "await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce }, key, plaintext) lacks additionalData."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "data_state",
+        "description": "Attacker can modify plaintext item.type or folder encrypted_name in database."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Attacker updates database record changing a secure_note's type to login.",
+      "payloads": ["UPDATE items SET type = 'login' WHERE id = '<ITEM_ID>';"],
+      "instructions": [
+        "Change item type of a secure note to login in items table.",
+        "Open browser extension on a web page matching any URL stored in the note or prompt.",
+        "Observe extension offering the note content as login credentials."
+      ],
+      "observed_result": "Secure note content is interpreted as a login credential and autofilled into web fields."
+    },
+    "remediation": {
+      "strategy": "Pass structured AAD into seal() and open() binding item ID, type, and cipher version.",
+      "code_changes": [
+        {
+          "file_name": "packages/shared/src/crypto/symmetric.ts",
+          "fixed_code": "export async function seal(key: CryptoKey, plaintext: Uint8Array<ArrayBuffer>, aad?: Uint8Array): Promise<Uint8Array<ArrayBuffer>> {\n  const nonce = randomBytes(NONCE_LENGTH)\n  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce, additionalData: aad }, key, plaintext)"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "low",
+        "reason": "Requires database or API tampering capability."
+      },
+      "impact": {
+        "score": "medium",
+        "reason": "Cross-context ciphertext swapping and potential secret exfiltration via autofill."
+      },
+      "overall_severity": "medium"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Confirmed by absence of additionalData in crypto.subtle calls across symmetric.ts."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "SEC-CRYPTO-03-sharing-unverified-public-keys",
+    "title": "Lack of Out-of-Band Public Key Verification or TOFU Pinning in Item Sharing Protocol",
+    "description": "When sharing an item, the client fetches the recipient's public key from GET /api/v1/keys/public?email=... and immediately encrypts the item key with it. Without public key fingerprints, safety numbers, or TOFU pinning, a compromised server can substitute an attacker's public key to decrypt shared items.",
+    "root_cause": "Direct reliance on unauthenticated central server public key directory without client-side verification or fingerprinting.",
+    "intended_behavior": "Item sharing protocol should display public key fingerprints / safety numbers and verify keys via TOFU or key transparency.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "apps/app/src/components/block/vault/share-form.tsx",
+        "line": 120,
+        "scope": "handleRemove / handleShare",
+        "description": "Client requests recipient public key from server."
+      },
+      {
+        "kind": "propagation",
+        "file": "apps/server/internal/handlers/key.go",
+        "line": 100,
+        "scope": "keyHandler.GetPublic",
+        "description": "Server returns recipient public key."
+      },
+      {
+        "kind": "sink",
+        "file": "packages/shared/src/crypto/vault.ts",
+        "line": 422,
+        "scope": "wrapItemKeyFor",
+        "description": "Item key is wrapped for the server-supplied public key without user verification."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "packages/shared/src/crypto/vault.ts",
+        "line": 422,
+        "description": "wrapForPublicKey(publicKey, itemKey) performs no fingerprint or safety number verification."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "system_configuration",
+        "description": "Server is untrusted or compromised during public key lookup."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "A compromised server intercepts GET /api/v1/keys/public?email=alice@example.com and returns attacker's public key.",
+      "payloads": [
+        "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n{\"user_id\":\"...\",\"public_key\":\"<ATTACKER_KEY>\"}"
+      ],
+      "instructions": [
+        "Share vault item with alice@example.com.",
+        "Server intercepts request and substitutes public_key.",
+        "Sender client wraps item key for attacker's public key."
+      ],
+      "observed_result": "Attacker unwraps item key and decrypts the shared secret."
+    },
+    "remediation": {
+      "strategy": "Introduce SHA-256 public key fingerprints in the sharing UI and implement Trust-On-First-Use (TOFU) pinning.",
+      "code_changes": [
+        {
+          "file_name": "packages/shared/src/crypto/vault.ts",
+          "fixed_code": "// Add public key fingerprint calculation helper: sha256(publicKeyRaw)"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "low",
+        "reason": "Requires compromised server or malicious MITM on API traffic."
+      },
+      "impact": {
+        "score": "medium",
+        "reason": "Loss of end-to-end encryption confidentiality for shared items."
+      },
+      "overall_severity": "medium"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Source code confirms complete absence of public key fingerprinting or TOFU mechanisms."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "SEC-SERVER-01-trailing-slash-password-verification-bypass",
+    "title": "Account Password Verification and Automated IP-Block Lockout Bypass via Trailing Slash Mismatch",
+    "description": "Fiber router matches paths with or without trailing slashes. In requirePassword (authula.go), sensitive operations (/totp/enable, /totp/disable, /email-password/request-email-change) are checked using slices.Contains(passwordPaths, c.Path()). Similarly, failedAttempt (routes.go) checks slices.Contains(guessPaths, c.Path()). When a client appends a trailing slash (e.g. POST /api/v1/auth/totp/disable/ or POST /api/v1/auth/email-password/sign-in/), c.Path() includes the slash, causing slices.Contains to evaluate to false. This bypasses the password and TOTP requirement in requirePassword and prevents failedAttempt from incrementing the IP-block failure counter.",
+    "root_cause": "Failure to normalize request paths with strings.TrimSuffix(c.Path(), \"/\") before exact slice membership checks in requirePassword and failedAttempt.",
+    "intended_behavior": "All path comparisons for authentication verification and rate limiting must normalize trailing slashes.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "apps/server/cmd/api/routes.go",
+        "line": 135,
+        "scope": "routes",
+        "description": "Incoming HTTP request to /api/v1/auth/totp/disable/ enters auth middleware stack."
+      },
+      {
+        "kind": "propagation",
+        "file": "apps/server/cmd/api/authula.go",
+        "line": 291,
+        "scope": "requirePassword",
+        "description": "slices.Contains(passwordPaths, c.Path()) evaluates to false due to trailing slash; returns c.Next() without password check."
+      },
+      {
+        "kind": "sink",
+        "file": "apps/server/cmd/api/routes.go",
+        "line": 78,
+        "scope": "failedAttempt",
+        "description": "slices.Contains(guessPaths, c.Path()) evaluates to false; failedAttempt returns false and evades IP block."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "apps/server/cmd/api/authula.go",
+        "line": 291,
+        "description": "if c.Method() != fiber.MethodPost || !slices.Contains(passwordPaths, c.Path()) { return c.Next() }"
+      },
+      {
+        "file": "apps/server/cmd/api/routes.go",
+        "line": 78,
+        "description": "slices.Contains(guessPaths, c.Path()) ignores paths with trailing slashes."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "Attacker has an active session token for requirePassword bypass, or is unauthenticated for IPBlock evasion."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "An attacker with a stolen session token sends POST /api/v1/auth/totp/disable/ to disable TOTP without knowing the account password or TOTP code.",
+      "payloads": [
+        "POST /api/v1/auth/totp/disable/ HTTP/1.1\r\nAuthorization: Bearer <TOKEN>\r\nContent-Type: application/json\r\n\r\n{}"
+      ],
+      "instructions": [
+        "Send POST request to /api/v1/auth/totp/disable/ with trailing slash.",
+        "Observe requirePassword skipping password and TOTP validation.",
+        "Send invalid password guesses to /api/v1/auth/email-password/sign-in/ with trailing slash and observe 0 recorded IPBlock failures."
+      ],
+      "observed_result": "Account password and TOTP verification are bypassed, and IPBlock lockout counter remains unchanged."
+    },
+    "remediation": {
+      "strategy": "Normalize c.Path() with strings.TrimSuffix(c.Path(), \"/\") before checking passwordPaths and guessPaths.",
+      "code_changes": [
+        {
+          "file_name": "apps/server/cmd/api/authula.go",
+          "fixed_code": "normalizedPath := strings.TrimSuffix(c.Path(), \"/\")\nif c.Method() != fiber.MethodPost || !slices.Contains(passwordPaths, normalizedPath) { return c.Next() }"
+        },
+        {
+          "file_name": "apps/server/cmd/api/routes.go",
+          "fixed_code": "normalizedPath := strings.TrimSuffix(c.Path(), \"/\")\nreturn slices.Contains(guessPaths, normalizedPath) || strings.HasPrefix(normalizedPath, authBasePath+\"/magic-link/\") || ..."
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "high",
+        "reason": "Trivial to append a trailing slash to request URLs in standard HTTP requests."
+      },
+      "impact": {
+        "score": "high",
+        "reason": "Bypasses re-authentication requirement on sensitive account modifications and evades automated brute-force IP blocking."
+      },
+      "overall_severity": "high"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Direct code inspection confirms exact string slice matching against unnormalized c.Path()."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "SEC-SERVER-02-unbounded-kdf-parameters-client-dos",
+    "title": "Unbounded Argon2id KDF Memory Permitting Persistent Client Denial of Service and Vault Lockout",
+    "description": "apps/server/internal/dtos/vault.go accepts kdf_memory_kib up to 4,194,304 KiB (4 GiB), iterations up to 100, and parallelism up to 64. When unlocking the vault, the client passes these server-controlled parameters directly into hash-wasm's argon2id. Allocating 4 GiB within WebAssembly linear memory exceeds browser limits, triggering an unhandled WebAssembly Out-Of-Memory exception or tab freeze.",
+    "root_cause": "Server accepts excessively high KDF parameters (4 GiB) and client fails to validate or bound KDF parameters prior to passing them to WebAssembly.",
+    "intended_behavior": "Server and client must enforce strict upper bounds on memory (e.g. 256 MiB max) and iterations (e.g. 10 max).",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "apps/server/internal/dtos/vault.go",
+        "line": 26,
+        "scope": "maxKDFMemoryKiB",
+        "description": "Server defines maxKDFMemoryKiB = 4 * 1024 * 1024 (4 GiB)."
+      },
+      {
+        "kind": "propagation",
+        "file": "apps/server/internal/handlers/key.go",
+        "line": 85,
+        "scope": "keyHandler.UpdateKDF",
+        "description": "Server persists extreme KDF values to user_keys table."
+      },
+      {
+        "kind": "sink",
+        "file": "packages/shared/src/crypto/kdf.ts",
+        "line": 35,
+        "scope": "deriveMasterKey",
+        "description": "Client invokes argon2id with 4 GiB memorySize in wasm, crashing or freezing the tab."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "apps/server/internal/dtos/vault.go",
+        "line": 26,
+        "description": "maxKDFMemoryKiB = 4 * 1024 * 1024"
+      },
+      {
+        "file": "packages/shared/src/crypto/kdf.ts",
+        "line": 40,
+        "description": "memorySize: params.memoryKiB passed directly to argon2id."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "Authenticated user or compromised server modifying KDF settings."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "An attacker or compromised server sets kdf_memory_kib to 4194304 in PUT /api/v1/keys.",
+      "payloads": [
+        "PUT /api/v1/keys HTTP/1.1\r\nContent-Type: application/json\r\n\r\n{\"kdf_memory_kib\": 4194304, \"kdf_iterations\": 10, \"kdf_parallelism\": 1, ...}"
+      ],
+      "instructions": [
+        "Submit KDF update request with kdf_memory_kib = 4194304.",
+        "Attempt to unlock vault on client.",
+        "Observe WebAssembly Out of Memory error or tab crash."
+      ],
+      "observed_result": "Browser tab crashes or throws unhandled OOM exception, permanently locking user out of vault on client."
+    },
+    "remediation": {
+      "strategy": "Reduce maxKDFMemoryKiB in dtos/vault.go to 262144 (256 MiB) and enforce client-side clamping in kdf.ts.",
+      "code_changes": [
+        {
+          "file_name": "apps/server/internal/dtos/vault.go",
+          "fixed_code": "maxKDFMemoryKiB = 256 * 1024 // 256 MiB max"
+        },
+        {
+          "file_name": "packages/shared/src/crypto/kdf.ts",
+          "fixed_code": "if (params.memoryKiB > 262144 || params.iterations > 10) throw new Error('KDF parameters exceed safe limits');"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "low",
+        "reason": "Requires account modification or server tampering."
+      },
+      "impact": {
+        "score": "medium",
+        "reason": "Denial of service and permanent client-side vault lockout."
+      },
+      "overall_severity": "medium"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Verified via dtos/vault.go constants and WebAssembly 32-bit linear memory constraints."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "SEC-SERVER-03-passkey-ip-block-exemption",
+    "title": "Missing Automated IP-Block Accounting for Failed Passkey Sign-In Attempts",
+    "description": "routes.go defines guessPaths to monitor paths where 401 or 403 responses indicate credential guessing and should increment IP failure counts. Passkey sign-in at POST /api/v1/auth/passkey/sign-in is omitted from guessPaths. When passkey authentication fails, passkey.go returns 401 Unauthorized, but failedAttempt returns false. Consequently, automated IPBlock lockout never triggers for failed passkey authentication attempts.",
+    "root_cause": "Omission of /passkey/sign-in from guessPaths in routes.go.",
+    "intended_behavior": "Failed passkey authentication attempts must count toward automated IP-block lockout.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "apps/server/cmd/api/passkey.go",
+        "line": 72,
+        "scope": "passkey.sign-in",
+        "description": "Incoming request to /passkey/sign-in."
+      },
+      {
+        "kind": "propagation",
+        "file": "apps/server/cmd/api/passkey.go",
+        "line": 115,
+        "scope": "passkey.sign-in",
+        "description": "fail(reqCtx, http.StatusUnauthorized) returned on authentication failure."
+      },
+      {
+        "kind": "sink",
+        "file": "apps/server/cmd/api/routes.go",
+        "line": 78,
+        "scope": "failedAttempt",
+        "description": "Path is not in guessPaths; failedAttempt returns false and fails to increment block counter."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "apps/server/cmd/api/routes.go",
+        "line": 67,
+        "description": "guessPaths includes passkeys/register/begin but omits auth/passkey/sign-in."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "Unauthenticated client performing passkey authentication."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Attacker sends repeated invalid passkey assertion requests to /api/v1/auth/passkey/sign-in.",
+      "payloads": [
+        "POST /api/v1/auth/passkey/sign-in HTTP/1.1\r\nContent-Type: application/json\r\n\r\n{\"ceremony\":\"invalid\",\"credential\":{}}"
+      ],
+      "instructions": [
+        "Send 30 consecutive invalid passkey sign-in requests from a single IP.",
+        "Observe 401 Unauthorized responses without triggering the 20-failure IPBlock limit."
+      ],
+      "observed_result": "IP address is never blocked despite exceeding ipBlockMaxFailures."
+    },
+    "remediation": {
+      "strategy": "Add authBasePath + \"/passkey/sign-in\" to guessPaths in routes.go.",
+      "code_changes": [
+        {
+          "file_name": "apps/server/cmd/api/routes.go",
+          "fixed_code": "authBasePath + \"/passkey/sign-in\","
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "medium",
+        "reason": "Easily executable by automated scripts targeting passkey endpoints."
+      },
+      "impact": {
+        "score": "medium",
+        "reason": "Allows unthrottled brute-force credential stuffing and assertion replays."
+      },
+      "overall_severity": "medium"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Source code in routes.go shows explicit omission from guessPaths."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "SEC-SERVER-04-rate-limit-email-form-encoded-bypass",
+    "title": "Per-Account Rate Limiter Bypass via Form-Encoded Credential Submissions",
+    "description": "RateLimitEmail calls bodyEmail(c) which attempts json.Unmarshal(c.Body(), &body). When credentials are submitted using application/x-www-form-urlencoded format, json.Unmarshal fails, body.Email remains empty, bodyEmail returns \"\", and RateLimitKey's Next hook returns true, completely bypassing the 10 req/min email rate limit.",
+    "root_cause": "bodyEmail only attempts JSON deserialization and ignores form-encoded request payloads.",
+    "intended_behavior": "RateLimitEmail must extract email addresses from both JSON and form-encoded request bodies.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "apps/server/internal/middlewares/rate_limit.go",
+        "line": 56,
+        "scope": "RateLimitEmail",
+        "description": "Request enters RateLimitEmail middleware."
+      },
+      {
+        "kind": "propagation",
+        "file": "apps/server/internal/middlewares/rate_limit.go",
+        "line": 72,
+        "scope": "bodyEmail",
+        "description": "json.Unmarshal fails on form-encoded body, returning empty string."
+      },
+      {
+        "kind": "sink",
+        "file": "apps/server/internal/middlewares/rate_limit.go",
+        "line": 38,
+        "scope": "RateLimitKey",
+        "description": "Next hook evaluates true when key(c) == \"\", skipping rate limiting."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "apps/server/internal/middlewares/rate_limit.go",
+        "line": 72,
+        "description": "_ = json.Unmarshal(c.Body(), &body)"
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "Unauthenticated client performing login or password reset attempts."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Attacker submits login requests formatted as form-encoded data instead of JSON.",
+      "payloads": [
+        "POST /api/v1/auth/email-password/sign-in HTTP/1.1\r\nContent-Type: application/x-www-form-urlencoded\r\n\r\nemail=victim%40example.com&password=guess"
+      ],
+      "instructions": [
+        "Submit > 15 sign-in requests using application/x-www-form-urlencoded across rotated IPs.",
+        "Observe no 429 Too Many Requests responses from RateLimitEmail."
+      ],
+      "observed_result": "Per-email rate limiter is bypassed for form-encoded submissions."
+    },
+    "remediation": {
+      "strategy": "In bodyEmail, fall back to c.FormValue(\"email\") when JSON decoding yields an empty string.",
+      "code_changes": [
+        {
+          "file_name": "apps/server/internal/middlewares/rate_limit.go",
+          "fixed_code": "func bodyEmail(c fiber.Ctx) string {\n  var body struct { Email string `json:\"email\"` }\n  _ = json.Unmarshal(c.Body(), &body)\n  if body.Email != \"\" { return strings.ToLower(strings.TrimSpace(body.Email)) }\n  return strings.ToLower(strings.TrimSpace(c.FormValue(\"email\")))\n}"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "medium",
+        "reason": "Standard technique for bypassing JSON-only WAFs and limiters."
+      },
+      "impact": {
+        "score": "medium",
+        "reason": "Allows distributed credential stuffing attacks against specific user accounts."
+      },
+      "overall_severity": "medium"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Verified via rate_limit.go bodyEmail implementation."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "SEC-SERVER-05-no-session-revocation-master-password-change",
+    "title": "Existing User Sessions Survive Master Password Rotation",
+    "description": "When a user changes their account password, Authula invokes DeleteAllByUserID to invalidate all active sessions. However, when a user changes their master password via PUT /api/v1/keys (UpdateKDF), the server only updates the user_keys table and does not revoke any existing sessions. Stolen tokens and active sessions on compromised devices retain full API access to list and modify vault items.",
+    "root_cause": "keyHandler.UpdateKDF does not invoke session invalidation upon master password update.",
+    "intended_behavior": "Master password rotation must invalidate all other active sessions and refresh tokens.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "apps/server/internal/handlers/key.go",
+        "line": 66,
+        "scope": "keyHandler.UpdateKDF",
+        "description": "User submits master password change to PUT /api/v1/keys."
+      },
+      {
+        "kind": "propagation",
+        "file": "apps/server/internal/handlers/key.go",
+        "line": 85,
+        "scope": "keyHandler.UpdateKDF",
+        "description": "h.repo().UpdateKDF updates user_keys table only."
+      },
+      {
+        "kind": "sink",
+        "file": "apps/server/internal/handlers/key.go",
+        "line": 93,
+        "scope": "keyHandler.UpdateKDF",
+        "description": "Returns 200 OK without revoking user sessions in Authula session store."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "apps/server/internal/handlers/key.go",
+        "line": 85,
+        "description": "UpdateKDF updates keys in DB but performs no session revocation."
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "User rotates master password with active concurrent sessions on other devices."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Attacker retains a stolen session token. Victim rotates their master password.",
+      "payloads": ["PUT /api/v1/keys HTTP/1.1\r\n(Victim rotates master password)"],
+      "instructions": [
+        "Create session A and session B for victim.",
+        "From session A, rotate master password via PUT /api/v1/keys.",
+        "From session B, make authenticated API calls to GET /api/v1/items."
+      ],
+      "observed_result": "Session B remains completely valid and can continue querying and altering vault data."
+    },
+    "remediation": {
+      "strategy": "Invoke session invalidation for other user sessions inside keyHandler.UpdateKDF.",
+      "code_changes": [
+        {
+          "file_name": "apps/server/internal/handlers/key.go",
+          "fixed_code": "// In keyHandler.UpdateKDF, call h.app.Auth.CoreServices().SessionService.DeleteOthers(c.Context(), uid.String(), currentSessionID)"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "medium",
+        "reason": "Common scenario during incident response or suspected device compromise."
+      },
+      "impact": {
+        "score": "medium",
+        "reason": "Allows unauthorized ongoing access to vault items despite master password change."
+      },
+      "overall_severity": "medium"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Verified that UpdateKDF lacks session revocation calls present in account password reset."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "SEC-SERVER-06-redundant-prune-read-endpoint-locking",
+    "title": "Redundant Synchronous Activity Log Pruning on Read Endpoint Causing Lock Contention",
+    "description": "activityHandler.List invokes repo.Prune(c.Context()) on every GET /api/v1/activity request, executing a table delete query despite an hourly background goroutine already performing this operation.",
+    "root_cause": "Synchronous call to database deletion query inside a high-frequency read handler.",
+    "intended_behavior": "Data pruning should run asynchronously in background maintenance tasks rather than blocking read handlers.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "apps/server/internal/handlers/activity.go",
+        "line": 20,
+        "scope": "activityHandler.List",
+        "description": "GET /api/v1/activity request received."
+      },
+      {
+        "kind": "sink",
+        "file": "apps/server/internal/handlers/activity.go",
+        "line": 33,
+        "scope": "activityHandler.List",
+        "description": "Synchronously executes repo.Prune(c.Context())."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "apps/server/internal/handlers/activity.go",
+        "line": 33,
+        "description": "if err := repo.Prune(c.Context()); err != nil"
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "authentication_level",
+        "description": "Authenticated user listing activity logs."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "Multiple clients concurrently issue GET /api/v1/activity requests.",
+      "payloads": ["GET /api/v1/activity HTTP/1.1"],
+      "instructions": [
+        "Send concurrent GET requests to /api/v1/activity.",
+        "Observe concurrent DELETE queries on activity_logs table."
+      ],
+      "observed_result": "Unnecessary database write locks and increased response latency on read operations."
+    },
+    "remediation": {
+      "strategy": "Remove repo.Prune from activityHandler.List and rely exclusively on the background pruner in main.go.",
+      "code_changes": [
+        {
+          "file_name": "apps/server/internal/handlers/activity.go",
+          "fixed_code": "// Remove lines 32-35 from activityHandler.List"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "medium",
+        "reason": "Triggered on every activity log view."
+      },
+      "impact": {
+        "score": "low",
+        "reason": "Degrades database throughput and concurrency."
+      },
+      "overall_severity": "low"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Confirmed by presence of both handler Prune call and cmd/api/main.go background pruneActivityEvery."
+    }
+  },
+  {
+    "verdict": "confirmed",
+    "fingerprint": "SEC-SERVER-07-permissive-chrome-extension-origin-csrf",
+    "title": "Permissive Chrome Extension Scheme Whitelisting in CrossOrigin CSRF Middleware",
+    "description": "isExtensionOrigin checks only strings.HasPrefix(origin, \"chrome-extension://\"), exempting any third-party Chrome extension from CSRF checks.",
+    "root_cause": "Prefix matching on chrome-extension:// without validating specific extension IDs.",
+    "intended_behavior": "Only legitimate Montara Pass extension IDs should be whitelisted for cross-origin state-changing requests.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "apps/server/internal/middlewares/cross_origin.go",
+        "line": 22,
+        "scope": "crossOrigin",
+        "description": "Request from browser extension enters crossOrigin."
+      },
+      {
+        "kind": "sink",
+        "file": "apps/server/internal/middlewares/cross_origin.go",
+        "line": 46,
+        "scope": "isExtensionOrigin",
+        "description": "Approves any origin starting with chrome-extension://."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "apps/server/internal/middlewares/cross_origin.go",
+        "line": 46,
+        "description": "return strings.HasPrefix(origin, \"chrome-extension://\") || strings.HasPrefix(origin, \"moz-extension://\")"
+      }
+    ],
+    "conditions": [
+      {
+        "kind": "environmental_dependency",
+        "description": "User has installed an untrusted third-party Chrome extension."
+      }
+    ],
+    "execution": {
+      "attacker_perspective": "A malicious Chrome extension issues authenticated cross-origin requests to the Montara Pass API.",
+      "payloads": ["Origin: chrome-extension://malicious-extension-id"],
+      "instructions": [
+        "Install third-party extension in Chrome.",
+        "From extension background, send POST /api/v1/keys with cookies.",
+        "Observe CrossOrigin middleware accepting request."
+      ],
+      "observed_result": "Third-party extension bypasses CSRF origin validation."
+    },
+    "remediation": {
+      "strategy": "Whitelist explicit Montara Pass extension ID for chrome-extension://.",
+      "code_changes": [
+        {
+          "file_name": "apps/server/internal/middlewares/cross_origin.go",
+          "fixed_code": "const montaraChromeExtensionID = \"chrome-extension://...\"\nreturn origin == montaraChromeExtensionID || strings.HasPrefix(origin, \"moz-extension://\")"
+        }
+      ]
+    },
+    "severity": {
+      "likelihood": {
+        "score": "low",
+        "reason": "Requires installation of an untrusted third-party extension in Chrome."
+      },
+      "impact": {
+        "score": "low",
+        "reason": "Weakens CSRF defense-in-depth against malicious local extensions."
+      },
+      "overall_severity": "low"
+    },
+    "confidence": {
+      "score": "high",
+      "reason": "Verified prefix matching in cross_origin.go."
+    }
+  }
+]
