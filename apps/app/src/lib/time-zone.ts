@@ -1,6 +1,9 @@
 import { useSyncExternalStore } from 'react'
 
-/** Where this browser keeps the chosen zone; the API has nowhere to store it. */
+/**
+ * Where this browser keeps the chosen zone. The account's zone lives in the
+ * API (GET /me time_zone); this copy shows it before /me answers.
+ */
 const KEY = 'montara.time-zone'
 /** Fired on this page when the zone changes; `storage` covers the other tabs. */
 const EVENT = 'montara:time-zone'
@@ -42,7 +45,7 @@ export function useTimeZone(): string {
   return useSyncExternalStore(subscribe, read, () => DEFAULT_TIME_ZONE)
 }
 
-/** Choose the zone for this browser. */
+/** Show this zone here. Saving it to the account is the caller's job. */
 export function setTimeZone(zone: string) {
   try {
     localStorage.setItem(KEY, zone)

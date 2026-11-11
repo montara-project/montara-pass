@@ -170,6 +170,8 @@ func routes(r *fiber.App, app *app.Application) {
 	// user sees the list and blocks or lets an IP through by hand. The
 	// middleware enforces; these keep the record and the store in step.
 	v1.Get("/me/role", m.Authorization, h.Me.Role)
+	// The zone the clock shows; GET /me answers it as time_zone.
+	v1.Put("/me/time-zone", m.Authorization, h.Me.SetTimeZone)
 	// The signed-in user's activity log: sign-ins and what was done to items.
 	v1.Get("/activity", m.Authorization, h.Activity.List)
 	// Passkeys on the account: signing in with one is under authBasePath

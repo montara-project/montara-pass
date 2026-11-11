@@ -17,6 +17,7 @@ import {
 } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
+import { useEffect } from 'react'
 
 import type { SidebarLink } from '@/components/layout/sidebar/app-sidebar'
 import type { NavLinkRenderer } from '@/components/layout/sidebar/nav-item'
@@ -34,6 +35,7 @@ import { useItemTotals } from '@/hooks/use-vault'
 import { queries } from '@/lib/api/queries'
 import { HOME_PATH } from '@/lib/constants/auth'
 import { useVaultStore } from '@/lib/stores/vault'
+import { setTimeZone } from '@/lib/time-zone'
 
 type Icon = SidebarLink['icon']
 
@@ -113,6 +115,12 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const crumb = pathname.startsWith('/vault')
     ? { title: current?.title ?? 'All items', group: 'Vault' }
     : CRUMBS.find((crumb) => pathname.startsWith(crumb.url))
+
+  // The clock follows the account's zone, as the extension's does.
+  const { data: profile } = useQuery(queries.auth.profile())
+  useEffect(() => {
+    if (profile?.time_zone) setTimeZone(profile.time_zone)
+  }, [profile?.time_zone])
 
   return (
     <SidebarProvider

@@ -1,6 +1,7 @@
 import './sidebar.css'
 
 import { COMMUNITY } from '@montara-pass/shared/constants/edition'
+import { useEffect } from 'react'
 
 import type { SidebarLink } from '@/components/layout/sidebar/app-sidebar'
 import type { UserMenuAction } from '@/components/layout/sidebar/user-menu'
@@ -11,7 +12,9 @@ import { LINKS_OUT } from '@/components/layout/sidebar/nav-secondary'
 import Topbar from '@/components/layout/sidebar/topbar'
 import UserMenu from '@/components/layout/sidebar/user-menu'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
+import { setTimeZone } from '@/lib/time-zone'
 
+import { getProfile } from '../lib/api'
 import {
   CreditCardIcon,
   ExternalLinkIcon,
@@ -70,6 +73,13 @@ export function VaultSidebar<F extends string>({
   onSignOut,
   children,
 }: VaultSidebarProps<F>) {
+  // The clock follows the zone picked on the web app's profile.
+  useEffect(() => {
+    void getProfile()
+      .then((profile) => profile.time_zone && setTimeZone(profile.time_zone))
+      .catch(() => {})
+  }, [])
+
   const items: SidebarLink[] = [
     ...filters.map(({ value, label, icon, count }) => ({
       title: label,

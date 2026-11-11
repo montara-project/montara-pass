@@ -371,6 +371,32 @@ func addTOTPStatusToMe(repo *totprepository.TOTPRepository) func(*authulamodels.
 	}
 }
 
+// registerTimeZoneOnMe makes GET /me tell the zone the user picked for the
+// clock, as time_zone, so the web app and the extension show the same one.
+func registerTimeZoneOnMe(auth *authula.Auth, repo *repositories.UserRepository) {
+	auth.RegisterHook(authulamodels.Hook{
+		Stage: authulamodels.HookAfter,
+		Matcher: func(reqCtx *authulamodels.RequestContext) bool {
+			return reqCtx.Method == http.MethodGet && reqCtx.Path == authBasePath+"/me"
+		},
+		Handler: func(reqCtx *authulamodels.RequestContext) error {
+			if reqCtx.Actor == nil {
+				return nil
+			}
+			id, err := uuid.Parse(reqCtx.Actor.ID)
+			if err != nil {
+				return err
+			}
+			zone, err := repo.TimeZone(reqCtx.Request.Context(), id)
+			if err != nil {
+				return err
+			}
+			return addToResponse(reqCtx, map[string]any{"time_zone": zone})
+		},
+		Order: 20,
+	})
+}
+
 // saveCustomer returns the hook that saves a new account as a Lemon Squeezy
 // customer, or nil where billing takes no payments. It works in the
 // background, so a sign-up does not wait on Lemon Squeezy; an account it

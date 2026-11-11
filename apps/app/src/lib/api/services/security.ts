@@ -25,6 +25,11 @@ const path = '/api/v1/ip-blocks'
 export const securityServices = {
   /** The signed-in user's role, which the super-user pages gate on. */
   role: () => request<ApiItemResponse<Models.MeRole>>('GET', '/api/v1/me/role'),
+  /** Saves the zone the clock shows; GET /me answers it as time_zone. */
+  setTimeZone: (time_zone: string) =>
+    request<ApiItemResponse<{ time_zone: string }>>('PUT', '/api/v1/me/time-zone', {
+      body: { time_zone },
+    }),
   list: (params?: IPBlockListParams) =>
     request<ApiListResponse<Models.IPBlock>>('GET', path, { params }),
   create: (body: IPBlockCreateRequest) =>

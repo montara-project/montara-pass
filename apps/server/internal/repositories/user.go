@@ -82,3 +82,19 @@ func (r *UserRepository) Role(ctx context.Context, id uuid.UUID) (string, error)
 	err := r.queryRowContext(ctx, `SELECT role FROM users WHERE id = $1`, id).Scan(&role)
 	return role, translateNotFound("users", err)
 }
+
+// TimeZone returns the IANA zone a mirrored user picked for the clock.
+func (r *UserRepository) TimeZone(ctx context.Context, id uuid.UUID) (string, error) {
+	var zone string
+	err := r.queryRowContext(ctx, `SELECT time_zone FROM users WHERE id = $1`, id).Scan(&zone)
+	return zone, translateNotFound("users", err)
+}
+
+// SetTimeZone changes the IANA zone a mirrored user picked for the clock.
+func (r *UserRepository) SetTimeZone(ctx context.Context, id uuid.UUID, zone string) error {
+	res, err := r.execContext(ctx, `UPDATE users SET time_zone = $2, updated_at = now() WHERE id = $1`, id, zone)
+	if err != nil {
+		return err
+	}
+	return requireAffected(res, "user")
+}

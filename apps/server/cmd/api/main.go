@@ -148,6 +148,7 @@ func run() error {
 	auth := newAuth(cfg, mirror, saveCustomer(application), recordSignIn(&repos.Activity), logger)
 	application.Auth = auth
 	registerPasskeyRoutes(auth, application)
+	registerTimeZoneOnMe(auth, &repos.User)
 	defer auth.CloseSystems()
 	defer auth.ClosePlugins()
 

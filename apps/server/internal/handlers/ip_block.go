@@ -165,3 +165,24 @@ func (h *meHandler) Role(c fiber.Ctx) error {
 	}
 	return dtos.OK(c, fiber.Map{"role": role})
 }
+
+// SetTimeZone saves the IANA zone the signed-in user picked for the clock,
+// which GET /me answers as time_zone so the web app and the extension agree.
+func (h *meHandler) SetTimeZone(c fiber.Ctx) error {
+	uid, err := currentUser(c)
+	if err != nil {
+		return err
+	}
+	var body dtos.TimeZoneBody
+	if err := lib.ValidateRequestBody(c, &body); err != nil {
+		return err
+	}
+	// LoadLocation also takes "" and "Local", which name no zone a browser knows.
+	if _, err := time.LoadLocation(body.TimeZone); err != nil || body.TimeZone == "Local" {
+		return apperr.New(apperr.KindBadRequest, "unknown time zone %q", body.TimeZone)
+	}
+	if err := h.app.Repositories.User.SetTimeZone(c.Context(), uid, body.TimeZone); err != nil {
+		return err
+	}
+	return dtos.OK(c, fiber.Map{"time_zone": body.TimeZone})
+}

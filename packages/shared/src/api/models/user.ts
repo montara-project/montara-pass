@@ -59,6 +59,8 @@ export interface Profile {
   session: Session
   /** Whether signing in asks for a code from an authenticator app. GET /me only. */
   totp_enabled?: boolean
+  /** The IANA zone the clock shows, the same in the web app and the extension. GET /me only. */
+  time_zone?: string
 }
 
 /** Body of POST /api/v1/auth/token/refresh. */
