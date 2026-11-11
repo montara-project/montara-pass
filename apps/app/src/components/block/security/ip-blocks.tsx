@@ -8,23 +8,20 @@ import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 
 import type { IPBlockListParams } from '@/lib/api/services/security'
+import type { AppColumnDef } from '@/types/column'
 
 import EmptyState from '@/components/block/common/empty-state'
+import ReactTable, { WIDE_ONLY } from '@/components/block/common/react-table'
 import SimpleAlertDialog from '@/components/block/common/simple-alert-dialog'
 import BlockIPForm from '@/components/block/security/block-form'
-import { ListFooter, ListSkeleton, SettingsSection } from '@/components/block/settings/list'
+import { SettingsSection } from '@/components/block/settings/list'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toastApiError } from '@/lib/api/api-error'
 import { queries } from '@/lib/api/queries'
 import { cn } from '@/lib/utils'
 
-import { MONO_NOTE } from './section'
-
-/** Address, reason, status, when, and the action; the middle ones go when narrow. */
-const COLUMNS =
-  'grid grid-cols-[minmax(0,1.2fr)_minmax(0,1.6fr)_96px_minmax(0,1fr)_88px] gap-3 @max-[720px]/blocks:grid-cols-[minmax(0,1fr)_96px_88px]'
-const WIDE_ONLY = '@max-[720px]/blocks:hidden'
+type Column = AppColumnDef<Models.IPBlock>
 
 interface IpBlockCardProps {
   /** Matches the address or the reason, on the server. */
@@ -69,120 +66,137 @@ function IpBlockCard({ search, page, size, onPage, onSize, toolbar }: IpBlockCar
     }
   }
 
-  // Loading, the error, nothing blocked, or the blocks and the way through them.
-  const renderBody = () => {
-    if (isLoading) return <ListSkeleton />
-    if (isError && blocks.length === 0) {
-      return (
-        <p role="alert" className="text-danger px-4 py-6 text-[13px]">
-          The IP blocks could not be read. Reload the page to try again.
-        </p>
-      )
-    }
-    if (blocks.length === 0) {
-      return (
-        <EmptyState
-          framed={false}
-          icon={IconShieldCheck}
-          title={search ? 'No block matches' : 'No IP is blocked'}
-          description={
-            search
-              ? 'Try another address or word from the reason.'
-              : 'An IP that fails too many requests is blocked on its own and shows up here; you can also block one by hand.'
-          }
-        />
-      )
-    }
-    return (
-      <>
-        <div className={cn(COLUMNS, MONO_NOTE, 'border-border border-b px-4 py-2.5')}>
-          <span>Address</span>
-          <span className={WIDE_ONLY}>Reason</span>
-          <span>Status</span>
-          <span className={WIDE_ONLY}>Blocked</span>
-          <span className="text-right">Action</span>
-        </div>
-        <ul className="divide-border/60 m-0 list-none divide-y p-0">
-          {blocks.map((block) => (
-            <li key={block.id} className={cn(COLUMNS, 'items-center px-4 py-2 text-[13px]')}>
-              <span className="flex min-w-0 items-center gap-2.5">
-                <span
-                  className={cn(
-                    'bg-background inline-flex size-[30px] shrink-0 items-center justify-center rounded-md border',
-                    block.status === 'active' ? 'text-warn' : 'text-muted-foreground'
-                  )}
-                >
-                  <IconForbid className="size-4" aria-hidden />
-                </span>
-                <span className="flex min-w-0 flex-col">
-                  <span className="truncate font-mono text-[13px] font-medium">{block.ip}</span>
-                  <span className="text-muted-foreground font-mono text-[11px]">
-                    {ipKind(block.ip)}
-                  </span>
-                </span>
+  const columns = useMemo<Column[]>(
+    () => [
+      {
+        accessorKey: 'ip',
+        header: 'Address',
+        cell: ({ row }) => (
+          <span className="flex min-w-0 items-center gap-2.5">
+            <span
+              className={cn(
+                'bg-background inline-flex size-[30px] shrink-0 items-center justify-center rounded-md border',
+                row.original.status === 'active' ? 'text-warn' : 'text-muted-foreground'
+              )}
+            >
+              <IconForbid className="size-4" aria-hidden />
+            </span>
+            <span className="flex min-w-0 flex-col">
+              <span className="truncate font-mono text-[13px] font-medium">{row.original.ip}</span>
+              <span className="text-muted-foreground font-mono text-[11px]">
+                {ipKind(row.original.ip)}
               </span>
-              <span className={cn('flex min-w-0 flex-col', WIDE_ONLY)}>
-                <span className="truncate" title={block.reason ?? undefined}>
-                  {block.reason ?? '—'}
-                </span>
-                <span className="text-muted-foreground font-mono text-[11px]">
-                  {block.source === 'auto' ? 'Blocked automatically' : 'Blocked by hand'}
-                </span>
-              </span>
-              <span>
-                <span
-                  className={cn(
-                    'inline-flex h-5 items-center rounded-[5px] px-[7px] font-mono text-[10px] font-medium tracking-[0.06em] uppercase',
-                    block.status === 'active'
-                      ? 'bg-warn/15 text-warn'
-                      : 'bg-card text-muted-foreground'
-                  )}
-                >
-                  {block.status === 'active' ? 'Blocked' : block.status}
-                </span>
-              </span>
-              <span className={cn('flex min-w-0 flex-col', WIDE_ONLY)}>
-                <span className="font-mono text-xs tabular-nums">
-                  {formatDateTime(block.created_at)}
-                </span>
-                <span className="text-muted-foreground font-mono text-[11px] tabular-nums">
-                  {block.blocked_until ? `Until ${formatDateTime(block.blocked_until)}` : 'No end'}
-                </span>
-              </span>
-              <span className="flex justify-end">
-                {/* Only a live block has anything to lift. */}
-                {block.status === 'active' && (
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    className="bg-card h-[26px] px-2.5 text-xs"
-                    disabled={unblock.isPending}
-                    onClick={() => setLifting(block)}
-                  >
-                    Unblock
-                  </Button>
-                )}
-              </span>
-            </li>
-          ))}
-        </ul>
-        <ListFooter
-          label="IP blocks"
-          page={page}
-          pages={Math.max(1, Math.ceil(total / size))}
-          size={size}
-          total={total}
-          onPage={onPage}
-          onSize={onSize}
-        />
-      </>
-    )
-  }
+            </span>
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'reason',
+        header: 'Reason',
+        meta: { headerClassName: WIDE_ONLY, cellClassName: WIDE_ONLY },
+        cell: ({ row }) => (
+          <span className="flex min-w-0 flex-col">
+            <span className="truncate" title={row.original.reason ?? undefined}>
+              {row.original.reason ?? '—'}
+            </span>
+            <span className="text-muted-foreground font-mono text-[11px]">
+              {row.original.source === 'auto' ? 'Blocked automatically' : 'Blocked by hand'}
+            </span>
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        size: 96,
+        cell: ({ row }) => (
+          <span
+            className={cn(
+              'inline-flex h-5 items-center rounded-[5px] px-[7px] font-mono text-[10px] font-medium tracking-[0.06em] uppercase',
+              row.original.status === 'active'
+                ? 'bg-warn/15 text-warn'
+                : 'bg-card text-muted-foreground'
+            )}
+          >
+            {row.original.status === 'active' ? 'Blocked' : row.original.status}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'created_at',
+        header: 'Blocked',
+        size: 190,
+        meta: { headerClassName: WIDE_ONLY, cellClassName: WIDE_ONLY },
+        cell: ({ row }) => (
+          <span className="flex min-w-0 flex-col">
+            <span className="font-mono text-xs tabular-nums">
+              {formatDateTime(row.original.created_at)}
+            </span>
+            <span className="text-muted-foreground font-mono text-[11px] tabular-nums">
+              {row.original.blocked_until
+                ? `Until ${formatDateTime(row.original.blocked_until)}`
+                : 'No end'}
+            </span>
+          </span>
+        ),
+      },
+      {
+        id: 'actions',
+        header: () => <span className="block text-right">Action</span>,
+        size: 104,
+        cell: ({ row }) => (
+          <span className="flex justify-end">
+            {/* Only a live block has anything to lift. */}
+            {row.original.status === 'active' && (
+              <Button
+                variant="outline"
+                size="xs"
+                className="bg-card h-[26px] px-2.5 text-xs"
+                disabled={unblock.isPending}
+                onClick={() => setLifting(row.original)}
+              >
+                Unblock
+              </Button>
+            )}
+          </span>
+        ),
+      },
+    ],
+    [unblock.isPending]
+  )
 
   return (
-    <div className="rounded-card bg-panel fade-in @container/blocks overflow-hidden border">
-      {toolbar}
-      {renderBody()}
+    <>
+      <ReactTable
+        label="IP blocks"
+        columns={columns}
+        data={blocks}
+        total={total}
+        pageIndex={page}
+        pageSize={size}
+        isLoading={isLoading}
+        onPageChange={onPage}
+        onPageSizeChange={onSize}
+        toolbar={toolbar}
+        emptyMessage={
+          isError ? (
+            <p role="alert" className="text-danger px-4 py-6 text-[13px]">
+              The IP blocks could not be read. Reload the page to try again.
+            </p>
+          ) : (
+            <EmptyState
+              framed={false}
+              icon={IconShieldCheck}
+              title={search ? 'No block matches' : 'No IP is blocked'}
+              description={
+                search
+                  ? 'Try another address or word from the reason.'
+                  : 'An IP that fails too many requests is blocked on its own and shows up here; you can also block one by hand.'
+              }
+            />
+          )
+        }
+      />
 
       <SimpleAlertDialog
         title={`Let ${lifting?.ip ?? 'this IP'} through?`}
@@ -193,7 +207,7 @@ function IpBlockCard({ search, page, size, onPage, onSize, toolbar }: IpBlockCar
         confirmText="Unblock"
         variant="destructive"
       />
-    </div>
+    </>
   )
 }
 

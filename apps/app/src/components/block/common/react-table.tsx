@@ -1,7 +1,5 @@
 /* eslint-disable react-hooks/incompatible-library */
 
-'use client'
-
 import {
   columnFilteringFeature,
   columnOrderingFeature,
@@ -12,6 +10,7 @@ import {
   createFilteredRowModel,
   createPaginatedRowModel,
   createSortedRowModel,
+  flexRender,
   globalFilteringFeature,
   rowExpandingFeature,
   rowPaginationFeature,
@@ -20,22 +19,12 @@ import {
   tableFeatures,
   useTable,
   type ColumnDef,
-  type ColumnFiltersState,
-  type ColumnSort,
-  type ColumnVisibilityState,
-  type FilterFnOption,
-  type PaginationState,
-  type ReactTable,
   type RowData,
-  type RowSelectionState,
-  type SortingState,
 } from '@tanstack/react-table'
-import { useState, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 
-import { DataGrid, DataGridContainer, type DataGridProps } from '@/components/ui/data-grid'
-import { DataGridPagination } from '@/components/ui/data-grid-pagination'
-import { DataGridTable } from '@/components/ui/data-grid-table'
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
+import { MONO_NOTE } from '@/components/block/security/section'
+import { ListFooter, ListSkeleton } from '@/components/block/settings/list'
 import { cn } from '@/lib/utils'
 
 export const features = tableFeatures({
@@ -55,126 +44,131 @@ export const features = tableFeatures({
   sortedRowModel: createSortedRowModel(),
 })
 
+/**
+ * A column's `meta.headerClassName` and `meta.cellClassName` go on its heading
+ * and cells; WIDE_ONLY there hides a column when the table is narrow.
+ */
+export const WIDE_ONLY = '@max-[720px]/table:hidden'
+
 interface ReactTableProps<T extends RowData> {
   columns: ColumnDef<typeof features, T, unknown>[]
   data: T[]
+  /** What the rows are, for the pager's accessible name. */
+  label: string
   pageSize?: number
+  /** 0-based; the server pages the rows, so `data` is this page only. */
   pageIndex?: number
   total: number
-  columnSort?: ColumnSort[]
   onPageChange?: (page: number) => void
   onPageSizeChange?: (pageSize: number) => void
-  globalFilterFn?: FilterFnOption<typeof features, T>
   getRowId?: (row: T) => string
-  /** Stands in for the page links under the table, for a page that turns its own way. */
+  /** Stands in for the pager under the table, for a page that turns its own way. */
   footer?: ReactNode
-  /** Off when the table sits in a card of the page's own. */
-  bordered?: boolean
-  /** Skeleton rows (each column's `meta.skeleton`) while the first page loads. */
+  /** Row-shaped skeletons while the first page loads. */
   isLoading?: boolean
+  /** Shown in the card instead of the table when there are no rows. */
   emptyMessage?: ReactNode
-  tableLayout?: DataGridProps<T>['tableLayout']
-  tableClassNames?: DataGridProps<T>['tableClassNames']
+  /** A line at the top of the card, above the headings: a search, a button. */
+  toolbar?: ReactNode
 }
 
+/**
+ * The app's table, in the IP blocks' card: mono headings over rows with a rule
+ * between each, then the rows-per-page and pager footer. A column's `size`
+ * fixes its width; the others share what is left.
+ */
 export default function ReactTable<T extends RowData>({
   columns,
   data,
+  label,
   pageSize = 10,
   pageIndex = 0,
   total,
-  columnSort = [],
-  globalFilterFn,
-  getRowId,
   onPageChange,
   onPageSizeChange,
+  getRowId,
   footer,
-  bordered = true,
   isLoading,
   emptyMessage,
-  tableLayout,
-  tableClassNames,
+  toolbar,
 }: ReactTableProps<T>) {
-  const [sorting, setSorting] = useState<SortingState>(columnSort)
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({})
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibilityState>({})
-  const [globalFilter, setGlobalFilter] = useState('')
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex,
-    pageSize,
-  })
-  const [prevPageProps, setPrevPageProps] = useState({ pageIndex, pageSize })
-
-  // Sync pagination state when the controlled page props change.
-  if (prevPageProps.pageIndex !== pageIndex || prevPageProps.pageSize !== pageSize) {
-    setPrevPageProps({ pageIndex, pageSize })
-    setPagination({ pageIndex, pageSize })
-  }
-
   const table = useTable({
     features,
     columns,
     data,
-    pageCount: Math.ceil(total / pagination.pageSize),
-    getRowId: getRowId ? getRowId : (row: T) => String((row as Record<string, unknown>).id),
-    getRowCanExpand: (row) => Boolean(row.original as Record<string, unknown>),
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-      rowSelection,
-      globalFilter,
-      pagination,
-    },
-    globalFilterFn,
-    columnResizeMode: 'onChange',
+    pageCount: Math.ceil(total / pageSize),
+    getRowId: getRowId ?? ((row: T) => String((row as Record<string, unknown>).id)),
     manualPagination: true,
-    onSortingChange: setSorting,
-    onGlobalFilterChange: setGlobalFilter,
-    onRowSelectionChange: setRowSelection,
-    onColumnFiltersChange: setColumnFilters,
-    onColumnVisibilityChange: setColumnVisibility,
-    onPaginationChange: setPagination,
+    state: { pagination: { pageIndex, pageSize } },
   })
 
-  return (
-    <DataGrid
-      table={table as unknown as ReactTable<any, any>}
-      recordCount={total}
-      isLoading={isLoading}
-      emptyMessage={emptyMessage}
-      tableLayout={{
-        columnsVisibility: true,
-        columnsResizable: true,
-        columnsPinnable: true,
-        columnsMovable: true,
-        ...tableLayout,
-      }}
-      tableClassNames={{
-        edgeCell: 'px-5',
-        ...tableClassNames,
-      }}
-    >
-      <div className={cn('fade-in w-full', footer === undefined && 'space-y-2.5')}>
-        <DataGridContainer border={bordered}>
-          <ScrollArea>
-            <DataGridTable />
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-        </DataGridContainer>
+  const renderBody = () => {
+    if (isLoading) return <ListSkeleton />
+    if (data.length === 0) return emptyMessage
+    return (
+      <>
+        <table className="w-full table-fixed border-collapse text-[13px]">
+          <thead>
+            {table.getHeaderGroups().map((group) => (
+              <tr key={group.id} className="border-border border-b">
+                {group.headers.map((header) => (
+                  <th
+                    key={header.id}
+                    scope="col"
+                    style={header.column.columnDef.size ? { width: header.getSize() } : undefined}
+                    className={cn(
+                      MONO_NOTE,
+                      'px-1.5 py-2.5 text-left font-normal first:pl-4 last:pr-4',
+                      header.column.columnDef.meta?.headerClassName
+                    )}
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(header.column.columnDef.header, header.getContext())}
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <tbody className="divide-border/60 divide-y">
+            {table.getRowModel().rows.map((row) => (
+              <tr key={row.id}>
+                {row.getAllCells().map((cell) => (
+                  <td
+                    key={cell.id}
+                    className={cn(
+                      'min-w-0 px-1.5 py-2 align-middle first:pl-4 last:pr-4',
+                      cell.column.columnDef.meta?.cellClassName
+                    )}
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
         {footer === undefined ? (
-          <DataGridPagination
+          <ListFooter
+            label={label}
+            page={pageIndex}
+            pages={Math.max(1, Math.ceil(total / pageSize))}
+            size={pageSize}
             total={total}
-            pageSize={pagination.pageSize}
-            pageIndex={pagination.pageIndex}
-            onPageChange={onPageChange}
-            onPageSizeChange={onPageSizeChange}
+            onPage={(page) => onPageChange?.(page)}
+            onSize={(size) => onPageSizeChange?.(size)}
           />
         ) : (
           footer
         )}
-      </div>
-    </DataGrid>
+      </>
+    )
+  }
+
+  return (
+    <div className="rounded-card bg-panel fade-in @container/table overflow-hidden border">
+      {toolbar}
+      {renderBody()}
+    </div>
   )
 }
